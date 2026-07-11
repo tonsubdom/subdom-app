@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - ./tma/dist:/usr/share/nginx/html
+    depends_on:
+      - backend
+    restart: always
+    networks:
+      - app-network
+
+  # frontend сервис можно убрать - он не нужен в production
+  # nginx уже обслуживает статику из ./tma/dist
+  
+  backend:
+    build:
+      context: ./subdom-server
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"  # Оставляем для локального доступа и отладки
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_OWNER_ID=${TELEGRAM_OWNER_ID:-}
+      - TELEGRAM_GROUP_ID=${TELEGRAM_GROUP_ID:-}
+      - DB_PATH=/app
+    volumes:
+      - ./subdom-server:/app
+      - ./subdom-server/db:/app/db
+      - /app/node_modules
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

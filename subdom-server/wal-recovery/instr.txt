@@ -1,0 +1,37 @@
+Создание бэкапа в папке wal-recovery
+bash
+Copy code
+1
+2
+3
+4
+5
+6
+7
+8
+# Перейдите в папку wal-recovery
+cd ~/subdom-deployment/subdom-server/wal-recovery
+
+# Скопируйте все необходимые файлы
+cp ../nft-domains.db .
+cp ../nft-domains.db-wal .
+cp ../nft-domains.db-shm .
+
+3. Конвертация WAL в основную базу данных
+bash
+Copy code
+1
+2
+3
+# Используйте SQLite для закрытия WAL и применения изменений
+sqlite3 nft-domains.db "PRAGMA wal_checkpoint(FULL);"
+
+ИЛИ более надежный способ:
+
+bash
+Copy code
+1
+2
+3
+# Создайте новую базу данных из WAL
+sqlite3 nft-domains.db ".backup backup.db"

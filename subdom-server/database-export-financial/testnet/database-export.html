@@ -1,0 +1,551 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFT Domains Database Export (TESTNET)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .stats {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .table-section {
+            margin-bottom: 40px;
+        }
+        
+        .table-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+            font-size: 1.5em;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        th {
+            background: #3498db;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            border: none;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #ecf0f1;
+            vertical-align: top;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .no-data {
+            text-align: center;
+            color: #7f8c8d;
+            font-style: italic;
+            padding: 20px;
+        }
+        
+        /* Стили для статусов */
+        .status-active {
+            color: #27ae60;
+            font-weight: bold;
+            background: #d5f4e6;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .status-inactive {
+            color: #e74c3c;
+            font-weight: bold;
+            background: #fadbd8;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .status-auction {
+            color: #f39c12;
+            font-weight: bold;
+            background: #fef5e7;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .status-claimed {
+            color: #8e44ad;
+            font-weight: bold;
+            background: #e8daef;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        /* Стили для адресов */
+        .address {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+        
+        .address:hover {
+            background: #e8f4fc;
+        }
+        
+        .no-address {
+            color: #95a5a6;
+            font-style: italic;
+        }
+        
+        /* Бейджи для типов зон */
+        .proxy-badge {
+            color: #3498db;
+            font-weight: bold;
+            background: #d6eaf8;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .sbt-badge {
+            color: #2ecc71;
+            font-weight: bold;
+            background: #d5f4e6;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        /* Стили для детального отображения nftAccessAmount */
+        .nft-access-details {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .nft-section {
+            margin-bottom: 10px;
+        }
+        
+        .nft-section strong {
+            color: #2c3e50;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .level-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            text-align: center;
+            font-family: monospace;
+        }
+        
+        .level-true {
+            background: #d5f4e6;
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+        
+        .level-false {
+            background: #fadbd8;
+            color: #e74c3c;
+            border: 1px solid #e74c3c;
+        }
+        
+        .nft-summary {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #bdc3c7;
+        }
+        
+        .summary-item {
+            font-size: 0.85em;
+            color: #7f8c8d;
+        }
+        
+        /* Стили для оплаченных попыток */
+        .paid-attempts-details {
+            background: #fef9e7;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #f9e79f;
+        }
+        
+        .attempts-section {
+            margin-bottom: 10px;
+        }
+        
+        .attempts-section strong {
+            color: #2c3e50;
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .attempts-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+        
+        .attempts-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            text-align: center;
+            font-family: monospace;
+        }
+        
+        .attempts-true {
+            background: #d5f4e6;
+            color: #27ae60;
+            border: 1px solid #27ae60;
+        }
+        
+        .attempts-false {
+            background: #f2f3f4;
+            color: #7f8c8d;
+            border: 1px solid #bdc3c7;
+        }
+        
+        .attempts-summary {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #bdc3c7;
+        }
+        
+        /* Финансовые стили */
+        .profit-positive {
+            color: #27ae60;
+            font-weight: bold;
+            background: #d5f4e6;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .profit-negative {
+            color: #e74c3c;
+            font-weight: bold;
+            background: #fadbd8;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .spending-positive {
+            color: #f39c12;
+            font-weight: bold;
+            background: #fef5e7;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .footer {
+            background: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            th, td {
+                padding: 8px 10px;
+                font-size: 0.9em;
+            }
+            
+            .level-grid, .attempts-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .nft-summary, .attempts-summary {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💰 NFT Domains Database</h1>
+            <div class="subtitle">Финансовый экспорт всех таблиц базы данных (🧪 Testnet)</div>
+            <div style="margin-top: 10px; font-size: 0.9em; opacity: 0.8;">
+                🧪 Testnet сеть | ✅ Финансовые показатели | 📊 Детальная статистика
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">20</div>
+                    <div class="stat-label">👥 Пользователей</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #27ae60;">9</div>
+                    <div class="stat-label">✅ Пользователей с true в proxy</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #27ae60;">9</div>
+                    <div class="stat-label">✅ Пользователей с true в sbt</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #27ae60;">49</div>
+                    <div class="stat-label">💰 Оплаченных Proxy попыток</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #27ae60;">47</div>
+                    <div class="stat-label">💰 Оплаченных SBT попыток</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">15</div>
+                    <div class="stat-label">🌐 Всего зон</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #27ae60;">15</div>
+                    <div class="stat-label">✅ Активных зон</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #e74c3c;">0</div>
+                    <div class="stat-label">⏸️ Неактивных зон</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">37</div>
+                    <div class="stat-label">🔗 Субдоменов</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">37</div>
+                    <div class="stat-label">📝 С collectionAddress</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #f39c12;">2238.50</div>
+                    <div class="stat-label">💸 Траты на зоны (TON)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #f39c12;">79.16</div>
+                    <div class="stat-label">💸 Траты на субдомены (TON)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #27ae60;">255.46</div>
+                    <div class="stat-label">💵 Общая прибыль (TON)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #27ae60;">9</div>
+                    <div class="stat-label">📈 Пользователей с прибылью</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+
+    <div class="table-section">
+      <h3>👥 Пользователи (финансовые показатели) (20 записей)</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+  <th>ID</th><th>Адрес</th><th>Имя</th><th>Домены</th><th>Зоны</th><th>Proxy зоны</th><th>SBT зоны</th><th>Субдомены</th><th>Proxy субдомены</th><th>SBT субдомены</th><th>Дата регистрации</th><th>NFT доступ (детально)</th><th>Оплаченные попытки</th><th>Траты на зоны (TON)</th><th>Траты на субдомены (TON)</th><th>Траты на Proxy зоны (TON)</th><th>Траты на SBT зоны (TON)</th><th>Траты на Proxy субдомены (TON)</th><th>Траты на SBT субдомены (TON)</th><th>Прибыль (TON)</th><th>Создан</th><th>Обновлен</th>
+            </tr>
+          </thead>
+          <tbody>
+  <tr><td>1</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td></td><td></td><td>7</td><td>3</td><td>4</td><td>23</td><td>11</td><td>12</td><td>2025-12-08 17:13:42</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 4✅ 2❌</span><span class="summary-item">SBT: 2✅ 4❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 4</span><span class="summary-item">Всего SBT: 2</span><span class="summary-item">Всего попыток: 6</span></div></div></td><td><span class="spending-positive">222.50 TON</span></td><td><span class="spending-positive">56.07 TON</span></td><td><span class="spending-positive">220.00 TON</span></td><td><span class="spending-positive">2.50 TON</span></td><td><span class="spending-positive">50.07 TON</span></td><td><span class="spending-positive">6.00 TON</span></td><td><span class="profit-positive">33.13 TON</span></td><td>2025-12-08 17:13:42</td><td>2026-02-04 19:13:24</td></tr><tr><td>2</td><td>UQAJhQfbNtmaWpYogVoo59slpxw8YLv3HluxOOPPHHhUnDl1</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2025-12-09 04:32:40</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 0✅ 6❌</span><span class="summary-item">SBT: 0✅ 6❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 0</span><span class="summary-item">Всего SBT: 0</span><span class="summary-item">Всего попыток: 0</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2025-12-09 04:32:40</td><td>2025-12-09 04:32:40</td></tr><tr><td>3</td><td>0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV</td><td></td><td></td><td>1</td><td>1</td><td></td><td>2</td><td>2</td><td></td><td>2026-01-10 12:48:57</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 5✅ 1❌</span><span class="summary-item">SBT: 6✅ 0❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 5</span><span class="summary-item">Всего SBT: 6</span><span class="summary-item">Всего попыток: 11</span></div></div></td><td><span class="spending-positive">242.50 TON</span></td><td><span class="spending-positive">3.00 TON</span></td><td><span class="spending-positive">230.00 TON</span></td><td><span class="spending-positive">12.50 TON</span></td><td><span class="spending-positive">3.00 TON</span></td><td></td><td><span class="profit-positive">33.73 TON</span></td><td>2026-01-10 12:48:57</td><td>2026-01-24 13:14:08</td></tr><tr><td>4</td><td>0QC-3ilVr-W0Uc3pLrGJElwSaFxvhXXfkiQA3EwdVBHNNQ1j</td><td></td><td></td><td>1</td><td>1</td><td></td><td></td><td></td><td></td><td>2026-01-10 14:24:44</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 6✅ 0❌</span><span class="summary-item">SBT: 6✅ 0❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 6</span><span class="summary-item">Всего SBT: 6</span><span class="summary-item">Всего попыток: 12</span></div></div></td><td><span class="spending-positive">262.50 TON</span></td><td></td><td><span class="spending-positive">250.00 TON</span></td><td><span class="spending-positive">12.50 TON</span></td><td></td><td></td><td><span class="profit-positive">28.50 TON</span></td><td>2026-01-10 14:24:44</td><td>2026-01-24 12:27:26</td></tr><tr><td>5</td><td>0QAfY-ZxtLJ3GySgCC56YTKE9b8UHbiFWcM_iLMig74H4kEO</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-10 14:48:36</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 0✅ 6❌</span><span class="summary-item">SBT: 0✅ 6❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 0</span><span class="summary-item">Всего SBT: 0</span><span class="summary-item">Всего попыток: 0</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-10 14:48:36</td><td>2026-01-10 14:48:36</td></tr><tr><td>6</td><td>0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs</td><td></td><td></td><td>3</td><td>1</td><td>2</td><td>4</td><td>2</td><td>2</td><td>2026-01-10 15:55:00</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 6✅ 0❌</span><span class="summary-item">SBT: 6✅ 0❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 6</span><span class="summary-item">Всего SBT: 6</span><span class="summary-item">Всего попыток: 12</span></div></div></td><td><span class="spending-positive">262.50 TON</span></td><td><span class="spending-positive">7.00 TON</span></td><td><span class="spending-positive">250.00 TON</span></td><td><span class="spending-positive">12.50 TON</span></td><td><span class="spending-positive">6.00 TON</span></td><td><span class="spending-positive">1.00 TON</span></td><td><span class="profit-positive">35.25 TON</span></td><td>2026-01-10 15:55:00</td><td>2026-01-24 12:09:33</td></tr><tr><td>7</td><td>0QALVvEkTZcRSy-Ud1taY9wF6SzhhKUo77hg0QifSH46cNzW</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-10 16:04:36</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 0✅ 6❌</span><span class="summary-item">SBT: 0✅ 6❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 0</span><span class="summary-item">Всего SBT: 0</span><span class="summary-item">Всего попыток: 0</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-10 16:04:36</td><td>2026-01-10 16:04:36</td></tr><tr><td>8</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td></td><td></td><td>1</td><td></td><td>1</td><td>5</td><td>3</td><td>2</td><td>2026-01-10 16:14:21</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 6✅ 0❌</span><span class="summary-item">SBT: 6✅ 0❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 6</span><span class="summary-item">Всего SBT: 6</span><span class="summary-item">Всего попыток: 12</span></div></div></td><td><span class="spending-positive">262.50 TON</span></td><td><span class="spending-positive">7.59 TON</span></td><td><span class="spending-positive">250.00 TON</span></td><td><span class="spending-positive">12.50 TON</span></td><td><span class="spending-positive">6.59 TON</span></td><td><span class="spending-positive">1.00 TON</span></td><td><span class="profit-positive">26.25 TON</span></td><td>2026-01-10 16:14:21</td><td>2026-01-24 12:01:20</td></tr><tr><td>9</td><td>0QC9AevlAcsQk6uzXcWNMhmKZng5HEfXFMrRFr7T_EXQ1EL8</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-11 00:20:08</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 0✅ 6❌</span><span class="summary-item">SBT: 0✅ 6❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 0</span><span class="summary-item">Всего SBT: 0</span><span class="summary-item">Всего попыток: 0</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-11 00:20:08</td><td>2026-01-11 00:20:08</td></tr><tr><td>10</td><td>UQCe_kKLgAsZiwgFUe-2c_bVprWHqsEJoLIJraSDn0CiMaZ4</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-11 03:28:51</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 0✅ 6❌</span><span class="summary-item">SBT: 0✅ 6❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 0</span><span class="summary-item">Всего SBT: 0</span><span class="summary-item">Всего попыток: 0</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-11 03:28:51</td><td>2026-01-11 03:28:51</td></tr><tr><td>11</td><td>UQCCdJQGrYpwaOZUXn3tnX7QYMFnG3GUpNn2PqkZVyBtNVLS</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-11 04:03:51</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 0✅ 6❌</span><span class="summary-item">SBT: 0✅ 6❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 0</span><span class="summary-item">Всего SBT: 0</span><span class="summary-item">Всего попыток: 0</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-11 04:03:51</td><td>2026-01-11 04:03:51</td></tr><tr><td>12</td><td>0QDYrxfHPuGs94P_6gXNco-8hAumgS9TyYAPxyJ6YnXNIjB3</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-11 07:05:32</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 0✅ 6❌</span><span class="summary-item">SBT: 0✅ 6❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 0</span><span class="summary-item">Всего SBT: 0</span><span class="summary-item">Всего попыток: 0</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-11 07:05:32</td><td>2026-01-11 07:05:32</td></tr><tr><td>13</td><td>0QDCcBoknzHnE0GXLTsIrTLT4gg9yQBysWsEgNc_tsmGp9y-</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-11 10:09:17</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 6✅ 0❌</span><span class="summary-item">SBT: 6✅ 0❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 6</span><span class="summary-item">Всего SBT: 6</span><span class="summary-item">Всего попыток: 12</span></div></div></td><td><span class="spending-positive">262.50 TON</span></td><td></td><td><span class="spending-positive">250.00 TON</span></td><td><span class="spending-positive">12.50 TON</span></td><td></td><td></td><td><span class="profit-positive">26.25 TON</span></td><td>2026-01-11 10:09:17</td><td>2026-01-24 12:22:32</td></tr><tr><td>14</td><td>0QBYiTsEjInTdAcTHZ6B9lJNNE4NANfpIDOoVviE3P70C4BV</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-15 10:55:53</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 6✅ 0❌</span><span class="summary-item">SBT: 6✅ 0❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 6</span><span class="summary-item">Всего SBT: 6</span><span class="summary-item">Всего попыток: 12</span></div></div></td><td><span class="spending-positive">262.50 TON</span></td><td></td><td><span class="spending-positive">250.00 TON</span></td><td><span class="spending-positive">12.50 TON</span></td><td></td><td></td><td><span class="profit-positive">26.25 TON</span></td><td>2026-01-15 10:55:53</td><td>2026-01-24 12:30:57</td></tr><tr><td>15</td><td>0QD-tB_rdezUCre04eiSQq43FDCgWPpfscJXtNmRrr3vAcq_</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-15 13:15:08</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 0✅ 6❌</span><span class="summary-item">SBT: 0✅ 6❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 0</span><span class="summary-item">Всего SBT: 0</span><span class="summary-item">Всего попыток: 0</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-15 13:15:08</td><td>2026-01-15 13:15:08</td></tr><tr><td>16</td><td>0QDXke_wyJe5VCGI59VPACPKzdw-ZhkqEqwlBBxbkwU7K3nA</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-16 16:22:57</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 0✅ 6❌</span><span class="summary-item">SBT: 0✅ 6❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 0</span><span class="summary-item">Всего SBT: 0</span><span class="summary-item">Всего попыток: 0</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-16 16:22:57</td><td>2026-01-16 16:22:57</td></tr><tr><td>17</td><td>0QAFdwqiHZuqeM26CmAIviJDoeRjGdk-FhDM96rW9QFK-Yan</td><td></td><td></td><td>1</td><td></td><td>1</td><td></td><td></td><td></td><td>2026-01-16 16:30:50</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 0✅ 6❌</span><span class="summary-item">SBT: 0✅ 6❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 0</span><span class="summary-item">Всего SBT: 0</span><span class="summary-item">Всего попыток: 0</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-16 16:30:50</td><td>2026-01-16 17:01:16</td></tr><tr><td>18</td><td>0QDRdwmx10Yzg5HaCvDjvHdV6Xy0ivYnE8T6Qmj_BA-Bp_mm</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-17 04:40:49</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-false">4: ❌</span><span class="level-badge level-false">5: ❌</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 0✅ 6❌</span><span class="summary-item">SBT: 0✅ 6❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-false">4: 0</span><span class="attempts-badge attempts-false">5: 0</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 0</span><span class="summary-item">Всего SBT: 0</span><span class="summary-item">Всего попыток: 0</span></div></div></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>2026-01-17 04:40:49</td><td>2026-01-17 04:40:49</td></tr><tr><td>19</td><td>0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z</td><td></td><td></td><td>1</td><td></td><td>1</td><td>1</td><td></td><td>1</td><td>2026-01-23 04:52:45</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-true">6: ✅</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 6✅ 0❌</span><span class="summary-item">SBT: 6✅ 0❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-true">6: 1</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 6</span><span class="summary-item">Всего SBT: 6</span><span class="summary-item">Всего попыток: 12</span></div></div></td><td><span class="spending-positive">262.50 TON</span></td><td><span class="spending-positive">0.50 TON</span></td><td><span class="spending-positive">250.00 TON</span></td><td><span class="spending-positive">12.50 TON</span></td><td></td><td><span class="spending-positive">0.50 TON</span></td><td><span class="profit-positive">26.25 TON</span></td><td>2026-01-23 04:52:45</td><td>2026-01-24 12:11:19</td></tr><tr><td>20</td><td>0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb</td><td></td><td></td><td></td><td></td><td></td><td>2</td><td>2</td><td></td><td>2026-01-24 15:52:45</td><td><div class="nft-access-details"><div class="nft-section"><strong>🌐 Proxy:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-true">7: ✅</span><span class="level-badge level-false">8: ❌</span><span class="level-badge level-true">9: ✅</span></div></div><div class="nft-section"><strong>🔒 SBT:</strong><br><div class="level-grid"><span class="level-badge level-true">4: ✅</span><span class="level-badge level-true">5: ✅</span><span class="level-badge level-false">6: ❌</span><span class="level-badge level-false">7: ❌</span><span class="level-badge level-true">8: ✅</span><span class="level-badge level-false">9: ❌</span></div></div><div class="nft-summary"><span class="summary-item">Proxy: 4✅ 2❌</span><span class="summary-item">SBT: 3✅ 3❌</span></div></div></td><td><div class="paid-attempts-details"><div class="attempts-section"><strong>🌐 Proxy попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-true">7: 1</span><span class="attempts-badge attempts-false">8: 0</span><span class="attempts-badge attempts-true">9: 1</span></div></div><div class="attempts-section"><strong>🔒 SBT попытки:</strong><br><div class="attempts-grid"><span class="attempts-badge attempts-true">4: 1</span><span class="attempts-badge attempts-true">5: 1</span><span class="attempts-badge attempts-false">6: 0</span><span class="attempts-badge attempts-false">7: 0</span><span class="attempts-badge attempts-true">8: 1</span><span class="attempts-badge attempts-false">9: 0</span></div></div><div class="attempts-summary"><span class="summary-item">Всего Proxy: 4</span><span class="summary-item">Всего SBT: 3</span><span class="summary-item">Всего попыток: 7</span></div></div></td><td><span class="spending-positive">198.50 TON</span></td><td><span class="spending-positive">5.00 TON</span></td><td><span class="spending-positive">190.00 TON</span></td><td><span class="spending-positive">8.50 TON</span></td><td><span class="spending-positive">5.00 TON</span></td><td></td><td><span class="profit-positive">19.85 TON</span></td><td>2026-01-24 15:52:45</td><td>2026-01-24 17:18:56</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  
+    <div class="table-section">
+      <h3>🌐 Зоны (15 записей)</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+  <th>ID</th><th>Название</th><th>Адрес</th><th>Collection Address</th><th>Wrapper Address</th><th>Тип</th><th>Дата регистрации</th><th>Кол-во субдоменов</th><th>Владелец</th><th>Статус</th><th>Цена зоны</th><th>Создана</th><th>Обновлена</th>
+            </tr>
+          </thead>
+          <tbody>
+  <tr><td>16</td><td>function.ton</td><td>UQDx6pLDzaNnK5fv9fn9Q9ByCxDLLl97qJjtLjiciRQXcMWR</td><td><span class="address" title="EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5">EQDcLkkku93NXZskfRSa...</span></td><td></td><td><span class="sbt-badge">🔒 SBT</span></td><td>2026-01-03 14:17:29</td><td>7</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-03 14:17:29</td><td>2026-01-03 14:17:29</td></tr><tr><td>24</td><td>dragonbronz .ton</td><td>UQB6OavLFP9eP8vL1cv0EUuaSqR18mxakOobXmGik4hC2tWB</td><td><span class="address" title="EQDeWNAKOhtlZpfezRZYh05r_MGw3M5r-qcBVW_alDNXjgjr">EQDeWNAKOhtlZpfezRZY...</span></td><td></td><td><span class="sbt-badge">🔒 SBT</span></td><td>2026-01-15 05:33:12</td><td>1</td><td>0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-15 05:33:12</td><td>2026-01-15 05:33:12</td></tr><tr><td>25</td><td>console.ton</td><td>UQDqiW-O4BFr6znxhOQxuEwXOFFU6NHtL2BaR77DU5-CqlmC</td><td><span class="address" title="EQBoPqApVyZs2jshpPYea7R_gzyXdgoMcJS50Mm0UQjZubDK">EQBoPqApVyZs2jshpPYe...</span></td><td></td><td><span class="sbt-badge">🔒 SBT</span></td><td>2026-01-15 08:12:44</td><td>3</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-15 08:12:44</td><td>2026-01-15 08:12:44</td></tr><tr><td>27</td><td>amitestimsubdom.ton</td><td>UQB5awRCYlnkFFNOcEU4_C9VRrNjCjr-MSQNMILsHcuYm2Iy</td><td><span class="address" title="EQCksRt1NmqeB4RLO-0plA9CU-mtj9mpQgmnkm_s0e7fVg38">EQCksRt1NmqeB4RLO-0p...</span></td><td></td><td><span class="sbt-badge">🔒 SBT</span></td><td>2026-01-15 12:06:38</td><td>1</td><td>0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-15 12:06:38</td><td>2026-01-15 12:06:38</td></tr><tr><td>28</td><td>sender.ton</td><td>UQBjFAe_AQh3Zmyr3xJ6tvIIQdETaoRmvCLeLOhcRu0pkOgD</td><td><span class="address" title="EQBIwzf2efCkb9gIxfBi4o1j9r7qoXCyQ5udiMv03QuU7xoH">EQBIwzf2efCkb9gIxfBi...</span></td><td></td><td><span class="sbt-badge">🔒 SBT</span></td><td>2026-01-16 15:13:23</td><td>2</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-16 15:13:23</td><td>2026-01-16 15:13:23</td></tr><tr><td>29</td><td>etnecosystem.ton</td><td>UQCHmnwAPXnEI4L-k6dgotDTuDDqvX77vAsWa5YmOLnyrJaY</td><td><span class="address" title="EQAoCS82wEZaByq75ESVKB1_t3l5dLVFzqN0UtBLftDJN7yz">EQAoCS82wEZaByq75ESV...</span></td><td></td><td><span class="sbt-badge">🔒 SBT</span></td><td>2026-01-16 16:59:04</td><td></td><td>0QAFdwqiHZuqeM26CmAIviJDoeRjGdk-FhDM96rW9QFK-Yan</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-16 16:59:04</td><td>2026-01-16 16:59:04</td></tr><tr><td>35</td><td>1313.ton</td><td>UQDU7e0leG9QgmTxOCUOzOxS6tHrl6s6cNb73zuympIUAx2y</td><td><span class="address" title="EQAg4zMntwWuLFDONWStEbLoysv6k23SSdyeuvEfE0qxFVSD">EQAg4zMntwWuLFDONWSt...</span></td><td></td><td><span class="sbt-badge">🔒 SBT</span></td><td>2026-01-17 11:20:50</td><td>2</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-17 11:20:50</td><td>2026-01-17 11:20:50</td></tr><tr><td>37</td><td>profit.ton</td><td>UQAYsGx5f0Idn452ha3KL3MNEK1iHURTJThIo-OJ_76NmshT</td><td><span class="address" title="kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5">kQAlloaMhelAzy4VTCqC...</span></td><td>kQC28XEZdc_Lg_gWVmK8f7lnvGyTSFcxNplgLcIB-3bBgo1l</td><td><span class="proxy-badge">🌐 Proxy</span></td><td>2026-01-20 19:15:57</td><td>6</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-20 19:15:57</td><td>2026-01-24 07:51:49</td></tr><tr><td>39</td><td>3333331125541.ton</td><td>UQBaQ3aIoMHiRRKlvlepOa3UFEMai-3K7ohy9Ei2UGs2F0bZ</td><td><span class="address" title="EQB70U-NfpGQgJHGKIwbmbrPh_KoresRgYJW8ju-Vr32rK6B">EQB70U-NfpGQgJHGKIwb...</span></td><td>kQC3aaD2VmQEPSnWvLPE8gfyelZKiQrzbaI6OM-PiMZpmfR7</td><td><span class="proxy-badge">🌐 Proxy</span></td><td>2026-01-21 13:40:09</td><td>1</td><td>0QC-3ilVr-W0Uc3pLrGJElwSaFxvhXXfkiQA3EwdVBHNNQ1j</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-21 13:40:09</td><td>2026-01-24 07:51:22</td></tr><tr><td>40</td><td>dataset.ton</td><td>kQAjFsd7kc-Inem3L-87UZhxr8IcfHiau1Vm0R75ohPynKtF</td><td><span class="address" title="kQAvD5cof4HaCG-9tbGA2ZgzQU8HBiPp3k8Onux0UX13zt8l">kQAvD5cof4HaCG-9tbGA...</span></td><td>kQCkj9t2S8KHb8COXbSnGJ2D7nsuzumwLI_Gs2MlwPQ0S6l0</td><td><span class="proxy-badge">🌐 Proxy</span></td><td>2026-01-22 03:04:03</td><td>2</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-22 03:04:03</td><td>2026-01-24 07:49:28</td></tr><tr><td>41</td><td>conspirator.ton</td><td>UQAwXiMX6dPeCf1_KigHPkLN-1AmKRp8cDl4jNVzlgA8DelI</td><td><span class="address" title="EQBOstS42VT98djsa6SStqJ2-EtNyow8tCiY3g7MArQTyhRi">EQBOstS42VT98djsa6SS...</span></td><td></td><td><span class="sbt-badge">🔒 SBT</span></td><td>2026-01-23 16:33:24</td><td>1</td><td>0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-23 16:33:24</td><td>2026-01-23 16:33:24</td></tr><tr><td>42</td><td>exchanger.ton</td><td>UQC2a6I9Ao2Pyd_LcEUvHlNb-M7WrBpEXQ7DJo6MwCfcTgfL</td><td><span class="address" title="EQC_Qs-axjDXtjUy2JzLhdaDkLJsx-d0D6ds7aiNZd-zshwQ">EQC_Qs-axjDXtjUy2JzL...</span></td><td>kQA9fiUBC2v_ST0-70W7RXoSJkZ0gj56cMYSsygl_5FyXtnV</td><td><span class="proxy-badge">🌐 Proxy</span></td><td>2026-01-23 19:10:54</td><td>3</td><td>0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-23 19:10:54</td><td>2026-01-24 07:50:12</td></tr><tr><td>43</td><td>mixer.ton</td><td>kQDAIcc9LIfaX4MW8LOfEZR3XKI3kpcM1hCX7mSOg1yb3Lrc</td><td><span class="address" title="kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P">kQCCkxlXhpkylyUK11l4...</span></td><td>kQAm1Cd41ZyssJnRZAfOJRvEWo6RJO70hLIM0YCD2TpxFB7R</td><td><span class="proxy-badge">🌐 Proxy</span></td><td>2026-01-24 10:22:49</td><td>6</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-24 10:22:49</td><td>2026-01-24 10:22:49</td></tr><tr><td>44</td><td>currency.ton</td><td>UQAn25XGkwE6MTj45yD_a3wuy5l4fKz7UqF5ZkoTRN7gyuFA</td><td><span class="address" title="EQCmiHGjTSaW0B4ashVMdM62rfF9NmP3ERXO0psBfS63n3Bi">EQCmiHGjTSaW0B4ashVM...</span></td><td></td><td><span class="proxy-badge">🌐 Proxy</span></td><td>2026-01-24 13:14:08</td><td>2</td><td>0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-01-24 13:14:08</td><td>2026-01-24 13:14:08</td></tr><tr><td>45</td><td>nokamoto.ton</td><td>UQCoxag0s10Ybk3s_-I9NVacVsFDpjPzbV7irzmIm3_zYrH8</td><td><span class="address" title="EQBzAlzDbc50MyUbAlkKJdIgc9M2GPhHt2TdNILlKGHpApQF">EQBzAlzDbc50MyUbAlkK...</span></td><td></td><td><span class="sbt-badge">🔒 SBT</span></td><td>2026-02-04 19:13:24</td><td></td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активна</span></td><td></td><td>2026-02-04 19:13:24</td><td>2026-02-04 19:13:24</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  
+    <div class="table-section">
+      <h3>🔗 Субдомены (37 записей)</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+  <th>ID</th><th>Название</th><th>Адрес</th><th>Цена</th><th>Дата регистрации</th><th>Ссылки</th><th>ID зоны</th><th>Владелец</th><th>Статус</th><th>Время аукциона</th><th>Последняя ставка</th><th>Последний участник</th><th>Ставки</th><th>Collection Address</th><th>Создан</th><th>Обновлен</th>
+            </tr>
+          </thead>
+          <tbody>
+  <tr><td>28</td><td>mint.function.ton</td><td>UQB00KlV90M5f-GiHls6HGh36GWEoIhPuTU2UhFd1SrUANJM</td><td>0.5</td><td>2026-01-03 14:28:07</td><td></td><td>16</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>UQB00KlV90M5f-GiHls6HGh36GWEoIhPuTU2UhFd1SrUANJM</td><td><strong>Всего ставок: 1</strong><br>1. UQB00KlV90...: 0.50 TON</td><td><span class="address" title="EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5">EQDcLkkku93NXZskfRSa...</span></td><td>2026-01-03 14:28:07</td><td>2026-01-03 14:28:07</td></tr><tr><td>31</td><td>7.function.ton</td><td>UQAGzYQqNBk3PSN087aTiTTT_7ZVD0FVE_6tSQRaJvO8eE-P</td><td>0.5</td><td>2026-01-11 10:59:48</td><td></td><td>16</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>UQAGzYQqNBk3PSN087aTiTTT_7ZVD0FVE_6tSQRaJvO8eE-P</td><td><strong>Всего ставок: 1</strong><br>1. UQAGzYQqNB...: 0.50 TON</td><td><span class="address" title="EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5">EQDcLkkku93NXZskfRSa...</span></td><td>2026-01-11 10:59:48</td><td>2026-01-11 10:59:48</td></tr><tr><td>32</td><td>3.function.ton</td><td>UQCdyAa7RgTqaDWhRwey740xFdBM1cJizhn1fFHsjkTmO05V</td><td>0.5</td><td>2026-01-11 11:01:57</td><td></td><td>16</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>UQCdyAa7RgTqaDWhRwey740xFdBM1cJizhn1fFHsjkTmO05V</td><td><strong>Всего ставок: 1</strong><br>1. UQCdyAa7Rg...: 0.50 TON</td><td><span class="address" title="EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5">EQDcLkkku93NXZskfRSa...</span></td><td>2026-01-11 11:01:57</td><td>2026-01-11 11:01:57</td></tr><tr><td>35</td><td>mini.function.ton</td><td>UQAv8ALt9BqejNkhsgqx43RNTwxJsKTU4GILQPMDRZTOvRj8</td><td>0.5</td><td>2026-01-13 17:50:59</td><td></td><td>16</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>UQAv8ALt9BqejNkhsgqx43RNTwxJsKTU4GILQPMDRZTOvRj8</td><td><strong>Всего ставок: 1</strong><br>1. UQAv8ALt9B...: 0.50 TON</td><td><span class="address" title="EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5">EQDcLkkku93NXZskfRSa...</span></td><td>2026-01-13 17:50:59</td><td>2026-01-13 17:50:59</td></tr><tr><td>36</td><td>send.function.ton</td><td>UQD6W_5iN686nWjx3mjsnbQ_6t3Ao59tF3OGgkdvm3pAx_BP</td><td>0.5</td><td>2026-01-15 07:10:45</td><td></td><td>16</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>UQD6W_5iN686nWjx3mjsnbQ_6t3Ao59tF3OGgkdvm3pAx_BP</td><td><strong>Всего ставок: 1</strong><br>1. UQD6W_5iN6...: 0.50 TON</td><td><span class="address" title="EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5">EQDcLkkku93NXZskfRSa...</span></td><td>2026-01-15 07:10:45</td><td>2026-01-15 07:10:45</td></tr><tr><td>38</td><td>dragonbronz.dragonbronz .ton</td><td>UQAiOyqduxetZX2O8tRl941c3oR7H_PY0CDiGjh3yQAcrA-k</td><td>0.5</td><td>2026-01-15 07:31:28</td><td></td><td>24</td><td>0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>UQAiOyqduxetZX2O8tRl941c3oR7H_PY0CDiGjh3yQAcrA-k</td><td><strong>Всего ставок: 1</strong><br>1. UQAiOyqdux...: 0.50 TON</td><td><span class="address" title="EQDeWNAKOhtlZpfezRZYh05r_MGw3M5r-qcBVW_alDNXjgjr">EQDeWNAKOhtlZpfezRZY...</span></td><td>2026-01-15 07:31:28</td><td>2026-01-15 07:31:28</td></tr><tr><td>40</td><td>log.console.ton</td><td>UQCkUEqKH2403qkrqNxfVkoPWoZJNpqRIYji46HoQr-E162X</td><td>0.5</td><td>2026-01-15 10:58:01</td><td></td><td>25</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>UQCkUEqKH2403qkrqNxfVkoPWoZJNpqRIYji46HoQr-E162X</td><td><strong>Всего ставок: 1</strong><br>1. UQCkUEqKH2...: 0.50 TON</td><td><span class="address" title="EQBoPqApVyZs2jshpPYea7R_gzyXdgoMcJS50Mm0UQjZubDK">EQBoPqApVyZs2jshpPYe...</span></td><td>2026-01-15 10:58:01</td><td>2026-01-15 10:58:01</td></tr><tr><td>41</td><td>ohohtestdnemino4y.amitestimsubdom.ton</td><td>UQBFR-uBUyeuHtT5oYpIi_q2cMCHdKkfJEkDSD3rHT5WbxEO</td><td>0.5</td><td>2026-01-15 12:08:22</td><td></td><td>27</td><td>0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>UQBFR-uBUyeuHtT5oYpIi_q2cMCHdKkfJEkDSD3rHT5WbxEO</td><td><strong>Всего ставок: 1</strong><br>1. UQBFR-uBUy...: 0.50 TON</td><td><span class="address" title="EQCksRt1NmqeB4RLO-0plA9CU-mtj9mpQgmnkm_s0e7fVg38">EQCksRt1NmqeB4RLO-0p...</span></td><td>2026-01-15 12:08:22</td><td>2026-01-15 12:08:22</td></tr><tr><td>47</td><td>error.console.ton</td><td>UQBrqOHWsTmTgi2dQCihV767sCFZ5ZW82Ets2B7uXntT9ods</td><td>0.5</td><td>2026-01-16 08:43:26</td><td></td><td>25</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 0.50 TON</td><td><span class="address" title="EQBoPqApVyZs2jshpPYea7R_gzyXdgoMcJS50Mm0UQjZubDK">EQBoPqApVyZs2jshpPYe...</span></td><td>2026-01-16 08:43:26</td><td>2026-01-16 08:43:26</td></tr><tr><td>49</td><td>nft.sender.ton</td><td>UQDQcsZ2b0IV8NkGzzA5o34sPtMdRIMYJGnNkGJcvj4NLp9K</td><td>0.5</td><td>2026-01-16 15:15:15</td><td></td><td>28</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 0.50 TON</td><td><span class="address" title="EQBIwzf2efCkb9gIxfBi4o1j9r7qoXCyQ5udiMv03QuU7xoH">EQBIwzf2efCkb9gIxfBi...</span></td><td>2026-01-16 15:15:15</td><td>2026-01-16 15:15:15</td></tr><tr><td>63</td><td>1313.1313.ton</td><td>UQCa1L_v0PlVnADGQbdYd-v-DNONyeYMX-6wPjkQ1_sz65bb</td><td>0.5</td><td>2026-01-17 11:28:58</td><td></td><td>35</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td><strong>Всего ставок: 1</strong><br>1. 0QBEin2eaV...: 0.50 TON</td><td><span class="address" title="EQAg4zMntwWuLFDONWStEbLoysv6k23SSdyeuvEfE0qxFVSD">EQAg4zMntwWuLFDONWSt...</span></td><td>2026-01-17 11:28:58</td><td>2026-01-17 11:28:58</td></tr><tr><td>64</td><td>seva.1313.ton</td><td>UQCNKthX13Tb29JIr-F-JPoDnLnKSwPVdSpSAD3lLdY6t7bk</td><td>0.5</td><td>2026-01-17 11:36:38</td><td></td><td>35</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td><strong>Всего ставок: 1</strong><br>1. 0QBEin2eaV...: 0.50 TON</td><td><span class="address" title="EQAg4zMntwWuLFDONWStEbLoysv6k23SSdyeuvEfE0qxFVSD">EQAg4zMntwWuLFDONWSt...</span></td><td>2026-01-17 11:36:38</td><td>2026-01-17 11:36:38</td></tr><tr><td>70</td><td>telemetry.dataset.ton</td><td>UQDVek70YQAg5yCzkVjixnPzSQkpSE2aX4T2yQV9aQuaMBUH</td><td>0.534120237</td><td>2026-01-22 03:10:02</td><td></td><td>40</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-claimed">🏆 Выкуплен</span></td><td>2026-01-22T04:10:02.493Z</td><td>534120237</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 0.53 TON</td><td><span class="address" title="kQAvD5cof4HaCG-9tbGA2ZgzQU8HBiPp3k8Onux0UX13zt8l">kQAvD5cof4HaCG-9tbGA...</span></td><td>2026-01-22 03:10:02</td><td>2026-01-22 04:54:55</td></tr><tr><td>73</td><td>testing.profit.ton</td><td>kQDx41aJEZaOjtegnjy_5AzCxI3v9yiWU3VipoUkd60PD8NN</td><td>0.5</td><td>2026-01-22 04:51:59</td><td></td><td>37</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-claimed">🏆 Выкуплен</span></td><td>2026-01-22T05:51:59.614Z</td><td>500000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 0.50 TON</td><td><span class="address" title="kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5">kQAlloaMhelAzy4VTCqC...</span></td><td>2026-01-22 04:51:59</td><td>2026-01-23 15:46:57</td></tr><tr><td>74</td><td>casino.profit.ton</td><td>kQCSyjreihx8erTkP9UAB9hETLe_0ryXbEbIWibLGwWPTTIG</td><td>1</td><td>2026-01-22 04:57:10</td><td></td><td>37</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-claimed">🏆 Выкуплен</span></td><td>2026-01-22T05:57:09.971Z</td><td>1000000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 1.00 TON</td><td><span class="address" title="kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5">kQAlloaMhelAzy4VTCqC...</span></td><td>2026-01-22 04:57:10</td><td>2026-01-22 08:39:52</td></tr><tr><td>77</td><td>ai.dataset.ton</td><td>kQD3GEPDkM3xQhP_yEHUukBq_XuGZ8GBdrrlGaVpdaMJpgnA</td><td>20</td><td>2026-01-23 15:49:38</td><td></td><td>40</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-claimed">🏆 Выкуплен</span></td><td>2026-01-23T16:49:38.502Z</td><td>20000000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 20.00 TON</td><td><span class="address" title="kQAvD5cof4HaCG-9tbGA2ZgzQU8HBiPp3k8Onux0UX13zt8l">kQAvD5cof4HaCG-9tbGA...</span></td><td>2026-01-23 15:49:38</td><td>2026-01-24 00:56:58</td></tr><tr><td>78</td><td>swap.profit.ton</td><td>kQBtZ_4019_3Ryrb0nIB8cP0EhUwYh3OEw8SrvtJ57Ql9HLR</td><td>5</td><td>2026-01-23 16:16:55</td><td></td><td>37</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-claimed">🏆 Выкуплен</span></td><td>2026-01-23T17:16:55.159Z</td><td>5000000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 5.00 TON</td><td><span class="address" title="kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5">kQAlloaMhelAzy4VTCqC...</span></td><td>2026-01-23 16:16:55</td><td>2026-01-24 10:33:52</td></tr><tr><td>79</td><td>craft.function.ton</td><td>UQA7CTz9mtOJkHdrUn9PNqOTwksGN3cARrSVUBknk2I5SyIX</td><td>0.5</td><td>2026-01-23 16:21:38</td><td></td><td>16</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 0.50 TON</td><td><span class="address" title="EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5">EQDcLkkku93NXZskfRSa...</span></td><td>2026-01-23 16:21:38</td><td>2026-01-23 16:21:38</td></tr><tr><td>80</td><td>usdt.sender.ton</td><td>UQCuRFslUiVCkCTtk-RGs7n20ne0YlQsEGb1wSfVHYpyrRtK</td><td>0.5</td><td>2026-01-23 16:25:04</td><td></td><td>28</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 0.50 TON</td><td><span class="address" title="EQBIwzf2efCkb9gIxfBi4o1j9r7qoXCyQ5udiMv03QuU7xoH">EQBIwzf2efCkb9gIxfBi...</span></td><td>2026-01-23 16:25:04</td><td>2026-01-23 16:25:04</td></tr><tr><td>81</td><td>telegram.profit.ton</td><td>kQCPF629Y2CjhQohceXWDewl0jrtGQ6brSU5ZT_6dbfQVyal</td><td>0.5</td><td>2026-01-23 16:27:35</td><td></td><td>37</td><td>0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV</td><td><span class="status-claimed">🏆 Выкуплен</span></td><td>2026-01-23T17:27:35.124Z</td><td>534506112</td><td>0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV</td><td><strong>Всего ставок: 3</strong><br>1. 0QD_xCETA7...: 0.50 TON<br>2. 0QA29QkUF1...: 0.51 TON<br>3. 0QD_xCETA7...: 0.53 TON</td><td><span class="address" title="kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5">kQAlloaMhelAzy4VTCqC...</span></td><td>2026-01-23 16:27:35</td><td>2026-01-23 17:42:42</td></tr><tr><td>82</td><td>true.conspirator.ton</td><td>UQAZq5Af9tKpcfUKwSahrQI42aGQ5z3El-52scOniqcC5-fz</td><td>0.5</td><td>2026-01-23 16:37:04</td><td></td><td>41</td><td>0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z</td><td><strong>Всего ставок: 1</strong><br>1. 0QDVCyacpR...: 0.50 TON</td><td><span class="address" title="EQBOstS42VT98djsa6SStqJ2-EtNyow8tCiY3g7MArQTyhRi">EQBOstS42VT98djsa6SS...</span></td><td>2026-01-23 16:37:04</td><td>2026-01-23 16:37:04</td></tr><tr><td>83</td><td>usdt.exchanger.ton</td><td>kQAplQJJga4zMcPzenP4BIfeMegbcIi9uQXhGSDuLIp5WBvp</td><td>5</td><td>2026-01-23 19:12:18</td><td></td><td>42</td><td>0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs</td><td><span class="status-auction">💰 Аукцион</span></td><td>2026-01-23T20:12:18.627Z</td><td>5000000000</td><td>0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs</td><td><strong>Всего ставок: 1</strong><br>1. 0QD12MIx5k...: 5.00 TON</td><td><span class="address" title="EQC_Qs-axjDXtjUy2JzLhdaDkLJsx-d0D6ds7aiNZd-zshwQ">EQC_Qs-axjDXtjUy2JzL...</span></td><td>2026-01-23 19:12:18</td><td>2026-01-23 19:12:18</td></tr><tr><td>84</td><td>nft.exchanger.ton</td><td>kQAnyS5GC29hkHmFp8UjQEeT_J6ip30OKdS7SBv5YPZLJOMq</td><td>10</td><td>2026-01-24 08:40:19</td><td></td><td>42</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-claimed">🏆 Выкуплен</span></td><td>2026-01-24T09:40:19.203Z</td><td>10000000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 10.00 TON</td><td><span class="address" title="EQC_Qs-axjDXtjUy2JzLhdaDkLJsx-d0D6ds7aiNZd-zshwQ">EQC_Qs-axjDXtjUy2JzL...</span></td><td>2026-01-24 08:40:19</td><td>2026-01-24 10:35:40</td></tr><tr><td>85</td><td>crypto.mixer.ton</td><td>kQA4f9wsYmpYsmLVCSTwUMQj5iovdHsjlNkg4I9O42O7ezda</td><td>1</td><td>2026-01-24 10:25:16</td><td></td><td>43</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-claimed">🏆 Выкуплен</span></td><td>2026-01-24T11:25:16.640Z</td><td>1086641199</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 3</strong><br>1. 0QA29QkUF1...: 1.00 TON<br>2. 0QBEin2eaV...: 1.03 TON<br>3. 0QA29QkUF1...: 1.09 TON</td><td><span class="address" title="kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P">kQCCkxlXhpkylyUK11l4...</span></td><td>2026-01-24 10:25:16</td><td>2026-01-24 11:30:57</td></tr><tr><td>86</td><td>tunnel.mixer.ton</td><td>UQDcEucJRiRmt0XInXbfWPsQZl2qK2bFHYWBUS0zif54QimY</td><td>1.086641199</td><td>2026-01-24 10:58:28</td><td></td><td>43</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td><span class="status-claimed">🏆 Выкуплен</span></td><td>2026-01-24T11:58:28.383Z</td><td>1140973259</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td><strong>Всего ставок: 2</strong><br>1. 0QA29QkUF1...: 1.09 TON<br>2. 0QBEin2eaV...: 1.14 TON</td><td><span class="address" title="kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P">kQCCkxlXhpkylyUK11l4...</span></td><td>2026-01-24 10:58:28</td><td>2026-01-24 12:59:20</td></tr><tr><td>87</td><td>tonnel.mixer.ton</td><td>kQDPFj10-9G2rnnNC6CCExBcqAP_uoXPot47SHGFut-QQvmA</td><td>1</td><td>2026-01-24 10:59:25</td><td></td><td>43</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-claimed">🏆 Выкуплен</span></td><td>2026-01-24T11:59:25.864Z</td><td>1000000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 1.00 TON</td><td><span class="address" title="kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P">kQCCkxlXhpkylyUK11l4...</span></td><td>2026-01-24 10:59:25</td><td>2026-01-25 12:06:32</td></tr><tr><td>88</td><td>craft.mixer.ton</td><td>kQAMnI0EuXZ42fBS8_WNxlnBk3emn-OTtwfPKzdJdPQAc2pP</td><td>2.5</td><td>2026-01-24 10:59:54</td><td></td><td>43</td><td>0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV</td><td><span class="status-auction">💰 Аукцион</span></td><td>2026-01-24T11:59:54.310Z</td><td>2740729446</td><td>0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV</td><td><strong>Всего ставок: 3</strong><br>1. 0QA29QkUF1...: 2.50 TON<br>2. 0QBEin2eaV...: 2.61 TON<br>3. 0QD_xCETA7...: 2.74 TON</td><td><span class="address" title="kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P">kQCCkxlXhpkylyUK11l4...</span></td><td>2026-01-24 10:59:54</td><td>2026-01-24 11:41:40</td></tr><tr><td>89</td><td>1111.profit.ton</td><td>kQAlloaMhe...422fe40be9</td><td>5</td><td>2026-01-24 11:08:26</td><td></td><td>37</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td><span class="status-auction">💰 Аукцион</span></td><td>2026-01-24T12:08:25.956Z</td><td>5000000000</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td><strong>Всего ставок: 1</strong><br>1. 0QBEin2eaV...: 5.00 TON</td><td><span class="address" title="kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5">kQAlloaMhelAzy4VTCqC...</span></td><td>2026-01-24 11:08:26</td><td>2026-01-24 11:08:26</td></tr><tr><td>90</td><td>kyhoonaaaaaaaaaaay.mixer.ton</td><td>UQBiGLA5DExvQuHrE8G1BdfYPnlTn3YaWcpJTYhAXYgP22sL</td><td>0.5</td><td>2026-01-24 11:09:41</td><td></td><td>43</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td><span class="status-auction">💰 Аукцион</span></td><td>2026-01-24T12:09:41.083Z</td><td>500000000</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td><strong>Всего ставок: 1</strong><br>1. 0QBEin2eaV...: 0.50 TON</td><td><span class="address" title="kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P">kQCCkxlXhpkylyUK11l4...</span></td><td>2026-01-24 11:09:41</td><td>2026-01-24 11:09:41</td></tr><tr><td>91</td><td>status.console.ton</td><td>UQA1Eq93ZKgQ116GVrhgAoa5T7fO5b9z8vv2RexYcrYjXGUI</td><td>0.5</td><td>2026-01-24 11:23:12</td><td></td><td>25</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 0.50 TON</td><td><span class="address" title="EQBoPqApVyZs2jshpPYea7R_gzyXdgoMcJS50Mm0UQjZubDK">EQBoPqApVyZs2jshpPYe...</span></td><td>2026-01-24 11:23:12</td><td>2026-01-24 11:23:12</td></tr><tr><td>92</td><td>gen.function.ton</td><td>UQCeIOMFVKqugQMLcrGNJQwAxmOpdhavYdsgQ7kPFeFpWFmB</td><td>0.5</td><td>2026-01-24 11:25:01</td><td></td><td>16</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-active">✅ Активен</span></td><td></td><td>500000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 0.50 TON</td><td><span class="address" title="EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5">EQDcLkkku93NXZskfRSa...</span></td><td>2026-01-24 11:25:01</td><td>2026-01-24 11:25:01</td></tr><tr><td>93</td><td>btc.currency.ton</td><td>kQDdbfV6_fM-uF_U6lQPX7OBqO4M4VfHjaujAPzGP9UGksyW</td><td>10</td><td>2026-01-24 14:20:27</td><td></td><td>44</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-claimed">🏆 Выкуплен</span></td><td>2026-01-24T15:20:27.019Z</td><td>10000000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 10.00 TON</td><td><span class="address" title="EQCmiHGjTSaW0B4ashVMdM62rfF9NmP3ERXO0psBfS63n3Bi">EQCmiHGjTSaW0B4ashVM...</span></td><td>2026-01-24 14:20:27</td><td>2026-01-25 06:35:18</td></tr><tr><td>94</td><td>blood.mixer.ton</td><td>kQC6-Pre7KLarRKUvV2wImzlJ1N59ZQO5K8OJVX-JVNmBkji</td><td>2.5</td><td>2026-01-24 16:47:33</td><td></td><td>43</td><td>0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb</td><td><span class="status-auction">💰 Аукцион</span></td><td>2026-01-24T17:47:33.691Z</td><td>2500000000</td><td>0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb</td><td><strong>Всего ставок: 1</strong><br>1. 0QBay08MLW...: 2.50 TON</td><td><span class="address" title="kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P">kQCCkxlXhpkylyUK11l4...</span></td><td>2026-01-24 16:47:33</td><td>2026-01-24 16:47:33</td></tr><tr><td>95</td><td>blood.3333331125541.ton</td><td>UQCSsz-wucs3N43N7Qd9-x1-Jv-6aJuHFWkASx4BkoVes2V2</td><td>2.5</td><td>2026-01-24 16:49:42</td><td></td><td>39</td><td>0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb</td><td><span class="status-auction">💰 Аукцион</span></td><td>2026-01-24T17:49:42.228Z</td><td>2500000000</td><td>0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb</td><td><strong>Всего ставок: 1</strong><br>1. 0QBay08MLW...: 2.50 TON</td><td><span class="address" title="EQB70U-NfpGQgJHGKIwbmbrPh_KoresRgYJW8ju-Vr32rK6B">EQB70U-NfpGQgJHGKIwb...</span></td><td>2026-01-24 16:49:42</td><td>2026-01-24 16:49:42</td></tr><tr><td>96</td><td>silver.exchanger.ton</td><td>kQB99Hs4tvspn7ae1VGnU7jNMJ6MLrH27Gfo_2uSQI4gYP0j</td><td>1</td><td>2026-01-25 08:21:15</td><td></td><td>42</td><td>0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs</td><td><span class="status-auction">💰 Аукцион</span></td><td>2026-01-25T09:21:14.393Z</td><td>1000000000</td><td>0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs</td><td><strong>Всего ставок: 1</strong><br>1. 0QD12MIx5k...: 1.00 TON</td><td><span class="address" title="EQC_Qs-axjDXtjUy2JzLhdaDkLJsx-d0D6ds7aiNZd-zshwQ">EQC_Qs-axjDXtjUy2JzL...</span></td><td>2026-01-25 08:21:15</td><td>2026-01-25 08:21:15</td></tr><tr><td>97</td><td>staking.currency.ton</td><td>UQDjaB_RNtqAuK424BkbGkWbLPxyPyng112jCIbNedNz2eRb</td><td>0.534793203</td><td>2026-01-25 12:21:05</td><td></td><td>44</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-claimed">🏆 Выкуплен</span></td><td>2026-01-25T13:21:05.719Z</td><td>534793203</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 0.53 TON</td><td><span class="address" title="EQCmiHGjTSaW0B4ashVMdM62rfF9NmP3ERXO0psBfS63n3Bi">EQCmiHGjTSaW0B4ashVM...</span></td><td>2026-01-25 12:21:05</td><td>2026-01-25 14:35:12</td></tr><tr><td>98</td><td>maximal.profit.ton</td><td>UQB1Fa95dnaCUGNBAOabsMSeZLKBHYFOeVcLbgRVmwbsXoVk</td><td>0.5</td><td>2026-01-25 17:02:57</td><td></td><td>37</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><span class="status-auction">💰 Аукцион</span></td><td>2026-01-25T18:02:57.133Z</td><td>500000000</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td><strong>Всего ставок: 1</strong><br>1. 0QA29QkUF1...: 0.50 TON</td><td><span class="address" title="kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5">kQAlloaMhelAzy4VTCqC...</span></td><td>2026-01-25 17:02:57</td><td>2026-01-25 17:02:57</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  
+    <div class="table-section">
+      <h3>💬 Чаты (11 записей)</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+  <th>ID</th><th>Домен</th><th>Адрес пользователя</th><th>Статус</th><th>Создан</th><th>Обновлен</th>
+            </tr>
+          </thead>
+          <tbody>
+  <tr><td>1</td><td>localhost</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td>active</td><td>2025-12-08 14:35:59</td><td>2025-12-08 14:35:59</td></tr><tr><td>2</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td>active</td><td>2026-01-04 09:35:30</td><td>2026-01-10 09:35:30</td></tr><tr><td>3</td><td>0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w</td><td>0QAsu53ojAOmRIqkJjtSMPryquMw-hx1Mp8hqdInDLe1qE1R</td><td>active</td><td>2026-01-05 14:53:21</td><td>2026-01-05 14:53:21</td></tr><tr><td>4</td><td>0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs</td><td>0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs</td><td>active</td><td>2026-01-10 15:55:33</td><td>2026-01-10 15:56:43</td></tr><tr><td>5</td><td>UQCCdJQGrYpwaOZUXn3tnX7QYMFnG3GUpNn2PqkZVyBtNVLS</td><td>0QDmXhDxjd_pgFv3JLc8GtVW-VyxmhDt6xodj2i4x_Cv2Gvv</td><td>active</td><td>2026-01-11 04:34:18</td><td>2026-01-11 05:09:32</td></tr><tr><td>6</td><td>0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV</td><td>0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV</td><td>active</td><td>2026-01-11 12:38:38</td><td>2026-01-11 12:38:38</td></tr><tr><td>7</td><td>0QBYiTsEjInTdAcTHZ6B9lJNNE4NANfpIDOoVviE3P70C4BV</td><td>0QBYiTsEjInTdAcTHZ6B9lJNNE4NANfpIDOoVviE3P70C4BV</td><td>active</td><td>2026-01-15 11:54:47</td><td>2026-01-15 11:54:47</td></tr><tr><td>8</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td>0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa</td><td>active</td><td>2026-01-16 18:53:31</td><td>2026-01-16 18:56:35</td></tr><tr><td>9</td><td>0QC-3ilVr-W0Uc3pLrGJElwSaFxvhXXfkiQA3EwdVBHNNQ1j</td><td>0QC-3ilVr-W0Uc3pLrGJElwSaFxvhXXfkiQA3EwdVBHNNQ1j</td><td>active</td><td>2026-01-21 12:59:07</td><td>2026-01-21 12:59:07</td></tr><tr><td>10</td><td>0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z</td><td>0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z</td><td>active</td><td>2026-01-23 05:52:14</td><td>2026-01-23 05:52:14</td></tr><tr><td>11</td><td>0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb</td><td>0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb</td><td>active</td><td>2026-01-24 15:56:41</td><td>2026-01-24 15:56:41</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  
+    <div class="table-section">
+      <h3>📨 Сообщения (37 записей)</h3>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+  <th>ID</th><th>ID чата</th><th>Отправитель</th><th>Текст</th><th>Время</th>
+            </tr>
+          </thead>
+          <tbody>
+  <tr><td>piduv2o8e9</td><td>1</td><td>operator</td><td>Здравствуйте! 👋 Чем могу помочь?</td><td>2025-12-08 14:35:59</td></tr><tr><td>twz7sfmwebd</td><td>2</td><td>operator</td><td>Здравствуйте! 👋 Чем могу помочь?</td><td>2026-01-04 09:35:30</td></tr><tr><td>1hkrwww0b3r</td><td>2</td><td>user</td><td>доброго дня, у меня возникла проблема с клеймом на аукционе, в блокчейне субдомен пришел а в базе се...</td><td>2026-01-04 09:37:45</td></tr><tr><td>hxojv8s9p5d</td><td>2</td><td>user</td><td>помощь все еще нужна</td><td>2026-01-04 14:20:49</td></tr><tr><td>uuyl2qolpj</td><td>2</td><td>user</td><td>вопрос</td><td>2026-01-04 14:31:42</td></tr><tr><td>nd3ii5e20vc</td><td>2</td><td>user</td><td>ок</td><td>2026-01-04 14:34:29</td></tr><tr><td>fkzemtqog5m</td><td>2</td><td>user</td><td>test</td><td>2026-01-04 14:52:34</td></tr><tr><td>90xfij97ymw</td><td>2</td><td>user</td><td>тест</td><td>2026-01-04 15:10:45</td></tr><tr><td>2pggdxqdu74</td><td>2</td><td>user</td><td>тест</td><td>2026-01-04 15:53:56</td></tr><tr><td>v6utlgp2bz9</td><td>2</td><td>user</td><td>тест</td><td>2026-01-04 16:09:00</td></tr><tr><td>i74qy2jdty</td><td>2</td><td>user</td><td>сдвинемся?</td><td>2026-01-04 16:17:56</td></tr><tr><td>a4kgwqeacw6</td><td>2</td><td>user</td><td>проверка</td><td>2026-01-04 17:02:29</td></tr><tr><td>tz98zojyfy</td><td>2</td><td>user</td><td>300проверка</td><td>2026-01-04 17:16:15</td></tr><tr><td>dxya0ssxyh7</td><td>2</td><td>user</td><td>гагара</td><td>2026-01-04 17:23:59</td></tr><tr><td>umazw1680tl</td><td>2</td><td>user</td><td>ffff</td><td>2026-01-04 17:35:09</td></tr><tr><td>nlm5o7ecbn</td><td>2</td><td>user</td><td>2222</td><td>2026-01-04 17:42:30</td></tr><tr><td>2lys0t59erk</td><td>2</td><td>user</td><td>11111</td><td>2026-01-04 17:52:54</td></tr><tr><td>1qb2e7vv2ei</td><td>2</td><td>operator</td><td>4444</td><td>2026-01-04 17:53:09</td></tr><tr><td>qzkiqbwncdn</td><td>2</td><td>user</td><td>мне не понятно</td><td>2026-01-04 17:53:36</td></tr><tr><td>uhrmx73juhn</td><td>2</td><td>operator</td><td>что не понятно?</td><td>2026-01-04 17:53:44</td></tr><tr><td>bzkhq21xbd6</td><td>3</td><td>operator</td><td>Здравствуйте! 👋 Чем могу помочь?</td><td>2026-01-05 14:53:21</td></tr><tr><td>kt8l20o5sq</td><td>2</td><td>user</td><td>Ёу! че как?</td><td>2026-01-10 09:35:12</td></tr><tr><td>4ljt75ism2</td><td>2</td><td>operator</td><td>заебок!</td><td>2026-01-10 09:35:30</td></tr><tr><td>bl424ro5pnv</td><td>4</td><td>operator</td><td>Здравствуйте! 👋 Чем могу помочь?</td><td>2026-01-10 15:55:33</td></tr><tr><td>24pcgwbsaqh</td><td>4</td><td>user</td><td>Здравствуйте, например?</td><td>2026-01-10 15:56:27</td></tr><tr><td>yrp66e09fhf</td><td>4</td><td>operator</td><td>Например-здравствуйте)</td><td>2026-01-10 15:56:43</td></tr><tr><td>7frtkkdn1su</td><td>5</td><td>operator</td><td>Здравствуйте! 👋 Чем могу помочь?</td><td>2026-01-11 04:34:18</td></tr><tr><td>44uicjtap5k</td><td>5</td><td>user</td><td>Подскажите, а субдомены Вам уже завезли?)</td><td>2026-01-11 04:36:19</td></tr><tr><td>yesv5xc3mu8</td><td>5</td><td>operator</td><td>Сегодня завезут</td><td>2026-01-11 05:09:32</td></tr><tr><td>xqkdn0tzkjb</td><td>6</td><td>operator</td><td>Здравствуйте! 👋 Чем могу помочь?</td><td>2026-01-11 12:38:38</td></tr><tr><td>bjti8xf8g9</td><td>7</td><td>operator</td><td>Здравствуйте! 👋 Чем могу помочь?</td><td>2026-01-15 11:54:47</td></tr><tr><td>vik8p85s1og</td><td>8</td><td>operator</td><td>Здравствуйте! 👋 Чем могу помочь?</td><td>2026-01-16 18:53:31</td></tr><tr><td>oidp7m4sp7</td><td>8</td><td>user</td><td>Тотототчтототто.Какой то вопрос</td><td>2026-01-16 18:53:58</td></tr><tr><td>nwistwpdyj</td><td>8</td><td>operator</td><td>Такой то ответ</td><td>2026-01-16 18:56:35</td></tr><tr><td>xvlfwla8lyr</td><td>9</td><td>operator</td><td>Здравствуйте! 👋 Чем могу помочь?</td><td>2026-01-21 12:59:07</td></tr><tr><td>tmpmt1vdf1</td><td>10</td><td>operator</td><td>Здравствуйте! 👋 Чем могу помочь?</td><td>2026-01-23 05:52:14</td></tr><tr><td>ex8rb36gidd</td><td>11</td><td>operator</td><td>Здравствуйте! 👋 Чем могу помочь?</td><td>2026-01-24 15:56:41</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  
+      <div class="table-section">
+        <h3>💰 Аукционы</h3>
+        <p class="no-data">Нет данных</p>
+      </div>
+    
+        </div>
+        
+        <div class="footer">
+            <p>Экспорт создан: 08.02.2026, 15:06:55</p>
+            <p>NFT Domains Server • TESTNET база данных</p>
+            <p>✅ Пользователей с true в proxy: 9 из 20 (всего true: 49)</p>
+            <p>✅ Пользователей с true в sbt: 9 из 20 (всего true: 47)</p>
+            <p>💰 Оплаченных попыток: Proxy: 49, SBT: 47, Всего: 96</p>
+            <p>💸 Общие траты: на зоны: 2238.50 TON, на субдомены: 79.16 TON</p>
+            <p>💵 Общая прибыль: 255.46 TON (9 пользователей с прибылью)</p>
+            <p>🌐 Активных зон: 15 | ⏸️ Неактивных зон: 0</p>
+            <p>📝 Субдоменов с collection Address: 37 из 37</p>
+            <p>🔍 Финансовые показатели и детальная проверка полей</p>
+        </div>
+    </div>
+</body>
+</html>

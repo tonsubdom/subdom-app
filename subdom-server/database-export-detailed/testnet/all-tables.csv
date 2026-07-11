@@ -1,0 +1,178 @@
+# Экспорт базы данных NFT Domains (🧪 Testnet)
+# Дата экспорта: 07.02.2026, 19:05:34
+# Сеть: TESTNET
+# Детальная проверка поля nftAccessAmount (уровни 4-9 для proxy и sbt)
+
+# Пользователи
+ID,Адрес,Имя,Домены,Зоны,Субдомены,Дата регистрации,NFT доступ (детально),Создан,Обновлен
+1,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,,[],[],[],2025-12-08 17:13:42,"Proxy: 4:✅,5:✅,6:✅,7:✅,8:❌,9:❌ | SBT: 4:❌,5:❌,6:✅,7:❌,8:❌,9:✅",2025-12-08 17:13:42,2026-02-04 19:13:24
+2,UQAJhQfbNtmaWpYogVoo59slpxw8YLv3HluxOOPPHHhUnDl1,,[],[],[],2025-12-09 04:32:40,"Proxy: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌ | SBT: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌",2025-12-09 04:32:40,2025-12-09 04:32:40
+3,0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV,,[],[],[],2026-01-10 12:48:57,"Proxy: 4:✅,5:✅,6:✅,7:✅,8:❌,9:✅ | SBT: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅",2026-01-10 12:48:57,2026-01-24 13:14:08
+4,0QC-3ilVr-W0Uc3pLrGJElwSaFxvhXXfkiQA3EwdVBHNNQ1j,,[],[],[],2026-01-10 14:24:44,"Proxy: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅ | SBT: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅",2026-01-10 14:24:44,2026-01-24 12:27:26
+5,0QAfY-ZxtLJ3GySgCC56YTKE9b8UHbiFWcM_iLMig74H4kEO,,[],[],[],2026-01-10 14:48:36,"Proxy: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌ | SBT: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌",2026-01-10 14:48:36,2026-01-10 14:48:36
+6,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,,[],[],[],2026-01-10 15:55:00,"Proxy: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅ | SBT: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅",2026-01-10 15:55:00,2026-01-24 12:09:33
+7,0QALVvEkTZcRSy-Ud1taY9wF6SzhhKUo77hg0QifSH46cNzW,,[],[],[],2026-01-10 16:04:36,"Proxy: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌ | SBT: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌",2026-01-10 16:04:36,2026-01-10 16:04:36
+8,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,,[],[],[],2026-01-10 16:14:21,"Proxy: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅ | SBT: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅",2026-01-10 16:14:21,2026-01-24 12:01:20
+9,0QC9AevlAcsQk6uzXcWNMhmKZng5HEfXFMrRFr7T_EXQ1EL8,,[],[],[],2026-01-11 00:20:08,"Proxy: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌ | SBT: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌",2026-01-11 00:20:08,2026-01-11 00:20:08
+10,UQCe_kKLgAsZiwgFUe-2c_bVprWHqsEJoLIJraSDn0CiMaZ4,,[],[],[],2026-01-11 03:28:51,"Proxy: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌ | SBT: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌",2026-01-11 03:28:51,2026-01-11 03:28:51
+11,UQCCdJQGrYpwaOZUXn3tnX7QYMFnG3GUpNn2PqkZVyBtNVLS,,[],[],[],2026-01-11 04:03:51,"Proxy: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌ | SBT: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌",2026-01-11 04:03:51,2026-01-11 04:03:51
+12,0QDYrxfHPuGs94P_6gXNco-8hAumgS9TyYAPxyJ6YnXNIjB3,,[],[],[],2026-01-11 07:05:32,"Proxy: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌ | SBT: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌",2026-01-11 07:05:32,2026-01-11 07:05:32
+13,0QDCcBoknzHnE0GXLTsIrTLT4gg9yQBysWsEgNc_tsmGp9y-,,[],[],[],2026-01-11 10:09:17,"Proxy: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅ | SBT: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅",2026-01-11 10:09:17,2026-01-24 12:22:32
+14,0QBYiTsEjInTdAcTHZ6B9lJNNE4NANfpIDOoVviE3P70C4BV,,[],[],[],2026-01-15 10:55:53,"Proxy: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅ | SBT: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅",2026-01-15 10:55:53,2026-01-24 12:30:57
+15,0QD-tB_rdezUCre04eiSQq43FDCgWPpfscJXtNmRrr3vAcq_,,[],[],[],2026-01-15 13:15:08,"Proxy: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌ | SBT: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌",2026-01-15 13:15:08,2026-01-15 13:15:08
+16,0QDXke_wyJe5VCGI59VPACPKzdw-ZhkqEqwlBBxbkwU7K3nA,,[],[],[],2026-01-16 16:22:57,"Proxy: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌ | SBT: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌",2026-01-16 16:22:57,2026-01-16 16:22:57
+17,0QAFdwqiHZuqeM26CmAIviJDoeRjGdk-FhDM96rW9QFK-Yan,,[],[],[],2026-01-16 16:30:50,"Proxy: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌ | SBT: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌",2026-01-16 16:30:50,2026-01-16 17:01:16
+18,0QDRdwmx10Yzg5HaCvDjvHdV6Xy0ivYnE8T6Qmj_BA-Bp_mm,,[],[],[],2026-01-17 04:40:49,"Proxy: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌ | SBT: 4:❌,5:❌,6:❌,7:❌,8:❌,9:❌",2026-01-17 04:40:49,2026-01-17 04:40:49
+19,0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z,,[],[],[],2026-01-23 04:52:45,"Proxy: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅ | SBT: 4:✅,5:✅,6:✅,7:✅,8:✅,9:✅",2026-01-23 04:52:45,2026-01-24 12:11:19
+20,0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb,,[],[],[],2026-01-24 15:52:45,"Proxy: 4:✅,5:✅,6:❌,7:✅,8:❌,9:✅ | SBT: 4:✅,5:✅,6:❌,7:❌,8:✅,9:❌",2026-01-24 15:52:45,2026-01-24 17:18:56
+
+# Зоны
+ID,Название,Адрес,Collection Address,Wrapper Address,Тип,Дата регистрации,Кол-во субдоменов,Владелец,Статус,Цена зоны,Создана,Обновлена
+16,function.ton,UQDx6pLDzaNnK5fv9fn9Q9ByCxDLLl97qJjtLjiciRQXcMWR,EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5,,SBT,2026-01-03 14:17:29,7,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активна,,2026-01-03 14:17:29,2026-01-03 14:17:29
+24,dragonbronz .ton,UQB6OavLFP9eP8vL1cv0EUuaSqR18mxakOobXmGik4hC2tWB,EQDeWNAKOhtlZpfezRZYh05r_MGw3M5r-qcBVW_alDNXjgjr,,SBT,2026-01-15 05:33:12,1,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,Активна,,2026-01-15 05:33:12,2026-01-15 05:33:12
+25,console.ton,UQDqiW-O4BFr6znxhOQxuEwXOFFU6NHtL2BaR77DU5-CqlmC,EQBoPqApVyZs2jshpPYea7R_gzyXdgoMcJS50Mm0UQjZubDK,,SBT,2026-01-15 08:12:44,3,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активна,,2026-01-15 08:12:44,2026-01-15 08:12:44
+27,amitestimsubdom.ton,UQB5awRCYlnkFFNOcEU4_C9VRrNjCjr-MSQNMILsHcuYm2Iy,EQCksRt1NmqeB4RLO-0plA9CU-mtj9mpQgmnkm_s0e7fVg38,,SBT,2026-01-15 12:06:38,1,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,Активна,,2026-01-15 12:06:38,2026-01-15 12:06:38
+28,sender.ton,UQBjFAe_AQh3Zmyr3xJ6tvIIQdETaoRmvCLeLOhcRu0pkOgD,EQBIwzf2efCkb9gIxfBi4o1j9r7qoXCyQ5udiMv03QuU7xoH,,SBT,2026-01-16 15:13:23,2,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активна,,2026-01-16 15:13:23,2026-01-16 15:13:23
+29,etnecosystem.ton,UQCHmnwAPXnEI4L-k6dgotDTuDDqvX77vAsWa5YmOLnyrJaY,EQAoCS82wEZaByq75ESVKB1_t3l5dLVFzqN0UtBLftDJN7yz,,SBT,2026-01-16 16:59:04,,0QAFdwqiHZuqeM26CmAIviJDoeRjGdk-FhDM96rW9QFK-Yan,Активна,,2026-01-16 16:59:04,2026-01-16 16:59:04
+35,1313.ton,UQDU7e0leG9QgmTxOCUOzOxS6tHrl6s6cNb73zuympIUAx2y,EQAg4zMntwWuLFDONWStEbLoysv6k23SSdyeuvEfE0qxFVSD,,SBT,2026-01-17 11:20:50,2,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,Активна,,2026-01-17 11:20:50,2026-01-17 11:20:50
+37,profit.ton,UQAYsGx5f0Idn452ha3KL3MNEK1iHURTJThIo-OJ_76NmshT,kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5,kQC28XEZdc_Lg_gWVmK8f7lnvGyTSFcxNplgLcIB-3bBgo1l,Proxy,2026-01-20 19:15:57,6,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активна,,2026-01-20 19:15:57,2026-01-24 07:51:49
+39,3333331125541.ton,UQBaQ3aIoMHiRRKlvlepOa3UFEMai-3K7ohy9Ei2UGs2F0bZ,EQB70U-NfpGQgJHGKIwbmbrPh_KoresRgYJW8ju-Vr32rK6B,kQC3aaD2VmQEPSnWvLPE8gfyelZKiQrzbaI6OM-PiMZpmfR7,Proxy,2026-01-21 13:40:09,1,0QC-3ilVr-W0Uc3pLrGJElwSaFxvhXXfkiQA3EwdVBHNNQ1j,Активна,,2026-01-21 13:40:09,2026-01-24 07:51:22
+40,dataset.ton,kQAjFsd7kc-Inem3L-87UZhxr8IcfHiau1Vm0R75ohPynKtF,kQAvD5cof4HaCG-9tbGA2ZgzQU8HBiPp3k8Onux0UX13zt8l,kQCkj9t2S8KHb8COXbSnGJ2D7nsuzumwLI_Gs2MlwPQ0S6l0,Proxy,2026-01-22 03:04:03,2,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активна,,2026-01-22 03:04:03,2026-01-24 07:49:28
+41,conspirator.ton,UQAwXiMX6dPeCf1_KigHPkLN-1AmKRp8cDl4jNVzlgA8DelI,EQBOstS42VT98djsa6SStqJ2-EtNyow8tCiY3g7MArQTyhRi,,SBT,2026-01-23 16:33:24,1,0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z,Активна,,2026-01-23 16:33:24,2026-01-23 16:33:24
+42,exchanger.ton,UQC2a6I9Ao2Pyd_LcEUvHlNb-M7WrBpEXQ7DJo6MwCfcTgfL,EQC_Qs-axjDXtjUy2JzLhdaDkLJsx-d0D6ds7aiNZd-zshwQ,kQA9fiUBC2v_ST0-70W7RXoSJkZ0gj56cMYSsygl_5FyXtnV,Proxy,2026-01-23 19:10:54,3,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,Активна,,2026-01-23 19:10:54,2026-01-24 07:50:12
+43,mixer.ton,kQDAIcc9LIfaX4MW8LOfEZR3XKI3kpcM1hCX7mSOg1yb3Lrc,kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P,kQAm1Cd41ZyssJnRZAfOJRvEWo6RJO70hLIM0YCD2TpxFB7R,Proxy,2026-01-24 10:22:49,6,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активна,,2026-01-24 10:22:49,2026-01-24 10:22:49
+44,currency.ton,UQAn25XGkwE6MTj45yD_a3wuy5l4fKz7UqF5ZkoTRN7gyuFA,EQCmiHGjTSaW0B4ashVMdM62rfF9NmP3ERXO0psBfS63n3Bi,,Proxy,2026-01-24 13:14:08,2,0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV,Активна,,2026-01-24 13:14:08,2026-01-24 13:14:08
+45,nokamoto.ton,UQCoxag0s10Ybk3s_-I9NVacVsFDpjPzbV7irzmIm3_zYrH8,EQBzAlzDbc50MyUbAlkKJdIgc9M2GPhHt2TdNILlKGHpApQF,,SBT,2026-02-04 19:13:24,,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активна,,2026-02-04 19:13:24,2026-02-04 19:13:24
+
+# Субдомены
+ID,Название,Адрес,Цена,Дата регистрации,Ссылки,ID зоны,Владелец,Статус,Время аукциона,Последняя ставка,Последний участник,Ставки,Collection Address,Создан,Обновлен
+28,mint.function.ton,UQB00KlV90M5f-GiHls6HGh36GWEoIhPuTU2UhFd1SrUANJM,0.5,2026-01-03 14:28:07,[],16,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активен,,500000000,UQB00KlV90M5f-GiHls6HGh36GWEoIhPuTU2UhFd1SrUANJM,"[{""bidder"":""UQB00KlV90M5f-GiHls6HGh36GWEoIhPuTU2UhFd1SrUANJM"",""amount"":500000000,""timestamp"":""2026-01-03T14:28:07.049Z""}]",EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5,2026-01-03 14:28:07,2026-01-03 14:28:07
+31,7.function.ton,UQAGzYQqNBk3PSN087aTiTTT_7ZVD0FVE_6tSQRaJvO8eE-P,0.5,2026-01-11 10:59:48,[],16,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активен,,500000000,UQAGzYQqNBk3PSN087aTiTTT_7ZVD0FVE_6tSQRaJvO8eE-P,"[{""bidder"":""UQAGzYQqNBk3PSN087aTiTTT_7ZVD0FVE_6tSQRaJvO8eE-P"",""amount"":500000000,""timestamp"":""2026-01-11T10:59:48.099Z""}]",EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5,2026-01-11 10:59:48,2026-01-11 10:59:48
+32,3.function.ton,UQCdyAa7RgTqaDWhRwey740xFdBM1cJizhn1fFHsjkTmO05V,0.5,2026-01-11 11:01:57,[],16,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активен,,500000000,UQCdyAa7RgTqaDWhRwey740xFdBM1cJizhn1fFHsjkTmO05V,"[{""bidder"":""UQCdyAa7RgTqaDWhRwey740xFdBM1cJizhn1fFHsjkTmO05V"",""amount"":500000000,""timestamp"":""2026-01-11T11:01:57.711Z""}]",EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5,2026-01-11 11:01:57,2026-01-11 11:01:57
+35,mini.function.ton,UQAv8ALt9BqejNkhsgqx43RNTwxJsKTU4GILQPMDRZTOvRj8,0.5,2026-01-13 17:50:59,[],16,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активен,,500000000,UQAv8ALt9BqejNkhsgqx43RNTwxJsKTU4GILQPMDRZTOvRj8,"[{""bidder"":""UQAv8ALt9BqejNkhsgqx43RNTwxJsKTU4GILQPMDRZTOvRj8"",""amount"":500000000,""timestamp"":""2026-01-13T17:50:59.919Z""}]",EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5,2026-01-13 17:50:59,2026-01-13 17:50:59
+36,send.function.ton,UQD6W_5iN686nWjx3mjsnbQ_6t3Ao59tF3OGgkdvm3pAx_BP,0.5,2026-01-15 07:10:45,[],16,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активен,,500000000,UQD6W_5iN686nWjx3mjsnbQ_6t3Ao59tF3OGgkdvm3pAx_BP,"[{""bidder"":""UQD6W_5iN686nWjx3mjsnbQ_6t3Ao59tF3OGgkdvm3pAx_BP"",""amount"":500000000,""timestamp"":""2026-01-15T07:10:45.355Z""}]",EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5,2026-01-15 07:10:45,2026-01-15 07:10:45
+38,dragonbronz.dragonbronz .ton,UQAiOyqduxetZX2O8tRl941c3oR7H_PY0CDiGjh3yQAcrA-k,0.5,2026-01-15 07:31:28,[],24,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,Активен,,500000000,UQAiOyqduxetZX2O8tRl941c3oR7H_PY0CDiGjh3yQAcrA-k,"[{""bidder"":""UQAiOyqduxetZX2O8tRl941c3oR7H_PY0CDiGjh3yQAcrA-k"",""amount"":500000000,""timestamp"":""2026-01-15T07:31:28.977Z""}]",EQDeWNAKOhtlZpfezRZYh05r_MGw3M5r-qcBVW_alDNXjgjr,2026-01-15 07:31:28,2026-01-15 07:31:28
+40,log.console.ton,UQCkUEqKH2403qkrqNxfVkoPWoZJNpqRIYji46HoQr-E162X,0.5,2026-01-15 10:58:01,[],25,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активен,,500000000,UQCkUEqKH2403qkrqNxfVkoPWoZJNpqRIYji46HoQr-E162X,"[{""bidder"":""UQCkUEqKH2403qkrqNxfVkoPWoZJNpqRIYji46HoQr-E162X"",""amount"":500000000,""timestamp"":""2026-01-15T10:58:01.761Z""}]",EQBoPqApVyZs2jshpPYea7R_gzyXdgoMcJS50Mm0UQjZubDK,2026-01-15 10:58:01,2026-01-15 10:58:01
+41,ohohtestdnemino4y.amitestimsubdom.ton,UQBFR-uBUyeuHtT5oYpIi_q2cMCHdKkfJEkDSD3rHT5WbxEO,0.5,2026-01-15 12:08:22,[],27,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,Активен,,500000000,UQBFR-uBUyeuHtT5oYpIi_q2cMCHdKkfJEkDSD3rHT5WbxEO,"[{""bidder"":""UQBFR-uBUyeuHtT5oYpIi_q2cMCHdKkfJEkDSD3rHT5WbxEO"",""amount"":500000000,""timestamp"":""2026-01-15T12:08:22.457Z""}]",EQCksRt1NmqeB4RLO-0plA9CU-mtj9mpQgmnkm_s0e7fVg38,2026-01-15 12:08:22,2026-01-15 12:08:22
+47,error.console.ton,UQBrqOHWsTmTgi2dQCihV767sCFZ5ZW82Ets2B7uXntT9ods,0.5,2026-01-16 08:43:26,[],25,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активен,,500000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":500000000,""timestamp"":""2026-01-16T08:43:26.481Z""}]",EQBoPqApVyZs2jshpPYea7R_gzyXdgoMcJS50Mm0UQjZubDK,2026-01-16 08:43:26,2026-01-16 08:43:26
+49,nft.sender.ton,UQDQcsZ2b0IV8NkGzzA5o34sPtMdRIMYJGnNkGJcvj4NLp9K,0.5,2026-01-16 15:15:15,[],28,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активен,,500000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":500000000,""timestamp"":""2026-01-16T15:15:15.168Z""}]",EQBIwzf2efCkb9gIxfBi4o1j9r7qoXCyQ5udiMv03QuU7xoH,2026-01-16 15:15:15,2026-01-16 15:15:15
+63,1313.1313.ton,UQCa1L_v0PlVnADGQbdYd-v-DNONyeYMX-6wPjkQ1_sz65bb,0.5,2026-01-17 11:28:58,[],35,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,Активен,,500000000,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,"[{""bidder"":""0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa"",""amount"":500000000,""timestamp"":""2026-01-17T11:28:58.093Z""}]",EQAg4zMntwWuLFDONWStEbLoysv6k23SSdyeuvEfE0qxFVSD,2026-01-17 11:28:58,2026-01-17 11:28:58
+64,seva.1313.ton,UQCNKthX13Tb29JIr-F-JPoDnLnKSwPVdSpSAD3lLdY6t7bk,0.5,2026-01-17 11:36:38,[],35,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,Активен,,500000000,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,"[{""bidder"":""0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa"",""amount"":500000000,""timestamp"":""2026-01-17T11:36:38.121Z""}]",EQAg4zMntwWuLFDONWStEbLoysv6k23SSdyeuvEfE0qxFVSD,2026-01-17 11:36:38,2026-01-17 11:36:38
+70,telemetry.dataset.ton,UQDVek70YQAg5yCzkVjixnPzSQkpSE2aX4T2yQV9aQuaMBUH,0.534120237,2026-01-22 03:10:02,[],40,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Выкуплен,2026-01-22T04:10:02.493Z,534120237,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":534120237,""timestamp"":""2026-01-22T03:10:02.777Z""}]",kQAvD5cof4HaCG-9tbGA2ZgzQU8HBiPp3k8Onux0UX13zt8l,2026-01-22 03:10:02,2026-01-22 04:54:55
+73,testing.profit.ton,kQDx41aJEZaOjtegnjy_5AzCxI3v9yiWU3VipoUkd60PD8NN,0.5,2026-01-22 04:51:59,[],37,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Выкуплен,2026-01-22T05:51:59.614Z,500000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":500000000,""timestamp"":""2026-01-22T04:51:59.855Z""}]",kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5,2026-01-22 04:51:59,2026-01-23 15:46:57
+74,casino.profit.ton,kQCSyjreihx8erTkP9UAB9hETLe_0ryXbEbIWibLGwWPTTIG,1,2026-01-22 04:57:10,[],37,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Выкуплен,2026-01-22T05:57:09.971Z,1000000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":1000000000,""timestamp"":""2026-01-22T04:57:10.233Z""}]",kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5,2026-01-22 04:57:10,2026-01-22 08:39:52
+77,ai.dataset.ton,kQD3GEPDkM3xQhP_yEHUukBq_XuGZ8GBdrrlGaVpdaMJpgnA,20,2026-01-23 15:49:38,[],40,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Выкуплен,2026-01-23T16:49:38.502Z,20000000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":20000000000,""timestamp"":""2026-01-23T15:49:38.593Z""}]",kQAvD5cof4HaCG-9tbGA2ZgzQU8HBiPp3k8Onux0UX13zt8l,2026-01-23 15:49:38,2026-01-24 00:56:58
+78,swap.profit.ton,kQBtZ_4019_3Ryrb0nIB8cP0EhUwYh3OEw8SrvtJ57Ql9HLR,5,2026-01-23 16:16:55,[],37,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Выкуплен,2026-01-23T17:16:55.159Z,5000000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":5000000000,""timestamp"":""2026-01-23T16:16:55.350Z""}]",kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5,2026-01-23 16:16:55,2026-01-24 10:33:52
+79,craft.function.ton,UQA7CTz9mtOJkHdrUn9PNqOTwksGN3cARrSVUBknk2I5SyIX,0.5,2026-01-23 16:21:38,[],16,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активен,,500000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":500000000,""timestamp"":""2026-01-23T16:21:38.933Z""}]",EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5,2026-01-23 16:21:38,2026-01-23 16:21:38
+80,usdt.sender.ton,UQCuRFslUiVCkCTtk-RGs7n20ne0YlQsEGb1wSfVHYpyrRtK,0.5,2026-01-23 16:25:04,[],28,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активен,,500000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":500000000,""timestamp"":""2026-01-23T16:25:04.163Z""}]",EQBIwzf2efCkb9gIxfBi4o1j9r7qoXCyQ5udiMv03QuU7xoH,2026-01-23 16:25:04,2026-01-23 16:25:04
+81,telegram.profit.ton,kQCPF629Y2CjhQohceXWDewl0jrtGQ6brSU5ZT_6dbfQVyal,0.5,2026-01-23 16:27:35,[],37,0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV,Выкуплен,2026-01-23T17:27:35.124Z,534506112,0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV,"[{""bidder"":""0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV"",""amount"":500000000,""timestamp"":""2026-01-23T16:27:35.948Z""},{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":509053440,""timestamp"":""2026-01-23T16:51:13.125Z""},{""bidder"":""0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV"",""amount"":534506112,""timestamp"":""2026-01-23T17:10:57.096Z""}]",kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5,2026-01-23 16:27:35,2026-01-23 17:42:42
+82,true.conspirator.ton,UQAZq5Af9tKpcfUKwSahrQI42aGQ5z3El-52scOniqcC5-fz,0.5,2026-01-23 16:37:04,[],41,0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z,Активен,,500000000,0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z,"[{""bidder"":""0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z"",""amount"":500000000,""timestamp"":""2026-01-23T16:37:04.631Z""}]",EQBOstS42VT98djsa6SStqJ2-EtNyow8tCiY3g7MArQTyhRi,2026-01-23 16:37:04,2026-01-23 16:37:04
+83,usdt.exchanger.ton,kQAplQJJga4zMcPzenP4BIfeMegbcIi9uQXhGSDuLIp5WBvp,5,2026-01-23 19:12:18,[],42,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,Аукцион,2026-01-23T20:12:18.627Z,5000000000,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,"[{""bidder"":""0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs"",""amount"":5000000000,""timestamp"":""2026-01-23T19:12:18.921Z""}]",EQC_Qs-axjDXtjUy2JzLhdaDkLJsx-d0D6ds7aiNZd-zshwQ,2026-01-23 19:12:18,2026-01-23 19:12:18
+84,nft.exchanger.ton,kQAnyS5GC29hkHmFp8UjQEeT_J6ip30OKdS7SBv5YPZLJOMq,10,2026-01-24 08:40:19,[],42,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Выкуплен,2026-01-24T09:40:19.203Z,10000000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":10000000000,""timestamp"":""2026-01-24T08:40:19.346Z""}]",EQC_Qs-axjDXtjUy2JzLhdaDkLJsx-d0D6ds7aiNZd-zshwQ,2026-01-24 08:40:19,2026-01-24 10:35:40
+85,crypto.mixer.ton,kQA4f9wsYmpYsmLVCSTwUMQj5iovdHsjlNkg4I9O42O7ezda,1,2026-01-24 10:25:16,[],43,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Выкуплен,2026-01-24T11:25:16.640Z,1086641199,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":1000000000,""timestamp"":""2026-01-24T10:25:16.685Z""},{""bidder"":""0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa"",""amount"":1034896380,""timestamp"":""2026-01-24T11:02:39.650Z""},{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":1086641199,""timestamp"":""2026-01-24T11:05:55.289Z""}]",kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P,2026-01-24 10:25:16,2026-01-24 11:30:57
+86,tunnel.mixer.ton,UQDcEucJRiRmt0XInXbfWPsQZl2qK2bFHYWBUS0zif54QimY,1.086641199,2026-01-24 10:58:28,[],43,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,Выкуплен,2026-01-24T11:58:28.383Z,1140973259,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":1086641199,""timestamp"":""2026-01-24T10:58:28.574Z""},{""bidder"":""0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa"",""amount"":1140973259,""timestamp"":""2026-01-24T11:03:55.673Z""}]",kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P,2026-01-24 10:58:28,2026-01-24 12:59:20
+87,tonnel.mixer.ton,kQDPFj10-9G2rnnNC6CCExBcqAP_uoXPot47SHGFut-QQvmA,1,2026-01-24 10:59:25,[],43,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Выкуплен,2026-01-24T11:59:25.864Z,1000000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":1000000000,""timestamp"":""2026-01-24T10:59:25.970Z""}]",kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P,2026-01-24 10:59:25,2026-01-25 12:06:32
+88,craft.mixer.ton,kQAMnI0EuXZ42fBS8_WNxlnBk3emn-OTtwfPKzdJdPQAc2pP,2.5,2026-01-24 10:59:54,[],43,0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV,Аукцион,2026-01-24T11:59:54.310Z,2740729446,0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":2500000000,""timestamp"":""2026-01-24T10:59:54.383Z""},{""bidder"":""0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa"",""amount"":2610218520,""timestamp"":""2026-01-24T11:04:41.544Z""},{""bidder"":""0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV"",""amount"":2740729446,""timestamp"":""2026-01-24T11:41:40.195Z""}]",kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P,2026-01-24 10:59:54,2026-01-24 11:41:40
+89,1111.profit.ton,kQAlloaMhe...422fe40be9,5,2026-01-24 11:08:26,[],37,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,Аукцион,2026-01-24T12:08:25.956Z,5000000000,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,"[{""bidder"":""0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa"",""amount"":5000000000,""timestamp"":""2026-01-24T11:08:26.033Z""}]",kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5,2026-01-24 11:08:26,2026-01-24 11:08:26
+90,kyhoonaaaaaaaaaaay.mixer.ton,UQBiGLA5DExvQuHrE8G1BdfYPnlTn3YaWcpJTYhAXYgP22sL,0.5,2026-01-24 11:09:41,[],43,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,Аукцион,2026-01-24T12:09:41.083Z,500000000,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,"[{""bidder"":""0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa"",""amount"":500000000,""timestamp"":""2026-01-24T11:09:41.133Z""}]",kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P,2026-01-24 11:09:41,2026-01-24 11:09:41
+91,status.console.ton,UQA1Eq93ZKgQ116GVrhgAoa5T7fO5b9z8vv2RexYcrYjXGUI,0.5,2026-01-24 11:23:12,[],25,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активен,,500000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":500000000,""timestamp"":""2026-01-24T11:23:12.781Z""}]",EQBoPqApVyZs2jshpPYea7R_gzyXdgoMcJS50Mm0UQjZubDK,2026-01-24 11:23:12,2026-01-24 11:23:12
+92,gen.function.ton,UQCeIOMFVKqugQMLcrGNJQwAxmOpdhavYdsgQ7kPFeFpWFmB,0.5,2026-01-24 11:25:01,[],16,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Активен,,500000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":500000000,""timestamp"":""2026-01-24T11:25:01.573Z""}]",EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5,2026-01-24 11:25:01,2026-01-24 11:25:01
+93,btc.currency.ton,kQDdbfV6_fM-uF_U6lQPX7OBqO4M4VfHjaujAPzGP9UGksyW,10,2026-01-24 14:20:27,[],44,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Выкуплен,2026-01-24T15:20:27.019Z,10000000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":10000000000,""timestamp"":""2026-01-24T14:20:27.234Z""}]",EQCmiHGjTSaW0B4ashVMdM62rfF9NmP3ERXO0psBfS63n3Bi,2026-01-24 14:20:27,2026-01-25 06:35:18
+94,blood.mixer.ton,kQC6-Pre7KLarRKUvV2wImzlJ1N59ZQO5K8OJVX-JVNmBkji,2.5,2026-01-24 16:47:33,[],43,0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb,Аукцион,2026-01-24T17:47:33.691Z,2500000000,0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb,"[{""bidder"":""0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb"",""amount"":2500000000,""timestamp"":""2026-01-24T16:47:33.754Z""}]",kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P,2026-01-24 16:47:33,2026-01-24 16:47:33
+95,blood.3333331125541.ton,UQCSsz-wucs3N43N7Qd9-x1-Jv-6aJuHFWkASx4BkoVes2V2,2.5,2026-01-24 16:49:42,[],39,0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb,Аукцион,2026-01-24T17:49:42.228Z,2500000000,0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb,"[{""bidder"":""0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb"",""amount"":2500000000,""timestamp"":""2026-01-24T16:49:42.313Z""}]",EQB70U-NfpGQgJHGKIwbmbrPh_KoresRgYJW8ju-Vr32rK6B,2026-01-24 16:49:42,2026-01-24 16:49:42
+96,silver.exchanger.ton,kQB99Hs4tvspn7ae1VGnU7jNMJ6MLrH27Gfo_2uSQI4gYP0j,1,2026-01-25 08:21:15,[],42,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,Аукцион,2026-01-25T09:21:14.393Z,1000000000,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,"[{""bidder"":""0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs"",""amount"":1000000000,""timestamp"":""2026-01-25T08:21:15.559Z""}]",EQC_Qs-axjDXtjUy2JzLhdaDkLJsx-d0D6ds7aiNZd-zshwQ,2026-01-25 08:21:15,2026-01-25 08:21:15
+97,staking.currency.ton,UQDjaB_RNtqAuK424BkbGkWbLPxyPyng112jCIbNedNz2eRb,0.534793203,2026-01-25 12:21:05,[],44,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Выкуплен,2026-01-25T13:21:05.719Z,534793203,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":534793203,""timestamp"":""2026-01-25T12:21:05.898Z""}]",EQCmiHGjTSaW0B4ashVMdM62rfF9NmP3ERXO0psBfS63n3Bi,2026-01-25 12:21:05,2026-01-25 14:35:12
+98,maximal.profit.ton,UQB1Fa95dnaCUGNBAOabsMSeZLKBHYFOeVcLbgRVmwbsXoVk,0.5,2026-01-25 17:02:57,[],37,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,Аукцион,2026-01-25T18:02:57.133Z,500000000,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,"[{""bidder"":""0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w"",""amount"":500000000,""timestamp"":""2026-01-25T17:02:57.698Z""}]",kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5,2026-01-25 17:02:57,2026-01-25 17:02:57
+
+# Чаты
+ID,Домен,Адрес пользователя,Статус,Создан,Обновлен
+1,localhost,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,active,2025-12-08 14:35:59,2025-12-08 14:35:59
+2,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,active,2026-01-04 09:35:30,2026-01-10 09:35:30
+3,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,0QAsu53ojAOmRIqkJjtSMPryquMw-hx1Mp8hqdInDLe1qE1R,active,2026-01-05 14:53:21,2026-01-05 14:53:21
+4,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,active,2026-01-10 15:55:33,2026-01-10 15:56:43
+5,UQCCdJQGrYpwaOZUXn3tnX7QYMFnG3GUpNn2PqkZVyBtNVLS,0QDmXhDxjd_pgFv3JLc8GtVW-VyxmhDt6xodj2i4x_Cv2Gvv,active,2026-01-11 04:34:18,2026-01-11 05:09:32
+6,0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV,0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV,active,2026-01-11 12:38:38,2026-01-11 12:38:38
+7,0QBYiTsEjInTdAcTHZ6B9lJNNE4NANfpIDOoVviE3P70C4BV,0QBYiTsEjInTdAcTHZ6B9lJNNE4NANfpIDOoVviE3P70C4BV,active,2026-01-15 11:54:47,2026-01-15 11:54:47
+8,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,active,2026-01-16 18:53:31,2026-01-16 18:56:35
+9,0QC-3ilVr-W0Uc3pLrGJElwSaFxvhXXfkiQA3EwdVBHNNQ1j,0QC-3ilVr-W0Uc3pLrGJElwSaFxvhXXfkiQA3EwdVBHNNQ1j,active,2026-01-21 12:59:07,2026-01-21 12:59:07
+10,0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z,0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z,active,2026-01-23 05:52:14,2026-01-23 05:52:14
+11,0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb,0QBay08MLWJmp-ATio0h1NDblQqGjviqWICad4e_Bc9s0hJb,active,2026-01-24 15:56:41,2026-01-24 15:56:41
+
+# Сообщения
+ID,ID чата,Отправитель,Текст,Время
+piduv2o8e9,1,operator,Здравствуйте! 👋 Чем могу помочь?,2025-12-08 14:35:59
+twz7sfmwebd,2,operator,Здравствуйте! 👋 Чем могу помочь?,2026-01-04 09:35:30
+1hkrwww0b3r,2,user,"доброго дня, у меня возникла проблема с клеймом на аукционе, в блокчейне субдомен пришел а в базе сервисе не видно.",2026-01-04 09:37:45
+hxojv8s9p5d,2,user,помощь все еще нужна,2026-01-04 14:20:49
+uuyl2qolpj,2,user,вопрос,2026-01-04 14:31:42
+nd3ii5e20vc,2,user,ок,2026-01-04 14:34:29
+fkzemtqog5m,2,user,test,2026-01-04 14:52:34
+90xfij97ymw,2,user,тест,2026-01-04 15:10:45
+2pggdxqdu74,2,user,тест,2026-01-04 15:53:56
+v6utlgp2bz9,2,user,тест,2026-01-04 16:09:00
+i74qy2jdty,2,user,сдвинемся?,2026-01-04 16:17:56
+a4kgwqeacw6,2,user,проверка,2026-01-04 17:02:29
+tz98zojyfy,2,user,300проверка,2026-01-04 17:16:15
+dxya0ssxyh7,2,user,гагара,2026-01-04 17:23:59
+umazw1680tl,2,user,ffff,2026-01-04 17:35:09
+nlm5o7ecbn,2,user,2222,2026-01-04 17:42:30
+2lys0t59erk,2,user,11111,2026-01-04 17:52:54
+1qb2e7vv2ei,2,operator,4444,2026-01-04 17:53:09
+qzkiqbwncdn,2,user,мне не понятно,2026-01-04 17:53:36
+uhrmx73juhn,2,operator,что не понятно?,2026-01-04 17:53:44
+bzkhq21xbd6,3,operator,Здравствуйте! 👋 Чем могу помочь?,2026-01-05 14:53:21
+kt8l20o5sq,2,user,Ёу! че как?,2026-01-10 09:35:12
+4ljt75ism2,2,operator,заебок!,2026-01-10 09:35:30
+bl424ro5pnv,4,operator,Здравствуйте! 👋 Чем могу помочь?,2026-01-10 15:55:33
+24pcgwbsaqh,4,user,"Здравствуйте, например?",2026-01-10 15:56:27
+yrp66e09fhf,4,operator,Например-здравствуйте),2026-01-10 15:56:43
+7frtkkdn1su,5,operator,Здравствуйте! 👋 Чем могу помочь?,2026-01-11 04:34:18
+44uicjtap5k,5,user,"Подскажите, а субдомены Вам уже завезли?)",2026-01-11 04:36:19
+yesv5xc3mu8,5,operator,Сегодня завезут,2026-01-11 05:09:32
+xqkdn0tzkjb,6,operator,Здравствуйте! 👋 Чем могу помочь?,2026-01-11 12:38:38
+bjti8xf8g9,7,operator,Здравствуйте! 👋 Чем могу помочь?,2026-01-15 11:54:47
+vik8p85s1og,8,operator,Здравствуйте! 👋 Чем могу помочь?,2026-01-16 18:53:31
+oidp7m4sp7,8,user,Тотототчтототто.Какой то вопрос,2026-01-16 18:53:58
+nwistwpdyj,8,operator,Такой то ответ,2026-01-16 18:56:35
+xvlfwla8lyr,9,operator,Здравствуйте! 👋 Чем могу помочь?,2026-01-21 12:59:07
+tmpmt1vdf1,10,operator,Здравствуйте! 👋 Чем могу помочь?,2026-01-23 05:52:14
+ex8rb36gidd,11,operator,Здравствуйте! 👋 Чем могу помочь?,2026-01-24 15:56:41
+
+# Аукционы
+# Нет данных
+
+# Статистика (testnet)
+Показатель,Значение
+Всего пользователей,20
+Пользователей с true в proxy,9
+Пользователей с true в sbt,9
+Всего true в proxy (сумма по уровням),49
+Всего true в sbt (сумма по уровням),47
+Всего зон,15
+Активных зон,15
+Неактивных зон,0
+🌐 Proxy зон,6
+🔒 SBT зон,9
+Всего субдоменов,37
+Субдоменов с collectionAddress,37
+Всего чатов,11
+Всего сообщений,37
+
+# Детальная информация о зонах (testnet)
+ID,Название,Адрес,Collection Address,Тип,Статус,Владелец,Создана,Кол-во субдоменов,Субдомены
+16,function.ton,UQDx6pLDzaNnK5fv9fn9Q9ByCxDLLl97qJjtLjiciRQXcMWR,EQDcLkkku93NXZskfRSaP6HfVDZg-1UjWhwa0dYYjwXuZ4t5,SBT,Активна,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,2026-01-03 14:17:29,7,"3.function.ton, 7.function.ton, craft.function.ton, gen.function.ton, mini.function.ton, mint.function.ton, send.function.ton"
+24,dragonbronz .ton,UQB6OavLFP9eP8vL1cv0EUuaSqR18mxakOobXmGik4hC2tWB,EQDeWNAKOhtlZpfezRZYh05r_MGw3M5r-qcBVW_alDNXjgjr,SBT,Активна,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,2026-01-15 05:33:12,1,"dragonbronz.dragonbronz .ton"
+25,console.ton,UQDqiW-O4BFr6znxhOQxuEwXOFFU6NHtL2BaR77DU5-CqlmC,EQBoPqApVyZs2jshpPYea7R_gzyXdgoMcJS50Mm0UQjZubDK,SBT,Активна,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,2026-01-15 08:12:44,3,"error.console.ton, log.console.ton, status.console.ton"
+27,amitestimsubdom.ton,UQB5awRCYlnkFFNOcEU4_C9VRrNjCjr-MSQNMILsHcuYm2Iy,EQCksRt1NmqeB4RLO-0plA9CU-mtj9mpQgmnkm_s0e7fVg38,SBT,Активна,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,2026-01-15 12:06:38,1,"ohohtestdnemino4y.amitestimsubdom.ton"
+28,sender.ton,UQBjFAe_AQh3Zmyr3xJ6tvIIQdETaoRmvCLeLOhcRu0pkOgD,EQBIwzf2efCkb9gIxfBi4o1j9r7qoXCyQ5udiMv03QuU7xoH,SBT,Активна,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,2026-01-16 15:13:23,2,"nft.sender.ton, usdt.sender.ton"
+29,etnecosystem.ton,UQCHmnwAPXnEI4L-k6dgotDTuDDqvX77vAsWa5YmOLnyrJaY,EQAoCS82wEZaByq75ESVKB1_t3l5dLVFzqN0UtBLftDJN7yz,SBT,Активна,0QAFdwqiHZuqeM26CmAIviJDoeRjGdk-FhDM96rW9QFK-Yan,2026-01-16 16:59:04,0,""
+35,1313.ton,UQDU7e0leG9QgmTxOCUOzOxS6tHrl6s6cNb73zuympIUAx2y,EQAg4zMntwWuLFDONWStEbLoysv6k23SSdyeuvEfE0qxFVSD,SBT,Активна,0QBEin2eaVTyEgyhFRV7QwLMHrcicMwyf7kdOfcCGR9CpLPa,2026-01-17 11:20:50,2,"1313.1313.ton, seva.1313.ton"
+37,profit.ton,UQAYsGx5f0Idn452ha3KL3MNEK1iHURTJThIo-OJ_76NmshT,kQAlloaMhelAzy4VTCqC3vjT6oXRJ74azn2q1HCCoQdMl5x5,Proxy,Активна,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,2026-01-20 19:15:57,6,"1111.profit.ton, casino.profit.ton, maximal.profit.ton, swap.profit.ton, telegram.profit.ton, testing.profit.ton"
+39,3333331125541.ton,UQBaQ3aIoMHiRRKlvlepOa3UFEMai-3K7ohy9Ei2UGs2F0bZ,EQB70U-NfpGQgJHGKIwbmbrPh_KoresRgYJW8ju-Vr32rK6B,Proxy,Активна,0QC-3ilVr-W0Uc3pLrGJElwSaFxvhXXfkiQA3EwdVBHNNQ1j,2026-01-21 13:40:09,1,"blood.3333331125541.ton"
+40,dataset.ton,kQAjFsd7kc-Inem3L-87UZhxr8IcfHiau1Vm0R75ohPynKtF,kQAvD5cof4HaCG-9tbGA2ZgzQU8HBiPp3k8Onux0UX13zt8l,Proxy,Активна,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,2026-01-22 03:04:03,2,"ai.dataset.ton, telemetry.dataset.ton"
+41,conspirator.ton,UQAwXiMX6dPeCf1_KigHPkLN-1AmKRp8cDl4jNVzlgA8DelI,EQBOstS42VT98djsa6SStqJ2-EtNyow8tCiY3g7MArQTyhRi,SBT,Активна,0QDVCyacpRdCX4nmbTxYEGUvxZwa_uE63FXZc90nqvcoI01Z,2026-01-23 16:33:24,1,"true.conspirator.ton"
+42,exchanger.ton,UQC2a6I9Ao2Pyd_LcEUvHlNb-M7WrBpEXQ7DJo6MwCfcTgfL,EQC_Qs-axjDXtjUy2JzLhdaDkLJsx-d0D6ds7aiNZd-zshwQ,Proxy,Активна,0QD12MIx5kY2YphBDZ8aZJ10scX76de6yU2FZpfQRT8xQoRs,2026-01-23 19:10:54,3,"nft.exchanger.ton, silver.exchanger.ton, usdt.exchanger.ton"
+43,mixer.ton,kQDAIcc9LIfaX4MW8LOfEZR3XKI3kpcM1hCX7mSOg1yb3Lrc,kQCCkxlXhpkylyUK11l40dyJCy_u5igSchvj53Lo0DbUng3P,Proxy,Активна,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,2026-01-24 10:22:49,6,"blood.mixer.ton, craft.mixer.ton, crypto.mixer.ton, kyhoonaaaaaaaaaaay.mixer.ton, tonnel.mixer.ton, tunnel.mixer.ton"
+44,currency.ton,UQAn25XGkwE6MTj45yD_a3wuy5l4fKz7UqF5ZkoTRN7gyuFA,EQCmiHGjTSaW0B4ashVMdM62rfF9NmP3ERXO0psBfS63n3Bi,Proxy,Активна,0QD_xCETA7e2GpRzEtgZXg9huG8PeBQKYVabdotIlxviVNrV,2026-01-24 13:14:08,2,"btc.currency.ton, staking.currency.ton"
+45,nokamoto.ton,UQCoxag0s10Ybk3s_-I9NVacVsFDpjPzbV7irzmIm3_zYrH8,EQBzAlzDbc50MyUbAlkKJdIgc9M2GPhHt2TdNILlKGHpApQF,SBT,Активна,0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w,2026-02-04 19:13:24,0,""
+
