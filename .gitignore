@@ -4,4 +4,4 @@ build/
 *.log
 .env
 .DS_Store
-Thumbs.db
+Thumbs.dbsubdom-server/other_scripts/all_ton_domains.csv

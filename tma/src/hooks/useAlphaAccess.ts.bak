@@ -1,0 +1,181 @@
+
+// src/hooks/useAlphaAccess.ts (обновляем начальное состояние)
+import { useState, useEffect, useCallback } from 'react';
+import { useTonWallet, useTonAddress } from '@tonconnect/ui-react';
+import { checkWhitelist } from '@/utils/whitelistUtils';
+
+export type AccessStatus = 
+  | 'disconnected'      // Кошелек не подключен
+  | 'mainnet'           // Подключен mainnet
+  | 'testnet-whitelisted' // Testnet и в вайтлисте
+  | 'testnet-not-whitelisted' // Testnet, но не в вайтлисте
+  | 'loading';          // Загрузка
+
+interface AlphaAccessInfo {
+  status: AccessStatus;
+  isTestnet: boolean;
+  isWhitelisted: boolean;
+  telegramName?: string;
+  testnetAddress?: string;
+  hasAccess: boolean; // true только если testnet-whitelisted
+  rawAddress?: string;
+  chain?: string;
+}
+
+export function useAlphaAccess(): AlphaAccessInfo {
+  const wallet = useTonWallet();
+  const address = useTonAddress();
+  
+  const [accessInfo, setAccessInfo] = useState<AlphaAccessInfo>({
+    status: 'loading', // Начинаем с loading, а не disconnected
+    isTestnet: false,
+    isWhitelisted: false,
+    hasAccess: false
+  });
+
+  const checkAccess = useCallback(() => {
+    console.log('🔍 === DEBUG useAlphaAccess ===');
+    console.log('wallet:', wallet);
+    console.log('address:', address);
+    
+    // Если нет кошелька или адреса
+    if (!wallet || !address) {
+      console.log('❌ Нет кошелька или адреса');
+      setAccessInfo({
+        status: 'disconnected',
+        isTestnet: false,
+        isWhitelisted: false,
+        hasAccess: false,
+        rawAddress: address,
+        chain: wallet?.account?.chain
+      });
+      return;
+    }
+
+    // Определяем сеть
+    const chain = wallet.account?.chain;
+    const isTestnet = chain === "-3";
+    
+    console.log('chain:', chain);
+    console.log('isTestnet:', isTestnet);
+    
+    if (!isTestnet) {
+      // Mainnet - нет доступа
+      console.log('⚠️ Mainnet detected - no access');
+      setAccessInfo({
+        status: 'mainnet',
+        isTestnet: false,
+        isWhitelisted: false,
+        hasAccess: false,
+        rawAddress: address,
+        chain
+      });
+      return;
+    }
+
+    // Testnet - проверяем вайтлист
+    console.log('✅ Testnet detected - checking whitelist...');
+    const whitelistCheck = checkWhitelist(address);
+    
+    console.log('whitelistCheck:', whitelistCheck);
+    console.log('isWhitelisted:', whitelistCheck.isWhitelisted);
+    console.log('testnetAddress:', whitelistCheck.testnetAddress);
+    
+    if (whitelistCheck.isWhitelisted) {
+      // В вайтлисте - есть доступ
+      console.log('🎉 Whitelisted! Granting access');
+      setAccessInfo({
+        status: 'testnet-whitelisted',
+        isTestnet: true,
+        isWhitelisted: true,
+        telegramName: whitelistCheck.telegramName,
+        testnetAddress: whitelistCheck.testnetAddress,
+        hasAccess: true,
+        rawAddress: address,
+        chain
+      });
+    } else {
+      // Не в вайтлисте - нет доступа
+      console.log('🚫 Not in whitelist - no access');
+      setAccessInfo({
+        status: 'testnet-not-whitelisted',
+        isTestnet: true,
+        isWhitelisted: false,
+        testnetAddress: whitelistCheck.testnetAddress,
+        hasAccess: false,
+        rawAddress: address,
+        chain
+      });
+    }
+    
+    console.log('=== END DEBUG ===');
+  }, [wallet, address]);
+
+  useEffect(() => {
+    // Добавляем небольшую задержку для предотвращения race condition
+    const timer = setTimeout(() => {
+      checkAccess();
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, [checkAccess]);
+
+  return accessInfo;
+}
+
+// src/hooks/useAlphaAccess.ts (добавляем отладку в хук модалки)
+/**
+ * Хук для управления модальным окном доступа
+ */
+export function useAlphaAccessModal() {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState<'mainnet' | 'not-whitelisted'>('mainnet');
+  const [testnetAddress, setTestnetAddress] = useState<string>();
+
+  const accessInfo = useAlphaAccess();
+
+  const showModal = useCallback((type: 'mainnet' | 'not-whitelisted', address?: string) => {
+    console.log('📱 useAlphaAccessModal: showModal called');
+    console.log('- type:', type);
+    console.log('- address:', address);
+    console.log('- current modalOpen:', modalOpen);
+    setModalType(type);
+    setTestnetAddress(address);
+    setModalOpen(true);
+  }, [modalOpen]);
+
+  const hideModal = useCallback(() => {
+    console.log('📱 useAlphaAccessModal: hideModal called');
+    setModalOpen(false);
+  }, []);
+
+  // Автоматически показываем модалку при отсутствии доступа
+  useEffect(() => {
+    console.log('📱 useAlphaAccessModal: useEffect triggered');
+    console.log('- accessInfo.status:', accessInfo.status);
+    console.log('- accessInfo.hasAccess:', accessInfo.hasAccess);
+    console.log('- modalOpen:', modalOpen);
+    
+    if (accessInfo.status === 'mainnet') {
+      console.log('📱 Showing mainnet modal');
+      showModal('mainnet');
+    } else if (accessInfo.status === 'testnet-not-whitelisted') {
+      console.log('📱 Showing not-whitelisted modal');
+      showModal('not-whitelisted', accessInfo.testnetAddress);
+    } else if (accessInfo.status === 'testnet-whitelisted') {
+      console.log('📱 Whitelisted - hiding modal if open');
+      if (modalOpen) {
+        hideModal();
+      }
+    }
+  }, [accessInfo.status, accessInfo.testnetAddress, showModal, hideModal, modalOpen]);
+
+  return {
+    modalOpen,
+    modalType,
+    testnetAddress,
+    hideModal,
+    accessInfo,
+    showModal
+  };
+}

@@ -1,0 +1,1413 @@
+node_modules/@ton/core/src/boc/BitBuilder.ts:11:1 - error TS6133: 'bitsForNumber' is declared but its value is never read.
+
+11 import { bitsForNumber } from "../utils/bitsForNumber";
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+node_modules/@ton/core/src/boc/cell/exoticLibrary.ts:13:48 - error TS6133: 'refs' is declared but its value is never read.
+
+13 export function exoticLibrary(bits: BitString, refs: Cell[]) {
+                                                  ~~~~
+
+node_modules/@ton/core/src/boc/cell/resolveExotic.ts:44:9 - error TS6133: 'pruned' is declared but its value is never read.
+
+44     let pruned = exoticLibrary(bits, refs);
+           ~~~~~~
+
+node_modules/@ton/core/src/boc/cell/resolveExotic.ts:63:9 - error TS6133: 'merkleProof' is declared but its value is never read.
+
+63     let merkleProof = exoticMerkleProof(bits, refs);
+           ~~~~~~~~~~~
+
+node_modules/@ton/core/src/boc/cell/resolveExotic.ts:81:9 - error TS6133: 'merkleUpdate' is declared but its value is never read.
+
+81     let merkleUpdate = exoticMerkleUpdate(bits, refs);
+           ~~~~~~~~~~~~
+
+node_modules/@ton/core/src/boc/cell/serialization.ts:132:13 - error TS6133: 'hasCacheBits' is declared but its value is never read.
+
+132         let hasCacheBits = reader.loadUint(1);
+                ~~~~~~~~~~~~
+
+node_modules/@ton/core/src/boc/cell/serialization.ts:133:13 - error TS6133: 'flags' is declared but its value is never read.
+
+133         let flags = reader.loadUint(2); // Must be 0
+                ~~~~~
+
+node_modules/@ton/core/src/boc/cell/wonderCalculator.ts:16:29 - error TS2307: Cannot find module '@ton/crypto' or its corresponding type declarations.
+
+16 import { sha256_sync } from "@ton/crypto";
+                               ~~~~~~~~~~~~~
+
+node_modules/@ton/core/src/boc/cell/wonderCalculator.ts:49:13 - error TS6133: 'loaded' is declared but its value is never read.
+
+49         let loaded = exoticMerkleProof(bits, refs);
+               ~~~~~~
+
+node_modules/@ton/core/src/boc/cell/wonderCalculator.ts:56:13 - error TS6133: 'loaded' is declared but its value is never read.
+
+56         let loaded = exoticMerkleUpdate(bits, refs);
+               ~~~~~~
+
+node_modules/@ton/core/src/boc/cell/wonderCalculator.ts:63:13 - error TS6133: 'loaded' is declared but its value is never read.
+
+63         let loaded = exoticLibrary(bits, refs);
+               ~~~~~~
+
+node_modules/@ton/core/src/dict/serializeDict.ts:39:10 - error TS6133: 'removePrefixMap' is declared but its value is never read.
+
+39 function removePrefixMap<T>(src: Map<string, T>, length: number) {
+            ~~~~~~~~~~~~~~~
+
+node_modules/@ton/core/src/dict/utils/internalKeySerializer.ts:11:10 - error TS6133: 'bitsToPaddedBuffer' is declared but its value is never read.
+
+11 import { bitsToPaddedBuffer, paddedBufferToBits } from "../../boc/utils/paddedBits";
+            ~~~~~~~~~~~~~~~~~~
+
+src/components/ChatWidget/ChatWidget.tsx:695:9 - error TS6133: 'messages' is declared but its value is never read.
+
+695   const messages = useSelector((state: RootState) => state.chat.messages || []);
+            ~~~~~~~~
+
+src/components/ChatWidget/ChatWidget.tsx:700:10 - error TS6133: 'inputOrderId' is declared but its value is never read.
+
+700   const [inputOrderId, setInputOrderId] = useState<string>("");
+             ~~~~~~~~~~~~
+
+src/components/ChatWidget/ChatWidget.tsx:701:10 - error TS6133: 'currentOrderId' is declared but its value is never read.
+
+701   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
+             ~~~~~~~~~~~~~~
+
+src/components/ChatWidget/ChatWidget.tsx:767:24 - error TS2339: Property 'messages' does not exist on type 'Chat'.
+
+767       if (chat && chat.messages) {
+                           ~~~~~~~~
+
+src/components/ChatWidget/ChatWidget.tsx:768:30 - error TS2339: Property 'messages' does not exist on type 'Chat'.
+
+768         setChatMessages(chat.messages);
+                                 ~~~~~~~~
+
+src/components/ChatWidget/ChatWidget.tsx:769:44 - error TS2339: Property 'messages' does not exist on type 'Chat'.
+
+769         lastMessageCountRef.current = chat.messages.length;
+                                               ~~~~~~~~
+
+src/components/ChatWidget/ChatWidget.tsx:848:9 - error TS6133: 'loadChatAndOrder' is declared but its value is never read.
+
+848   const loadChatAndOrder = useCallback(
+            ~~~~~~~~~~~~~~~~
+
+src/components/ChatWidget/ChatWidget.tsx:927:24 - error TS2339: Property 'messages' does not exist on type 'Chat'.
+
+927               ? result.messages[result.messages.length - 1]
+                           ~~~~~~~~
+
+src/components/ChatWidget/ChatWidget.tsx:927:40 - error TS2339: Property 'messages' does not exist on type 'Chat'.
+
+927               ? result.messages[result.messages.length - 1]
+                                           ~~~~~~~~
+
+src/components/CircuitBackground/CircuitBackground.tsx:3296:49 - error TS6133: 'useState' is declared but its value is never read.
+
+3296 import React, { useEffect, useRef, useCallback, useState } from 'react';
+                                                     ~~~~~~~~
+
+src/components/CircuitBackground/CircuitBackground.tsx:3361:9 - error TS6133: 'lastSwitchTimeRef' is declared but its value is never read.
+
+3361   const lastSwitchTimeRef = useRef<number>(0);
+             ~~~~~~~~~~~~~~~~~
+
+src/components/CircuitBackground/CircuitBackground.tsx:3394:9 - error TS6133: 'isDark' is declared but its value is never read.
+
+3394   const isDark = theme === 'dark';
+             ~~~~~~
+
+src/components/CircuitBackground/CircuitBackground.tsx:3504:13 - error TS6133: 'isBottomRight' is declared but its value is never read.
+
+3504       const isBottomRight = currentDiagonalNode.row > node.row && currentDiagonalNode.col > node.col;
+                 ~~~~~~~~~~~~~
+
+src/components/CircuitBackground/CircuitBackground.tsx:3505:13 - error TS6133: 'isBottomLeft' is declared but its value is never read.
+
+3505       const isBottomLeft = currentDiagonalNode.row > node.row && currentDiagonalNode.col < node.col;
+                 ~~~~~~~~~~~~
+
+src/components/CircuitBackground/CircuitBackground.tsx:3512:11 - error TS6133: 'direction' is declared but its value is never read.
+
+3512       let direction: 'clockwise' | 'counterclockwise' = 'clockwise';
+               ~~~~~~~~~
+
+src/components/CircuitBackground/CircuitBackground.tsx:3517:9 - error TS2322: Type 'Node | undefined' is not assignable to type 'Node | null'.
+  Type 'undefined' is not assignable to type 'Node | null'.
+
+3517         targetDiagonalNode = nodes.find(n =>
+             ~~~~~~~~~~~~~~~~~~
+
+src/components/CircuitBackground/CircuitBackground.tsx:3524:9 - error TS2322: Type 'Node | undefined' is not assignable to type 'Node | null'.
+  Type 'undefined' is not assignable to type 'Node | null'.
+
+3524         targetDiagonalNode = nodes.find(n =>
+             ~~~~~~~~~~~~~~~~~~
+
+src/components/Header/Header.tsx:3:10 - error TS6133: 'FC' is declared but its value is never read.
+
+3 import { FC, useState, useEffect, useRef } from "react";
+           ~~
+
+src/components/Header/Header.tsx:5:10 - error TS6133: 'Button' is declared but its value is never read.
+
+5 import { Button, Caption, Cell, Modal, Placeholder, Title } from "@telegram-apps/telegram-ui";
+           ~~~~~~
+
+src/components/Header/Header.tsx:5:33 - error TS6133: 'Modal' is declared but its value is never read.
+
+5 import { Button, Caption, Cell, Modal, Placeholder, Title } from "@telegram-apps/telegram-ui";
+                                  ~~~~~
+
+src/components/Header/Header.tsx:5:40 - error TS6133: 'Placeholder' is declared but its value is never read.
+
+5 import { Button, Caption, Cell, Modal, Placeholder, Title } from "@telegram-apps/telegram-ui";
+                                         ~~~~~~~~~~~
+
+src/components/Header/Header.tsx:6:1 - error TS6133: 'VisuallyHidden' is declared but its value is never read.
+
+6 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/components/Header/Header.tsx:11:1 - error TS6133: 'telegramGif' is declared but its value is never read.
+
+11 import telegramGif from "./telegram.gif";
+   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/components/Header/Header.tsx:21:10 - error TS6133: 'domain' is declared but its value is never read.
+
+21   const [domain, setDomain] = useState<string | null>(null);
+            ~~~~~~
+
+src/components/Header/Header.tsx:22:10 - error TS6133: 'isModalOpen' is declared but its value is never read.
+
+22   const [isModalOpen, setIsModalOpen] = useState(false);
+            ~~~~~~~~~~~
+
+src/components/Header/Header.tsx:35:9 - error TS6133: 'isDarkSignal' is declared but its value is never read.
+
+35   const isDarkSignal = useSignal(miniApp.isDark);
+           ~~~~~~~~~~~~
+
+src/components/Header/Header.tsx:62:67 - error TS2339: Property 'domain' does not exist on type '{}'.
+
+62           .find((entry: any) => entry.user_friendly === address)?.domain;
+                                                                     ~~~~~~
+
+src/components/Header/Header.tsx:88:9 - error TS6133: 'handleDisconnect' is declared but its value is never read.
+
+88   const handleDisconnect = (): void => {
+           ~~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:41:3 - error TS6133: 'getSortText' is declared but its value is never read.
+
+41   getSortText,
+     ~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:42:3 - error TS6133: 'getZoneTypeText' is declared but its value is never read.
+
+42   getZoneTypeText
+     ~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:47:3 - error TS6133: 'extractLengths' is declared but its value is never read.
+
+47   extractLengths,
+     ~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:48:3 - error TS6133: 'getZoneLength' is declared but its value is never read.
+
+48   getZoneLength,
+     ~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:49:3 - error TS6133: 'getSubdomainLength' is declared but its value is never read.
+
+49   getSubdomainLength,
+     ~~~~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:66:7 - error TS6133: 'OverlayCopyIcon' is declared but its value is never read.
+
+66 const OverlayCopyIcon: React.FC<{ width?: number; height?: number }> = ({ width = 18, height = 18 }) => (
+         ~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:88:9 - error TS6133: 'dispatch' is declared but its value is never read.
+
+88   const dispatch = useDispatch();
+           ~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:90:10 - error TS6133: 'tonConnectUI' is declared but its value is never read.
+
+90   const [tonConnectUI] = useTonConnectUI();
+            ~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:103:26 - error TS6133: 'userLoading' is declared but its value is never read.
+
+103   const { user, loading: userLoading, error: userError, refreshUser , connectWallet} = useUser();
+                             ~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:103:46 - error TS6133: 'userError' is declared but its value is never read.
+
+103   const { user, loading: userLoading, error: userError, refreshUser , connectWallet} = useUser();
+                                                 ~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:108:5 - error TS6133: 'proxyZones' is declared but its value is never read.
+
+108     proxyZones,
+        ~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:109:5 - error TS6133: 'sbtZones' is declared but its value is never read.
+
+109     sbtZones,
+        ~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:117:10 - error TS6133: 'domainLoading' is declared but its value is never read.
+
+117   const [domainLoading, setDomainLoading] = useState<boolean>(false);
+             ~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:119:10 - error TS6133: 'copiedId' is declared but its value is never read.
+
+119   const [copiedId, setCopiedId] = useState<string | null>(null);
+             ~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:200:9 - error TS6133: 'storeUserProfile' is declared but its value is never read.
+
+200   const storeUserProfile = useSelector((s: RootState) => s.user?.profile || null);
+            ~~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:202:9 - error TS6133: 'formatDate' is declared but its value is never read.
+
+202   const formatDate = (dateString?: string) => {
+            ~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:237:9 - error TS6133: 'getAllProxyZones' is declared but its value is never read.
+
+237   const getAllProxyZones = () => {
+            ~~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:246:39 - error TS2339: Property 'toLowerCase' does not exist on type 'never'.
+
+246         const lowerValue = proxyValue.toLowerCase();
+                                          ~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:366:65 - error TS2339: Property 'domain' does not exist on type '{}'.
+
+366         .find((entry: any) => entry.user_friendly === address)?.domain;
+                                                                    ~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:391:28 - error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+
+391     connectWallet(address, domain);
+                               ~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:427:9 - error TS6133: 'handleCopy' is declared but its value is never read.
+
+427   const handleCopy = async (text: string, e: React.MouseEvent) => {
+            ~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:697:7 - error TS6133: 'debugFiltering' is declared but its value is never read.
+
+697 const debugFiltering = () => {
+          ~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:731:9 - error TS6133: 'handleCreateSubdomain' is declared but its value is never read.
+
+731   const handleCreateSubdomain = (zoneId: number, zoneName: string) => {
+            ~~~~~~~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:737:9 - error TS6133: 'handleManageDomain' is declared but its value is never read.
+
+737   const handleManageDomain = (zoneId: number, zoneName: string) => {
+            ~~~~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:743:9 - error TS6133: 'handleManageSubdomain' is declared but its value is never read.
+
+743   const handleManageSubdomain = (subdomainId: number, subdomainName: string) => {
+            ~~~~~~~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:749:9 - error TS6133: 'handleSellSubdomain' is declared but its value is never read.
+
+749   const handleSellSubdomain = (subdomainId: number, subdomainName: string) => {
+            ~~~~~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:1788:27 - error TS7006: Parameter 'date' implicitly has an 'any' type.
+
+1788       const formatDate = (date) => {
+                               ~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:1930:60 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+1930                           const isProxy = z.proxy === 1 || z.proxy === 'Proxy' || z.proxy === 'proxy' || z.proxy === '1';
+                                                                ~~~~~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:1930:83 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+1930                           const isProxy = z.proxy === 1 || z.proxy === 'Proxy' || z.proxy === 'proxy' || z.proxy === '1';
+                                                                                       ~~~~~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:1930:106 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+1930                           const isProxy = z.proxy === 1 || z.proxy === 'Proxy' || z.proxy === 'proxy' || z.proxy === '1';
+                                                                                                              ~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:1944:58 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+1944                           const isSbt = z.proxy === 0 || z.proxy === 'SBT' || z.proxy === 'sbt' || z.proxy === '0';
+                                                              ~~~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:1944:79 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+1944                           const isSbt = z.proxy === 0 || z.proxy === 'SBT' || z.proxy === 'sbt' || z.proxy === '0';
+                                                                                   ~~~~~~~~~~~~~~~~~
+
+src/components/ProfileWidget/ProfileWidget.tsx:1944:100 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+1944                           const isSbt = z.proxy === 0 || z.proxy === 'SBT' || z.proxy === 'sbt' || z.proxy === '0';
+                                                                                                        ~~~~~~~~~~~~~~~
+
+src/contexts/UserContext.tsx:267:51 - error TS2345: Argument of type '{ address: string; owner: string; name: string; bundleAddress?: string; proxy?: boolean; linkWithNFTNumber?: number; }' is not assignable to parameter of type '{ name: string; address: string; collectionAddress?: string | undefined; wrapperAddress?: string | undefined; proxy?: boolean | undefined; owner?: string | undefined; status: string; zonePrice: number; }'.
+  Type '{ address: string; owner: string; name: string; bundleAddress?: string | undefined; proxy?: boolean | undefined; linkWithNFTNumber?: number | undefined; }' is missing the following properties from type '{ name: string; address: string; collectionAddress?: string | undefined; wrapperAddress?: string | undefined; proxy?: boolean | undefined; owner?: string | undefined; status: string; zonePrice: number; }': status, zonePrice
+
+267       const newZone = await apiService.createZone({
+                                                      ~
+268         ...zoneData,
+    ~~~~~~~~~~~~~~~~~~~~
+... 
+270         owner: user.address,
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+271       });
+    ~~~~~~~
+
+src/dnsParser/parseAll.ts:6:27 - error TS2307: Cannot find module '@ton/crypto/dist/primitives/sha256' or its corresponding type declarations.
+
+6 import {sha256_sync} from "@ton/crypto/dist/primitives/sha256";
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/dnsParser/parseAll.ts:7:1 - error TS6133: 'match' is declared but its value is never read.
+
+7 import {match} from "node:assert";
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/dnsParser/parseAll.ts:66:34 - error TS2345: Argument of type 'string' is not assignable to parameter of type 'bigint'.
+
+66             DNS_RECORDS_KEYS.add(keyRepr || keyHex);
+                                    ~~~~~~~~~~~~~~~~~
+
+src/dnsParser/parseAll.ts:72:21 - error TS2322: Type 'Cell | undefined' is not assignable to type 'Cell | null'.
+  Type 'undefined' is not assignable to type 'Cell | null'.
+
+72                     site = state.content.records.get(key);
+                       ~~~~
+
+src/dnsParser/parseAll.ts:74:21 - error TS2322: Type 'Cell | undefined' is not assignable to type 'Cell | null'.
+  Type 'undefined' is not assignable to type 'Cell | null'.
+
+74                     storage = state.content.records.get(key);
+                       ~~~~~~~
+
+src/dnsParser/parseAll.ts:84:70 - error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+
+84             let siteAddr = site?.asSlice().loadUintBig(256).toString('16');
+                                                                        ~~~~
+
+src/dnsParser/parseAll.ts:85:76 - error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+
+85             let storageAddr = storage?.asSlice().loadUintBig(256).toString('16');
+                                                                              ~~~~
+
+src/dnsParser/parseDnsState.ts:1:27 - error TS6133: 'Slice' is declared but its value is never read.
+
+1 import {Cell, Dictionary, Slice, TupleReader} from '@ton/core';
+                            ~~~~~
+
+src/dnsParser/parseDnsState.ts:1:34 - error TS6133: 'TupleReader' is declared but its value is never read.
+
+1 import {Cell, Dictionary, Slice, TupleReader} from '@ton/core';
+                                   ~~~~~~~~~~~
+
+src/dnsParser/parseDnsState.ts:2:1 - error TS6192: All imports in import declaration are unused.
+
+2 import {DictionaryKey, DictionaryValue} from "@ton/core/src/dict/Dictionary";
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/hooks/useAuctionIntegration.ts:161:20 - error TS6133: 'useEffect' is declared but its value is never read.
+
+161 import { useState, useEffect, useCallback } from 'react';
+                       ~~~~~~~~~
+
+src/hooks/useDNSCollection.ts:1:29 - error TS2307: Cannot find module '@ton/crypto' or its corresponding type declarations.
+
+1 import { sha256_sync } from "@ton/crypto";
+                              ~~~~~~~~~~~~~
+
+src/hooks/useProfileData.ts:42:41 - error TS2554: Expected 2 arguments, but got 1.
+
+42       const userData = await apiService.registerOrGetUser(address);
+                                           ~~~~~~~~~~~~~~~~~
+
+  src/services/api.ts:367:44
+    367   async registerOrGetUser(address: string, name: string): Promise<User> {
+                                                   ~~~~~~~~~~~~
+    An argument for 'name' was not provided.
+
+src/hooks/useProfileData.ts:115:65 - error TS2339: Property 'domain' does not exist on type '{}'.
+
+115         .find((entry: any) => entry.user_friendly === address)?.domain;
+                                                                    ~~~~~~
+
+src/hooks/useProfileData.ts:167:23 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+167                       zone.proxy === 'Proxy' ||
+                          ~~~~~~~~~~~~~~~~~~~~~~
+
+src/hooks/useProfileData.ts:168:23 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+168                       zone.proxy === 'proxy' ||
+                          ~~~~~~~~~~~~~~~~~~~~~~
+
+src/hooks/useProfileData.ts:169:23 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+169                       zone.proxy === '1';
+                          ~~~~~~~~~~~~~~~~~~
+
+src/hooks/useProfileData.ts:175:21 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+175                     zone.proxy === 'SBT' ||
+                        ~~~~~~~~~~~~~~~~~~~~
+
+src/hooks/useProfileData.ts:176:21 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+176                     zone.proxy === 'sbt' ||
+                        ~~~~~~~~~~~~~~~~~~~~
+
+src/hooks/useProfileData.ts:177:21 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+177                     zone.proxy === '0';
+                        ~~~~~~~~~~~~~~~~~~
+
+src/hooks/useWidgets.ts:2:15 - error TS2459: Module '"../store/store"' declares 'RootState' locally, but it is not exported.
+
+2 import type { RootState, AppDispatch } from '../store/store';
+                ~~~~~~~~~
+
+  src/store/store.ts:12:23
+    12 import { rootReducer, RootState } from './rootReducer';
+                             ~~~~~~~~~
+    'RootState' is declared here.
+
+src/hooks/useWidgets.ts:82:8 - error TS2307: Cannot find module './user/userSlice' or its corresponding type declarations.
+
+82 } from './user/userSlice';
+          ~~~~~~~~~~~~~~~~~~
+
+src/hooks/useWidgets.ts:84:44 - error TS2307: Cannot find module './stats/statsSlice' or its corresponding type declarations.
+
+84 import { fetchStats, incrementStats } from './stats/statsSlice';
+                                              ~~~~~~~~~~~~~~~~~~~~
+
+src/hooks/useZones.ts:826:35 - error TS2339: Property 'toLowerCase' does not exist on type 'never'.
+
+826     const lowerValue = proxyValue.toLowerCase();
+                                      ~~~~~~~~~~~
+
+src/hooks/useZones.ts:843:35 - error TS2339: Property 'toLowerCase' does not exist on type 'never'.
+
+843     const lowerValue = proxyValue.toLowerCase();
+                                      ~~~~~~~~~~~
+
+src/hooks/useZones.ts:930:9 - error TS2353: Object literal may only specify known properties, and 'isTestnet' does not exist in type '{ name: string; address: string; collectionAddress?: string | undefined; wrapperAddress?: string | undefined; proxy?: boolean | undefined; owner?: string | undefined; status: string; zonePrice: number; }'.
+
+930         isTestnet: isTestnet
+            ~~~~~~~~~
+
+src/navigation/routes.tsx:49:7 - error TS6133: 'BaseCreateCollectionPage' is declared but its value is never read.
+
+49 const BaseCreateCollectionPage = () => <CreateCollectionPage />;
+         ~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/navigation/routes.tsx:50:7 - error TS6133: 'BaseAuctionPage' is declared but its value is never read.
+
+50 const BaseAuctionPage = () => <AuctionPage />;
+         ~~~~~~~~~~~~~~~
+
+src/navigation/routes.tsx:51:7 - error TS6133: 'BaseManageDomainPage' is declared but its value is never read.
+
+51 const BaseManageDomainPage = () => <ManageDomainPage />;
+         ~~~~~~~~~~~~~~~~~~~~
+
+src/navigation/routes.tsx:52:7 - error TS6133: 'BaseMarketPage' is declared but its value is never read.
+
+52 const BaseMarketPage = () => <MarketPage />;
+         ~~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:14:20 - error TS2307: Cannot find module 'tonweb' or its corresponding type declarations.
+
+14 import TonWeb from "tonweb";
+                      ~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:41:3 - error TS6133: 'createAuctionUrl' is declared but its value is never read.
+
+41   createAuctionUrl,
+     ~~~~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:45:3 - error TS6133: 'AuctionUrlParams' is declared but its value is never read.
+
+45   AuctionUrlParams,
+     ~~~~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:82:11 - error TS6133: 'user' is declared but its value is never read.
+
+82   const { user, refreshSubdomains } = useUser();
+             ~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:147:9 - error TS6133: 'isSbtZone' is declared but its value is never read.
+
+147   const isSbtZone = useCallback((zone: any): boolean => {
+            ~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:253:52 - error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+
+253       const normalizedMaxBidder = normalizeAddress(auctionInfo.maxBidderOwner);
+                                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:440:9 - error TS6133: 'createSubdomainInDatabase' is declared but its value is never read.
+
+440   const createSubdomainInDatabase = useCallback(async (subdomainData: {
+            ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:467:9 - error TS6133: 'addBidToDatabase' is declared but its value is never read.
+
+467   const addBidToDatabase = useCallback(async (subdomainId: number, bidData: {
+            ~~~~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:487:9 - error TS6133: 'updateSubdomainStatusInDatabase' is declared but its value is never read.
+
+487   const updateSubdomainStatusInDatabase = useCallback(async (subdomainId: number, status: 'active' | 'inactive' | 'auction' | 'claimed') => {
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:503:28 - error TS6133: 'event' is declared but its value is never read.
+
+503   const handleTabChange = (event: React.SyntheticEvent, newValue: ActiveTab) => {
+                               ~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:721:3 - error TS6133: 'selectedZoneName' is declared but its value is never read.
+
+721   selectedZoneName,  // Теперь это имя зоны
+      ~~~~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:722:3 - error TS6133: 'subdomainName' is declared but its value is never read.
+
+722   subdomainName,
+      ~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:723:14 - error TS6133: 'integrationLoading' is declared but its value is never read.
+
+723   isLoading: integrationLoading,
+                 ~~~~~~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:1102:37 - error TS18046: 'dbError' is of type 'unknown'.
+
+1102       console.error('Stack trace:', dbError.stack);
+                                         ~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:1105:102 - error TS2345: Argument of type '"warning"' is not assignable to parameter of type '"error" | "success" | undefined'.
+
+1105       showSnackbar("Ставка размещена в блокчейне, но произошла ошибка при сохранении в базу данных", "warning");
+                                                                                                          ~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:1403:11 - error TS6133: 'handleResetForm' is declared but its value is never read.
+
+1403     const handleResetForm = () => {
+               ~~~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:1876:13 - error TS2322: Type '"xs"' is not assignable to type '"s" | "m" | "l" | undefined'.
+
+1876             size="xs"
+                 ~~~~
+
+  node_modules/@telegram-apps/telegram-ui/dist/components/Blocks/IconButton/IconButton.d.ts:4:5
+    4     size?: 's' | 'm' | 'l';
+          ~~~~
+    The expected type comes from property 'size' which is declared here on type 'IntrinsicAttributes & IconButtonProps & RefAttributes<HTMLButtonElement>'
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:1893:13 - error TS2322: Type '"xs"' is not assignable to type '"s" | "m" | "l" | undefined'.
+
+1893             size="xs"
+                 ~~~~
+
+  node_modules/@telegram-apps/telegram-ui/dist/components/Blocks/IconButton/IconButton.d.ts:4:5
+    4     size?: 's' | 'm' | 'l';
+          ~~~~
+    The expected type comes from property 'size' which is declared here on type 'IntrinsicAttributes & IconButtonProps & RefAttributes<HTMLButtonElement>'
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:2078:13 - error TS2322: Type '"xs"' is not assignable to type '"s" | "m" | "l" | undefined'.
+
+2078             size="xs"
+                 ~~~~
+
+  node_modules/@telegram-apps/telegram-ui/dist/components/Blocks/IconButton/IconButton.d.ts:4:5
+    4     size?: 's' | 'm' | 'l';
+          ~~~~
+    The expected type comes from property 'size' which is declared here on type 'IntrinsicAttributes & IconButtonProps & RefAttributes<HTMLButtonElement>'
+
+src/pages/AddSubdomainPage/AddSubdomainPage.tsx:2095:13 - error TS2322: Type '"xs"' is not assignable to type '"s" | "m" | "l" | undefined'.
+
+2095             size="xs"
+                 ~~~~
+
+  node_modules/@telegram-apps/telegram-ui/dist/components/Blocks/IconButton/IconButton.d.ts:4:5
+    4     size?: 's' | 'm' | 'l';
+          ~~~~
+    The expected type comes from property 'size' which is declared here on type 'IntrinsicAttributes & IconButtonProps & RefAttributes<HTMLButtonElement>'
+
+src/pages/AddSubdomainPage/auctionLogic/AuctionStartBtn.tsx:3:20 - error TS2307: Cannot find module 'tonweb' or its corresponding type declarations.
+
+3 import TonWeb from "tonweb";
+                     ~~~~~~~~
+
+src/pages/AddSubdomainPage/auctionLogic/AuctionStartBtn.tsx:47:11 - error TS6133: 'feeBurnAddress' is declared but its value is never read.
+
+47     const feeBurnAddress = "UQDZmg4lBYBhTQslgJ-MWg9RKYa2Pjf07ul60OYLrtnfYLHx";
+             ~~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/auctionLogic/AuctionStartBtn.tsx:49:11 - error TS6133: 'walletAddress' is declared but its value is never read.
+
+49     const walletAddress = useTonAddress();
+             ~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/auctionLogic/AuctionStartBtn.tsx:59:15 - error TS6133: 'fee' is declared but its value is never read.
+
+59         const fee = Math.floor(feeServicePrice * 1000000000).toString();
+                 ~~~
+
+src/pages/AddSubdomainPage/auctionLogic/auctionTimer.tsx:149:25 - error TS6133: 'setDomainAddress' is declared but its value is never read.
+
+149   const [domainAddress, setDomainAddress] = useState('');
+                            ~~~~~~~~~~~~~~~~
+
+src/pages/AddSubdomainPage/flipTimer/getAddressFromBoc.ts:1:16 - error TS6133: 'Address' is declared but its value is never read.
+
+1 import { Cell, Address } from "ton-core";
+                 ~~~~~~~
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:624:31 - error TS2304: Cannot find name 'apiInputs'.
+
+624 type ApiMethod = keyof typeof apiInputs;
+                                  ~~~~~~~~~
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:628:9 - error TS6133: 't' is declared but its value is never read.
+
+628   const { t } = useLanguage();
+            ~~~~~
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:703:12 - error TS7053: Element implicitly has an 'any' type because expression of type 'string | number | symbol' can't be used to index type '{ getUser: { address: string; }; createUser: { address: string; name: string; }; registerOrGetUser: { address: string; name: string; }; createZone: { name: string; address: string; collectionAddress: string; ... 4 more ...; zonePrice: number; }; ... 20 more ...; getDNSRecords: { ...; }; }'.
+  No index signature with a parameter of type 'string' was found on type '{ getUser: { address: string; }; createUser: { address: string; name: string; }; registerOrGetUser: { address: string; name: string; }; createZone: { name: string; address: string; collectionAddress: string; ... 4 more ...; zonePrice: number; }; ... 20 more ...; getDNSRecords: { ...; }; }'.
+
+703         ...prev[method],
+               ~~~~~~~~~~~~
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:715:22 - error TS7053: Element implicitly has an 'any' type because expression of type 'string | number | symbol' can't be used to index type '{ getUser: { address: string; }; createUser: { address: string; name: string; }; registerOrGetUser: { address: string; name: string; }; createZone: { name: string; address: string; collectionAddress: string; ... 4 more ...; zonePrice: number; }; ... 20 more ...; getDNSRecords: { ...; }; }'.
+  No index signature with a parameter of type 'string' was found on type '{ getUser: { address: string; }; createUser: { address: string; name: string; }; registerOrGetUser: { address: string; name: string; }; createZone: { name: string; address: string; collectionAddress: string; ... 4 more ...; zonePrice: number; }; ... 20 more ...; getDNSRecords: { ...; }; }'.
+
+715       const inputs = apiInputs[method];
+                         ~~~~~~~~~~~~~~~~~
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:833:46 - error TS2731: Implicit conversion of a 'symbol' to a 'string' will fail at runtime. Consider wrapping this expression in 'String(...)'.
+
+833           throw new Error(`Unknown method: ${method}`);
+                                                 ~~~~~~
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:842:38 - error TS2731: Implicit conversion of a 'symbol' to a 'string' will fail at runtime. Consider wrapping this expression in 'String(...)'.
+
+842       console.error(`Error calling ${method}:`, error);
+                                         ~~~~~~
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:850:20 - error TS7053: Element implicitly has an 'any' type because expression of type 'string | number | symbol' can't be used to index type '{ getUser: { address: string; }; createUser: { address: string; name: string; }; registerOrGetUser: { address: string; name: string; }; createZone: { name: string; address: string; collectionAddress: string; ... 4 more ...; zonePrice: number; }; ... 20 more ...; getDNSRecords: { ...; }; }'.
+  No index signature with a parameter of type 'string' was found on type '{ getUser: { address: string; }; createUser: { address: string; name: string; }; registerOrGetUser: { address: string; name: string; }; createZone: { name: string; address: string; collectionAddress: string; ... 4 more ...; zonePrice: number; }; ... 20 more ...; getDNSRecords: { ...; }; }'.
+
+850     const inputs = apiInputs[method];
+                       ~~~~~~~~~~~~~~~~~
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:937:16 - error TS2322: Type 'string | number | symbol' is not assignable to type 'Key | null | undefined'.
+  Type 'symbol' is not assignable to type 'Key | null | undefined'.
+
+937           <div key={method} style={{
+                   ~~~
+
+  node_modules/@types/react/index.d.ts:262:9
+    262         key?: Key | null | undefined;
+                ~~~
+    The expected type comes from property 'key' which is declared here on type 'DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>'
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:955:17 - error TS2322: Type 'string | number | symbol' is not assignable to type 'ReactNode'.
+  Type 'symbol' is not assignable to type 'ReactNode'.
+
+955                 {method}
+                    ~~~~~~~~
+
+  node_modules/@types/react/index.d.ts:2398:9
+    2398         children?: ReactNode | undefined;
+                 ~~~~~~~~
+    The expected type comes from property 'children' which is declared here on type 'DetailedHTMLProps<HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>'
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:983:21 - error TS2538: Type 'symbol' cannot be used as an index type.
+
+983             {errors[method] && (
+                        ~~~~~~
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:992:34 - error TS2538: Type 'symbol' cannot be used as an index type.
+
+992                 ❌ Error: {errors[method]}
+                                     ~~~~~~
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:997:22 - error TS2538: Type 'symbol' cannot be used as an index type.
+
+997             {results[method] && (
+                         ~~~~~~
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:1019:59 - error TS2538: Type 'symbol' cannot be used as an index type.
+
+1019                       const text = JSON.stringify(results[method], null, 2);
+                                                               ~~~~~~
+
+src/pages/AdminPanelPage/AdminPanelPage.tsx:1040:43 - error TS2538: Type 'symbol' cannot be used as an index type.
+
+1040                   {JSON.stringify(results[method], null, 2)}
+                                               ~~~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7147:1 - error TS6133: 'Modal' is declared but its value is never read.
+
+7147 import Modal from '@mui/material/Modal';
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7167:3 - error TS6133: 'resetProxyDeployment' is declared but its value is never read.
+
+7167   resetProxyDeployment,
+       ~~~~~~~~~~~~~~~~~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7168:3 - error TS6133: 'resetBundleDeployment' is declared but its value is never read.
+
+7168   resetBundleDeployment,
+       ~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7169:3 - error TS6133: 'resetSBTCollectionDeployment' is declared but its value is never read.
+
+7169   resetSBTCollectionDeployment,
+       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7182:22 - error TS6133: 'Zone' is declared but its value is never read.
+
+7182 import { apiService, Zone } from '@/services/api';
+                          ~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7204:9 - error TS6133: 't' is declared but its value is never read.
+
+7204   const { t } = useLanguage();
+             ~~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7439:91 - error TS2345: Argument of type '"warning"' is not assignable to parameter of type '"error" | "success" | undefined'.
+
+7439             showSnackbar('Коллекция отвязана, но возникла ошибка при обновлении статуса', "warning");
+                                                                                               ~~~~~~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7610:9 - error TS6133: 'proceedWithSBTDeployment' is declared but its value is never read.
+
+7610   const proceedWithSBTDeployment = useCallback(async () => {
+             ~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7634:9 - error TS2741: Property 'id' is missing in type '{ tld: string; domain: string; }' but required in type '{ id: number; tld: string; domain: string; }'.
+
+7634         config: {
+             ~~~~~~
+
+  src/store/nft/actions.ts:1229:5
+    1229     id: number;
+             ~~
+    'id' is declared here.
+  src/store/nft/actions.ts:1228:3
+    1228   config: {
+           ~~~~~~
+    The expected type comes from property 'config' which is declared here on type 'DeploySBTCollectionPayload'
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7671:42 - error TS2345: Argument of type '{ name: string; address: string; collectionAddress: string; proxy: boolean; owner: string; status: string; zonePrice: number; }' is not assignable to parameter of type '{ name: string; address: string; collectionAddress?: string | undefined; wrapperAddress?: string | undefined; proxy?: boolean | undefined; owner?: string | undefined; status: string; zonePrice: number; currentID: number; }'.
+  Property 'currentID' is missing in type '{ name: string; address: string; collectionAddress: string; proxy: boolean; owner: string; status: string; zonePrice: number; }' but required in type '{ name: string; address: string; collectionAddress?: string | undefined; wrapperAddress?: string | undefined; proxy?: boolean | undefined; owner?: string | undefined; status: string; zonePrice: number; currentID: number; }'.
+
+7671               await createZoneInDatabase(zoneData);
+                                              ~~~~~~~~
+
+  src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7467:5
+    7467     currentID: number;
+             ~~~~~~~~~
+    'currentID' is declared here.
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7678:105 - error TS2345: Argument of type '"warning"' is not assignable to parameter of type '"error" | "success" | undefined'.
+
+7678               showSnackbar('SBT коллекция развернута, но возникла ошибка при сохранении в базе данных', "warning");
+                                                                                                             ~~~~~~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7819:62 - error TS2345: Argument of type '{ name: string; address: string; proxy: boolean; owner: string; status: string; zonePrice: number; }' is not assignable to parameter of type '{ name: string; address: string; collectionAddress?: string | undefined; wrapperAddress?: string | undefined; proxy?: boolean | undefined; owner?: string | undefined; status: string; zonePrice: number; currentID: number; }'.
+  Property 'currentID' is missing in type '{ name: string; address: string; proxy: boolean; owner: string; status: string; zonePrice: number; }' but required in type '{ name: string; address: string; collectionAddress?: string | undefined; wrapperAddress?: string | undefined; proxy?: boolean | undefined; owner?: string | undefined; status: string; zonePrice: number; currentID: number; }'.
+
+7819               const createdZone = await createZoneInDatabase(zoneData);
+                                                                  ~~~~~~~~
+
+  src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7467:5
+    7467     currentID: number;
+             ~~~~~~~~~
+    'currentID' is declared here.
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7828:96 - error TS2345: Argument of type '"warning"' is not assignable to parameter of type '"error" | "success" | undefined'.
+
+7828               showSnackbar('Proxy развернут, но возникла ошибка при сохранении в базе данных', "warning");
+                                                                                                    ~~~~~~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7938:97 - error TS2345: Argument of type '"warning"' is not assignable to parameter of type '"error" | "success" | undefined'.
+
+7938                 showSnackbar('Bundle развернут, но возникла ошибка при обновлении базы данных', "warning");
+                                                                                                     ~~~~~~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:8082:103 - error TS2345: Argument of type '"warning"' is not assignable to parameter of type '"error" | "success" | undefined'.
+
+8082             showSnackbar('SBT коллекция развернута, но возникла ошибка при сохранении в базе данных', "warning");
+                                                                                                           ~~~~~~~~~
+
+src/pages/CreateCollectionPage/CreateCollectionPage.tsx:8284:28 - error TS6133: 'event' is declared but its value is never read.
+
+8284   const handleTabChange = (event: React.SyntheticEvent, newValue: ActiveTab) => {
+                                ~~~~~
+
+src/pages/CreateCollectionPage/Stepper.tsx:42:3 - error TS6133: 'Section' is declared but its value is never read.
+
+42   Section,
+     ~~~~~~~
+
+src/pages/CreateCollectionPage/Stepper.tsx:43:3 - error TS6133: 'Input' is declared but its value is never read.
+
+43   Input,
+     ~~~~~
+
+src/pages/CreateCollectionPage/Stepper.tsx:45:3 - error TS6133: 'Card' is declared but its value is never read.
+
+45   Card,
+     ~~~~
+
+src/pages/CreateCollectionPage/Stepper.tsx:46:3 - error TS6133: 'Cell' is declared but its value is never read.
+
+46   Cell
+     ~~~~
+
+src/pages/IndexPage/SliderComponent.tsx:88:17 - error TS6133: 'useState' is declared but its value is never read.
+
+88 import React, { useState } from 'react';
+                   ~~~~~~~~
+
+src/pages/IndexPage/acentHeaderFrases.tsx:214:1 - error TS6133: 'React' is declared but its value is never read.
+
+214 import React from 'react';
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/CollectionFilter.tsx:83:10 - error TS6133: 'CollectionKey' is declared but its value is never read.
+
+83 import { CollectionKey, COLLECTIONS, CollectionDetails } from '../../store/nft/constants';
+            ~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/CollectionFilter.tsx:83:25 - error TS6133: 'COLLECTIONS' is declared but its value is never read.
+
+83 import { CollectionKey, COLLECTIONS, CollectionDetails } from '../../store/nft/constants';
+                           ~~~~~~~~~~~
+
+src/pages/ManageDomainPage/CollectionFilter.tsx:83:38 - error TS2305: Module '"../../store/nft/constants"' has no exported member 'CollectionDetails'.
+
+83 import { CollectionKey, COLLECTIONS, CollectionDetails } from '../../store/nft/constants';
+                                        ~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/CollectionFilter.tsx:149:26 - error TS2322: Type 'string | number | symbol' is not assignable to type 'Key | null | undefined'.
+  Type 'symbol' is not assignable to type 'Key | null | undefined'.
+
+149           <Select.Option key={key} value={key}>
+                             ~~~
+
+  node_modules/@types/react/index.d.ts:262:9
+    262         key?: Key | null | undefined;
+                ~~~
+    The expected type comes from property 'key' which is declared here on type 'IntrinsicAttributes & OptionProps'
+
+src/pages/ManageDomainPage/CollectionFilterDrawer.tsx:110:3 - error TS6133: 'CollectionKey' is declared but its value is never read.
+
+110   CollectionKey,
+      ~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/CollectionFilterDrawer.tsx:112:3 - error TS2305: Module '"../../store/nft/constants"' has no exported member 'CollectionDetails'.
+
+112   CollectionDetails
+      ~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/CollectionFilterDrawer.tsx:198:32 - error TS2322: Type 'string | number | symbol' is not assignable to type 'Key | null | undefined'.
+  Type 'symbol' is not assignable to type 'Key | null | undefined'.
+
+198                 <Select.Option key={key} value={key}>
+                                   ~~~
+
+  node_modules/@types/react/index.d.ts:262:9
+    262         key?: Key | null | undefined;
+                ~~~
+    The expected type comes from property 'key' which is declared here on type 'IntrinsicAttributes & OptionProps'
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:1952:29 - error TS6133: 'getServiceCollections' is declared but its value is never read.
+
+1952 import { getNFTCollections, getServiceCollections, CollectionKey } from '../../store/nft/constants';
+                                 ~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:1959:3 - error TS6133: 'Checkbox' is declared but its value is never read.
+
+1959   Checkbox,
+       ~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:1964:3 - error TS6133: 'Section' is declared but its value is never read.
+
+1964   Section,
+       ~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:1973:1 - error TS6192: All imports in import declaration are unused.
+
+1973 import { Box, Typography } from "@mui/material";
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:1995:10 - error TS6133: 'useDomainExpiration' is declared but its value is never read.
+
+1995 import { useDomainExpiration, formatExpirationDate, DomainExpirationInfo } from '@/utils/domainExpiredAtFetchConvert';
+              ~~~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:1995:31 - error TS6133: 'formatExpirationDate' is declared but its value is never read.
+
+1995 import { useDomainExpiration, formatExpirationDate, DomainExpirationInfo } from '@/utils/domainExpiredAtFetchConvert';
+                                   ~~~~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:2053:9 - error TS6133: 'currentNetwork' is declared but its value is never read.
+
+2053   const currentNetwork = isTestnet ? 'testnet' : 'mainnet';
+             ~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:2070:11 - error TS6133: 'runGetMethod' is declared but its value is never read.
+
+2070   const { runGetMethod, getNftItem, getNftCollection } = useTonAPI(isTestnet);
+               ~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:2078:10 - error TS6133: 'isEditMode' is declared but its value is never read.
+
+2078   const [isEditMode, setIsEditMode] = useState(false);
+              ~~~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:2078:22 - error TS6133: 'setIsEditMode' is declared but its value is never read.
+
+2078   const [isEditMode, setIsEditMode] = useState(false);
+                          ~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:2080:10 - error TS6133: 'selectedSortKey' is declared but its value is never read.
+
+2080   const [selectedSortKey, setSelectedSortKey] = useState<string>('AmountOfHolders');
+              ~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:2080:27 - error TS6133: 'setSelectedSortKey' is declared but its value is never read.
+
+2080   const [selectedSortKey, setSelectedSortKey] = useState<string>('AmountOfHolders');
+                               ~~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:2261:43 - error TS2345: Argument of type '{ collectionKey: CollectionKey; isTestnet: boolean; }' is not assignable to parameter of type '{ nfts: NFT[]; collectionKey: CollectionKey; isTestnet: boolean; zones?: any[] | undefined; subdomains?: any[] | undefined; }'.
+  Property 'nfts' is missing in type '{ collectionKey: CollectionKey; isTestnet: boolean; }' but required in type '{ nfts: NFT[]; collectionKey: CollectionKey; isTestnet: boolean; zones?: any[] | undefined; subdomains?: any[] | undefined; }'.
+
+2261           dispatch(filterNftsByCollection({
+                                               ~
+2262             collectionKey: selectedCollection as CollectionKey,
+     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2263             isTestnet
+     ~~~~~~~~~~~~~~~~~~~~~
+2264           }));
+     ~~~~~~~~~~~
+
+  src/store/nft/actions.ts:718:5
+    718     nfts: NFT[],
+            ~~~~
+    'nfts' is declared here.
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:2490:95 - error TS2345: Argument of type '"warning"' is not assignable to parameter of type '"error" | "success" | "sent" | undefined'.
+
+2490             showSnackbar("Не удалось получить адрес враппера, используем оригинальный адрес", "warning");
+                                                                                                   ~~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:3470:21 - error TS2322: Type '{ src: string; style: { width: string; height: string; borderRadius: string; }; fallback: string; }' is not assignable to type 'IntrinsicAttributes & ImageProps'.
+  Property 'fallback' does not exist on type 'IntrinsicAttributes & ImageProps'.
+
+3470                     fallback={searchDog}
+                         ~~~~~~~~
+
+src/pages/ManageDomainPage/ManageDomainPage.tsx:3562:19 - error TS2322: Type '{ src: string; style: { width: string; height: string; borderRadius: string; }; fallback: string; }' is not assignable to type 'IntrinsicAttributes & ImageProps'.
+  Property 'fallback' does not exist on type 'IntrinsicAttributes & ImageProps'.
+
+3562                   fallback={searchDog}
+                       ~~~~~~~~
+
+src/pages/ManageDomainPage/ModeTabs.tsx:396:3 - error TS6133: 'isTestnet' is declared but its value is never read.
+
+396   isTestnet = false,
+      ~~~~~~~~~
+
+src/pages/ManageDomainPage/ModeTabs.tsx:397:3 - error TS6133: 'selectedCollection' is declared but its value is never read.
+
+397   selectedCollection,
+      ~~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ModeTabs.tsx:398:3 - error TS6133: 'collections' is declared but its value is never read.
+
+398   collections = []
+      ~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ModeTabs.tsx:501:13 - error TS2322: Type 'string' is not assignable to type 'undefined'.
+
+501             initialSortKey={initialSortKey}
+                ~~~~~~~~~~~~~~
+
+  src/pages/ManageDomainPage/Tabs.tsx:258:3
+    258   initialSortKey?: keyof typeof COLLECTIONS['ton']['details'];
+          ~~~~~~~~~~~~~~
+    The expected type comes from property 'initialSortKey' which is declared here on type 'IntrinsicAttributes & IconLabelTabsProps'
+
+src/pages/ManageDomainPage/SectionDrawer.tsx:301:43 - error TS2339: Property 'CreatingDate' does not exist on type '{ AmountOfHolders?: number | undefined; AmountNFTinCollection?: number | undefined; ValueCap?: number | undefined; Prices?: number | undefined; tld?: string | undefined; domain?: string | undefined; }'.
+
+301                   {getStringValue(details.CreatingDate)}
+                                              ~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/SectionDrawer.tsx:313:52 - error TS2339: Property 'floor' does not exist on type 'number'.
+
+313                     {getStringValue(details.Prices.floor)}
+                                                       ~~~~~
+
+src/pages/ManageDomainPage/SectionDrawer.tsx:319:52 - error TS2339: Property 'average' does not exist on type 'number'.
+
+319                     {getStringValue(details.Prices.average)}
+                                                       ~~~~~~~
+
+src/pages/ManageDomainPage/SectionDrawer.tsx:325:52 - error TS2339: Property 'max' does not exist on type 'number'.
+
+325                     {getStringValue(details.Prices.max)}
+                                                       ~~~
+
+src/pages/ManageDomainPage/SectionDrawer.tsx:336:43 - error TS2339: Property 'MainFunctional' does not exist on type '{ AmountOfHolders?: number | undefined; AmountNFTinCollection?: number | undefined; ValueCap?: number | undefined; Prices?: number | undefined; tld?: string | undefined; domain?: string | undefined; }'.
+
+336                   {getStringValue(details.MainFunctional)}
+                                              ~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/SectionDrawer.tsx:339:24 - error TS2339: Property 'AppLink' does not exist on type '{ AmountOfHolders?: number | undefined; AmountNFTinCollection?: number | undefined; ValueCap?: number | undefined; Prices?: number | undefined; tld?: string | undefined; domain?: string | undefined; }'.
+
+339               {details.AppLink && (
+                           ~~~~~~~
+
+src/pages/ManageDomainPage/SectionDrawer.tsx:344:52 - error TS2339: Property 'AppLink' does not exist on type '{ AmountOfHolders?: number | undefined; AmountNFTinCollection?: number | undefined; ValueCap?: number | undefined; Prices?: number | undefined; tld?: string | undefined; domain?: string | undefined; }'.
+
+344                       href={getStringValue(details.AppLink)}
+                                                       ~~~~~~~
+
+src/pages/ManageDomainPage/ServiceTabs.tsx:267:1 - error TS6133: 'React' is declared but its value is never read.
+
+267 import * as React from 'react';
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ServiceTabs.tsx:274:1 - error TS6133: 'tonDNS' is declared but its value is never read.
+
+274 import tonDNS from '/src/components/Header/ton.svg';
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ServiceTabs.tsx:362:9 - error TS6133: 'handleSortChange' is declared but its value is never read.
+
+362   const handleSortChange = (key: string) => {
+            ~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/ServiceTabs.tsx:367:9 - error TS6133: 'sortOptions' is declared but its value is never read.
+
+367   const sortOptions = [
+            ~~~~~~~~~~~
+
+src/pages/ManageDomainPage/Tabs.tsx:241:1 - error TS6133: 'React' is declared but its value is never read.
+
+241 import * as React from 'react';
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/Tabs.tsx:250:1 - error TS6133: 'subdomLogo' is declared but its value is never read.
+
+250 import subdomLogo from '/src/pages/ManageDomainPage/img/subdom_logo.png';
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/Tabs.tsx:264:3 - error TS2322: Type '"AmountOfHolders"' is not assignable to type 'never'.
+
+264   initialSortKey = 'AmountOfHolders',
+      ~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/Tabs.tsx:315:9 - error TS6133: 'handleSortChange' is declared but its value is never read.
+
+315   const handleSortChange = (key: keyof typeof COLLECTIONS['ton']['details']) => {
+            ~~~~~~~~~~~~~~~~
+
+src/pages/ManageDomainPage/Tabs.tsx:320:9 - error TS6133: 'sortOptions' is declared but its value is never read.
+
+320   const sortOptions = [
+            ~~~~~~~~~~~
+
+src/pages/MarketPage/MarketPage.tsx:2628:22 - error TS6133: 'Subdomain' is declared but its value is never read.
+
+2628 import { apiService, Subdomain, Zone } from '../../services/api';
+                          ~~~~~~~~~
+
+src/pages/MarketPage/MarketPage.tsx:2675:7 - error TS6133: 'findZoneByName' is declared but its value is never read.
+
+2675 const findZoneByName = async (zoneName: string): Promise<Zone | undefined> => {
+           ~~~~~~~~~~~~~~
+
+src/pages/MarketPage/MarketPage.tsx:2763:9 - error TS6133: 't' is declared but its value is never read.
+
+2763   const { t } = useLanguage();
+             ~~~~~
+
+src/pages/MarketPage/MarketPage.tsx:3203:7 - error TS6133: 'getHeaderHeight' is declared but its value is never read.
+
+3203 const getHeaderHeight = () => {
+           ~~~~~~~~~~~~~~~
+
+src/pages/MarketPage/MarketPage.tsx:3668:21 - error TS6133: 'typedItem' is declared but its value is never read.
+
+3668               const typedItem = item as MarketItem & { _zoneAddress?: string; _subdomainAddress?: string };
+                         ~~~~~~~~~
+
+src/services/api.ts:386:115 - error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+
+386   const registerOrGetUser = async (address: string, name?: string) => await apiService.registerOrGetUser(address, name);
+                                                                                                                      ~~~~
+
+src/services/api.ts:468:42 - error TS2345: Argument of type 'string' is not assignable to parameter of type '{ text: string; sender: string; userAddress: string; }'.
+
+468     await apiService.sendMessage(domain, messageData);
+                                             ~~~~~~~~~~~
+
+src/store/nft/actions.ts:586:38 - error TS6133: 'rejectWithValue' is declared but its value is never read.
+
+586   async ({ userAddress, isTestnet }, { rejectWithValue }) => {
+                                         ~~~~~~~~~~~~~~~~~~~
+
+src/store/nft/actions.ts:643:38 - error TS6133: 'rejectWithValue' is declared but its value is never read.
+
+643   async ({ userAddress, isTestnet }, { rejectWithValue }) => {
+                                         ~~~~~~~~~~~~~~~~~~~
+
+src/store/nft/actions.ts:1075:33 - error TS6133: 'sortKey' is declared but its value is never read.
+
+1075   async ({ nfts, collectionKey, sortKey, isTestnet }, { dispatch }) => {
+                                     ~~~~~~~
+
+src/store/nft/actions.ts:1086:33 - error TS7053: Element implicitly has an 'any' type because expression of type '"ton" | "tme" | "gram" | "tonnel" | "getgems" | "zones" | "subdomains" | "any"' can't be used to index type 'Record<NFTCollectionKey, CollectionInfo>'.
+  Property 'zones' does not exist on type 'Record<NFTCollectionKey, CollectionInfo>'.
+
+1086       const collectionAddress = nftCollections[collectionKey]?.address;
+                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/store/nft/constants.ts:639:39 - error TS6133: 'isTestnet' is declared but its value is never read.
+
+639 export const getServiceCollections = (isTestnet: boolean): Record<ServiceCollectionKey, CollectionInfo> => {
+                                          ~~~~~~~~~
+
+src/store/nft/fish.ts:4:1 - error TS6133: 'Dispatch' is declared but its value is never read.
+
+4 import { Dispatch } from 'redux';
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/store/nft/fish.ts:5:1 - error TS6133: 'Action' is declared but its value is never read.
+
+5 import { Action } from 'redux';
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/store/nft/fish.ts:6:1 - error TS6133: 'ThunkAction' is declared but its value is never read.
+
+6 import { ThunkAction } from 'redux-thunk';
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/store/nft/fish.ts:7:1 - error TS6192: All imports in import declaration are unused.
+
+7 import { FETCH_NFTS, SET_SELECTED_COLLECTION, SET_FILTERED_NFTS } from './actionTypes';
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+src/store/nft/fish.ts:8:23 - error TS6133: 'CollectionKey' is declared but its value is never read.
+
+8 import { COLLECTIONS, CollectionKey } from './constants';
+                        ~~~~~~~~~~~~~
+
+src/store/nft/nftReducer.ts:505:7 - error TS6133: 'getCurrentNetworkData' is declared but its value is never read.
+
+505 const getCurrentNetworkData = (state: NftState) => {
+          ~~~~~~~~~~~~~~~~~~~~~
+
+src/store/nft/nftReducer.ts:538:21 - error TS6133: 'state' is declared but its value is never read.
+
+538     resetNftState: (state) => {
+                        ~~~~~
+
+src/utils/profile-widget-filter.utils.ts:608:42 - error TS2345: Argument of type '"proxy" | "sbt" | "unknown"' is not assignable to parameter of type 'ZoneTypeFilter'.
+  Type '"unknown"' is not assignable to type 'ZoneTypeFilter'.
+
+608       return filters.zoneTypes!.includes(zoneType);
+                                             ~~~~~~~~
+
+src/utils/profile-widget-filter.utils.ts:821:42 - error TS2345: Argument of type '"proxy" | "sbt" | "unknown"' is not assignable to parameter of type 'ZoneTypeFilter'.
+  Type '"unknown"' is not assignable to type 'ZoneTypeFilter'.
+
+821       return filters.zoneTypes!.includes(zoneType);
+                                             ~~~~~~~~
+
+src/utils/profile-widget-filter.utils.ts:832:3 - error TS6133: 'filters' is declared but its value is never read.
+
+832   filters: FilterState
+      ~~~~~~~
+
+src/utils/profile-widget.utils.ts:11:12 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+11            zone.proxy === 'Proxy' ||
+              ~~~~~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:12:12 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+12            zone.proxy === 'proxy' ||
+              ~~~~~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:13:12 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+13            zone.proxy === '1';
+              ~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:18:12 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+18            zone.proxy === 'SBT' ||
+              ~~~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:19:12 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+19            zone.proxy === 'sbt' ||
+              ~~~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:20:12 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+20            zone.proxy === '0';
+              ~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:51:39 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+51   const isProxy = zone.proxy === 1 || zone.proxy === 'Proxy' || zone.proxy === 'proxy' || zone.proxy === '1';
+                                         ~~~~~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:51:65 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+51   const isProxy = zone.proxy === 1 || zone.proxy === 'Proxy' || zone.proxy === 'proxy' || zone.proxy === '1';
+                                                                   ~~~~~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:51:91 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+51   const isProxy = zone.proxy === 1 || zone.proxy === 'Proxy' || zone.proxy === 'proxy' || zone.proxy === '1';
+                                                                                             ~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:52:37 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+52   const isSbt = zone.proxy === 0 || zone.proxy === 'SBT' || zone.proxy === 'sbt' || zone.proxy === '0';
+                                       ~~~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:52:61 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+52   const isSbt = zone.proxy === 0 || zone.proxy === 'SBT' || zone.proxy === 'sbt' || zone.proxy === '0';
+                                                               ~~~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:52:85 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+52   const isSbt = zone.proxy === 0 || zone.proxy === 'SBT' || zone.proxy === 'sbt' || zone.proxy === '0';
+                                                                                       ~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:99:21 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+99                     zone.proxy === 'Proxy' ||
+                       ~~~~~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:100:21 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+100                     zone.proxy === 'proxy' ||
+                        ~~~~~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:101:21 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+101                     zone.proxy === '1';
+                        ~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:107:19 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+107                   zone.proxy === 'SBT' ||
+                      ~~~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:108:19 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+108                   zone.proxy === 'sbt' ||
+                      ~~~~~~~~~~~~~~~~~~~~
+
+src/utils/profile-widget.utils.ts:109:19 - error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+
+109                   zone.proxy === '0';
+                      ~~~~~~~~~~~~~~~~~~
+
+
+Found 250 errors in 44 files.
+
+Errors  Files
+     1  node_modules/@ton/core/src/boc/BitBuilder.ts:11
+     1  node_modules/@ton/core/src/boc/cell/exoticLibrary.ts:13
+     3  node_modules/@ton/core/src/boc/cell/resolveExotic.ts:44
+     2  node_modules/@ton/core/src/boc/cell/serialization.ts:132
+     4  node_modules/@ton/core/src/boc/cell/wonderCalculator.ts:16
+     1  node_modules/@ton/core/src/dict/serializeDict.ts:39
+     1  node_modules/@ton/core/src/dict/utils/internalKeySerializer.ts:11
+     9  src/components/ChatWidget/ChatWidget.tsx:695
+     8  src/components/CircuitBackground/CircuitBackground.tsx:3296
+    11  src/components/Header/Header.tsx:3
+    33  src/components/ProfileWidget/ProfileWidget.tsx:41
+     1  src/contexts/UserContext.tsx:267
+     7  src/dnsParser/parseAll.ts:6
+     3  src/dnsParser/parseDnsState.ts:1
+     1  src/hooks/useAuctionIntegration.ts:161
+     1  src/hooks/useDNSCollection.ts:1
+     8  src/hooks/useProfileData.ts:42
+     3  src/hooks/useWidgets.ts:2
+     3  src/hooks/useZones.ts:826
+     4  src/navigation/routes.tsx:49
+    20  src/pages/AddSubdomainPage/AddSubdomainPage.tsx:14
+     4  src/pages/AddSubdomainPage/auctionLogic/AuctionStartBtn.tsx:3
+     1  src/pages/AddSubdomainPage/auctionLogic/auctionTimer.tsx:149
+     1  src/pages/AddSubdomainPage/flipTimer/getAddressFromBoc.ts:1
+    14  src/pages/AdminPanelPage/AdminPanelPage.tsx:624
+    16  src/pages/CreateCollectionPage/CreateCollectionPage.tsx:7147
+     4  src/pages/CreateCollectionPage/Stepper.tsx:42
+     1  src/pages/IndexPage/SliderComponent.tsx:88
+     1  src/pages/IndexPage/acentHeaderFrases.tsx:214
+     4  src/pages/ManageDomainPage/CollectionFilter.tsx:83
+     3  src/pages/ManageDomainPage/CollectionFilterDrawer.tsx:110
+    16  src/pages/ManageDomainPage/ManageDomainPage.tsx:1952
+     4  src/pages/ManageDomainPage/ModeTabs.tsx:396
+     7  src/pages/ManageDomainPage/SectionDrawer.tsx:301
+     4  src/pages/ManageDomainPage/ServiceTabs.tsx:267
+     5  src/pages/ManageDomainPage/Tabs.tsx:241
+     5  src/pages/MarketPage/MarketPage.tsx:2628
+     2  src/services/api.ts:386
+     4  src/store/nft/actions.ts:586
+     1  src/store/nft/constants.ts:639
+     5  src/store/nft/fish.ts:4
+     2  src/store/nft/nftReducer.ts:505
+     3  src/utils/profile-widget-filter.utils.ts:608
+    18  src/utils/profile-widget.utils.ts:11

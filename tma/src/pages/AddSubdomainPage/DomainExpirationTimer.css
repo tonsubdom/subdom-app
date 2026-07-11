@@ -1,0 +1,26 @@
+.timer-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  
+}
+
+.timer-digit {
+  background-color: black; /* Цвет фона для цифр */
+  color: white; /* Цвет текста */
+  font-size: 1em; /* Размер шрифта */
+  padding: 20px;
+  border-radius: 10px; /* Закругленные углы */
+  margin: 0 10px; /* Отступы между цифрами */
+  transition: transform 0.5s; /* Анимация плавного изменения */
+}
+
+.timer-label{
+  color: black;
+}
+
+
+.timer-digit:active {
+  transform: translateY(-10px);
+}

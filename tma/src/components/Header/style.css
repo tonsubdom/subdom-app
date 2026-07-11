@@ -1,0 +1,47 @@
+button:focus {
+  outline: none !important;
+}
+
+.testnetBanner {
+  background-color: #FF4D4F;
+  color: #fff;
+  text-align: center;
+  padding: 2px;
+}
+
+.headerContainer {
+  background-color: var(--tg-theme-bg-color);
+  
+}
+
+.logoContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logoImage {
+  width: 50px;
+  height: 50px;
+}
+
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transition: opacity 0.3s ease-in-out;
+  pointer-events: auto;
+}
+
+.modalImage {
+  display: block;
+  height: 144px;
+  width: 144px;
+}
+
+.custom-wallet-button {
+  background-color: black !important;
+  color: white !important;
+}

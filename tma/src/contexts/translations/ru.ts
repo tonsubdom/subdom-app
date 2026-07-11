@@ -1,0 +1,753 @@
+export const ruTranslations = {
+    // Общие
+    connectWallet: 'Подключить кошелек',
+    disconnect: 'Отключить',
+    confirmDisconnect: 'Подтвердите отключение',
+    areYouSureDisconnect: 'Вы уверены, что хотите отключиться?',
+    yesDisconnect: 'Да, отключить',
+    attentionTestnet: 'Внимание! Это тестовая версия.',
+    cancel: 'Отмена',
+    processing: 'Обработка...',
+
+    // Header
+    subdom: 'subdom',
+
+    // IndexPage
+    mint: 'Минт',
+    addSubdomZone: 'Добавить Subdom Zone',
+    createSubdomain: 'Создать субдомен',
+    createCollection: 'Создать коллекцию субдоменов',
+    addSubdomainToCollection: 'Добавить субдомен в коллекцию',
+    add: 'Добавить',
+    create: 'Создать',
+
+    manager: 'Manager',
+    linkWalletSiteStorage: 'Привязать кошелек, сайт, хранилище для любого субдомена',
+    manage: 'Управлять',
+
+    editCollectionsItems: 'Редактировать коллекции, элементы',
+    editAnyParameters: 'Редактировать любые параметры: контент, роялти, цены, описание',
+    edit: 'Редактировать',
+
+    withdrawBalanceFromCollection: 'Вывести баланс из коллекции',
+    automaticPayouts: 'Автоматические выплаты из Subdom Zone на ваш кошелек в размере 90% от цены минта, 5% - комиссия сервиса',
+    history: 'История',
+
+    // CreateCollectionPage - новые ключи
+    createSubdomZone: 'Создать Subdom Zone',
+    updateTONDNSUtility: 'Обновите возможности TON DNS для вашего домена',
+    enterDomainNameSteps: 'Введите имя домена и следуйте шагам, чтобы создать зону субдоменов для вашего .ton-домена',
+    enterDomainName: 'Введите имя домена',
+    fromDomainCreated: 'Из домена будет создана зона субдоменов',
+    deployProxy: 'Развернуть Proxy',
+    createBlockingWrapper: 'Создать блокирующую обертку для вашего домена и коллекции субдоменов',
+    deployBundle: 'Развернуть Bundle',
+    createSubdomainCollection: 'Создать коллекцию субдоменов, передать её и домен в proxy, привязать DNS-запись коллекции субдоменов для домена, передать готовый NFT обратно',
+    createSBTSubdomainCollection: 'Создать SBT коллекцию субдоменов',
+    deploying: 'Развертывание...',
+    back: 'Назад',
+    proxyDeployedSuccessfully: 'Proxy успешно развернут!',
+    address: 'Адрес',
+    bundleDeployedSuccessfully: 'Bundle успешно развернут!',
+    sbtCollectionDeployedSuccessfully: 'SBT коллекция успешно развернута!',
+    subdomainCollectionCreated: 'Коллекция субдоменов создана и заблокирована в домене',
+    createNew: 'Создать новый',
+    allStepsCompleted: 'Все шаги успешно завершены!',
+    proxyBundleDeployed: 'Ваш proxy и bundle были развернуты в блокчейне TON',
+    sbtCollectionDeployed: 'Ваша SBT коллекция была развернута в блокчейне TON',
+    startOver: 'Начать заново',
+    buyZone: 'Купить зону',
+    createZone: 'Создать зону',
+    deployCollection: 'Развернуть коллекцию',
+    paymentSuccessful: 'Оплата прошла успешно!',
+    paymentFailed: 'Оплата не удалась',
+    zonePrice: 'Цена зоны',
+    youAreBuyingZoneFor: 'Вы покупаете зону за',
+
+    // Ошибки и сообщения CreateCollectionPage
+    walletNotConnected: 'Кошелек не подключен!',
+    pleaseEnterDomainName: 'Пожалуйста, введите имя домена',
+    failedToGetDomainAddress: 'Не удалось получить адрес домена',
+    transactionNotConfirmed: 'Транзакция не подтверждена',
+    transactionCancelled: 'Транзакция отменена пользователем',
+    transactionTimeout: 'Таймаут транзакции',
+    transactionFailed: 'Транзакция не удалась',
+    proxyDeploymentFailed: 'Развертывание Proxy не удалось',
+    sbtDeploymentFailed: 'Развертывание SBT коллекции не удалось',
+    deployProxyFirst: 'Сначала разверните Proxy!',
+    domainAddressNotFound: 'Адрес домена не найден!',
+    bundleDeploymentFailed: 'Развертывание Bundle не удалось',
+    domainInvalidCharsError: "Допустимы только латинские буквы, цифры и дефис",
+    subdomainInvalidCharsError: "Допустимы только латинские буквы, цифры и дефис",
+    domainNotOwnerError: "Вы не являетесь владельцем этого домена",
+
+    // Tabs
+    proxyForSale: 'Proxy (для продажи)',
+    sbtNotForSale: 'SBT (не для продажи)',
+
+    // IndexPage дополнительные
+    simplifiedDomainManagement: 'Упрощенное управление доменами',
+    effortlesslyManageYourTON: 'Легко управляйте вашими TON доменами, настраивайте DNS записи, создавайте субдомены и организуйте коллекции — все в одном месте.',
+
+    // ManageDomainPage
+    manageYourDNS: 'Управляйте вашим DNS',
+    easilyConfigureDomain: 'Легко настраивайте параметры вашего домена',
+    chooseSubdomains: 'Выбирайте субдомены в других зонах субдоменов, редактируйте любые записи для них или узнайте информацию о зоне субдоменов',
+    loadingSubdomains: 'Загрузка субдоменов...',
+    chooseSubdomain: 'Выберите субдомен',
+    noNFTsFound: 'NFT не найдены в этой коллекции',
+    manageDNSRecords: 'Управление DNS записями',
+    name: 'Имя',
+    collection: 'Коллекция',
+    description: 'Описание',
+    dnsAddress: 'Адрес DNS',
+    walletAddress: 'Адрес кошелька',
+    addressPlaceholder: 'Адрес (например UQ...)',
+    save: 'Сохранить',
+    tonSites: 'TON Сайты',
+    adnlAddressHex: 'ADNL адрес (HEX)',
+    hostOnTONStorage: 'Разместить на TON Storage',
+    tonStorage: 'TON Хранилище',
+    hex: 'HEX',
+    subdomainsNextResolver: 'Субдомены (Next Resolver)',
+    addressPlaceholderEQC: 'Адрес (например EQC...)',
+
+    // AuctionPage
+    subdomainAuction: 'Аукцион субдоменов',
+    participateInSubdomainAuction: 'Участвуйте в аукционе субдоменов',
+    chooseSubdomainZone: 'Выберите зону субдоменов, введите имя субдомена, проверьте элемент, начните аукцион или сделайте ставку',
+    selectDomainZone: 'Выберите зону доменов',
+    enterSubdomainName: 'Введите имя субдомена',
+    checkItem: 'Проверить элемент',
+    checking: 'Проверка...',
+    bidOnAuction: 'Ставка на аукционе',
+    subdomainAlreadyTaken: 'Субдомен уже занят',
+    maxBidder: 'Максимальный ставщик',
+    maxBid: 'Максимальная ставка',
+    endTime: 'Время окончания',
+    status: 'Статус',
+    active: 'Активен',
+    ended: 'Завершен',
+    makeFirstBid: 'Сделайте первую ставку и запустите аукцион!',
+    startAuction: 'Начать аукцион',
+    price: 'Цена',
+    enterValue: 'Введите значение',
+    yourBid: 'Ваша ставка',
+    bid: 'Ставка',
+    claimSubdomain: 'Получить субдомен',
+    claiming: 'Получение...',
+    viewOnMarketplace: 'Посмотреть на маркетплейсе',
+    domainLeftAuction: 'Домен покинул аукцион',
+    hideAfterAuctionEnd: 'Скрыто после окончания аукциона',
+
+    chooseProxyZone: 'Выберите Proxy зону', chooseSbtZone: 'Выберите SBT зону', loadingZones: 'Загрузка зон...', zonesLoadError: 'Ошибка загрузки зон',  proxyType: '🌐 Proxy', sbtType: '🔒 SBT', collectionConfigured: '✓ Collection настроен', collectionNotConfigured: '⚠️ Collection не настроен', network: 'Сеть:', testnet: '🌐 Testnet', mainnet: '🌐 Mainnet', noSbtZones: '⚠️ У вас нет SBT зон. Создайте SBT зону в разделе "Создать коллекцию"', noCollectionAddress: '⚠️ У выбранной зоны нет collection адреса', checkingItem: '🔎 Проверить элемент', copyAuctionLink: 'Копировать ссылку на аукцион', shareAuction: 'Поделиться аукционом',  networkLabel: 'Сеть:', yourZone: '(Ваша)', 
+
+    //Ошибки и сообщения для AddSubdomainPage
+    selectZoneAndSubdomainFirst: 'Сначала выберите зону и субдомен', auctionLinkCopied: 'Ссылка на аукцион скопирована в буфер обмена!', failedToCopyLink: 'Не удалось скопировать ссылку', auctionInfoLoaded: '✅ Информация об аукционе загружена!', subdomainNotFound: '❌ Субдомен не найден или еще не выставлен', auctionStartedBlockchainDbError: 'Аукцион начат в блокчейне, но произошла ошибка при сохранении в базу данных', auctionStartCancelled: 'Старт аукциона отменен пользователем', auctionStartRejected: 'Старт аукциона отклонен', insufficientFundsForAuctionStart: 'Недостаточно средств для старта аукциона', auctionStartError: 'Ошибка при старте аукциона', auctionDataNotLoaded: 'Ошибка: данные аукциона не загружены', bidPlacedBlockchainDbError: 'Ставка размещена в блокчейне, но произошла ошибка при сохранении в базу данных', bidCancelled: 'Ставка отменена пользователем', bidRejected: 'Ставка отклонена', insufficientFundsForBid: 'Недостаточно средств для ставки', bidError: 'Ошибка при размещении ставки', nftAddressNotFound: 'NFT адрес не найден', subdomainClaimedSuccess: 'Субдомен успешно получен! 🎉', subdomainClaimError: 'Ошибка при получении субдомена', linksOnlyForProxy: 'Ссылки доступны только для Proxy аукционов',
+
+    // ActiveAuctions
+    activeAuctionsTitle: 'Активные аукционы',
+    auctionsCountLabel: 'аукционов',
+    activeStatusLabel: 'Активные',
+    endedStatusLabel: 'Ended',
+    goToButton: 'Перейти',
+    updatedLabel: 'Обновлено', 
+    totalLabel: 'Всего', 
+    retryButton: 'Повторить', 
+    noAuctionsText: 'Нет аукционов', 
+    loadingText: 'Загрузка...',
+
+    // Sorting and tabs (subcomponents)
+    sortBy: 'Сортировать по:',
+    sort: {
+      holders: 'Держатели',
+      nfts: 'NFT',
+      valueCap: 'Капитализация',
+      floor: 'Флор',
+      AmountNFTinCollection: 'Количество NFT в коллекции',
+      AmountOfHolders: 'Количество держателей',
+      AmountOfDNSRecords: 'Количество DNS-записей',
+      CreatingDate: 'Дата создания',
+      AppLink: 'Ссылка на приложение',
+      MainFunctional: 'Основная функциональность',
+      Prices: 'Цены',
+      subdomainLength: 'Длина субдомена',
+  zoneLength: 'Длина зоны',
+  bid: 'Ставка',
+  status: 'Статус',
+  name: 'Имя'
+    },
+
+    zone: {
+      ton: '.*.ton',
+      tme: '.t.me',
+      gram: '.gram',
+      tonnel: '.tonnel',
+      getgems: '.getgems',
+      other: 'other'
+    },
+
+    infoAboutZone: 'Информация о зоне',
+    countNFTs: 'Количество NFT',
+    countHolders: 'Количество держателей',
+    pricesTON: 'Цены (TON)',
+    floorLabel: 'Floor',
+    average: 'Средняя',
+    max: 'Максимальная',
+    mainFunctional: 'Основная функциональность',
+    appLink: 'Ссылка на приложение',
+    open: 'Открыть',
+    chooseSortParam: 'Выберите параметр сортировки',
+
+    // Новые переводы для SBT режима
+  sbtSubdomainAlreadyTaken: 'SBT субдомен уже занят',
+  sbtSubdomainAvailable: 'SBT субдомен доступен для покупки',
+  sbtSubdomainPurchased: 'SBT субдомен успешно куплен!',
+  sbtPurchaseCancelled: 'Покупка SBT субдомена отменена',
+  sbtPurchaseError: 'Ошибка при покупке SBT субдомена',
+  purchaseSBTSubdomain: 'Купить SBT субдомен',
+  purchased: 'Куплено',
+  buyFor1TON: '0.5 TON',
+  sbtSubdomainInfo: 'Информация о SBT субдомене',
+  sbtOwner: 'Владелец SBT',
+  sbtCollection: 'SBT коллекция',
+  sbtCannotBeTransferred: 'SBT субдомены не могут быть переданы другим пользователям',
+  sbtForPersonalUse: 'Только для личного использования',
+  
+  // Общие для обоих режимов
+  subdomainTaken: 'Субдомен уже занят',
+  subdomainAvailable: 'Субдомен доступен',
+  checkAvailability: 'Проверить доступность',
+  checkingAvailability: 'Проверка доступности...',
+  domainNotAvailable: 'Домен не доступен',
+  purchase: 'Купить',
+  purchaseSuccessful: 'Покупка успешна!',
+
+  // Новые переводы для баннеров
+  proxyAuctionTitle: 'Аукцион субдоменов',
+  proxyAuctionDescription: 'Участвуйте в аукционе субдоменов. Выберите зону субдоменов, введите имя субдомена, проверьте элемент, начните аукцион или сделайте ставку',
+  proxyFeatures: 'Особенности:',
+  proxyFeature1: 'Безопасность. Proxy-Субдомены с proxy-субдоменной зоной навсегда связаны c корневым доменом (запись заблокирована)',
+  proxyFeature2: 'Трансфер на другие кошельки',
+  proxyFeature3: 'Возможность создавать не на своих доменных зоннах (делать ставку со стороны)',
+  proxyFeature4: 'Управление DNS-записями (кроме поля субдоменов у субдоменов) через менеджер',
+  proxyFeature5: 'Владение субдоменом бессрочно',
+  proxyFeature6: 'Ценообразование обусловлено количеством знаков в субдомене',
+  proxyFeature7: 'Аукцион - 24 часа, время продления - 1 час',
+  
+  sbtMintTitle: 'Минт субдоменов',
+  sbtMintDescription: 'Создавайте субдомены от своей SBT зоны для личного пользования. Выберите зону субдоменов, введите имя субдомена, проверьте элемент, начните минт',
+  sbtFeatures: 'Особенности:',
+  sbtFeature1: 'Гибкость. Запись о коллекции субдоменов не заблокирована в домене путем помещения в обертку-НФТ, в случае создания новой коллекции-дубликата: предыдущая помечается не активной, а текущая активной',
+  sbtFeature2: 'SBT гарантирует единоличное владение без возможности передачи (продажи), что уменьшает вероятность скама',
+  sbtFeature3: 'Создание и использование субдоменов возможно только владельцу домена',
+  sbtFeature4: 'Управление DNS-записями (кроме поля субдоменов у субдоменов) через менеджер',
+  sbtFeature5: 'Владение субдоменом бессрочно',
+  sbtFeature6: 'Цена не зависит от длины субдомена и всегда равна 1 TON',
+  sbtFeature7: 'Приобретение происходит моментально, без ожидания',
+  
+  // Общие
+  features: 'Особенности:',
+  startMint: 'Начать минт',
+  mintSubdomain: 'Минт субдомена',
+  minting: 'Минтинг...',
+
+  // Новые переводы для баннеров создания зон
+  proxyZoneFeatures: 'Особенности Proxy-зоны:',
+  proxyZoneFeature1: 'Proxy-зона представляет собой НФТ обертку, в которую помещается ваш домен и созданная разово субдоменная коллекция, для блокировки DNS-записи в 4 поле домена и невозможности отвязать запись от домена. Процесс необратим, это навсегда.',
+  proxyZoneFeature2: 'Продление помещенного внутрь домена осуществляется путем пополнения баланса НФТ-обертки (бандла) на стоимость транзакции в TON. С любого адреса.',
+  proxyZoneFeature3: 'Управление DNS-записями корневого домена (address, adnl, bagID) осуществляется путем отправки транзакции о смене записи на адресс НФТ-обертки(бандла), используя менеджер subdom.',
+  proxyZoneFeature4: 'Номинально владельцем домена становится адрес НФТ-обертки, владельцем которого являетесь вы. Вы можете передавать (выставлять на продажу) НФТ-обертку(бандл) вместе с доменом и заблокированной субдоменной коллекцией.',
+  proxyZoneFeature5: 'Минт субдоменов в Proxy-зоне происходит через Аукцион.',
+  proxyZoneFeature6: 'Инициировать начало аукциона на субдомен в Proxy-зоне может любой (не только владелец зоны)',
+  proxyZoneFeature7: 'Стартовые цены на субдомены в proxy-зоне зависят от количества знаков в субдомене: 1 - 30 TON, 2 -20 TON, 3 - 10 TON, 4 - 5 TON, 5 - 2.5 TON, 6 - 1 TON, 7+ - 0.5 TON',
+  proxyZoneFeature8: 'Длительность аукциона составляет 24 часа. Ставки, сделанные в последний час - откатывают счетчик обратного отсчета до 1 часа.',
+  proxyZoneFeature9: 'Владелец зоны получает 90% стоимости при каждом минте субдомена на его proxy-зоне автоматически. 10% сервис делит между командой и расходной частью для поддержания смартконтрактов.',
+  proxyZoneFeature10: 'Менять DNS-записи на созданных субдоменах от proxy-зоны может только владелец субдомена.(Владелец зоны не имеет возможности редактировать чужие субдомены от своей зоны)',
+  proxyZoneFeature11: 'Вcе созданные субдомены не имеют срока истечения владения ими (бессрочны).',
+  proxyZoneFeature12: 'Количество субдоменов в зоне - неограничено.',
+  
+  sbtZoneFeatures: 'Особенности SBT-зоны:',
+  sbtZoneFeature1: 'SBT-зона представляет собой коллекцию субдоменов со стандартом SBT(Soulbounded). При ее создании - DNS-запись помещается в 4 поле корневого домена, но не блокируется.',
+  sbtZoneFeature2: 'Взаимодействие с корневым доменом остается без изменений.',
+  sbtZoneFeature3: 'В случае создания повторной SBT-зоны на одном домене - прошлая коллекция приобретает статус «Неактивна», созданная коллекция приобретает статус «Активна».',
+  sbtZoneFeature4: 'Вы так же остаётесь владельцем домена, как и раньше. Продавать или передавать SBT-зоны и SBT-субдомены на другие кошельки- нельзя.',
+  sbtZoneFeature5: 'Этот режим использования субдоменов создан «для себя», что хорошо подойдет разработчикам и владельцам сервисов.',
+  sbtZoneFeature6: 'Минт субдоменов в SBT-зоне происходит мгновенно (не аукцион).',
+  sbtZoneFeature7: 'Делать ставки на субдомены в SBT-зоне можете только Вы.',
+  sbtZoneFeature8: 'Цена на субдомены не зависит от их длины, и всегда равна 0.5 TON.',
+  sbtZoneFeature9: 'Владелец SBT-зоны не получает денег от минта субдоменов. Выручка отходит сервису (команде и на поддержание жизни смартконтрактов коллекции)',
+  sbtZoneFeature10: 'Менять DNS-записи на созданных субдоменах от SBT-зоны может только владелец зоны.',
+  sbtZoneFeature11: 'Вcе созданные субдомены не имеют срока истечения владения ими (бессрочны).',
+  sbtZoneFeature12: 'Количество субдоменов в зоне - неограничено.',
+
+  //header сайта (заголовок и текст)
+  subdomHeaderWelcome: "subdom",
+  "headerServiceDescription": "остаётесь владельцем - Приобретаете возможности (sbt), создаёте активы - раскрываете потенциал домена, даёте создавать другим субдомены на вашем домене? - получаете прибыль. (proxy)",
+
+
+  // MarketPage translations
+    marketTitle: '🏠 Маркет',
+    marketSearchPlaceholder: 'Поиск по имени, владельцу или цене...',
+    marketZoneFilter: '🌐 Зона',
+    marketSubdomainFilter: '🔤 Субдомен',
+    marketSort: 'Сортировка',
+    marketSortNameAsc: 'Имя (А-Я)',
+    marketSortNameDesc: 'Имя (Я-А)',
+    marketSortPriceAsc: 'Цена (низкая → высокая)',
+    marketSortPriceDesc: 'Цена (высокая → низкая)',
+    marketSortDateAsc: 'Дата (старые → новые)',
+    marketSortDateDesc: 'Дата (новые → старые)',
+    marketSortZoneLengthAsc: 'Длина зоны (короткие → длинные)',
+    marketSortZoneLengthDesc: 'Длина зоны (длинные → короткие)',
+    marketSortSubdomainLengthAsc: 'Длина субдомена (короткие → длинные)',
+    marketSortSubdomainLengthDesc: 'Длина субдомена (длинные → короткие)',
+    marketClearFilters: 'Очистить',
+    marketTotal: 'Всего',
+    marketFiltered: 'Отфильтровано',
+    marketZones: 'Зон',
+    marketLoading: 'Загрузка субдоменов...',
+    marketError: 'Ошибка загрузки субдоменов',
+    marketRetry: 'Повторить загрузку',
+    marketNoItems: 'Нет субдоменов для отображения',
+    marketNoItemsFiltered: 'Попробуйте изменить фильтры или поисковый запрос',
+    marketNoItemsDefault: 'Создайте субдомен и установите статус "claimed"',
+    marketZone: 'Зона',
+    marketOwner: 'Владелец',
+    marketPrice: 'Цена',
+    marketLastBid: 'Последняя ставка',
+    marketUnknown: 'Неизвестно',
+    marketSub: 'Субдомен',
+    marketMakeOffer: 'Make Offer',
+    marketLinkAvailable: 'GetGems ссылка доступна',
+    marketNoLink: 'No marketplace link',
+    marketClaimedInfo: 'Субдомены со статусом "claimed" доступны для покупки',
+    marketMakeOfferInfo: 'Нажмите "Make Offer" для перехода на GetGems',
+    marketPriceInfo: 'Цены отображаются в TON (1 знак после запятой)',
+    marketNetworkInfo: 'Сеть',
+    marketTestnet: 'Testnet (kQ адреса)',
+    marketMainnet: 'Mainnet (EQ/UQ адреса)',
+    marketActiveFilters: 'Активные фильтры',
+    marketLinksAvailable: 'Ссылки доступны для',
+    marketOf: 'из',
+    marketSubdomains: 'субдоменов',
+    marketZoneLengthLabel: 'Длина зоны:',
+    marketSubdomainLengthLabel: 'Длина субдомена:',
+    marketChars: 'символов',
+    marketCharsPlus: '+ символов',
+    marketDeeplinkTitle: 'Открыто через Telegram deeplink',
+    marketDeeplinkMessage: 'Вы перешли на страницу маркета из уведомления о завершенном аукционе',
+
+  
+  marketTabSubdomains: 'Субдомены',
+  marketTabZones: 'Прокси-домены',
+  marketZonesSearchPlaceholder: 'Поиск прокси-доменов по имени ',
+  marketZonesFound: 'прокси-доменов найдено',
+  marketNoZones: 'Прокси-домены не найдены',
+  marketZoneLength: 'Длина прокси-домена',
+  marketCollection: 'Коллекция',
+  marketOnSale: 'В продаже',
+  marketNotForSale: 'Не в продаже',
+  marketZoneSortLengthAsc: 'Длина ↑',
+  marketZoneSortLengthDesc: 'Длина ↓',
+  marketFooterInfoZones: 'Прокси-домен - это Proxy NFT-обертка, в которой заблокирован корневой ton-домен',
+  marketZonesError: 'Ошибка при загрузке прокси-доменов',
+  marketItemAddress: 'Адрес',
+
+  marketSubtitle: 'Продайте субдомен, прокси-домен или сделайте оффер',
+  marketTypeSubdomain: "Субдомен",
+  marketTypeNFTWrapper: "NFT Обертка",
+
+  //new version market
+
+  // // Заголовки
+  //   marketTitle: "Маркетплейс",
+  //   marketSubtitle: "Покупайте и продавайте TON субдомены и NFT обертки",
+  //   marketDeeplinkTitle: "Аукцион завершен",
+  //   marketDeeplinkMessage: "Вы были перенаправлены из уведомления о завершенном аукционе. Просмотрите доступные предметы ниже.",
+    
+  //   // Табы
+  //   marketTabSubdomains: "Субдомены",
+  //   marketTabNFTWrappers: "NFT Обертки",
+    
+  //   // Поиск и фильтры
+  //   marketSearchPlaceholder: "Поиск по имени, владельцу или цене...",
+  //   marketZoneFilter: "Длина зоны",
+  //   marketSubdomainFilter: "Длина субдомена",
+  //   marketClearFilters: "Очистить фильтры",
+  //   marketRefresh: "Обновить",
+  //   marketRefreshing: "Обновление...",
+    
+  //   // Фильтры
+  //   marketZoneLengthLabel: "Длина зоны",
+  //   marketSubdomainLengthLabel: "Длина субдомена",
+  //   marketChars: "симв.",
+  //   marketCharsPlus: "симв.+",
+    
+  //   // Сортировка
+  //   marketSort: "Сортировка",
+  //   marketSortNameAsc: "Имя (А-Я)",
+  //   marketSortNameDesc: "Имя (Я-А)",
+  //   marketSortDateAsc: "Дата (Старые)",
+  //   marketSortDateDesc: "Дата (Новые)",
+  //   marketSortZoneLengthAsc: "Длина зоны (Короче)",
+  //   marketSortZoneLengthDesc: "Длина зоны (Длиннее)",
+  //   marketSortSubdomainLengthAsc: "Длина субдомена (Короче)",
+  //   marketSortSubdomainLengthDesc: "Длина субдомена (Длиннее)",
+    
+  //   // Статистика
+  //   marketTotalSubdomains: "Всего субдоменов",
+  //   marketTotalNFTWrappers: "Всего NFT оберток",
+  //   marketFiltered: "Отфильтровано",
+  //   marketOnSale: "В продаже",
+    
+  //   // Статусы
+  //   marketOnSale: "В продаже",
+  //   marketClaimed: "Заявлено",
+    
+  //   // Типы
+
+    
+  //   // Цены
+  //   marketMintPrice: "Цена минта",
+    
+  //   // Кнопки
+  //   marketMakeOffer: "Сделать оффер",
+  //   marketMakeOfferTooltip: "Сделать предложение на GetGems",
+  //   marketNoLinkTooltip: "Ссылка на GetGems недоступна",
+    
+  //   // Сеть
+  //   marketTestnet: "Тестовая сеть",
+  //   marketMainnet: "Основная сеть",
+  //   marketNetworkInfo: "Все транзакции обрабатываются в блокчейне TON",
+    
+  //   // Сообщения
+  //   marketLoading: "Загрузка предметов...",
+  //   marketError: "Ошибка загрузки предметов",
+  //   marketRetry: "Попробовать снова",
+  //   marketNoSubdomains: "Субдомены не найдены",
+  //   marketNoSubdomainsDesc: "В настоящее время нет субдоменов доступных для продажи",
+  //   marketNoNFTWrappers: "NFT обертки не найдены",
+  //   marketNoNFTWrappersDesc: "В настоящее время нет NFT оберток доступных для продажи",
+  //   marketNoResults: "Результаты не найдены",
+  //   marketNoResultsDesc: "Попробуйте изменить поиск или фильтры",
+  
+
+// ChatWidget
+support: '💬 Поддержка',
+connectToChat: 'Подключите кошелек для чата',
+noMessagesFirst: 'Нет сообщений',
+writeMessage: 'Напишите сообщение...',
+send: 'Отправить',
+messageSendError: 'Ошибка отправки сообщения',
+error: 'Ошибка',
+unknownError: 'Неизвестная ошибка',
+chatUser: 'Пользователь:',
+
+// PaymentAttemptsSection
+paymentAttemptsTitle: '💳 Оплаченные попытки создания зон',
+paymentAttemptsLoading: 'Загрузка оплаченных попыток...',
+paymentAttemptsError: 'Ошибка загрузки данных',
+paymentAttemptsNoData: 'Нет данных об оплаченных попытках',
+paymentAttemptsProxyZones: '🌐 Proxy зоны',
+paymentAttemptsSbtZones: '🔒 SBT зоны',
+paymentAttemptsZoneLength: 'Длина домена:',
+paymentAttemptsChars: 'симв.',
+paymentAttemptsPaid: 'Оплачено:',
+paymentAttemptsOf: 'из',
+paymentAttemptsAvailable: 'Доступно:',
+paymentAttemptsTotalPaid: 'Всего оплаченных попыток:',
+paymentAttemptsProxyAttempts: 'Proxy попыток:',
+paymentAttemptsSbtAttempts: 'SBT попыток:',
+paymentAttemptsHint: '💡 Оплаченные попытки используются при создании новых зон',
+createCollectionPayNow: 'Оплатить сейчас',
+
+attention: 'Внимание!',
+    collectionAlreadyAttached: 'На домен уже привязана коллекция.',
+    unlinkConfirmationQuestion: 'Вы желаете продолжить и отвязать прошлую коллекцию, сделав её неактивной?',
+    unlinkWarning: 'Это приведет к отключению старой коллекции и созданию новой.',
+    unlinkAndCreateNew: 'Отвязать и создать новую',
+    domainMinLengthError: 'Название домена должно содержать минимум 4 символа',
+    usingPaidAttempt: 'Используется ранее оплаченная попытка',
+    payForZoneFirst: 'Сначала оплатите создание зоны',
+    proxyDeployedDbError: 'Proxy развернут, но возникла ошибка при сохранении в базе данных',
+    bundleDeployedDbError: 'Bundle развернут, но возникла ошибка при обновлении базы данных',
+    sbtDeployedDbError: 'SBT коллекция развернута, но возникла ошибка при сохранении в базе данных',
+    zoneCreationInfo: 'Информация о создаваемой зоне:',
+    domain: 'Домен',
+    zoneType: 'Тип зоны',
+    proxyZone: 'Proxy',
+    sbtZone: 'SBT',
+    domainLength: 'Длина домена',
+    chars: 'символов',
+    paidAttemptAvailable: 'У вас есть оплаченная попытка для этого типа зоны и длины домена',
+    checkingPaymentAttempts: 'Проверяем оплаченные попытки...',
+    creatingProxyZone: 'Создание Proxy зоны',
+    creatingSbtZone: 'Создание SBT зоны',
+    zonePaidConfirmation: 'Вы оплатили создание зоны',
+    paidAttemptWillBeConsumed: 'Оплаченная попытка добавлена в ваш профиль и будет списана по завершению создания зоны',
+    usePaidAttempt: 'Использовать оплаченную попытку',
+    payAmount: 'Оплатить',
+    collectionUnlinkedSuccess: 'Старая коллекция отвязана и сделана неактивной',
+    collectionUnlinkedDbError: 'Коллекция отвязана, но возникла ошибка при обновлении статуса',
+    unlinkError: 'Ошибка при отвязке:',
+    unlinkGeneralError: 'Ошибка при отвязке коллекции',
+    paymentRecordError: 'Оплата прошла, но не удалось записать попытку',
+    invalidDomainLength: 'Некорректная длина домена: (должна быть от 4 до 9 символов)',
+    zoneNotInDatabase: 'Доменной зоны еще не существует в базе сервиса',
+    domainAddressFound: 'Адрес от имени найден',
+    sendingTransaction: 'Отправляю транзакцию в TonConnect...',
+    transactionSent: 'Транзакция отправлена:',
+    sendingBundleTransaction: 'Отправляю транзакцию Bundle в TonConnect...',
+    bundleTransactionSent: 'Bundle транзакция отправлена:',
+    paidAttemptConsumed: '✅ Оплаченная попытка для {type} зоны списана',
+    domainExistsIdInfo: '✅ Domain exists, current ID: {currentId}, new ID: {newId}',
+    domainExistsNoCollection: 'ℹ️ Domain exists but no collection address found',
+    domainNotExistsStartingId: '✅ Domain doesn\'t exist, starting with ID: 0',
+    sendingSbtPayload: '📤 Sending SBT payload with ID:',
+    sendingSbtTransaction: '🔄 Отправляю транзакцию SBT в TonConnect...',
+    sbtTransactionSent: '✅ SBT транзакция отправлена',
+    continue: 'Продолжить',
+
+    //transactionService
+
+    //for CreateCollectionPage
+    paymentSuccessfulConfirmed: "Оплата успешна и подтверждена в блокчейне!",
+    paymentSentNotConfirmed: "Оплата отправлена, но еще не подтверждена в блокчейне",
+    bundleDeployedSuccessfullyConfirmed: "Bundle развернут и подтвержден в блокчейне!",
+    bundleDeployedSentNotConfirmed: "Развертывание Bundle отправлено, но еще не подтверждено",
+    sbtCollectionDeployedSuccessfullyConfirmed: "SBT коллекция развернута и подтверждена в блокчейне!",
+    sbtDeployedSentNotConfirmed: "Развертывание SBT отправлено, но еще не подтверждено",
+    transactionChecking: "Проверка статуса транзакции...",
+    transactionConfirmed: "Транзакция подтверждена в блокчейне",
+    transactionPending: "Транзакция ожидает подтверждения",
+    retryInProgress: "Повторная попытка...",
+    maxRetriesExceeded: "Превышено максимальное количество попыток",
+    blockchainVerification: "Проверка блокчейна",
+    waitingForConfirmation: "Ожидание подтверждения в блокчейне",
+    hash: "Хеш транзакции",
+    block: "Блок",
+    timestamp: "Время", 
+
+    //for AddSubdomainPage
+    startAuctionConfirmed: "Аукцион запущен и подтвержден в блокчейне!",
+    startAuctionSentNotConfirmed: "Запуск аукциона отправлен, но еще не подтвержден",
+    bidConfirmed: "Ставка размещена и подтверждена в блокчейне!",
+    bidSentNotConfirmed: "Ставка отправлена, но еще не подтверждена",
+    sbtSubdomainPurchasedConfirmed: "SBT субдомен куплен и подтвержден в блокчейне!",
+    sbtSubdomainPurchasedSentNotConfirmed: "Покупка SBT субдомена отправлена, но еще не подтверждена",
+    subdomainClaimedSuccessConfirmed: "Субдомен клеймнут и подтвержден в блокчейне!",
+    subdomainClaimedSentNotConfirmed: "Клейм субдомена отправлен, но еще не подтвержден",
+    collectionUnlinkedSuccessConfirmed: "Коллекция отвязана и подтверждена в блокчейне!",
+    collectionUnlinkedSentNotConfirmed: "Отвязка коллекции отправлена, но еще не подтверждена",
+    unlinkTransactionFailed: "Транзакция отвязки не удалась",
+
+    //ProfileWidget
+
+  // NEW: keys used in ProfileWidget and subcomponents
+  profile: 'Профиль',
+  connectWalletForHistory: 'Подключите кошелек для для входа в личный кабинет',
+  connected: 'Подключено',
+  guest: 'Гость',
+  zones: 'Зоны',
+  subdomains: 'Субдомены',
+  auctions: 'Аукционы',
+  info: 'Инфо',
+  created: 'Создано',
+  ends: 'Окончание',
+  statistics: 'Статистика',
+  totalZones: 'Всего зон',
+  totalSubdomains: 'Всего субдоменов',
+  registrationDate: 'Дата регистрации',
+  dataProtected: 'Данные защищены',
+  accessRestricted: 'Доступ ограничен',
+  
+  
+  // Статистика
+  proxyZones: 'Proxy зоны',
+  sbtZones: 'SBT зоны',
+  proxySubdomains: 'Proxy субдомены',
+  sbtSubdomains: 'SBT субдомены',
+  activeAuctions: 'Активные аукционы',
+  
+  // Оплаченные попытки
+  totalPaidAttempts: 'Всего оплаченных попыток',
+  proxyPaidAttempts: 'Proxy оплаченные попытки',
+  sbtPaidAttempts: 'SBT оплаченные попытки',
+  
+  // Траты
+  totalZoneSpending: 'Всего потрачено на зоны',
+  proxyZoneSpending: 'Потрачено на Proxy зоны',
+  sbtZoneSpending: 'Потрачено на SBT зоны',
+  totalSubdomainSpending: 'Всего потрачено на субдомены',
+  proxySubdomainSpending: 'Потрачено на Proxy субдомены',
+  sbtSubdomainSpending: 'Потрачено на SBT субдомены',
+  
+  // Прибыль
+  totalProfit: 'Общая прибыль',
+  
+  // Статусы
+  inactive: 'Неактивный',
+  auction: 'Аукцион',
+  claimed: 'Получен',
+  unknown: 'Неизвестный',
+  
+  // Кнопки и действия
+  createFirstZone: 'Создать первую зону',
+  createFirstSubdomain: 'Создать первый субдомен',
+  createAuction: 'Создать аукцион',
+  manageDomain: 'Управлять доменом',
+  sell: 'Продать',
+  goTo: 'Перейти',
+  take: 'Забрать',
+  refreshData: 'Обновить данные',
+  
+  // Описания
+  proxyZoneDescription: 'Общая зона для всех пользователей',
+  sbtZoneDescription: 'Персональная зона владельца',
+  unknownZoneDescription: 'Неизвестный тип зоны',
+  
+  // Сообщения о загрузке
+  loadingAuctions: 'Загрузка аукционов...',
+  
+  // Сообщения об ошибках
+  errorLoadingZones: 'Ошибка загрузки зон',
+  errorLoadingSubdomains: 'Ошибка загрузки субдоменов',
+  
+  // Сообщения о пустых состояниях
+  noZones: 'У вас пока нет зон',
+  noZonesMatchingFilters: 'Нет зон, соответствующих фильтрам',
+  noSubdomains: 'У вас пока нет субдоменов',
+  noSubdomainsMatchingFilters: 'Нет субдоменов, соответствующих фильтрам',
+  noAuctions: 'Нет активных аукционов',
+  noAuctionsMatchingFilters: 'Нет аукционов, соответствующих фильтрам',
+  
+  // Подписи
+  foundZones: 'Найдено зон',
+  foundSubdomains: 'Найдено субдоменов',
+  of: 'из',
+  
+  // Детали
+  zoneId: 'Зона ID',
+  currentBid: 'Текущая ставка',
+  bidder: 'Ставщик',
+  subdomainsAmount: 'Субдоменов',
+
+
+  //Фильтр виджета профиля
+
+  // Поиск
+  searchZones: 'Поиск по имени зоны...',
+  searchSubdomains: 'Поиск по имени субдомена, владельцу или цене...',
+  searchAuctions: 'Поиск по имени аукциона или ставщику...',
+  searchGeneral: 'Поиск...',
+  
+  // Фильтры
+  zoneTypeFilter: '🏷️ Тип зоны',
+  zoneLengthFilter: '🌐 Длина зоны',
+  subdomainLengthFilter: '🔤 Длина субдомена',
+  
+  // Типы зон
+  zoneTypeProxy: '🌐 Proxy',
+  zoneTypeSbt: '🔒 SBT',
+  
+  // Длины
+  zoneLengthLabel: 'Длина зоны:',
+  subdomainLengthLabel: 'Длина субдомена:',
+  charsPlus: '+ символов',
+  
+  // Сортировка
+  sortNameAsc: 'Имя (А-Я)',
+  sortNameDesc: 'Имя (Я-А)',
+  sortDateAsc: 'Дата (старые → новые)',
+  sortDateDesc: 'Дата (новые → старые)',
+  sortZoneLengthAsc: 'Длина зоны (короткие → длинные)',
+  sortZoneLengthDesc: 'Длина зоны (длинные → короткие)',
+  sortSubdomainLengthAsc: 'Длина субдомена (короткие → длинные)',
+  sortSubdomainLengthDesc: 'Длина субдомена (длинные → короткие)',
+  sortPriceAsc: 'Цена (низкая → высокая)',
+  sortPriceDesc: 'Цена (высокая → низкая)',
+  sortBidAsc: 'Ставка (низкая → высокая)',
+  sortBidDesc: 'Ставка (высокая → низкая)',
+  sortAuctionEndAsc: 'Аукцион (ранние → поздние)',
+  sortAuctionEndDesc: 'Аукцион (поздние → ранние)',
+  
+  // Кнопки
+  clearFilters: '🗑️ Очистить',
+  
+  // Статусы
+  activeFilters: 'Активные фильтры',
+  
+  // Опции
+  zoneLengthOptions: [4, 5, 6, 7, 8, 9],
+  subdomainLengthOptions: [1, 2, 3, 4, 5, 6],
+
+
+  //ActiveAuctions
+
+  // Добавьте эти ключи в ваш файл ru.ts:
+
+// Для ActiveAuctions компонента
+searchPlaceholder: 'Поиск по имени или адресу...',
+onlyMyBidsLabel: 'Только мои ставки',
+action: 'Действие',
+viewButton: 'Просмотр',
+bidSingular: 'ставка',
+bidFew: 'ставки',
+bidMany: 'ставок',
+totalBidsLabel: 'Всего ставок',
+yourBidsLabel: 'Ваших ставок',
+auctionEnded: 'Аукцион завершен',
+warningStatusLabel: 'Завершается',
+
+yourBidLabel: 'Ваша ставка',
+otherBidderLabel: 'Другой участник',
+noBidsLabel: 'Нет ставок',
+auctionEndedLabel: 'Аукцион завершен',
+auctionActiveLabel: 'Аукцион активен',
+
+// Также убедитесь, что эти ключи уже есть или добавьте их:
+youLabel: 'Вы', // (если еще нет)
+
+// // Для сортировки
+// sort: {
+//   subdomainLength: 'Длина субдомена',
+//   zoneLength: 'Длина зоны',
+//   bid: 'Ставка',
+//   status: 'Статус',
+//   name: 'Имя'
+// },
+
+// // Для кнопок сортировки (уже есть в вашем файле, но убедитесь что они есть):
+// sort: {
+//   holders: 'Держатели',
+//   nfts: 'NFT',
+//   valueCap: 'Капитализация',
+//   floor: 'Флор',
+//   AmountNFTinCollection: 'Количество NFT в коллекции',
+//   AmountOfHolders: 'Количество держателей',
+//   AmountOfDNSRecords: 'Количество DNS-записей',
+//   CreatingDate: 'Дата создания',
+//   AppLink: 'Ссылка на приложение',
+//   MainFunctional: 'Основная функциональность',
+//   Prices: 'Цены',
+//   // Добавьте эти:
+//   subdomainLength: 'Длина субдомена',
+//   zoneLength: 'Длина зоны',
+//   bid: 'Ставка',
+//   status: 'Статус',
+//   name: 'Имя'
+// },
+    //упущенное из createCollectionPage и AddSubdomainPage после переделок
+
+confirmPayment: 'Подтверждение оплаты',
+confirmZoneCreation: 'Подтвердите создание зоны',
+deployingBundleCollection: 'Развертывание Bundle коллекции',
+creatingBundleForDomain: 'Создание Bundle для домена',
+bundleWillCreateSubdomainCollection: 'Bundle создаст коллекцию субдоменов',
+subdomainAvailableForFirstBid: 'Субдомен доступен для первой ставки',
+failedToCalculateNFTAddress: 'Не удалось рассчитать адрес NFT',
+
+
+
+  }

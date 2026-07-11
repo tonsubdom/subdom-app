@@ -1,0 +1,249 @@
+:root {
+    --flip-text-color: #000;
+    --flip-bg-color: #fff;
+    --flip-dots-color: #000;
+    --flip-shadow-color: rgba(0, 0, 0, 0.2);
+    --flip-label-color: #333;
+}
+
+.flip-clock-container {
+    visibility: visible;
+    width: min-content;
+    /* max-width: 375px; */
+    height: 80px;
+    direction: ltr;
+    font-family: 'Inter', sans-serif;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    box-sizing: border-box;
+    display: flex;
+    justify-content: center;
+    flex-direction: row-reverse;
+    gap: 33px;
+}
+
+.flip-clock-container * {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    box-sizing: border-box;
+}
+
+.flip-clock-container [class|="flip-item"] {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end; /* Выравнивание по низу */
+    height: 100%;
+}
+
+.flip-clock-container [class|="flip-item"]::after {
+    content: ":";
+    font-family: Consolas, monospace;
+    font-size: 40px;
+    /* color: var(--flip-dots-color); */
+    color: rgb(231, 225, 225);
+    margin: 0 -23px;
+    position: absolute;
+    margin-top: 20px;
+    z-index: 10;
+}
+
+/* .flip-clock-container [class|="flip-item"]:first-child::before {
+    content: none;
+} */
+
+.flip-clock-container [class|="flip-item"]:last-child::after {
+    content: none;
+}
+
+.flip-clock-container [class|="flip-item"] .flip-digit {
+    width: 37px;
+    height: 48px;
+    position: relative;
+    border-radius: 12px;
+    box-sizing: border-box;
+    display: inline-block;
+    margin: 0 2px;
+    perspective: 300px;
+}
+
+.flip-clock-container [class|="flip-item"] .flip-digit-label {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    /* color: var(--flip-label-color); */
+    color: white;
+    text-transform: uppercase;
+}
+
+.flip-clock-container [class|="flip-item"] .flip-digit > span {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    white-space: nowrap;
+    transform-style: preserve-3d;
+}
+
+.flip-clock-container [class|="flip-item"] .flip-digit > span::after, 
+.flip-clock-container [class|="flip-item"] .flip-digit > span::before {
+    content: attr(data-digit);
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    font-size: 20px;
+    font-weight: bolder;
+    text-align: center;
+    color: var(--flip-text-color);
+    background-color: var(--flip-bg-color);
+    overflow: hidden;
+}
+
+.flip-clock-container [class|="flip-item"] .flip-digit > span::before {
+    top: 0;
+    line-height: 48px;
+    font-weight: 500;
+    border-radius: 11px 11px 0 0;
+    transform-origin: bottom;
+}
+
+.flip-clock-container [class|="flip-item"] .flip-digit > span::after {
+    bottom: 0;
+    line-height: 0px;
+    font-weight: 500;
+    border-radius: 0 0 11px 11px;
+    transform-origin: top;
+}
+
+/* Анимации только для флиппинга */
+.flip-clock-container [class|="flip-item"] .flip-digit.flipping .flip-digit-next {
+    z-index: 0;
+    animation: afterZIndexAnim 0.9s linear forwards;
+}
+
+.flip-clock-container [class|="flip-item"] .flip-digit.flipping .flip-digit-next::before {
+    animation: afterUpShadowAnim 0.9s linear forwards;
+}
+
+.flip-clock-container [class|="flip-item"] .flip-digit.flipping .flip-digit-next::after {
+    animation: afterFlipAnim 0.9s linear forwards, afterDownShadowAnim 0.9s linear forwards;
+}
+
+.flip-clock-container [class|="flip-item"] .flip-digit.flipping .flip-digit-current {
+    z-index: 1;
+    animation: currentZIndexAnim 0.9s linear forwards;
+}
+
+.flip-clock-container [class|="flip-item"] .flip-digit.flipping .flip-digit-current::before {
+    animation: currentFlipAnim 0.9s linear forwards, currentUpShadowAnim 0.9s linear forwards;
+}
+
+.flip-clock-container [class|="flip-item"] .flip-digit.flipping .flip-digit-current::after {
+    animation: currentDownShadowAnim 0.9s linear forwards;
+}
+
+@media screen and (max-width: 568px) {
+    .flip-clock-container {
+        width: min-content;
+        height: 60px;
+        gap: 20px;
+    }
+
+    .flip-clock-container .flip-item-days .flip-digit {
+        width: 29px !important;
+    }
+
+    .flip-clock-container [class|="flip-item"]::before {
+        font-size: 30px;
+        margin: 0 -19px;
+        top: 0px;
+    }
+
+    .flip-clock-container [class|="flip-item"] .flip-digit {
+        width: 29px;
+        height: 40px;
+        border-radius: 8px;
+    }
+
+    .flip-clock-container [class|="flip-item"] .flip-digit > span::after, 
+    .flip-clock-container [class|="flip-item"] .flip-digit > span::before {
+        font-size: 16px;
+    }
+
+    .flip-clock-container [class|="flip-item"] .flip-digit > span::before {
+        line-height: 40px;
+        border-radius: 7px 7px 0 0;
+        border-width: 0.5px;
+
+    }
+
+    .flip-clock-container [class|="flip-item"] .flip-digit > span::after {
+        border-radius: 0 0 7px 7px;
+        border-width: 0.5px;
+    }
+
+    .flip-clock-container [class|="flip-item"] .flip-digit-label {
+        font-size: 10px;
+    }
+}
+
+/* Анимации  */
+
+@keyframes afterZIndexAnim {
+    0% { z-index: 0; }
+    100% { z-index: 1; }
+}
+
+@keyframes currentZIndexAnim {
+    0% { z-index: 1; }
+    100% { z-index: 0; }
+}
+
+@keyframes afterFlipAnim {
+    0% { transform: rotateX(180deg); }
+    100% { transform: rotateX(0); }
+}
+
+@keyframes afterUpShadowAnim {
+    0% { box-shadow: inset 0 -100px 20px -10px var(--flip-shadow-color); }
+    100% { box-shadow: inset 0 0 20px -10px rgba(0, 0, 0, 0); }
+}
+
+@keyframes afterDownShadowAnim {
+    0% { box-shadow: inset 0 100px 20px -10px var(--flip-shadow-color); }
+    100% { box-shadow: inset 0 0 20px -10px rgba(0, 0, 0, 0); }
+}
+
+@keyframes currentFlipAnim {
+    0% { transform: rotateX(0deg); }
+    100% { transform: rotateX(-180deg); }
+}
+
+@keyframes currentUpShadowAnim {
+    0% { box-shadow: inset 0 0 15px -10px rgba(0, 0, 0, 0); }
+    50% { box-shadow: inset 0 -50px 25px -10px var(--flip-shadow-color); }
+    100% { box-shadow: inset 0 -100px 25px -10px var(--flip-shadow-color); }
+}
+
+@keyframes currentDownShadowAnim {
+    0% { box-shadow: inset 0 0 15px -10px rgba(0, 0, 0, 0); }
+    50% { box-shadow: inset 0 50px 25px -10px var(--flip-shadow-color); }
+    100% { box-shadow: inset 0 100px 25px -10px var(--flip-shadow-color); }
+}
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='%23333' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 20px;
+  padding-right: 40px;
+}
