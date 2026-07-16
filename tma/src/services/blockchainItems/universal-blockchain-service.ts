@@ -409,6 +409,49 @@ export class UniversalBlockchainService {
   }
 
   /**
+   * Получение всех сбт коллекций юзера
+   */
+
+    /**
+   * Получение SBT коллекций пользователя
+   */
+  async getUserSBTCollections(userAddress: string, forceRefresh = false): Promise<SimpleCollection[]> {
+    const cacheKey = `user_sbt_collections_${userAddress}_${this.isTestnet ? 'testnet' : 'mainnet'}`;
+    
+    if (!forceRefresh) {
+      const cached = this.cache.get<SimpleCollection[]>(cacheKey);
+      if (cached) return cached;
+    }
+
+    console.log(`🔄 Загрузка SBT коллекций пользователя ${userAddress}...`);
+    
+    try {
+      const collections = await this.getAllCollectionsFromPlatformOwner();
+      const sbtCollections = collections.filter(c => this.classifier.isSBTCollection(c));
+      
+      if (sbtCollections.length === 0) {
+        console.log('⚠️ SBT коллекции не найдены');
+        return [];
+      }
+      
+      // Загружаем метаданные и конвертируем
+      const metadata = await this.getMetadataForAll(sbtCollections);
+      const result = convertToSimpleCollections(sbtCollections, metadata, this.isTestnet)
+        .filter(c => c.owner_address === userAddress);
+      
+      this.cache.set(cacheKey, result);
+      console.log(`✅ Загружено ${result.length} SBT коллекций пользователя`);
+      
+      return result;
+      
+    } catch (error) {
+      console.error('❌ Ошибка загрузки SBT коллекций пользователя:', error);
+      throw error;
+    }
+  }
+
+
+  /**
    * Получение всех NFT оберток
    */
   
