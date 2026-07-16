@@ -138,11 +138,11 @@ const CreateCollectionPage: React.FC = () => {
   const address = useTonAddress();
 
   const ownerAddress = isTestnet
-    ? (import.meta.env.VITE_PAYMENT_OWNER_TESTNET || '0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w')
-    : (import.meta.env.VITE_PAYMENT_OWNER_MAINNET || 'UQAJhQfbNtmaWpYogVoo59slpxw8YLv3HluxOOPPHHhUnDl1');
+    ? (import.meta.env.VITE_PAYMENT_OWNER_TESTNET || '')
+    : (import.meta.env.VITE_PAYMENT_OWNER_MAINNET || '');
 const partnerAddress = isTestnet
-    ? (import.meta.env.VITE_PAYMENT_PARTNER_TESTNET || '0QA4D9kI_A_7QAyC840AKAFwrOoyY5aOAPj-UI21s5Zgj1kR')
-    : (import.meta.env.VITE_PAYMENT_PARTNER_MAINNET || 'UQD7MG7fQBEwHYCrlvIP7XNTFDGCPyGOrZboT-p9nAl1ZSBh');
+    ? (import.meta.env.VITE_PAYMENT_PARTNER_TESTNET || '')
+    : (import.meta.env.VITE_PAYMENT_PARTNER_MAINNET || '');
   const [tonConnectUI] = useTonConnectUI();
 
   // Используем состояние из Redux
@@ -857,8 +857,8 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
 
       const bundlePayload: DeployBundlePayload = {
         proxy_collection_address: isTestnet
-          ? (import.meta.env.VITE_PROXY_COLLECTION_TESTNET ||       "kQDLWHe_9t92mczPWjHZnXeEkbbJn7Xrvt6083PKfx00G6Ez")
-          : (import.meta.env.VITE_PROXY_COLLECTION_MAINNET ||       "EQBR6IBUwg1_t8z9rfMQxTW0MLhLUy8lCMEw_ra5csnAYvwV"),
+          ? (import.meta.env.VITE_PROXY_COLLECTION_TESTNET || "")
+          : (import.meta.env.VITE_PROXY_COLLECTION_MAINNET || ""),
         user_wallet_address: address,
         dns_item_address: domainAddress,
         dns_item_name: domainName,

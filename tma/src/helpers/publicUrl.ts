@@ -8,7 +8,7 @@ export function publicUrl(path: string): string {
   // equal to "/my-base", then passing the path equal to "tonconnect-manifest.json" will not
   // give us the expected result, it will actually be "/tonconnect-manifest.json", but the expected
   // one is "/my-base/tonconnect-manifest.json". This is due to the URL constructor.
-  let baseUrl = import.meta.env.BASE_URL;
+  let baseUrl = import.meta.env.VITE_API_BASE_URL;
   if (!baseUrl.endsWith('/')) {
     baseUrl += '/';
   }

@@ -93,7 +93,7 @@ export const fetchZonesFromDB = createAsyncThunk<
       console.log(`📡 Загружаем зоны из БД для ${userAddress} (${isTestnet ? 'testnet' : 'mainnet'})`);
       
       // Используем прямой fetch к вашему бэкенду
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://subdom.zone';
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
       const response = await fetch(
         `${API_BASE_URL}/api/zones/user/${userAddress}?isTestnet=${isTestnet}`
       );
@@ -150,7 +150,7 @@ export const fetchSubdomainsFromDB = createAsyncThunk<
       console.log(`📡 Загружаем субдомены из БД для ${userAddress} (${isTestnet ? 'testnet' : 'mainnet'})`);
       
       // Используем прямой fetch к вашему бэкенду
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://subdom.zone';
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
       const response = await fetch(
         `${API_BASE_URL}/api/subdomains/user/${userAddress}?isTestnet=${isTestnet}`
       );

@@ -24,7 +24,7 @@ function ErrorBoundaryError({ error }: { error: unknown }) {
 }
 
 export function Root() {
-  const publicBaseUrl = import.meta.env.VITE_PUBLIC_URL || 'https://subdom.zone';
+  const publicBaseUrl = import.meta.env.VITE_PUBLIC_URL || '';
   return (
     <ErrorBoundary fallback={ErrorBoundaryError}>
       <TonConnectUIProvider
