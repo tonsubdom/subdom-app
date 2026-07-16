@@ -1,0 +1,91 @@
+name: Deploy to Aeza
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js + install Bun
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Bun
+        run: npm install -g bun
+
+      - name: Install frontend dependencies
+        working-directory: ./tma
+        run: bun install
+
+      - name: Build frontend
+        working-directory: ./tma
+        env:
+          VITE_API_BASE_URL: https://subdom.zone
+          VITE_PUBLIC_URL: https://subdom.zone
+          VITE_API_SC_PAYLOAD_URL: https://api.subdom.zone
+          VITE_TONCENTER_API_KEY: ${{ secrets.TONCENTER_API_KEY }}
+          VITE_PLATFORM_OWNER_TESTNET: ${{ vars.PLATFORM_OWNER_TESTNET }}
+          VITE_NFT_WRAPPER_COLLECTION_TESTNET: ${{ vars.NFT_WRAPPER_COLLECTION_TESTNET }}
+          VITE_PROXY_COLLECTION_TESTNET: ${{ vars.PROXY_COLLECTION_TESTNET }}
+          VITE_PAYMENT_OWNER_TESTNET: ${{ vars.PAYMENT_OWNER_TESTNET }}
+          VITE_PAYMENT_PARTNER_TESTNET: ${{ vars.PAYMENT_PARTNER_TESTNET }}
+          VITE_PLATFORM_OWNER_MAINNET: ${{ vars.PLATFORM_OWNER_MAINNET }}
+          VITE_NFT_WRAPPER_COLLECTION_MAINNET: ${{ vars.NFT_WRAPPER_COLLECTION_MAINNET }}
+          VITE_PROXY_COLLECTION_MAINNET: ${{ vars.PROXY_COLLECTION_MAINNET }}
+          VITE_PAYMENT_OWNER_MAINNET: ${{ vars.PAYMENT_OWNER_MAINNET }}
+          VITE_PAYMENT_PARTNER_MAINNET: ${{ vars.PAYMENT_PARTNER_MAINNET }}
+          VITE_HASH_PROXY_COLLECTION_TESTNET: ${{ vars.HASH_PROXY_COLLECTION_TESTNET }}
+          VITE_HASH_SBT_COLLECTION_TESTNET: ${{ vars.HASH_SBT_COLLECTION_TESTNET }}
+          VITE_HASH_NFT_WRAPPER_COLLECTION_TESTNET: ${{ vars.HASH_NFT_WRAPPER_COLLECTION_TESTNET }}
+          VITE_HASH_PROXY_SUBDOMAIN_TESTNET: ${{ vars.HASH_PROXY_SUBDOMAIN_TESTNET }}
+          VITE_HASH_PROXY_SUBDOMAIN_NEW_TESTNET: ${{ vars.HASH_PROXY_SUBDOMAIN_NEW_TESTNET }}
+          VITE_HASH_SBT_SUBDOMAIN_TESTNET: ${{ vars.HASH_SBT_SUBDOMAIN_TESTNET }}
+          VITE_HASH_NFT_WRAPPER_TESTNET: ${{ vars.HASH_NFT_WRAPPER_TESTNET }}
+          VITE_HASH_PROXY_COLLECTION_MAINNET: ${{ vars.HASH_PROXY_COLLECTION_MAINNET }}
+          VITE_HASH_SBT_COLLECTION_MAINNET: ${{ vars.HASH_SBT_COLLECTION_MAINNET }}
+          VITE_HASH_NFT_WRAPPER_COLLECTION_MAINNET: ${{ vars.HASH_NFT_WRAPPER_COLLECTION_MAINNET }}
+          VITE_HASH_PROXY_SUBDOMAIN_MAINNET: ${{ vars.HASH_PROXY_SUBDOMAIN_MAINNET }}
+          VITE_HASH_PROXY_SUBDOMAIN_NEW_MAINNET: ${{ vars.HASH_PROXY_SUBDOMAIN_NEW_MAINNET }}
+          VITE_HASH_SBT_SUBDOMAIN_MAINNET: ${{ vars.HASH_SBT_SUBDOMAIN_MAINNET }}
+          VITE_HASH_NFT_WRAPPER_MAINNET: ${{ vars.HASH_NFT_WRAPPER_MAINNET }}
+        run: bun run build
+
+      - name: Deploy files to Aeza via rsync
+        uses: burnett01/rsync-deploy@v2.1.2
+        with:
+          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
+          remote_host: ${{ secrets.SERVER_HOST }}
+          remote_user: ${{ secrets.SERVER_USER }}
+          remote_path: /root/subdom-deployment
+          switches: -avz --delete
+          excludes: |
+            .git
+            .gitignore
+            node_modules
+            .env
+            *.db
+            *.db-shm
+            *.db-wal
+
+      - name: Rebuild and restart Docker containers
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /root/subdom-deployment
+            export TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
+            export TELEGRAM_OWNER_ID="${{ secrets.TELEGRAM_OWNER_ID }}"
+            export TELEGRAM_GROUP_ID="${{ secrets.TELEGRAM_GROUP_ID }}"
+            docker-compose build backend
+            docker-compose down
+            docker-compose up -d
+            sleep 10
+            docker-compose ps
