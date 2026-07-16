@@ -452,7 +452,7 @@ export class UniversalBlockchainService {
 
 
   /**
-   * Получение всех NFT оберток
+   * Получение всех NFT оберток_
    */
   
 async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
