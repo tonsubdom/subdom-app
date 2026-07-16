@@ -11,13 +11,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js + install Bun
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
       - name: Install Bun
-        run: npm install -g bun
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> $GITHUB_PATH
 
       - name: Install frontend dependencies
         working-directory: ./tma
@@ -56,36 +53,32 @@ jobs:
           VITE_HASH_NFT_WRAPPER_MAINNET: ${{ vars.HASH_NFT_WRAPPER_MAINNET }}
         run: bun run build
 
-      - name: Deploy files to Aeza via rsync
-        uses: burnett01/rsync-deploy@v2.1.2
-        with:
-          ssh_private_key: ${{ secrets.SSH_PRIVATE_KEY }}
-          remote_host: ${{ secrets.SERVER_HOST }}
-          remote_user: ${{ secrets.SERVER_USER }}
-          remote_path: /root/subdom-deployment
-          switches: -avz --delete
-          excludes: |
-            .git
-            .gitignore
-            node_modules
-            .env
-            *.db
-            *.db-shm
-            *.db-wal
+      - name: Setup SSH and deploy files
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            --exclude='.git' \
+            --exclude='.gitignore' \
+            --exclude='node_modules' \
+            --exclude='.env' \
+            --exclude='*.db' \
+            --exclude='*.db-shm' \
+            --exclude='*.db-wal' \
+            ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/root/remoteSubdomGitHosting/
 
       - name: Rebuild and restart Docker containers
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            cd /root/subdom-deployment
-            export TELEGRAM_BOT_TOKEN="${{ secrets.TELEGRAM_BOT_TOKEN }}"
-            export TELEGRAM_OWNER_ID="${{ secrets.TELEGRAM_OWNER_ID }}"
-            export TELEGRAM_GROUP_ID="${{ secrets.TELEGRAM_GROUP_ID }}"
-            docker-compose build backend
-            docker-compose down
-            docker-compose up -d
-            sleep 10
-            docker-compose ps
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+            "cd /root/remoteSubdomGitHosting && \
+             export TELEGRAM_BOT_TOKEN='${{ secrets.TELEGRAM_BOT_TOKEN }}' && \
+             export TELEGRAM_OWNER_ID='${{ secrets.TELEGRAM_OWNER_ID }}' && \
+             export TELEGRAM_GROUP_ID='${{ secrets.TELEGRAM_GROUP_ID }}' && \
+             docker-compose build backend && \
+             docker-compose down && \
+             docker-compose up -d && \
+             sleep 10 && \
+             docker-compose ps"
