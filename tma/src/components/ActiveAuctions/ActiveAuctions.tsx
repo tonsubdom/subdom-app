@@ -432,6 +432,8 @@ const SubdomainImage: React.FC<{
 }> = ({ auction, colors, imageCache, updateImageCache }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
+
+  const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL;
   
   // Используем useMemo для стабильного URL
   const imageUrl = useMemo(() => {
@@ -440,7 +442,7 @@ const SubdomainImage: React.FC<{
       const cleanZoneName = auction.zoneName.endsWith('.ton') 
         ? auction.zoneName.slice(0, -4) 
         : auction.zoneName;
-      return `https://api.subdom.zone/api/v1/subdomain/metadata/ton/${cleanZoneName}/${auction.subdomainName}.png`;
+      return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${cleanZoneName}/${auction.subdomainName}.png`;
     }
     return '';
   }, [auction.zoneName, auction.subdomainName]);
@@ -598,7 +600,7 @@ const fetchDomain = async (address: string, isTestnet: boolean): Promise<DomainI
   
   try {
     const modeFetchDomainUrl = isTestnet ? 'testnet.toncenter.com' : 'toncenter.com';
-    const apiKey = "129c5dfcac700a20e4905ee453be6e2406f941e12c128a738497d5dfc80bdf5d"; // Добавьте mainnet ключ если нужно
+    const apiKey = import.meta.env.VITE_TONCENTER_API_KEY; // Добавьте mainnet ключ если нужно
     
     // Создаем URL с API ключом
     const url = new URL(`https://${modeFetchDomainUrl}/api/v3/dns/records`);

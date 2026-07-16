@@ -5,8 +5,7 @@ import { RootState } from '../rootReducer';
 import { getNFTCollections, getServiceCollections, CollectionKey, NFTCollectionKey } from './constants';
 import axios from 'axios';
 
-const siteApiAddr = 'api.subdom.zone';
-const httpOrHttps = 'https';
+const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL;
 
 export interface NFT {
   address: string;
@@ -94,7 +93,7 @@ export const fetchZonesFromDB = createAsyncThunk<
       console.log(`📡 Загружаем зоны из БД для ${userAddress} (${isTestnet ? 'testnet' : 'mainnet'})`);
       
       // Используем прямой fetch к вашему бэкенду
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://subdom.zone';
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://subdom.zone';
       const response = await fetch(
         `${API_BASE_URL}/api/zones/user/${userAddress}?isTestnet=${isTestnet}`
       );
@@ -151,7 +150,7 @@ export const fetchSubdomainsFromDB = createAsyncThunk<
       console.log(`📡 Загружаем субдомены из БД для ${userAddress} (${isTestnet ? 'testnet' : 'mainnet'})`);
       
       // Используем прямой fetch к вашему бэкенду
-      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://subdom.zone';
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://subdom.zone';
       const response = await fetch(
         `${API_BASE_URL}/api/subdomains/user/${userAddress}?isTestnet=${isTestnet}`
       );
@@ -213,10 +212,8 @@ export const fetchSubdomainsFromDB = createAsyncThunk<
   }
 );
 
-// 3. Обновите filterNftsByCollection для лучшей обработки сервисных коллекций:
+// 3. Обновление filterNftsByCollection для лучшей обработки сервисных коллекций:
 
-// Также обновите filterNftsByCollection для лучшей обработки:
-// Вставьте этот код в ваш actions.ts вместо текущего filterNftsByCollection
 
 export const filterNftsByCollection = createAsyncThunk<
   any[], // Может возвращать NFT, Zone или Subdomain
@@ -392,11 +389,6 @@ export const fetchNfts = createAsyncThunk<
   }
 );
 
-// Обновленный вызов fetchNfts в ManageDomainPage:
-// Замените:
-// dispatch(fetchNfts(cleanAddress));
-// На:
-// dispatch(fetchNfts({ walletAddress: cleanAddress, isTestnet }));
 
 // Обновленный setSelectedCollection с поддержкой isTestnet
 export const setSelectedCollection = createAsyncThunk<
@@ -606,7 +598,7 @@ export const deployProxy = createAsyncThunk<
   'blockchain/deployProxy',
   async (payload, { rejectWithValue }) => {
     try {
-      const response = await axios.post<DeployProxyResponse>(`${httpOrHttps}://${siteApiAddr}/api/v1/proxy/deploy_collection`, payload);
+      const response = await axios.post<DeployProxyResponse>(`${API_PAYLOAD_URL}/api/v1/proxy/deploy_collection`, payload);
       return response.data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -634,7 +626,7 @@ export const deployBundle = createAsyncThunk<
       });
 
       const response = await axios.post<DeployBundleResponse>(
-        `${httpOrHttps}://${siteApiAddr}/api/v1/deploy_bundle?${queryParams.toString()}`,
+        `${API_PAYLOAD_URL}/api/v1/deploy_bundle?${queryParams.toString()}`,
         {
           owner_address: payload.owner_address,
           second_owner_address: payload.second_owner_address,
@@ -662,7 +654,7 @@ export const deploySBTCollection = createAsyncThunk<
   async (payload, { rejectWithValue }) => {
     try {
       const response = await axios.post<DeploySBTCollectionResponse>(
-        `${httpOrHttps}://${siteApiAddr}/api/v1/sbt-subdomain/deploy_collection`,
+        `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/deploy_collection`,
         payload
       );
       return response.data;
@@ -705,7 +697,7 @@ export const parseAuctionInfo = createAsyncThunk<
   'blockchain/parseAuctionInfo',
   async (payload, { rejectWithValue }) => {
     try {
-      const response = await axios.post<ParsedAuctionInfoResponse>(`${httpOrHttps}://${siteApiAddr}/api/v1/parse_auction_info`, payload);
+      const response = await axios.post<ParsedAuctionInfoResponse>(`${API_PAYLOAD_URL}/api/v1/parse_auction_info`, payload);
       return response.data;
     } catch (error) {
       return rejectWithValue('Failed to parse auction info');
@@ -731,7 +723,7 @@ export const claimSubdomain = createAsyncThunk<
       params.append('isTestnet', String(isTestnet));
 
       const response = await axios.post<ClaimSubdomainResponse>(
-        `${httpOrHttps}://${siteApiAddr}/api/v1/claim_subdomain?${params.toString()}`
+        `${API_PAYLOAD_URL}/api/v1/claim_subdomain?${params.toString()}`
       );
       return response.data;
     } catch (error) {

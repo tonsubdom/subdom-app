@@ -1,4 +1,6 @@
 /**
+ * 
+ * tma/src/services/blockchainItems/toncenter-api-config.ts
  * TON Center API Configuration - Исправленная версия
  * Только PLATFORM_OWNER и NFT_WRAPPER_COLLECTION как исходные данные
  */
@@ -35,45 +37,44 @@ export interface GetItemsByCollectionResponse {
 export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
   testnet: {
     API_URL: 'https://testnet.toncenter.com/api/v3',
-    // API_KEY: process.env.REACT_APP_TONCENTER_API_KEY,
-    API_KEY: "129c5dfcac700a20e4905ee453be6e2406f941e12c128a738497d5dfc80bdf5d",
+    API_KEY: import.meta.env.VITE_TONCENTER_API_KEY,
     DEFAULT_ADDRESSES: {
-      PLATFORM_OWNER: '0:2cbb9de88c03a6448aa4263b5230faf2aae330fa1c75329f21a9d2270cb7b5a8',
-      NFT_WRAPPER_COLLECTION: '0:CB5877BFF6DF7699CCCF5A31D99D778491B6C99FB5EBBEDEB4F373CA7F1D341B'
+      PLATFORM_OWNER: import.meta.env.VITE_PLATFORM_OWNER_TESTNET,
+      NFT_WRAPPER_COLLECTION: import.meta.env.VITE_NFT_WRAPPER_COLLECTION_TESTNET
     },
     CODE_HASHES: {
       // Коллекции (code_hash для определения типа)
       
-      PROXY_COLLECTION: '4PDeUC50/mj9CteuqQR+GXnpzVXLbHltMSG/sOav+mM=', // Proxy коллекция
-      SBT_COLLECTION: 'DPYRDOevq89GsCNAqMcohG4Xt94Xf/43b77crnV+rbU=', // SBT коллекция 
-      NFT_WRAPPER_COLLECTION: 'OgHQNsQTEUsUycNlOvM90utMWUneDnyFfI6gIFIIe4M=', // NFT wrapper коллекция
+      PROXY_COLLECTION: import.meta.env.VITE_HASH_PROXY_COLLECTION_TESTNET, // Proxy коллекция
+      SBT_COLLECTION: import.meta.env.VITE_HASH_SBT_COLLECTION_TESTNET, // SBT коллекция 
+      NFT_WRAPPER_COLLECTION: import.meta.env.VITE_HASH_NFT_WRAPPER_COLLECTION_TESTNET, // NFT wrapper коллекция
       
       // Итемы
-      PROXY_SUBDOMAIN: 'GJrdszJEE0E/o5QjCE0FgUlNPagw3D/6yKZKRs+0xbA=', // Proxy субдомен
-      PROXY_SUBDOMAIN_NEW: 'gBRC3/YgBLs4HV1R7DK7wFeyEWi0gjjQvORlgQUosSg=',
-      SBT_SUBDOMAIN: 'vqDGzzV8hIsGXlC/rZvATuHgzNWZvgfxTdBZMzvGyt0=', // SBT субдомен 
-      NFT_WRAPPER: 'aj3FhPvT0VV48/bfAa68n4FEhEcWcpKnymAwE6o4hFo=' // NFT wrapper
+      PROXY_SUBDOMAIN: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_TESTNET, // Proxy субдомен
+      PROXY_SUBDOMAIN_NEW: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_NEW_TESTNET,
+      SBT_SUBDOMAIN: import.meta.env.VITE_HASH_SBT_SUBDOMAIN_TESTNET, // SBT субдомен 
+      NFT_WRAPPER: import.meta.env.VITE_HASH_NFT_WRAPPER_TESTNET // NFT wrapper
     }
   },
   mainnet: {
     API_URL: 'https://toncenter.com/api/v3',
     // API_KEY: process.env.REACT_APP_TONCENTER_API_KEY,
-    API_KEY: "129c5dfcac700a20e4905ee453be6e2406f941e12c128a738497d5dfc80bdf5d",
+    API_KEY: import.meta.env.VITE_TONCENTER_API_KEY,
     DEFAULT_ADDRESSES: {
-      PLATFORM_OWNER: '0:098507db36d99a5a9628815a28e7db25a71c3c60bbf71e5bb138e3cf1c78549c',
-      NFT_WRAPPER_COLLECTION: '0:51e88054c20d7fb7ccfdadf310c535b430b84b532f2508c130feb6b972c9c062'
+      PLATFORM_OWNER: import.meta.env.VITE_PLATFORM_OWNER_MAINNET,
+      NFT_WRAPPER_COLLECTION: import.meta.env.VITE_NFT_WRAPPER_COLLECTION_MAINNET
     },
     CODE_HASHES: {
       // TODO: Заполнить актуальными хешами для mainnet
-      PROXY_COLLECTION: '4PDeUC50/mj9CteuqQR+GXnpzVXLbHltMSG/sOav+mM=',
+      PROXY_COLLECTION: import.meta.env.VITE_HASH_PROXY_COLLECTION_MAINNET,
       // SBT_COLLECTION: 'QstmFwiVgKQVqGKkKiXVtqlzoMy+PFhsKjlm+vnb5TU=',//старый до правки смарта
-      SBT_COLLECTION: 'DPYRDOevq89GsCNAqMcohG4Xt94Xf/43b77crnV+rbU=',
+      SBT_COLLECTION: import.meta.env.VITE_HASH_SBT_COLLECTION_MAINNET,
       // NFT_WRAPPER_COLLECTION: '/hmQgk+MeqPciHLIjbUZ9gM3nEL5srI10/v1kjupxNA=', //старый до правки смарта
-      NFT_WRAPPER_COLLECTION: 'OgHQNsQTEUsUycNlOvM90utMWUneDnyFfI6gIFIIe4M=',
-      PROXY_SUBDOMAIN: 'GJrdszJEE0E/o5QjCE0FgUlNPagw3D/6yKZKRs+0xbA=',
-      PROXY_SUBDOMAIN_NEW: 'gBRC3/YgBLs4HV1R7DK7wFeyEWi0gjjQvORlgQUosSg=',
-      SBT_SUBDOMAIN: 'vqDGzzV8hIsGXlC/rZvATuHgzNWZvgfxTdBZMzvGyt0=',
-      NFT_WRAPPER: 'aj3FhPvT0VV48/bfAa68n4FEhEcWcpKnymAwE6o4hFo='
+      NFT_WRAPPER_COLLECTION: import.meta.env.VITE_HASH_NFT_WRAPPER_COLLECTION_MAINNET,
+      PROXY_SUBDOMAIN: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_MAINNET,
+      PROXY_SUBDOMAIN_NEW: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_NEW_MAINNET,
+      SBT_SUBDOMAIN: import.meta.env.VITE_HASH_SBT_SUBDOMAIN_MAINNET,
+      NFT_WRAPPER: import.meta.env.VITE_HASH_NFT_WRAPPER_MAINNET
     }
   }
 };

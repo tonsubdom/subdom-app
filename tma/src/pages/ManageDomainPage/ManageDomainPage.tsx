@@ -99,6 +99,8 @@ export const ManageDomainPage: FC = () => {
   const { currentTheme } = useTheme();
   const isDark = currentTheme === 'dark';
 
+  const API_PAYLOAD_URL=import.meta.env.VITE_API_SC_PAYLOAD_URL;
+
   const isTestnet = wallet?.account?.chain === "-3";
   
   // Redux state
@@ -180,9 +182,9 @@ export const ManageDomainPage: FC = () => {
       const zoneName = zone.name?.replace('.ton', '') || '';
       
       if (zone.proxy === 0) {
-        return `https://api.subdom.zone/api/v1/sbt-subdomain/metadata/ton/${zoneName}.png`;
+        return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${zoneName}.png`;
       } else {
-        return `https://api.subdom.zone/api/v1/subdomain/metadata/ton/${zoneName}.png`;
+        return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zoneName}.png`;
       }
     }
     
@@ -201,10 +203,10 @@ export const ManageDomainPage: FC = () => {
         console.log(`Структура зоны для getImgUrl для субдомена: ${subdomainName}.${cleanDomainName}.ton = ${JSON.stringify(zone)}, статус из перменной isProxy = ${isProxy}`);
   
         if (isProxy) {
-          return `https://api.subdom.zone/api/v1/subdomain/metadata/ton/${cleanDomainName}/${subdomainName}.png`;
+          return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${cleanDomainName}/${subdomainName}.png`;
           
         } else {
-          return `https://api.subdom.zone/api/v1/sbt-subdomain/metadata/ton/${cleanDomainName}/${subdomainName}.png`;
+          return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${cleanDomainName}/${subdomainName}.png`;
         }
       }
     }

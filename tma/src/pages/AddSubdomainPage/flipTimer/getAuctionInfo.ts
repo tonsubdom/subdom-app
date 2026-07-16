@@ -204,7 +204,7 @@ export async function getAuctionInfo(
       : "https://toncenter.com/api/v2/runGetMethod";
 
     // API ключ для testnet
-    const apiKey = "129c5dfcac700a20e4905ee453be6e2406f941e12c128a738497d5dfc80bdf5d";
+    const apiKey = import.meta.env.VITE_TONCENTER_API_KEY;
 
     console.log("Fetching NFT address by index...");
     

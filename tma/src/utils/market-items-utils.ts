@@ -266,6 +266,8 @@ export const convertToMarketItem = (
   
   // Определяем статус
   const status = item.on_sale ? 'On Sale' : 'Claimed';
+
+  const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL;
   
   // Определяем цену
   let mintPrice = '0 TON';
@@ -293,10 +295,10 @@ export const convertToMarketItem = (
     const subdomain = subdomainName;
     
     if (zone && subdomain) {
-      imgUri = `https://api.subdom.zone/api/v1/subdomain/metadata/ton/${zone}/${subdomain}.png`;
+      imgUri = `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zone}/${subdomain}.png`;
     } else if (zone) {
       // Для прокси-доменов (только зона)
-      imgUri = `https://api.subdom.zone/api/v1/subdomain/metadata/ton/${zone}/placeholder.png`;
+      imgUri = `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zone}/placeholder.png`;
     }
   }
   

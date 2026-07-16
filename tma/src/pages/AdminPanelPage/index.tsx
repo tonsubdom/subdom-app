@@ -5,11 +5,9 @@ import AdminPanelPage from './AdminPanelPage';
 import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
 
 
-const OWNER_TESTNET_RAW = '0:36f50914175fb02d4402bb955869d339a8f7c519d4e9ceb0bb08f48967b12d58';
-const OWNER_MAINNET_RAW = '0:098507db36d99a5a9628815a28e7db25a71c3c60bbf71e5bb138e3cf1c78549c';
+const OWNER_TESTNET_RAW = import.meta.env.VITE_PLATFORM_OWNER_TESTNET;
+const OWNER_MAINNET_RAW = import.meta.env.VITE_PLATFORM_OWNER_MAINNET;
 
-// Адрес владельца (ваш кошелек)
-// const OWNER_ADDRESS = '0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w';
 
 const ProtectedAdminPanel: React.FC = () => {
   const address = useTonAddress();

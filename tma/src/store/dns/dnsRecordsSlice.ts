@@ -4,9 +4,8 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { Address } from 'ton-core';
 
 // ============ API CONFIG ============
-const siteApiAddr = 'api.subdom.zone';
-const httpOrHttps = 'https';
-const API_BASE_URL = `${httpOrHttps}://${siteApiAddr}/api/v1/dns`;
+const siteApiAddr = import.meta.env.VITE_API_SC_PAYLOAD_URL;
+const API_BASE_URL = `$${siteApiAddr}/api/v1/dns`;
 
 // ============ ТИПЫ ============
 

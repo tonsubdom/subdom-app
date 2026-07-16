@@ -136,8 +136,13 @@ const CreateCollectionPage: React.FC = () => {
   const TonDnsAddress = ProxyParams["dns_collection_address"];
 
   const address = useTonAddress();
-  const ownerAddress = isTestnet ? '0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w' : 'UQAJhQfbNtmaWpYogVoo59slpxw8YLv3HluxOOPPHHhUnDl1';
-  const partnerAddress = isTestnet ? '0QA4D9kI_A_7QAyC840AKAFwrOoyY5aOAPj-UI21s5Zgj1kR' : 'UQD7MG7fQBEwHYCrlvIP7XNTFDGCPyGOrZboT-p9nAl1ZSBh';
+
+  const ownerAddress = isTestnet
+    ? (import.meta.env.VITE_PAYMENT_OWNER_TESTNET || '0QA29QkUF1-wLUQCu5VYadM5qPfFGdTpzrC7CPSJZ7EtWP4w')
+    : (import.meta.env.VITE_PAYMENT_OWNER_MAINNET || 'UQAJhQfbNtmaWpYogVoo59slpxw8YLv3HluxOOPPHHhUnDl1');
+const partnerAddress = isTestnet
+    ? (import.meta.env.VITE_PAYMENT_PARTNER_TESTNET || '0QA4D9kI_A_7QAyC840AKAFwrOoyY5aOAPj-UI21s5Zgj1kR')
+    : (import.meta.env.VITE_PAYMENT_PARTNER_MAINNET || 'UQD7MG7fQBEwHYCrlvIP7XNTFDGCPyGOrZboT-p9nAl1ZSBh');
   const [tonConnectUI] = useTonConnectUI();
 
   // Используем состояние из Redux
@@ -149,6 +154,8 @@ const CreateCollectionPage: React.FC = () => {
   const { currentTheme } = useTheme();
   const isDark = currentTheme === 'dark';
   const { t } = useLanguage();
+
+  const API_PAYLOAD_URL=import.meta.env.VITE_API_SC_PAYLOAD_URL;
 
   // Состояния
   const [activeTab, setActiveTab] = useState<ActiveTab>('proxy');
@@ -711,15 +718,15 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
 
   try {
     // 1. Отправляем транзакцию на смену контента
-    const changeContentUrl = `https://api.subdom.zone/api/v1/sbt-subdomain/${zone.collectionAddress}/change_content?query_id=0`;
+    const changeContentUrl = `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/${zone.collectionAddress}/change_content?query_id=0`;
 
     const changeContentData = {
       new_content: {
         content: {
-          uri: `https://api.subdom.zone/api/v1/inactive-subdomain/metadata/ton/${zoneNameWithoutTonArr}`
+          uri: `${API_PAYLOAD_URL}/api/v1/inactive-subdomain/metadata/ton/${zoneNameWithoutTonArr}`
         },
         common_content: {
-          suffix_uri: `https://api.subdom.zone/api/v1/inactive-subdomain/metadata/ton/${zoneNameWithoutTonArr}/`
+          suffix_uri: `${API_PAYLOAD_URL}/api/v1/inactive-subdomain/metadata/ton/${zoneNameWithoutTonArr}/`
         }
       }
     };
@@ -849,7 +856,9 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
       setDnsMainDomainAddress(domainAddress);
 
       const bundlePayload: DeployBundlePayload = {
-        proxy_collection_address: isTestnet ? "kQDLWHe_9t92mczPWjHZnXeEkbbJn7Xrvt6083PKfx00G6Ez" : "EQBR6IBUwg1_t8z9rfMQxTW0MLhLUy8lCMEw_ra5csnAYvwV",
+        proxy_collection_address: isTestnet
+          ? (import.meta.env.VITE_PROXY_COLLECTION_TESTNET ||       "kQDLWHe_9t92mczPWjHZnXeEkbbJn7Xrvt6083PKfx00G6Ez")
+          : (import.meta.env.VITE_PROXY_COLLECTION_MAINNET ||       "EQBR6IBUwg1_t8z9rfMQxTW0MLhLUy8lCMEw_ra5csnAYvwV"),
         user_wallet_address: address,
         dns_item_address: domainAddress,
         dns_item_name: domainName,
@@ -857,10 +866,10 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
         second_owner_address: partnerAddress,
         content: {
           content: {
-            uri: `https://api.subdom.zone/api/v1/subdomain/metadata/ton/${domainName}`
+            uri: `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${domainName}`
           },
           common_content: {
-            suffix_uri: `https://api.subdom.zone/api/v1/subdomain/metadata/ton/${domainName}/`
+            suffix_uri: `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${domainName}/`
           }
         },
         royalty_params: {
@@ -1023,10 +1032,10 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
         partner_address: address,
         content: {
           content: {
-            uri: `https://api.subdom.zone/api/v1/sbt-subdomain/metadata/ton/${domainName}`
+            uri: `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${domainName}`
           },
           common_content: {
-            suffix_uri: `https://api.subdom.zone/api/v1/sbt-subdomain/metadata/ton/${domainName}/`
+            suffix_uri: `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${domainName}/`
           }
         },
         config: {

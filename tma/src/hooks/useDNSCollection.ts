@@ -145,9 +145,9 @@ export const useDNSCollection = () => {
 
     const content: CollectionContent = {
       name: `${formattedDomain} DNS Domains`,
-      image: `https://dns.ness.su/api/ton/${domain.toLowerCase()}.png`,
+      image: `https://api.subdom.zone/api/v1/proxy/metadata/ton/${domain.toLowerCase()}.png`,
       description: `*.${domain.toLowerCase()}.ton domains`,
-      prefix_uri: "https://dns.ness.su/api/ton/",
+      prefix_uri: "https://api.subdom.zone/api/v1/proxy/metadata/ton/",
     };
 
     const deployPayload = beginCell().storeUint(1, 32).storeUint(0, 64).endCell();

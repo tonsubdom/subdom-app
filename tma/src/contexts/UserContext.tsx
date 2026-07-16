@@ -149,35 +149,6 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const wallet = useTonWallet();                                    // ← ДОБАВИТЬ
   const isTestnet = wallet?.account?.chain === "-3"; 
 
-  // Загружаем данные из localStorage при монтировании
-  // useEffect(() => {
-  //   const loadStoredUser = async () => {
-  //     const storedAddress = localStorage.getItem('walletAddress');
-  //     const storedUserData = localStorage.getItem('userData');
-      
-  //     if (storedAddress && storedUserData) {
-  //       try {
-  //         apiService.setNetwork(isTestnet);
-  //         const userData = JSON.parse(storedUserData);
-  //         setUser(userData);
-          
-  //         // Загружаем зоны пользователя
-  //         const userZones = await apiService.getUserZones(storedAddress);
-  //         setZones(userZones);
-          
-  //         // Загружаем субдомены пользователя
-  //         const userSubdomains = await apiService.getUserSubdomains(storedAddress);
-  //         setSubdomains(userSubdomains.map(parseSubdomainFields));
-  //       } catch (error) {
-  //         console.error('Ошибка загрузки сохраненных данных:', error);
-  //         localStorage.removeItem('walletAddress');
-  //         localStorage.removeItem('userData');
-  //       }
-  //     }
-  //   };
-    
-  //   loadStoredUser();
-  // }, [isTestnet]);
 
   useEffect(() => {
   const loadStoredUser = async () => {

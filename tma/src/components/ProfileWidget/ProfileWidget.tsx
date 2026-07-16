@@ -144,57 +144,6 @@ const [sortBy, setSortBy] = useState<SortOption>('name_asc');
     
   }
 
-//   const fetchBalance = async () => {
-//   if (!wallet || !address) return;
-  
-//   try {
-//     // Используем TonConnect UI для получения баланса
-//     const provider = tonConnectUI.wallet?.provider;
-//     if (provider) {
-//       const balanceResult = await provider.send('getBalance', []);
-//       const balanceInNano = balanceResult?.balance || '0';
-//       const balanceInTON = fromNano(balanceInNano);
-//       setBalance(parseFloat(balanceInTON).toFixed(2));
-//     }
-//   } catch (error) {
-//     console.error('❌ Ошибка получения баланса:', error);
-//     setBalance('0');
-//   }
-// };
-
-// const fetchBalanceSimple = async () => {
-//   if (!address) {
-//     setBalance('0');
-//     return;
-//   }
-  
-//   try {
-//     const baseUrl = isTestnet 
-//       ? 'https://testnet.toncenter.com/api/v3/addressInformation'
-//       : 'https://toncenter.com/api/v3/addressInformation';
-    
-//     const url = `${baseUrl}?address=${encodeURIComponent(address)}&use_v2=true`;
-//     const response = await fetch(url);
-    
-//     if (!response.ok) {
-//       throw new Error(`HTTP error: ${response.status}`);
-//     }
-    
-//     const data = await response.json();
-    
-//     if (data?.balance) {
-//       const balanceInTON = fromNano(data.balance);
-//       setBalance(parseFloat(balanceInTON).toFixed(2));
-//     } else {
-//       setBalance('0');
-//     }
-    
-//   } catch (error) {
-//     console.error('❌ Ошибка получения баланса:', error);
-//     setBalance('0');
-//   }
-// };
-
 const fetchBalanceSimple = async () => {
   if (!address) {
     setBalance('0');
@@ -207,7 +156,7 @@ const fetchBalanceSimple = async () => {
       : 'https://toncenter.com/api/v3/addressInformation';
     
     // API ключ для testnet
-    const apiKey = "129c5dfcac700a20e4905ee453be6e2406f941e12c128a738497d5dfc80bdf5d"; // Добавьте mainnet ключ если нужно
+    const apiKey = import.meta.env.VITE_TONCENTER_API_KEY; // Добавьте mainnet ключ если нужно
     
     // Создаем URL с API ключом
     const url = new URL(baseUrl);
@@ -253,25 +202,6 @@ const fetchBalanceSimple = async () => {
   }
 };
 
-
-// // Временно можно использовать window.location
-// const handleAddSubdomain = () => {
-//   if (typeof window !== 'undefined') {
-//     window.location.href = `/#/add-subdomain`;
-//   }
-// };
-
-// const handleManage = () => {
-//   if (typeof window !== 'undefined') {
-//     window.location.href = `/manage#/manage`;
-//   }
-// };
-
-// const handleMarket = () => {
-//   if (typeof window !== 'undefined') {
-//     window.location.href = `/#/market`;
-//   }
-// };
 
 // Обновите функции навигации в ProfileWidget:
 
@@ -368,39 +298,7 @@ const handleMarket = () => {
     }
   };
 
-  // fetchDomain helper - адаптирован из Header
-  // const fetchDomain = async () => {
-  //   if (!wallet || !address) return;
-  //   // setDomainLoading(true);
-  //   try {
-  //     const hexAddress = wallet.account.address;
-  //     const modeFetchDomainUrl = isTestnet ? 'testnet.toncenter.com' : 'toncenter.com';
 
-  //     const response = await fetch(
-  //       `https://${modeFetchDomainUrl}/api/v3/dns/records?wallet=${hexAddress}&limit=100&offset=0`
-  //     );
-
-  //     if (!response.ok) {
-  //       throw new Error('Failed to fetch DNS records');
-  //     }
-
-  //     const data = await response.json();
-
-  //     const domainFromRecords = data.records.find(
-  //       (record: any) => record.nft_item_owner === hexAddress
-  //     )?.domain;
-
-  //     const domainFromAddressBook = Object.values(data.address_book as Record<string, { user_friendly: string; domain?: string }>)
-  // .find((entry: { user_friendly: string; domain?: string }) => entry.user_friendly === address)?.domain;
-
-  //     setDomain(domainFromRecords || domainFromAddressBook || null);
-  //   } catch (error) {
-  //     console.error('Error fetching domain:', error);
-  //     setDomain(null);
-  //   } finally {
-  //     // setDomainLoading(false);
-  //   }
-  // };
 
   const fetchDomain = async () => {
   if (!wallet || !address) return;
@@ -410,7 +308,7 @@ const handleMarket = () => {
     const modeFetchDomainUrl = isTestnet ? 'testnet.toncenter.com' : 'toncenter.com';
     
     // API ключ для testnet
-    const apiKey = "129c5dfcac700a20e4905ee453be6e2406f941e12c128a738497d5dfc80bdf5d"; // Добавьте mainnet ключ если нужно
+    const apiKey = import.meta.env.VITE_TONCENTER_API_KEY; // Добавьте mainnet ключ если нужно
     
     // Создаем URL с API ключом
     const url = new URL(`https://${modeFetchDomainUrl}/api/v3/dns/records`);
@@ -459,36 +357,6 @@ const handleMarket = () => {
   }
 };
 
-//   useEffect(() => {
-//   const loadData = async () => {
-//     if (!address) return;
-    
-//     try {
-//       // Если пользователя нет в контексте, подключаем
-//       if (!user) {
-//         await connectWallet(address, domain || '');
-//       }
-      
-//       // Загружаем домен
-//       // await fetchDomain();
-//       await Promise.all([
-//         fetchDomain(),
-//         fetchBalanceSimple()
-//       ]);
-      
-//       // Загружаем зоны и субдомены параллельно
-//       await Promise.all([
-//         refreshZones(),
-//         loadSubdomains()
-//       ]);
-      
-//     } catch (error) {
-//       console.error('❌ Ошибка загрузки данных:', error);
-//     }
-//   };
-  
-//   loadData();
-// }, [address]); // Только адрес как зависимость
 
 useEffect(() => {
   const loadData = async () => {
@@ -531,18 +399,6 @@ useEffect(() => {
   loadData();
 }, [address, isTestnet]); // Только адрес как зависимость
 
-// useEffect(() => {
-//   if (!address) return;
-  
-//   // Обновляем баланс при монтировании
-//   fetchBalanceSimple();
-  
-//   // Устанавливаем интервал для обновления баланса каждые 10 секунд
-//   const intervalId = setInterval(fetchBalanceSimple, 10000);
-  
-//   // Очистка интервала при размонтировании
-//   return () => clearInterval(intervalId);
-// }, [address]);
 
 useEffect(() => {
   if (!address) return;

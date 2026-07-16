@@ -158,17 +158,17 @@ export interface AppData {
 // Функция для определения типа итема по code_hash
 export const getItemType = (codeHash: string, isTestnet: boolean): ItemType => {
   const testnetHashes = {
-    PROXY_SUBDOMAIN: 'GJrdszJEE0E/o5QjCE0FgUlNPagw3D/6yKZKRs+0xbA=',
-    PROXY_SUBDOMAIN_NEW: 'gBRC3/YgBLs4HV1R7DK7wFeyEWi0gjjQvORlgQUosSg=',
-    SBT_SUBDOMAIN: 'vqDGzzV8hIsGXlC/rZvATuHgzNWZvgfxTdBZMzvGyt0=', 
-    NFT_WRAPPER: 'aj3FhPvT0VV48/bfAa68n4FEhEcWcpKnymAwE6o4hFo=',
+    PROXY_SUBDOMAIN: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_TESTNET,
+    PROXY_SUBDOMAIN_NEW: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_NEW_TESTNET,
+    SBT_SUBDOMAIN: import.meta.env.VITE_HASH_SBT_SUBDOMAIN_TESTNET, 
+    NFT_WRAPPER: import.meta.env.VITE_HASH_NFT_WRAPPER_TESTNET,
   };
   
   const mainnetHashes = {
-    PROXY_SUBDOMAIN: 'GJrdszJEE0E/o5QjCE0FgUlNPagw3D/6yKZKRs+0xbA=',
-    PROXY_SUBDOMAIN_NEW: 'gBRC3/YgBLs4HV1R7DK7wFeyEWi0gjjQvORlgQUosSg=',
-    SBT_SUBDOMAIN: 'vqDGzzV8hIsGXlC/rZvATuHgzNWZvgfxTdBZMzvGyt0=', 
-    NFT_WRAPPER: 'aj3FhPvT0VV48/bfAa68n4FEhEcWcpKnymAwE6o4hFo=',
+    PROXY_SUBDOMAIN: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_MAINNET,
+    PROXY_SUBDOMAIN_NEW: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_NEW_MAINNET,
+    SBT_SUBDOMAIN: import.meta.env.VITE_HASH_SBT_SUBDOMAIN_MAINNET, 
+    NFT_WRAPPER: import.meta.env.VITE_HASH_NFT_WRAPPER_MAINNET,
   };
   
   const hashes = isTestnet ? testnetHashes : mainnetHashes;
@@ -184,15 +184,15 @@ export const getItemType = (codeHash: string, isTestnet: boolean): ItemType => {
 // Функция для определения типа коллекции по code_hash
 export const getCollectionType = (codeHash: string, isTestnet: boolean): CollectionType => {
   const testnetHashes = {
-    PROXY_COLLECTION: '4PDeUC50/mj9CteuqQR+GXnpzVXLbHltMSG/sOav+mM=',
-    SBT_COLLECTION: 'DPYRDOevq89GsCNAqMcohG4Xt94Xf/43b77crnV+rbU=', // Пока такой же
-    NFT_WRAPPER_COLLECTION: 'OgHQNsQTEUsUycNlOvM90utMWUneDnyFfI6gIFIIe4M=', // Пока такой же
+    PROXY_COLLECTION: import.meta.env.VITE_HASH_PROXY_COLLECTION_TESTNET,
+    SBT_COLLECTION: import.meta.env.VITE_HASH_SBT_COLLECTION_TESTNET, // Пока такой же
+    NFT_WRAPPER_COLLECTION: import.meta.env.VITE_HASH_NFT_WRAPPER_COLLECTION_TESTNET, // Пока такой же
   };
   
   const mainnetHashes = {
-    PROXY_COLLECTION: '4PDeUC50/mj9CteuqQR+GXnpzVXLbHltMSG/sOav+mM=',
-    SBT_COLLECTION: 'DPYRDOevq89GsCNAqMcohG4Xt94Xf/43b77crnV+rbU=',
-    NFT_WRAPPER_COLLECTION: 'OgHQNsQTEUsUycNlOvM90utMWUneDnyFfI6gIFIIe4M=',
+    PROXY_COLLECTION: import.meta.env.VITE_HASH_PROXY_COLLECTION_MAINNET,
+    SBT_COLLECTION: import.meta.env.VITE_HASH_SBT_COLLECTION_MAINNET,
+    NFT_WRAPPER_COLLECTION: import.meta.env.VITE_HASH_NFT_WRAPPER_COLLECTION_MAINNET,
   };
   
   const hashes = isTestnet ? testnetHashes : mainnetHashes;

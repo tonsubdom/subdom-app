@@ -1,6 +1,8 @@
 // src/utils/tonUtils.ts
 import { Address } from "ton-core";
 
+const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL;
+
 /**
  * Конвертирует user-friendly адрес (kQ...) в raw формат (0:...)
  */
@@ -125,7 +127,7 @@ export async function checkDomainDNSRecord(
       const resolverCell = data.stack[3];
       if (resolverCell && resolverCell[0] === 'tvm.Cell') {
         // Парсим cell чтобы получить адрес
-        const parseResponse = await fetch('https://api.subdom.zone/api/v1/parse_cell', {
+        const parseResponse = await fetch(`${API_PAYLOAD_URL}/api/v1/parse_cell`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -245,10 +247,10 @@ export function getZoneImageUrl(zone: any): string {
   
   if (isProxy) {
     // Proxy зона
-    return `https://api.subdom.zone/api/v1/subdomain/metadata/ton/${zoneName}.png`;
+    return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zoneName}.png`;
   } else {
     // SBT зона
-    return `https://api.subdom.zone/api/v1/sbt-subdomain/metadata/ton/${zoneName}.png`;
+    return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${zoneName}.png`;
   }
 }
 
@@ -276,10 +278,10 @@ export function getSubdomainImageUrl(subdomain: any, zone?: any): string {
   
   if (isProxy) {
     // Proxy субдомен
-    return `https://api.subdom.zone/api/v1/subdomain/metadata/ton/${cleanDomainName}/${subdomainName}.png`;
+    return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${cleanDomainName}/${subdomainName}.png`;
   } else {
     // SBT субдомен
-    return `https://api.subdom.zone/api/v1/sbt-subdomain/metadata/ton/${cleanDomainName}/${subdomainName}.png`;
+    return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${cleanDomainName}/${subdomainName}.png`;
   }
 }
 

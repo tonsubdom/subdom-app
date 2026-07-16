@@ -129,6 +129,9 @@ const createGetGemsLink = (
   try {
     const convertedCollectionAddress = convertAddress(collectionAddress, isTestnet);
     const convertedNftAddress = convertAddress(nftAddress, isTestnet);
+
+      
+
     
     if (convertedCollectionAddress && convertedNftAddress) {
       const link = isTestnet 
@@ -161,6 +164,8 @@ const convertToMarketItem = (item: SimpleEnrichedItem, _isTestnet: boolean): Mar
     hasMetadata: !!item.metadata,
     metadata: item.metadata
   });
+
+      const API_PAYLOAD_URL=import.meta.env.VITE_API_SC_PAYLOAD_URL;
   
   // Получаем token_info из metadata
   const tokenInfo = item.metadata?.token_info?.[0] || {};
@@ -225,7 +230,7 @@ const convertToMarketItem = (item: SimpleEnrichedItem, _isTestnet: boolean): Mar
   }
   // Для субдоменов используем стандартный URL
   else if (itemType === 'proxy_subdomain' && zoneName !== 'unknown' && subdomainName) {
-    imgUri = `https://api.subdom.zone/api/v1/subdomain/metadata/ton/${zoneName.slice(0,-4)}/${subdomainName}.png`;
+    imgUri = `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zoneName.slice(0,-4)}/${subdomainName}.png`;
     console.log('✅ Изображение из API субдоменов:', imgUri);
   } else {
     console.log('❌ Изображение не найдено');

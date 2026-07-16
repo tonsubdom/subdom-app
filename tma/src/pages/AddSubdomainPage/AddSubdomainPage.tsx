@@ -68,6 +68,8 @@ const mapPrices = {
   6: 1,
 };
 
+const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL;
+
 const normalizeAddress = (addr: string): string => {
   if (!addr) return '';
   try {
@@ -1231,9 +1233,9 @@ const getImageUrl = () => {
   if (!domainZoneName || !subDomainName) return '';
   
   if (activeTab === 'proxy') {
-    return `https://api.subdom.zone/api/v1/subdomain/metadata/ton/${domainZoneName}/${subDomainName}.png`;
+    return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${domainZoneName}/${subDomainName}.png`;
   } else {
-    return `https://api.subdom.zone/api/v1/sbt-subdomain/metadata/ton/${domainZoneName}/${subDomainName}.png`;
+    return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${domainZoneName}/${subDomainName}.png`;
   }
 };
 
