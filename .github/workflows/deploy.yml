@@ -67,13 +67,17 @@ jobs:
             --exclude='*.db' \
             --exclude='*.db-shm' \
             --exclude='*.db-wal' \
-            ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/root/remoteSubdomGitHosting/
+            --exclude='*.db.backup*' \
+            --exclude='db/' \
+            ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/root/subdom-deployment/
 
       - name: Rebuild and restart Docker containers
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "cd /root/remoteSubdomGitHosting && \
+            "cd /root/subdom-deployment && \
+             docker stop subdom-deployment_backend_1 2>/dev/null || true && \
+             docker rm subdom-deployment_backend_1 2>/dev/null || true && \
              export TELEGRAM_BOT_TOKEN='${{ secrets.TELEGRAM_BOT_TOKEN }}' && \
              export TELEGRAM_OWNER_ID='${{ secrets.TELEGRAM_OWNER_ID }}' && \
              export TELEGRAM_GROUP_ID='${{ secrets.TELEGRAM_GROUP_ID }}' && \
