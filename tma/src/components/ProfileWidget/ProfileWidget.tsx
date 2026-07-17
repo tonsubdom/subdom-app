@@ -2400,7 +2400,7 @@ const ProfileWidget: React.FC = () => {
   };
 
 
-  // Обновите функции навигации в ProfileWidget:
+  // Обновите функции навигации в ProfileWidget: 1
 
   const handleAddSubdomain = () => {
     setIsExpanded(false); // Сворачиваем виджет
