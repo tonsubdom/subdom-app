@@ -2287,7 +2287,7 @@ const ProfileWidget: React.FC = () => {
   const [swipeIndex, setSwipeIndex] = useState<number>(0);
 
   // Ref для верхнего блока с фильтрами
-  const headerRef = useRef<HTMLDivElement>(null);
+  // const headerRef = useRef<HTMLDivElement>(null);
 
   // Цвета для темы - синие в светлой, золотые в темной
   const themeColors = {
@@ -2647,8 +2647,8 @@ const ProfileWidget: React.FC = () => {
 
   // Функция для получения статуса зоны
   const getZoneStatusInfo = (zone: any) => {
-    if (zone.status) {
-      switch (zone.status.toLowerCase()) {
+    if ((zone as any).status) {
+  switch ((zone as any).status.toLowerCase()) {
         case 'active':
           return { status: 'Active', color: '#4caf50', description: 'Активная зона' };
         case 'inactive':
@@ -3391,7 +3391,7 @@ const ProfileWidget: React.FC = () => {
           display: 'flex',
           gap: '8px'
         }}>
-          {checkAuctionTimerEnd(auction.ends) ? 
+          {checkAuctionTimerEnd(new Date(auction.ends)) ? 
             <button
               onClick={() => handleGoToAuction(auction.name)}
               style={cardButtonStyle}
