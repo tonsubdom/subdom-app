@@ -34,6 +34,7 @@ export interface Zone {
   createdAt: string;
   updatedAt: string;
   zoneLength?: number;
+  status?: string;
 }
 
 export interface Subdomain {
