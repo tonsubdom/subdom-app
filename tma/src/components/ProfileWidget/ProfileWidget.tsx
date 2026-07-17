@@ -2194,7 +2194,7 @@
 // components/ProfileWidget/ProfileWidget.tsx
 // Версия с фильтрами в дропдауне, переключателем вида карточек и увеличенной высотой
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   useTonAddress,
   useTonWallet,
