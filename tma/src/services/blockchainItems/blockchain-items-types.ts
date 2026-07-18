@@ -176,7 +176,11 @@ export const getItemType = (codeHash: string, isTestnet: boolean): ItemType => {
  // if (codeHash === hashes.PROXY_SUBDOMAIN) return 'proxy_subdomain';
   if (codeHash === hashes.PROXY_SUBDOMAIN || codeHash === hashes.PROXY_SUBDOMAIN_NEW) return 'proxy_subdomain';
   if (codeHash === hashes.SBT_SUBDOMAIN) return 'sbt_subdomain';
-  if (codeHash === hashes.NFT_WRAPPER) return 'nft_wrapper';
+  // if (codeHash === hashes.NFT_WRAPPER) return 'nft_wrapper';
+  if (codeHash === hashes.NFT_WRAPPER
+    || codeHash === hashes.PROXY_SUBDOMAIN
+    || codeHash === hashes.PROXY_SUBDOMAIN_NEW) return 'nft_wrapper';
+
   
   return 'proxy_subdomain'; // По умолчанию
 };

@@ -121,9 +121,17 @@ export class SubdomainClassifier {
     return item.code_hash === this.config.CODE_HASHES.SBT_SUBDOMAIN;
   }
   
+  // isNFTWrapper(item: any): boolean {
+  //   return item.code_hash === this.config.CODE_HASHES.NFT_WRAPPER;
+  // }
+
+  //со старой и новой версией смартконтрактов
   isNFTWrapper(item: any): boolean {
-    return item.code_hash === this.config.CODE_HASHES.NFT_WRAPPER;
+    return item.code_hash === this.config.CODE_HASHES.NFT_WRAPPER
+        || item.code_hash === this.config.CODE_HASHES.PROXY_SUBDOMAIN
+        || item.code_hash === this.config.CODE_HASHES.PROXY_SUBDOMAIN_NEW;
   }
+
   
   isSubdomainItem(item: any): boolean {
     return this.isProxySubdomain(item) || this.isSBTSubdomain(item);

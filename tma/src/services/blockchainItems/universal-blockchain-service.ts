@@ -452,9 +452,82 @@ export class UniversalBlockchainService {
 
 
   /**
-   * Получение всех NFT оберток_
+   * Получение всех NFT оберток_С ОДНИМ КОД ХЕШЕМ СТАРЫМ
    */
   
+// async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
+//   const cacheKey = `all_nft_wrappers_${this.isTestnet ? 'testnet' : 'mainnet'}`;
+  
+//   if (!forceRefresh) {
+//     const cached = this.cache.get<SimpleEnrichedItem[]>(cacheKey);
+//     if (cached) {
+//       console.log('📦 NFT обертки из кэша:', cached.length);
+//       console.log('📋 Пример NFT обертки из кэша:', cached[0]);
+//       return cached;
+//     }
+//   }
+
+//   console.log('🔄 Загрузка всех NFT оберток...');
+//   console.log('📍 Адрес коллекции из конфига:', this.nftWrapperCollection);
+  
+//   try {
+//     // 1️⃣ Прямой запрос итемов из коллекции
+//     console.log('1️⃣ Прямой запрос итемов из коллекции...');
+//     const response = await this.api.getItemsByCollection(this.nftWrapperCollection);
+
+    
+//     const items = response.nft_items || [];
+//     console.log(`📊 Найдено ${items.length} итемов в коллекции`);
+//     console.log('📋 Пример итема из коллекции:', items[0]);
+    
+//     // 2️⃣ Фильтрация NFT wrapper итемов (по code_hash)
+//     console.log('2️⃣ Фильтрация NFT wrapper итемов...');
+//     const networkConfig = NETWORK_CONFIGS[this.isTestnet ? 'testnet' : 'mainnet'];
+//     const nftWrapperHash = networkConfig.CODE_HASHES.NFT_WRAPPER;
+//     console.log('🔑 NFT Wrapper hash:', nftWrapperHash);
+    
+//     const nftWrapperItems = items.filter(item => 
+//       item.code_hash === nftWrapperHash
+//     );
+//     console.log(`📊 После фильтрации: ${nftWrapperItems.length} NFT wrapper итемов`);
+//     console.log('📋 Пример NFT wrapper итема:', nftWrapperItems[0]);
+
+    
+    
+//     // 3️⃣ Загрузка метаданных
+//     console.log('3️⃣ Загрузка метаданных...');
+//     // const metadata = await this.getMetadataForAll(nftWrapperItems);
+//     // 3️⃣ Используем метаданные из response
+// console.log('3️⃣ Используем метаданные из response...');
+// const metadata = response.metadata || {};
+//     console.log(`📊 Загружено ${Object.keys(metadata).length} метаданных`);
+//     console.log('📋 Пример метаданных:', metadata[nftWrapperItems[0]?.address]);
+    
+//     // 4️⃣ Конвертация через существующую утилиту
+//     console.log('4️⃣ Конвертация в SimpleEnrichedItems...');
+//     const result = convertToSimpleEnrichedItems(nftWrapperItems, metadata, this.isTestnet);
+//     console.log(`📊 Результат конвертации: ${result.length} итемов`);
+//     console.log('📋 Пример конвертированного итема:', result[0]);
+    
+//     console.log('5️⃣ Сохранение в кэш...');
+//     this.cache.set(cacheKey, result);
+//     console.log(`✅ Загружено ${result.length} NFT оберток`);
+
+    
+    
+//     return result;
+    
+//   } catch (error) {
+//     console.error('❌ Ошибка загрузки NFT оберток:', error);
+//     console.error('🔧 Детали ошибки:', {
+//       message: error instanceof Error ? error.message : String(error),
+//       stack: error instanceof Error ? error.stack : undefined,
+//       collectionAddress: this.nftWrapperCollection
+//     });
+//     throw error;
+//   }
+// }
+
 async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
   const cacheKey = `all_nft_wrappers_${this.isTestnet ? 'testnet' : 'mainnet'}`;
   
@@ -474,7 +547,6 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
     // 1️⃣ Прямой запрос итемов из коллекции
     console.log('1️⃣ Прямой запрос итемов из коллекции...');
     const response = await this.api.getItemsByCollection(this.nftWrapperCollection);
-
     
     const items = response.nft_items || [];
     console.log(`📊 Найдено ${items.length} итемов в коллекции`);
@@ -483,23 +555,22 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
     // 2️⃣ Фильтрация NFT wrapper итемов (по code_hash)
     console.log('2️⃣ Фильтрация NFT wrapper итемов...');
     const networkConfig = NETWORK_CONFIGS[this.isTestnet ? 'testnet' : 'mainnet'];
-    const nftWrapperHash = networkConfig.CODE_HASHES.NFT_WRAPPER;
-    console.log('🔑 NFT Wrapper hash:', nftWrapperHash);
+    const nftWrapperHashes = [
+      networkConfig.CODE_HASHES.NFT_WRAPPER,
+      networkConfig.CODE_HASHES.PROXY_SUBDOMAIN,
+      networkConfig.CODE_HASHES.PROXY_SUBDOMAIN_NEW
+    ];
+    console.log('🔑 NFT Wrapper hashes:', nftWrapperHashes);
     
-    const nftWrapperItems = items.filter(item => 
-      item.code_hash === nftWrapperHash
+    const nftWrapperItems = items.filter(item =>
+      nftWrapperHashes.includes(item.code_hash)
     );
     console.log(`📊 После фильтрации: ${nftWrapperItems.length} NFT wrapper итемов`);
     console.log('📋 Пример NFT wrapper итема:', nftWrapperItems[0]);
-
     
-    
-    // 3️⃣ Загрузка метаданных
-    console.log('3️⃣ Загрузка метаданных...');
-    // const metadata = await this.getMetadataForAll(nftWrapperItems);
     // 3️⃣ Используем метаданные из response
-console.log('3️⃣ Используем метаданные из response...');
-const metadata = response.metadata || {};
+    console.log('3️⃣ Используем метаданные из response...');
+    const metadata = response.metadata || {};
     console.log(`📊 Загружено ${Object.keys(metadata).length} метаданных`);
     console.log('📋 Пример метаданных:', metadata[nftWrapperItems[0]?.address]);
     
@@ -512,8 +583,6 @@ const metadata = response.metadata || {};
     console.log('5️⃣ Сохранение в кэш...');
     this.cache.set(cacheKey, result);
     console.log(`✅ Загружено ${result.length} NFT оберток`);
-
-    
     
     return result;
     
@@ -527,6 +596,7 @@ const metadata = response.metadata || {};
     throw error;
   }
 }
+
 
   /**
    * Получение NFT оберток пользователя
