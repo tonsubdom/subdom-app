@@ -146,7 +146,6 @@ export class SubdomainClassifier {
     return item.code_hash === this.config.CODE_HASHES.NFT_WRAPPER
         || item.code_hash === this.config.CODE_HASHES.PROXY_SUBDOMAIN
         || item.code_hash === this.config.CODE_HASHES.PROXY_SUBDOMAIN_NEW
-        || item.code_hash === this.config.CODE_HASHES.OLD_NFT_HASH_WRAPPER_COLLECTION
   }
 
   
