@@ -243,7 +243,6 @@ else if (itemType === 'nft_wrapper' && item.domain) {
   
   // Получаем имя из token_info или из домена
   // let name = tokenInfo.name || item.domain || 'Без названия';
-// Получаем имя из token_info или из домена
 let name = tokenInfo.name || item.domain || 'Без названия';
 
 let { zoneLength, subdomainLength } = item.domain
@@ -251,14 +250,13 @@ let { zoneLength, subdomainLength } = item.domain
     : { zoneLength: 0, subdomainLength: 0 };
 
 if (itemType === 'nft_wrapper') {
-    // Для NFT wrapper просто убираем .ton
+    // Для NFT wrapper имя берём из домена (убираем .ton)
     name = item.domain ? item.domain.replace('.ton', '') : name;
     zoneLength = name.length;
     subdomainLength = 0;
 }
-// для proxy_subdomain — name не трогаем, он уже правильный из tokenInfo или item.domain
 
-console.log('📝 Имя:', name);
+  console.log('📝 Имя:', name);
 
   
   
