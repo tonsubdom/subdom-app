@@ -29,7 +29,7 @@ export function Root() {
     <ErrorBoundary fallback={ErrorBoundaryError}>
       <TonConnectUIProvider
         enableAndroidBackHandler={false}
-        manifestUrl={publicUrl(`${publicBaseUrl}}/tonconnect-manifest.json`)}
+        manifestUrl={publicUrl(`${publicBaseUrl}/tonconnect-manifest.json`)}
       >
         <App/>
       </TonConnectUIProvider>
