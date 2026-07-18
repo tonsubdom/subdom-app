@@ -209,41 +209,83 @@ export const getCollectionType = (codeHash: string, isTestnet: boolean): Collect
 };
 
 // Функция для извлечения домена и зоны из URI
+// export const extractDomainAndZone = (uri: string): { domain: string | null; zone: string | null } => {
+//   if (!uri) return { domain: null, zone: null };
+  
+//   try {
+//     const url = new URL(uri);
+//     const pathParts = url.pathname.split('/');
+    
+//     // Ищем индекс 'metadata'
+//     const metadataIndex = pathParts.indexOf('metadata');
+//     if (metadataIndex === -1) return { domain: null, zone: null };
+    
+//     // Части после 'metadata'
+//     const afterMetadata = pathParts.slice(metadataIndex + 1);
+    
+//     if (afterMetadata.length >= 2) {
+//       const zone = afterMetadata[1];
+//       const subdomain = afterMetadata.length >= 3 ? afterMetadata[2] : null;
+      
+//       let domain = null;
+//       if (subdomain) {
+//         domain = `${subdomain}.${zone}.ton`;
+//       }
+      
+//       return {
+//         domain,
+//         zone: `${zone}.ton`
+//       };
+//     }
+    
+//     return { domain: null, zone: null };
+//   } catch (error) {
+//     console.error('Error extracting domain and zone from URI:', error);
+//     return { domain: null, zone: null };
+//   }
+// };
+
 export const extractDomainAndZone = (uri: string): { domain: string | null; zone: string | null } => {
   if (!uri) return { domain: null, zone: null };
-  
+
   try {
     const url = new URL(uri);
-    const pathParts = url.pathname.split('/');
-    
-    // Ищем индекс 'metadata'
+    const pathParts = url.pathname.split('/').filter(p => p !== '');
+
     const metadataIndex = pathParts.indexOf('metadata');
     if (metadataIndex === -1) return { domain: null, zone: null };
-    
-    // Части после 'metadata'
+
     const afterMetadata = pathParts.slice(metadataIndex + 1);
-    
+
     if (afterMetadata.length >= 2) {
-      const zone = afterMetadata[1];
-      const subdomain = afterMetadata.length >= 3 ? afterMetadata[2] : null;
-      
-      let domain = null;
-      if (subdomain) {
-        domain = `${subdomain}.${zone}.ton`;
+      // Формат: .../proxy/metadata/ton/{name}
+      // afterMetadata = ['ton', 'tion'] → domain = 'tion.ton', zone = 'ton'
+      const zonePart = afterMetadata[0];   // 'ton'
+      const namePart = afterMetadata[1];    // 'tion' или 'downloader'
+
+      if (afterMetadata.length >= 3) {
+        // Формат: .../metadata/{zone}/{subdomain}/...
+        const subdomain = afterMetadata[1];
+        const zone = afterMetadata[0];
+        return { domain: `${subdomain}.${zone}.ton`, zone: `${zone}.ton` };
       }
-      
+
+      // Два элемента после metadata — это zone + name для proxy формата
+      // или zone + subdomain для старого. Проверяем по известным зонам:
+      const domain = `${namePart}.${zonePart}`;
       return {
-        domain,
-        zone: `${zone}.ton`
+        domain: domain.endsWith('.ton') ? domain : `${domain}.ton`,
+        zone: zonePart
       };
     }
-    
+
     return { domain: null, zone: null };
   } catch (error) {
     console.error('Error extracting domain and zone from URI:', error);
     return { domain: null, zone: null };
   }
 };
+
 
 // Функция для получения имени из метаданных
 export const getNameFromMetadata = (metadata?: MetadataItem): string => {
