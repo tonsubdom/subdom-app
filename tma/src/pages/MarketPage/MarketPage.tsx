@@ -167,7 +167,7 @@ const convertToMarketItem = (item: SimpleEnrichedItem, _isTestnet: boolean): Mar
 
       const API_PAYLOAD_URL=import.meta.env.VITE_API_SC_PAYLOAD_URL;
   
-  // Получаем token_info из metadata
+  // Получаем token_info из metadata . 
   const tokenInfo = item.metadata?.token_info?.[0] || {};
   console.log('📋 Token info:', tokenInfo);
   
