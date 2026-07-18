@@ -262,14 +262,14 @@ if (itemType === 'nft_wrapper') {
   // }
 
   //ОТКАТИТЬ КОММЕНТ В СЛУЧАЕ ЧЕГО
-//   if (itemType === 'nft_wrapper') {
-//     // Для NFT wrapper имя берём из домена, а не из token_info (там может быть что угодно)
-//     name = item.domain || name;
-//     if (!name.endsWith('.ton')) {
-//         name = name + '.ton';
-//     }
-//     zoneLength = name.slice(0, -4).length;
-// }
+  if (itemType === 'nft_wrapper') {
+    // Для NFT wrapper имя берём из домена, а не из token_info (там может быть что угодно)
+    name = item.domain || name;
+    if (!name.endsWith('.ton')) {
+        name = name + '.ton';
+    }
+    zoneLength = name.slice(0, -4).length;
+}
   console.log('📝 Имя:', name);
 
   

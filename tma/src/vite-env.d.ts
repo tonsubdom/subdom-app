@@ -30,7 +30,8 @@ interface ImportMetaEnv {
   readonly VITE_HASH_SBT_SUBDOMAIN_MAINNET: string;
   readonly VITE_HASH_NFT_WRAPPER_MAINNET: string;
   readonly VITE_API_SC_PAYLOAD_URL: string;
-  readonly VITE_OLD_PROXY_COLLECTION_MAINNET: string;
+  readonly VITE_OLD_WRAPPER_COLLECTION_MAINNET: string;
+  readonly VITE_OLD_HASH_WRAPPER_COLLECTION_MAIINET: string;
 }
 
 interface ImportMeta {
