@@ -188,7 +188,7 @@ const convertToMarketItem = (item: SimpleEnrichedItem, _isTestnet: boolean): Mar
   }
   
   // // Определяем статус
-  // const status = item.on_sale ? 'On Sale' : 'Claimed';
+  const status = item.on_sale ? 'On Sale' : 'Claimed';
   
   // // Определяем цену
   let mintPrice = '0 TON';
@@ -242,20 +242,34 @@ else if (itemType === 'nft_wrapper' && item.domain) {
   }
   
   // Получаем имя из token_info или из домена
-  let name = tokenInfo.name || item.domain || 'Без названия';
-let { zoneLength, subdomainLength } = extractLengths(item.domain);
+  // let name = tokenInfo.name || item.domain || 'Без названия';
+let name = tokenInfo.name || item.domain || 'Без названия';
+
+let { zoneLength, subdomainLength } = item.domain
+    ? extractLengths(item.domain)
+    : { zoneLength: 0, subdomainLength: 0 };
+
+if (itemType === 'nft_wrapper') {
+    // Для NFT wrapper имя берём из домена (убираем .ton)
+    name = item.domain ? item.domain.replace('.ton', '') : name;
+    zoneLength = name.length;
+    subdomainLength = 0;
+}
+
   // if (itemType === 'nft_wrapper') {
   //   name = name.split(' ')[1]+'.ton';
   //   zoneLength = name.slice(0,-4).length;
   // }
-  if (itemType === 'nft_wrapper') {
-    // Для NFT wrapper имя берём из домена, а не из token_info (там может быть что угодно)
-    name = item.domain || name;
-    if (!name.endsWith('.ton')) {
-        name = name + '.ton';
-    }
-    zoneLength = name.slice(0, -4).length;
-}
+
+  //ОТКАТИТЬ КОММЕНТ В СЛУЧАЕ ЧЕГО
+//   if (itemType === 'nft_wrapper') {
+//     // Для NFT wrapper имя берём из домена, а не из token_info (там может быть что угодно)
+//     name = item.domain || name;
+//     if (!name.endsWith('.ton')) {
+//         name = name + '.ton';
+//     }
+//     zoneLength = name.slice(0, -4).length;
+// }
   console.log('📝 Имя:', name);
 
   

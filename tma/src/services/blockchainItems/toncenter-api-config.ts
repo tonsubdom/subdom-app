@@ -13,6 +13,7 @@ export interface NetworkConfig {
   DEFAULT_ADDRESSES: {
     PLATFORM_OWNER: string;        // Владелец платформы - от него получаем все коллекции
     NFT_WRAPPER_COLLECTION: string; // NFT Wrapper коллекция
+    OLD_NFT_WRAPPER_COLLECTION: string;
   };
   CODE_HASHES: {
     // Коллекции (определяем по code_hash)
@@ -40,7 +41,8 @@ export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
     API_KEY: import.meta.env.VITE_TONCENTER_API_KEY,
     DEFAULT_ADDRESSES: {
       PLATFORM_OWNER: import.meta.env.VITE_PLATFORM_OWNER_TESTNET,
-      NFT_WRAPPER_COLLECTION: import.meta.env.VITE_NFT_WRAPPER_COLLECTION_TESTNET
+      NFT_WRAPPER_COLLECTION: import.meta.env.VITE_NFT_WRAPPER_COLLECTION_TESTNET,
+      OLD_NFT_WRAPPER_COLLECTION: import.meta.env.VITE_OLD_PROXY_COLLECTION_MAINNET
     },
     CODE_HASHES: {
       // Коллекции (code_hash для определения типа)
@@ -62,7 +64,8 @@ export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
     API_KEY: import.meta.env.VITE_TONCENTER_API_KEY,
     DEFAULT_ADDRESSES: {
       PLATFORM_OWNER: import.meta.env.VITE_PLATFORM_OWNER_MAINNET,
-      NFT_WRAPPER_COLLECTION: import.meta.env.VITE_NFT_WRAPPER_COLLECTION_MAINNET
+      NFT_WRAPPER_COLLECTION: import.meta.env.VITE_NFT_WRAPPER_COLLECTION_MAINNET,
+      OLD_NFT_WRAPPER_COLLECTION: import.meta.env.VITE_OLD_PROXY_COLLECTION_MAINNET
     },
     CODE_HASHES: {
       // TODO: Заполнить актуальными хешами для mainnet
