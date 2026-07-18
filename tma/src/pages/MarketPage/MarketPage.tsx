@@ -188,7 +188,7 @@ const convertToMarketItem = (item: SimpleEnrichedItem, _isTestnet: boolean): Mar
   }
   
   // // Определяем статус
-  const status = item.on_sale ? 'On Sale' : 'Claimed';
+  // const status = item.on_sale ? 'On Sale' : 'Claimed';
   
   // // Определяем цену
   let mintPrice = '0 TON';
@@ -232,7 +232,7 @@ const convertToMarketItem = (item: SimpleEnrichedItem, _isTestnet: boolean): Mar
   else if (itemType === 'proxy_subdomain' && zoneName !== 'unknown' && subdomainName) {
     imgUri = `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zoneName.slice(0,-4)}/${subdomainName}.png`;
     console.log('✅ Изображение из API субдоменов:', imgUri);
-  } // Для NFT wrapper используем API прокси-метаданных
+  } // Для NFT wrapper используем API прокси-метаданных e
 else if (itemType === 'nft_wrapper' && item.domain) {
     const domainName = item.domain.replace('.ton', '');
     imgUri = `${API_PAYLOAD_URL}/api/v1/proxy/metadata/ton/${domainName}.png`;
@@ -242,20 +242,20 @@ else if (itemType === 'nft_wrapper' && item.domain) {
   }
   
   // Получаем имя из token_info или из домена
-  // let name = tokenInfo.name || item.domain || 'Без названия';
-let name = tokenInfo.name || item.domain || 'Без названия';
-
-let { zoneLength, subdomainLength } = item.domain
-    ? extractLengths(item.domain)
-    : { zoneLength: 0, subdomainLength: 0 };
-
-if (itemType === 'nft_wrapper') {
-    // Для NFT wrapper имя берём из домена (убираем .ton)
-    name = item.domain ? item.domain.replace('.ton', '') : name;
-    zoneLength = name.length;
-    subdomainLength = 0;
+  let name = tokenInfo.name || item.domain || 'Без названия';
+let { zoneLength, subdomainLength } = extractLengths(item.domain);
+  // if (itemType === 'nft_wrapper') {
+  //   name = name.split(' ')[1]+'.ton';
+  //   zoneLength = name.slice(0,-4).length;
+  // }
+  if (itemType === 'nft_wrapper') {
+    // Для NFT wrapper имя берём из домена, а не из token_info (там может быть что угодно)
+    name = item.domain || name;
+    if (!name.endsWith('.ton')) {
+        name = name + '.ton';
+    }
+    zoneLength = name.slice(0, -4).length;
 }
-
   console.log('📝 Имя:', name);
 
   
