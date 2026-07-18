@@ -52,7 +52,7 @@ export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
       SBT_COLLECTION: import.meta.env.VITE_HASH_SBT_COLLECTION_TESTNET, // SBT коллекция 
       NFT_WRAPPER_COLLECTION: import.meta.env.VITE_HASH_NFT_WRAPPER_COLLECTION_TESTNET, // NFT wrapper коллекция
       //старая общая коллекция оберток *.ton
-      OLD_NFT_HASH_WRAPPER_COLLECTION: import.meta.env.VITE_OLD_HASH_WRAPPER_COLLECTION_MAIINET,
+      OLD_NFT_HASH_WRAPPER_COLLECTION: import.meta.env.VITE_OLD_HASH_WRAPPER_COLLECTION_MAINNET,
       
       // Итемы
       PROXY_SUBDOMAIN: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_TESTNET, // Proxy субдомен
@@ -79,7 +79,7 @@ export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
       // NFT_WRAPPER_COLLECTION: '/hmQgk+MeqPciHLIjbUZ9gM3nEL5srI10/v1kjupxNA=', //старый до правки смарта
       NFT_WRAPPER_COLLECTION: import.meta.env.VITE_HASH_NFT_WRAPPER_COLLECTION_MAINNET,
 
-      OLD_NFT_HASH_WRAPPER_COLLECTION: import.meta.env.VITE_OLD_HASH_WRAPPER_COLLECTION_MAIINET,
+      OLD_NFT_HASH_WRAPPER_COLLECTION: import.meta.env.VITE_OLD_HASH_WRAPPER_COLLECTION_MAINNET,
       
       PROXY_SUBDOMAIN: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_MAINNET,
       PROXY_SUBDOMAIN_NEW: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_NEW_MAINNET,
