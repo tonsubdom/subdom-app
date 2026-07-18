@@ -239,18 +239,10 @@ const convertToMarketItem = (item: SimpleEnrichedItem, _isTestnet: boolean): Mar
   // Получаем имя из token_info или из домена
   let name = tokenInfo.name || item.domain || 'Без названия';
 let { zoneLength, subdomainLength } = extractLengths(item.domain);
-  // if (itemType === 'nft_wrapper') {
-  //   name = name.split(' ')[1]+'.ton';
-  //   zoneLength = name.slice(0,-4).length;
-  // }
   if (itemType === 'nft_wrapper') {
-    // Для NFT wrapper имя берём из домена, а не из token_info (там может быть что угодно)
-    name = item.domain || name;
-    if (!name.endsWith('.ton')) {
-        name = name + '.ton';
-    }
-    zoneLength = name.slice(0, -4).length;
-}
+    name = name.split(' ')[1]+'.ton';
+    zoneLength = name.slice(0,-4).length;
+  }
   console.log('📝 Имя:', name);
 
   
