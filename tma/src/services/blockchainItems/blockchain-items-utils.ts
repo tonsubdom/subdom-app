@@ -92,6 +92,11 @@ export const convertToSimpleEnrichedItem = (
     hasMetadata: !!result.metadata,
     metadataKeys: result.metadata ? Object.keys(result.metadata) : []
   });
+
+  if (itemType === 'nft_wrapper' && !domain) {
+  console.log('🔍 Проблемный итем — полный content:', JSON.stringify(item.content));
+  console.log('🔍 Проблемный итем — URI:', item.content?.uri);
+}
   
   return result;
 };
