@@ -233,11 +233,12 @@ const convertToMarketItem = (item: SimpleEnrichedItem, _isTestnet: boolean): Mar
     imgUri = `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zoneName.slice(0,-4)}/${subdomainName}.png`;
     console.log('✅ Изображение из API субдоменов:', imgUri);
   } // Для NFT wrapper используем API прокси-метаданных e
-else if (itemType === 'nft_wrapper' && item.domain) {
-    const domainName = item.domain.replace('.ton', '');
-    imgUri = `${API_PAYLOAD_URL}/api/v1/proxy/metadata/ton/${domainName}.png`;
-    console.log('✅ Изображение из API прокси для NFT wrapper:', imgUri);
-} else {
+// else if (itemType === 'nft_wrapper' && item.domain) {
+//     const domainName = item.domain.replace('.ton', '');
+//     imgUri = `${API_PAYLOAD_URL}/api/v1/proxy/metadata/ton/${domainName}.png`;
+//     console.log('✅ Изображение из API прокси для NFT wrapper:', imgUri);
+// } 
+else {
     console.log('❌ Изображение не найдено');
   }
   
