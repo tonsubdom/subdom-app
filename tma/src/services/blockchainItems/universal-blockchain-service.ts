@@ -617,7 +617,8 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
     const nftWrapperHashes = [
       networkConfig.CODE_HASHES.NFT_WRAPPER,
       networkConfig.CODE_HASHES.PROXY_SUBDOMAIN,
-      networkConfig.CODE_HASHES.PROXY_SUBDOMAIN_NEW
+      networkConfig.CODE_HASHES.PROXY_SUBDOMAIN_NEW,
+      networkConfig.CODE_HASHES.OLD_NFT_HASH_WRAPPER_COLLECTION
     ];
     
     const allWrapperItems: TonCenterNFTItem[] = [];

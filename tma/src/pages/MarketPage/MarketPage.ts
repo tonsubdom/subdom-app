@@ -188,7 +188,7 @@ const convertToMarketItem = (item: SimpleEnrichedItem, _isTestnet: boolean): Mar
   }
   
   // // Определяем статус
-  const status = item.on_sale ? 'On Sale' : 'Claimed';
+  // const status = item.on_sale ? 'On Sale' : 'Claimed';
   
   // // Определяем цену
   let mintPrice = '0 TON';
