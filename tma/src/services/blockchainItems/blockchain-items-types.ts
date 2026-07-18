@@ -308,18 +308,14 @@ export const extractDomainAndZone = (uri: string): { domain: string | null; zone
     const afterMetadata = pathParts.slice(metadataIndex + 1);
     console.log('📋 afterMetadata:', afterMetadata);
 
-    if (afterMetadata.length >= 2) {
-      const zonePart = afterMetadata[0];   // 'ton'
-      const namePart = afterMetadata[1];    // 'tion' или 'downloader'
+    if (afterMetadata.length < 2) {
+      console.log('❌ afterMetadata.length < 2');
+      return { domain: null, zone: null };
+    }
 
-      if (afterMetadata.length >= 3) {
-        const subdomain = afterMetadata[1];
-        const zone = afterMetadata[0];
-        const result = { domain: `${subdomain}.${zone}.ton`, zone: `${zone}.ton` };
-        console.log('✅ Формат с 3+ частями:', result);
-        return result;
-      }
-
+    // 2 части: .../metadata/ton/tion → domain = "tion.ton", zone = "ton"
+    if (afterMetadata.length === 2) {
+      const [zonePart, namePart] = afterMetadata;
       const domain = `${namePart}.${zonePart}`;
       const result = {
         domain: domain.endsWith('.ton') ? domain : `${domain}.ton`,
@@ -329,13 +325,26 @@ export const extractDomainAndZone = (uri: string): { domain: string | null; zone
       return result;
     }
 
-    console.log('❌ afterMetadata.length < 2');
-    return { domain: null, zone: null };
+    // 3+ частей: .../metadata/ton/tgrm/btc → domain = "btc.tgrm.ton", zone = "tgrm.ton"
+    // Структура: [zone1, zone2, ..., subdomain]
+    // zone = zone2.zone3...zone1, subdomain = последний элемент
+    const subdomain = afterMetadata[afterMetadata.length - 1];
+    const zoneParts = afterMetadata.slice(0, -1); // всё кроме последнего
+    const zone = [
+      ...zoneParts.slice(1),  // zone2, zone3, ...
+      zoneParts[0]            // zone1
+    ].join('.');
+
+    const result = { domain: `${subdomain}.${zone}`, zone };
+    console.log('✅ Формат с 3+ частями:', result);
+    return result;
+
   } catch (error) {
     console.error('Error extracting domain and zone from URI:', error);
     return { domain: null, zone: null };
   }
 };
+
 
 
 
