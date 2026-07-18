@@ -651,7 +651,7 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
       }
     }
 
-    // 3️⃣ Конвертация
+    // 3️⃣ Конвертация и
     console.log(`📊 Всего NFT wrapper итемов: ${allWrapperItems.length}`);
     const result = convertToSimpleEnrichedItems(allWrapperItems, allMetadata, this.isTestnet);
     
