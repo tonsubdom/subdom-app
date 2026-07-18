@@ -245,6 +245,51 @@ export const getCollectionType = (codeHash: string, isTestnet: boolean): Collect
 //   }
 // };
 
+
+
+//// не вышло
+// export const extractDomainAndZone = (uri: string): { domain: string | null; zone: string | null } => {
+//   if (!uri) return { domain: null, zone: null };
+
+//   try {
+//     const url = new URL(uri);
+//     const pathParts = url.pathname.split('/').filter(p => p !== '');
+
+//     const metadataIndex = pathParts.indexOf('metadata');
+//     if (metadataIndex === -1) return { domain: null, zone: null };
+
+//     const afterMetadata = pathParts.slice(metadataIndex + 1);
+
+//     if (afterMetadata.length >= 2) {
+//       // Формат: .../proxy/metadata/ton/{name}
+//       // afterMetadata = ['ton', 'tion'] → domain = 'tion.ton', zone = 'ton'
+//       const zonePart = afterMetadata[0];   // 'ton'
+//       const namePart = afterMetadata[1];    // 'tion' или 'downloader'
+
+//       if (afterMetadata.length >= 3) {
+//         // Формат: .../metadata/{zone}/{subdomain}/...
+//         const subdomain = afterMetadata[1];
+//         const zone = afterMetadata[0];
+//         return { domain: `${subdomain}.${zone}.ton`, zone: `${zone}.ton` };
+//       }
+
+//       // Два элемента после metadata — это zone + name для proxy формата
+//       // или zone + subdomain для старого. Проверяем по известным зонам:
+//       const domain = `${namePart}.${zonePart}`;
+//       return {
+//         domain: domain.endsWith('.ton') ? domain : `${domain}.ton`,
+//         zone: zonePart
+//       };
+//     }
+
+//     return { domain: null, zone: null };
+//   } catch (error) {
+//     console.error('Error extracting domain and zone from URI:', error);
+//     return { domain: null, zone: null };
+//   }
+// };
+
+//логируем
 export const extractDomainAndZone = (uri: string): { domain: string | null; zone: string | null } => {
   if (!uri) return { domain: null, zone: null };
 
@@ -252,39 +297,46 @@ export const extractDomainAndZone = (uri: string): { domain: string | null; zone
     const url = new URL(uri);
     const pathParts = url.pathname.split('/').filter(p => p !== '');
 
+    console.log('🔍 extractDomainAndZone:', { uri, pathParts });
+
     const metadataIndex = pathParts.indexOf('metadata');
-    if (metadataIndex === -1) return { domain: null, zone: null };
+    if (metadataIndex === -1) {
+      console.log('❌ metadataIndex === -1');
+      return { domain: null, zone: null };
+    }
 
     const afterMetadata = pathParts.slice(metadataIndex + 1);
+    console.log('📋 afterMetadata:', afterMetadata);
 
     if (afterMetadata.length >= 2) {
-      // Формат: .../proxy/metadata/ton/{name}
-      // afterMetadata = ['ton', 'tion'] → domain = 'tion.ton', zone = 'ton'
       const zonePart = afterMetadata[0];   // 'ton'
       const namePart = afterMetadata[1];    // 'tion' или 'downloader'
 
       if (afterMetadata.length >= 3) {
-        // Формат: .../metadata/{zone}/{subdomain}/...
         const subdomain = afterMetadata[1];
         const zone = afterMetadata[0];
-        return { domain: `${subdomain}.${zone}.ton`, zone: `${zone}.ton` };
+        const result = { domain: `${subdomain}.${zone}.ton`, zone: `${zone}.ton` };
+        console.log('✅ Формат с 3+ частями:', result);
+        return result;
       }
 
-      // Два элемента после metadata — это zone + name для proxy формата
-      // или zone + subdomain для старого. Проверяем по известным зонам:
       const domain = `${namePart}.${zonePart}`;
-      return {
+      const result = {
         domain: domain.endsWith('.ton') ? domain : `${domain}.ton`,
         zone: zonePart
       };
+      console.log('✅ Формат с 2 частями:', result);
+      return result;
     }
 
+    console.log('❌ afterMetadata.length < 2');
     return { domain: null, zone: null };
   } catch (error) {
     console.error('Error extracting domain and zone from URI:', error);
     return { domain: null, zone: null };
   }
 };
+
 
 
 // Функция для получения имени из метаданных
