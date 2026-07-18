@@ -13,14 +13,12 @@ export interface NetworkConfig {
   DEFAULT_ADDRESSES: {
     PLATFORM_OWNER: string;        // Владелец платформы - от него получаем все коллекции
     NFT_WRAPPER_COLLECTION: string; // NFT Wrapper коллекция
-    OLD_NFT_WRAPPER_COLLECTION: string;
   };
   CODE_HASHES: {
     // Коллекции (определяем по code_hash)
     PROXY_COLLECTION: string;      // Определяем динамически
     SBT_COLLECTION: string;        // Определяем динамически
     NFT_WRAPPER_COLLECTION: string; // Известен заранее
-    OLD_NFT_HASH_WRAPPER_COLLECTION: string;
     
     // Итемы
     PROXY_SUBDOMAIN: string;
@@ -43,7 +41,6 @@ export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
     DEFAULT_ADDRESSES: {
       PLATFORM_OWNER: import.meta.env.VITE_PLATFORM_OWNER_TESTNET,
       NFT_WRAPPER_COLLECTION: import.meta.env.VITE_NFT_WRAPPER_COLLECTION_TESTNET,
-      OLD_NFT_WRAPPER_COLLECTION: import.meta.env.VITE_OLD_WRAPPER_COLLECTION_MAINNET
     },
     CODE_HASHES: {
       // Коллекции (code_hash для определения типа)
@@ -51,8 +48,6 @@ export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
       PROXY_COLLECTION: import.meta.env.VITE_HASH_PROXY_COLLECTION_TESTNET, // Proxy коллекция
       SBT_COLLECTION: import.meta.env.VITE_HASH_SBT_COLLECTION_TESTNET, // SBT коллекция 
       NFT_WRAPPER_COLLECTION: import.meta.env.VITE_HASH_NFT_WRAPPER_COLLECTION_TESTNET, // NFT wrapper коллекция
-      //старая общая коллекция оберток *.ton
-      OLD_NFT_HASH_WRAPPER_COLLECTION: import.meta.env.VITE_OLD_HASH_WRAPPER_COLLECTION_MAINNET,
       
       // Итемы
       PROXY_SUBDOMAIN: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_TESTNET, // Proxy субдомен
@@ -69,7 +64,6 @@ export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
     DEFAULT_ADDRESSES: {
       PLATFORM_OWNER: import.meta.env.VITE_PLATFORM_OWNER_MAINNET,
       NFT_WRAPPER_COLLECTION: import.meta.env.VITE_NFT_WRAPPER_COLLECTION_MAINNET,
-      OLD_NFT_WRAPPER_COLLECTION: import.meta.env.VITE_OLD_WRAPPER_COLLECTION_MAINNET
     },
     CODE_HASHES: {
       // TODO: Заполнить актуальными хешами для mainnet
@@ -79,7 +73,6 @@ export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
       // NFT_WRAPPER_COLLECTION: '/hmQgk+MeqPciHLIjbUZ9gM3nEL5srI10/v1kjupxNA=', //старый до правки смарта
       NFT_WRAPPER_COLLECTION: import.meta.env.VITE_HASH_NFT_WRAPPER_COLLECTION_MAINNET,
 
-      OLD_NFT_HASH_WRAPPER_COLLECTION: import.meta.env.VITE_OLD_HASH_WRAPPER_COLLECTION_MAINNET,
       
       PROXY_SUBDOMAIN: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_MAINNET,
       PROXY_SUBDOMAIN_NEW: import.meta.env.VITE_HASH_PROXY_SUBDOMAIN_NEW_MAINNET,
@@ -114,7 +107,6 @@ export class SubdomainClassifier {
 
   isNFTWrapperCollection(collection: any): boolean {
     return collection.code_hash === this.config.CODE_HASHES.NFT_WRAPPER_COLLECTION
-        || collection.code_hash === this.config.CODE_HASHES.OLD_NFT_HASH_WRAPPER_COLLECTION;
 }
 
   

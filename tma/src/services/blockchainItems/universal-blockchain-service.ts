@@ -613,12 +613,11 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
   try {
     const networkConfig = NETWORK_CONFIGS[this.isTestnet ? 'testnet' : 'mainnet'];
     
-    // Хеши для фильтрации итемов (одинаковые для обеих коллекций)
+    // Хеши для фильтрации итемов
     const nftWrapperHashes = [
       networkConfig.CODE_HASHES.NFT_WRAPPER,
       networkConfig.CODE_HASHES.PROXY_SUBDOMAIN,
-      networkConfig.CODE_HASHES.PROXY_SUBDOMAIN_NEW,
-      networkConfig.CODE_HASHES.OLD_NFT_HASH_WRAPPER_COLLECTION
+      networkConfig.CODE_HASHES.PROXY_SUBDOMAIN_NEW
     ];
     
     const allWrapperItems: TonCenterNFTItem[] = [];
@@ -634,24 +633,7 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
     allWrapperItems.push(...newItems);
     Object.assign(allMetadata, newResponse.metadata || {});
 
-    // 2️⃣ Запрос к СТАРОЙ прокси-коллекции
-    const oldCollectionAddr = networkConfig.DEFAULT_ADDRESSES.OLD_NFT_WRAPPER_COLLECTION;
-    if (oldCollectionAddr) {
-      console.log('2️⃣ Запрос к старой прокси-коллекции:', oldCollectionAddr);
-      try {
-        const oldResponse = await this.api.getItemsByCollection(oldCollectionAddr);
-        const oldItems = (oldResponse.nft_items || []).filter(item =>
-          nftWrapperHashes.includes(item.code_hash)
-        );
-        console.log(`📊 Старая коллекция: ${oldItems.length} NFT wrapper итемов`);
-        allWrapperItems.push(...oldItems);
-        Object.assign(allMetadata, oldResponse.metadata || {});
-      } catch (err) {
-        console.warn('⚠️ Не удалось загрузить старые обёртки:', err);
-      }
-    }
-
-    // 3️⃣ Конвертация и
+    // 2️⃣ Конвертация
     console.log(`📊 Всего NFT wrapper итемов: ${allWrapperItems.length}`);
     const result = convertToSimpleEnrichedItems(allWrapperItems, allMetadata, this.isTestnet);
     
