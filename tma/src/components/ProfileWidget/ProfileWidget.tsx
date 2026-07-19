@@ -2321,20 +2321,12 @@ const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL || "";
  * creator_address заполняется через getCollectionCreator в сервисе.
  * item_count — количество итемов (подсчитывается на стороне сервиса).
  */
+
 const collectionToZone = (col: SimpleCollection): Zone => {
-  const metadataName = col.metadata?.token_info?.[0]?.name || col.name || "";
-
-  console.log(`Сырое значение метадаты имени для Зоны: ${metadataName}`);
-
-  console.log("🔍 collectionToZone:", {
-    address: col.address,
-    metadataName,
-    colName: col.name,
-    type: col.type,
-  });
-
-  // Все DNS-коллекции: "Avel DNS Domains" → "avel.ton"
-  const zoneName = metadataName.replace(" DNS Domains", "").toLowerCase();
+  const zoneName = (col.name || "")
+    .replace(" DNS Domains", "")
+    .replace(" Proxy Domains", "")
+    .toLowerCase();
 
   return {
     id: col.address.slice(0, 10),

@@ -237,7 +237,7 @@ export class TonCenterAPI {
     ownerAddress: string,
     limit: number = 50,
     offset: number = 0
-  ): Promise<{ nft_collections: any[] }> {
+  ): Promise<{ nft_collections: any[]; metadata?: Record<string, any> }> {
     return this.request('/nft/collections', {
       owner_address: ownerAddress,
       limit,

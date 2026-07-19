@@ -241,10 +241,12 @@ async getCollectionsData(forceRefresh = false): Promise<{
     
     try {
       // 1️⃣ Коллекции от владельца платформы
-      const allCollections = await this.getAllCollectionsFromPlatformOwner();
+      // const allCollections = await this.getAllCollectionsFromPlatformOwner();
       
-      // 2️⃣ Метаданные
-      const metadata = await this.getMetadataForAll(allCollections);
+      // // 2️⃣ Метаданные
+      // const metadata = await this.getMetadataForAll(allCollections);
+
+      const { collections: allCollections, metadata } = await this.getAllCollectionsFromPlatformOwner();
       
       // 3️⃣ Конвертация
       const simpleAllCollections = convertToSimpleCollections(allCollections, metadata, this.isTestnet);
@@ -288,29 +290,6 @@ for (let i = 0; i < simpleAllCollections.length; i += concurrency) {
   if (i + concurrency < simpleAllCollections.length) {
     await this.delay(500); // 500 мс вместо 200
   }
-}
-
-// После цикла с создателями, загружаем имена:
-console.log('📊 Загружаем имена коллекций...');
-for (const col of enrichedCollections) {
-  try {
-    const colMeta = await this.api.getCollectionByAddress(col.address);
-    const meta = (colMeta as any)?.metadata;
-    const tokenInfo = meta?.token_info?.[0] || {};
-
-    if (tokenInfo.name) {
-      col.name = tokenInfo.name;
-    }
-    if (tokenInfo.description) {
-      col.description = tokenInfo.description;
-    }
-    if (tokenInfo.image) {
-      col.image = tokenInfo.image;
-    }
-  } catch {
-    
-  }
-  await this.delay(100); // 100 мс между запросами
 }
       
       console.log(`✅ Коллекций с известным создателем: ${enrichedCollections.filter(c => c.creator_address).length}/${enrichedCollections.length}`);
@@ -449,7 +428,7 @@ const rawUserAddress = userAddress
     console.log('🔄 Загрузка всех proxy субдоменов...');
     
     try {
-      const collections = await this.getAllCollectionsFromPlatformOwner();
+      const { collections } = await this.getAllCollectionsFromPlatformOwner();
       const proxyCollections = collections.filter(c => this.classifier.isProxyCollection(c));
       
       if (proxyCollections.length === 0) {
@@ -488,7 +467,7 @@ const rawUserAddress = userAddress
     console.log(`🔄 Загрузка proxy субдоменов пользователя ${userAddress}...`);
     
     try {
-      const collections = await this.getAllCollectionsFromPlatformOwner();
+      const { collections } = await this.getAllCollectionsFromPlatformOwner();
       const proxyCollections = collections.filter(c => this.classifier.isProxyCollection(c));
       
       if (proxyCollections.length === 0) {
@@ -525,7 +504,7 @@ const rawUserAddress = userAddress
     console.log(`🔄 Загрузка SBT субдоменов пользователя ${userAddress}...`);
     
     try {
-      const collections = await this.getAllCollectionsFromPlatformOwner();
+      const { collections } = await this.getAllCollectionsFromPlatformOwner();
       const sbtCollections = collections.filter(c => this.classifier.isSBTCollection(c));
       
       if (sbtCollections.length === 0) {
@@ -566,7 +545,7 @@ const rawUserAddress = userAddress
     console.log(`🔄 Загрузка SBT коллекций пользователя ${userAddress}...`);
     
     try {
-      const collections = await this.getAllCollectionsFromPlatformOwner();
+      const { collections } = await this.getAllCollectionsFromPlatformOwner();
       const sbtCollections = collections.filter(c => this.classifier.isSBTCollection(c));
       
       if (sbtCollections.length === 0) {
@@ -830,58 +809,116 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
   /**
    * Получение всех коллекций от владельца платформы
    */
-  private async getAllCollectionsFromPlatformOwner(): Promise<TonCenterCollection[]> {
-    const cacheKey = `platform_collections_${this.isTestnet ? 'testnet' : 'mainnet'}`;
+  // private async getAllCollectionsFromPlatformOwner(): Promise<TonCenterCollection[]> {
+  //   const cacheKey = `platform_collections_${this.isTestnet ? 'testnet' : 'mainnet'}`;
     
-    const cached = this.cache.get<TonCenterCollection[]>(cacheKey);
-    if (cached) return cached;
+  //   const cached = this.cache.get<TonCenterCollection[]>(cacheKey);
+  //   if (cached) return cached;
 
-    console.log('📚 Загрузка коллекций от владельца платформы...');
+  //   console.log('📚 Загрузка коллекций от владельца платформы...');
     
-    let allCollections: TonCenterCollection[] = [];
-    let offset = 0;
-    let hasMore = true;
+  //   let allCollections: TonCenterCollection[] = [];
+  //   let offset = 0;
+  //   let hasMore = true;
 
-    while (hasMore) {
-      console.log(`📄 Пакет коллекций ${offset / this.config.collectionsBatchSize + 1}, offset: ${offset}`);
+  //   while (hasMore) {
+  //     console.log(`📄 Пакет коллекций ${offset / this.config.collectionsBatchSize + 1}, offset: ${offset}`);
       
-      try {
-        const response = await this.api.getCollectionsByOwner(
-          this.platformOwner,
-          this.config.collectionsBatchSize,
-          offset
-        );
+  //     try {
+  //       const response = await this.api.getCollectionsByOwner(
+  //         this.platformOwner,
+  //         this.config.collectionsBatchSize,
+  //         offset
+  //       );
         
-        const collections = response.nft_collections || [];
+  //       const collections = response.nft_collections || [];
         
-        if (collections.length === 0) {
-          hasMore = false;
-          break;
-        }
+  //       if (collections.length === 0) {
+  //         hasMore = false;
+  //         break;
+  //       }
         
-        allCollections.push(...collections);
+  //       allCollections.push(...collections);
         
-        if (collections.length < this.config.collectionsBatchSize) {
-          hasMore = false;
-        } else {
-          offset += this.config.collectionsBatchSize;
+  //       if (collections.length < this.config.collectionsBatchSize) {
+  //         hasMore = false;
+  //       } else {
+  //         offset += this.config.collectionsBatchSize;
           
-          if (hasMore) {
-            await this.delay(this.config.delayBetweenBatches);
-          }
-        }
+  //         if (hasMore) {
+  //           await this.delay(this.config.delayBetweenBatches);
+  //         }
+  //       }
         
-      } catch (error) {
-        console.error(`❌ Ошибка загрузки пакета коллекций (offset: ${offset}):`, error);
-        offset += this.config.collectionsBatchSize;
+  //     } catch (error) {
+  //       console.error(`❌ Ошибка загрузки пакета коллекций (offset: ${offset}):`, error);
+  //       offset += this.config.collectionsBatchSize;
+  //     }
+  //   }
+    
+  //   console.log(`✅ Загружено ${allCollections.length} коллекций от владельца платформы`);
+    
+  //   this.cache.set(cacheKey, allCollections, this.config.cacheTTL);
+  //   return allCollections;
+  // }
+
+  private async getAllCollectionsFromPlatformOwner(): Promise<{
+  collections: TonCenterCollection[];
+  metadata: Record<string, any>;
+}> {
+  const cacheKey = `platform_collections_${this.isTestnet ? 'testnet' : 'mainnet'}`;
+
+  const cached = this.cache.get<{
+    collections: TonCenterCollection[];
+    metadata: Record<string, any>;
+  }>(cacheKey);
+  if (cached) return cached;
+
+  console.log('📚 Загрузка коллекций от владельца платформы...');
+
+  let allCollections: TonCenterCollection[] = [];
+  let allMetadata: Record<string, any> = {};
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    try {
+      const response = await this.api.getCollectionsByOwner(
+        this.platformOwner,
+        this.config.collectionsBatchSize,
+        offset
+      );
+
+      const collections = response.nft_collections || [];
+      const batchMetadata = response.metadata || {};
+
+      if (collections.length === 0) {
+        hasMore = false;
+        break;
       }
+
+      allCollections.push(...collections);
+      Object.assign(allMetadata, batchMetadata);
+
+      if (collections.length < this.config.collectionsBatchSize) {
+        hasMore = false;
+      } else {
+        offset += this.config.collectionsBatchSize;
+        if (hasMore) await this.delay(this.config.delayBetweenBatches);
+      }
+    } catch (error) {
+      console.error(`❌ Ошибка загрузки пакета коллекций (offset: ${offset}):`, error);
+      offset += this.config.collectionsBatchSize;
     }
-    
-    console.log(`✅ Загружено ${allCollections.length} коллекций от владельца платформы`);
-    
-    this.cache.set(cacheKey, allCollections, this.config.cacheTTL);
-    return allCollections;
   }
+
+  const result = { collections: allCollections, metadata: allMetadata };
+  this.cache.set(cacheKey, result, this.config.cacheTTL);
+
+  console.log(`✅ Загружено ${allCollections.length} коллекций, метаданные для ${Object.keys(allMetadata).length} шт.`);
+  return result;
+}
+
 
   /**
    * Получение NFT Wrapper коллекции
@@ -1253,7 +1290,7 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
   }> {
     try {
       // Получаем коллекции
-      const collections = await this.getAllCollectionsFromPlatformOwner();
+      const { collections } = await this.getAllCollectionsFromPlatformOwner();
       const proxyCollections = collections.filter(c => this.classifier.isProxyCollection(c));
       const sbtCollections = collections.filter(c => this.classifier.isSBTCollection(c));
       
@@ -1550,7 +1587,7 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
     sbtSubdomains: number;
     nftWrappers: number;
   }> {
-    const collections = await this.getAllCollectionsFromPlatformOwner();
+    const { collections } = await this.getAllCollectionsFromPlatformOwner();
     const proxyCollections = collections.filter(c => this.classifier.isProxyCollection(c));
     const sbtCollections = collections.filter(c => this.classifier.isSBTCollection(c));
     
