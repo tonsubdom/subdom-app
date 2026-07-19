@@ -334,15 +334,16 @@ export class TonCenterAPI {
    * Используется для определения создателя контракта (deploy-транзакция).
    * НЕ путать с getTransactions — тот используется для проверки оплат.
    */
-  async getFirstTransaction(
-    account: string
-  ): Promise<{ transactions: TonCenterTransaction[]; address_book?: Record<string, any> }> {
-    return this.request(`/transactions/${account}`, {
-      limit: 1,
-      offset: 0,
-      sort: 'asc',
-    });
-  }
+async getFirstTransaction(
+  account: string
+): Promise<{ transactions: TonCenterTransaction[]; address_book?: Record<string, any> }> {
+  return this.request('/transactions', {
+    account: account,    // ← как query-параметр, а не в пути
+    limit: 1,
+    offset: 0,
+    sort: 'asc',
+  });
+}
 }
 
 // ==================== МЕНЕДЖЕР КЭША ====================
