@@ -329,6 +329,39 @@ export class TonCenterAPI {
     });
   }
 
+//   async getCollectionFirstTxTime(account: string): Promise<number | null> {
+//   try {
+//     const result = await this.request('/transactions', {
+//       account,
+//       limit: 1,
+//       offset: 0,
+//       sort: 'asc',
+//     });
+//     if (result.transactions?.length > 0) {
+//       return result.transactions[0].utime; // Unix timestamp в секундах
+//     }
+//     return null;
+//   } catch {
+//     return null;
+//   }
+// }
+
+
+ async getCollectionFirstTxTime(account: string): Promise<number | null> {
+  try {
+    const rawResponse: any = await this.getFirstTransaction(account);
+    const transactions: Array<{ utime: number }> = rawResponse?.transactions ?? [];
+
+    if (transactions.length > 0) {
+      return transactions[0].utime; // Unix timestamp в секундах
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+
    /**
    * Получить первую (самую раннюю) транзакцию для адреса.
    * Используется для определения создателя контракта (deploy-транзакция).
@@ -345,6 +378,8 @@ async getFirstTransaction(
   });
 }
 }
+
+
 
 // ==================== МЕНЕДЖЕР КЭША ====================
 

@@ -2303,6 +2303,7 @@ import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInf
 import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
 import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
+import searchDog from "@/pages/ManageDomainPage/img/searchDog.gif";
 
 // ====================================================================
 // КОНСТАНТЫ
@@ -2324,7 +2325,12 @@ const collectionToZone = (col: SimpleCollection): Zone => {
   const metadataName = col.metadata?.token_info?.[0]?.name || col.name || "";
   const zoneName = metadataName
     .replace(" DNS Domains", "")
-    .replace("*.ton Proxy Domains", "ton");
+    .replace("ton Proxy Domains", "ton");
+
+  // Гарантируем что заканчивается на .ton, но не дублируем
+  // if (!zoneName.endsWith(".ton")) {
+  //   zoneName = zoneName + ".ton";
+  // }
 
   return {
     id: col.address.slice(0, 10),
@@ -2960,32 +2966,18 @@ const ProfileWidget: React.FC = () => {
       >
         {/* [NEW] Изображение зоны в swipe-режиме */}
         {isSwipe && (zone as any).image && (
-          <div style={{ marginBottom: "12px" }}>
+          <div
+            style={{ marginBottom: 12, borderRadius: 8, overflow: "hidden" }}
+          >
             <img
               src={(zone as any).image}
               alt={zone.name}
               style={{
                 width: "100%",
-                height: "180px",
-                objectFit: "cover",
-                borderRadius: "8px",
-              }}
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-              }}
-            />
-          </div>
-        )}
-
-        {cardView === "swipe" && (zone as any).image && (
-          <div style={{ marginBottom: 12 }}>
-            <img
-              src={(zone as any).image}
-              alt={zone.name}
-              style={{
-                width: "100%",
-                height: 180,
-                objectFit: "cover",
+                height: "auto",
+                maxHeight: 180,
+                objectFit: "contain",
+                background: colors.secondaryBg,
                 borderRadius: 8,
               }}
               onError={(e) => {
@@ -3023,7 +3015,7 @@ const ProfileWidget: React.FC = () => {
                 wordBreak: "break-word",
               }}
             >
-              .{zone.name}.ton
+              .{zone.name}
             </div>
             <div
               className="labelWrapperRow"
@@ -4023,6 +4015,7 @@ const ProfileWidget: React.FC = () => {
               )}
 
               {/* LIST VIEW */}
+
               {cardView === "list" && (
                 <>
                   {/* ЗОНЫ */}
@@ -4039,10 +4032,31 @@ const ProfileWidget: React.FC = () => {
                       }}
                     >
                       {blockchainLoading ? (
-                        <div style={{ textAlign: "center", padding: "20px" }}>
-                          <p style={{ color: colors.text }}>
-                            {t("loadingZones")}...
-                          </p>
+                        <div
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "20px",
+                            color: colors.text,
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          <img
+                            src={searchDog}
+                            alt="Loading"
+                            style={{ width: 100, height: 100 }}
+                          />
+                          <div style={{ fontSize: 16, marginTop: 12 }}>
+                            {t("loadingZones") || "Загрузка данных..."}
+                          </div>
+                          <div
+                            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
+                          >
+                            {t("pleaseWait") || "Пожалуйста, подождите"}
+                          </div>
                         </div>
                       ) : blockchainError ? (
                         <div
@@ -4115,10 +4129,31 @@ const ProfileWidget: React.FC = () => {
                       }}
                     >
                       {blockchainLoading ? (
-                        <div style={{ textAlign: "center", padding: "20px" }}>
-                          <p style={{ color: colors.text }}>
-                            {t("loadingSubdomains")}...
-                          </p>
+                        <div
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "20px",
+                            color: colors.text,
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          <img
+                            src={searchDog}
+                            alt="Loading"
+                            style={{ width: 100, height: 100 }}
+                          />
+                          <div style={{ fontSize: 16, marginTop: 12 }}>
+                            {t("loadingSubdomains") || "Загрузка данных..."}
+                          </div>
+                          <div
+                            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
+                          >
+                            {t("pleaseWait") || "Пожалуйста, подождите"}
+                          </div>
                         </div>
                       ) : blockchainError ? (
                         <div
@@ -4195,10 +4230,31 @@ const ProfileWidget: React.FC = () => {
                       }}
                     >
                       {auctionsLoading ? (
-                        <div style={{ textAlign: "center", padding: "20px" }}>
-                          <p style={{ color: colors.text }}>
-                            {t("loadingAuctions")}...
-                          </p>
+                        <div
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "20px",
+                            color: colors.text,
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          <img
+                            src={searchDog}
+                            alt="Loading"
+                            style={{ width: 100, height: 100 }}
+                          />
+                          <div style={{ fontSize: 16, marginTop: 12 }}>
+                            {t("loadingAuctions") || "Загрузка данных..."}
+                          </div>
+                          <div
+                            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
+                          >
+                            {t("pleaseWait") || "Пожалуйста, подождите"}
+                          </div>
                         </div>
                       ) : getFilteredAuctions().length === 0 ? (
                         <div

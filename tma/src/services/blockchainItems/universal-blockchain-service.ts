@@ -22,6 +22,7 @@ import {
   convertToSimpleCollections,
   filterCollectionsByType
 } from './blockchain-items-utils';
+import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
 
 // ==================== КОНФИГУРАЦИЯ ====================
 
@@ -254,16 +255,31 @@ async getCollectionsData(forceRefresh = false): Promise<{
       
       for (const col of simpleAllCollections) {
         let creatorAddress: string | undefined;
+        let firstTxTime: number | undefined;
         try {
           creatorAddress = await this.getCollectionCreator(col.address) ?? undefined;
         } catch (err) {
           console.warn(`⚠️ Не удалось определить создателя для ${col.address.slice(0, 10)}...`);
         }
+
+        try {
+          firstTxTime = await this.api.getCollectionFirstTxTime(col.address) ?? undefined;
+        } catch (err) {
+          console.warn(`⚠️ Не удалось получить время для ${col.address.slice(0, 10)}...`);
+        }
         
+        // enrichedCollections.push({
+        //   ...col,
+        //   creator_address: creatorAddress,
+        // });
+
         enrichedCollections.push({
-          ...col,
-          creator_address: creatorAddress,
-        });
+  ...col,
+  creator_address: creatorAddress,
+  lastUpdated: firstTxTime
+    ? new Date(firstTxTime * 1000).toISOString()
+    : col.lastUpdated,
+} as SimpleCollection);
         
         // Задержка между запросами чтобы не упереться в rate-limit
         await this.delay(200);
@@ -343,11 +359,29 @@ async getCollectionsData(forceRefresh = false): Promise<{
     let userSBTSubdomains: SimpleEnrichedItem[] = [];
     let userNFTWrappers: SimpleEnrichedItem[] = [];
     
-    if (userAddress) {
-      userProxySubdomains = proxySubdomains.filter(item => item.owner_address === userAddress);
-      userSBTSubdomains = sbtSubdomains; // Уже загружены только пользовательские
-      userNFTWrappers = nftWrappers.filter(item => item.owner_address === userAddress);
-    }
+//     if (userAddress) {
+//       // userProxySubdomains = proxySubdomains.filter(item => item.owner_address === userAddress);
+//       userProxySubdomains = proxySubdomains.filter(
+//   item => item.owner_address?.toLowerCase() === userAddress?.toLowerCase()
+// );
+//       userSBTSubdomains = sbtSubdomains; // Уже загружены только пользовательские
+//       userNFTWrappers = nftWrappers.filter(item => item.owner_address === userAddress);
+//     }
+const rawUserAddress = userAddress
+    ? convertUserFriendlyToRaw(userAddress).toLowerCase()
+    : undefined;
+
+  if (rawUserAddress) {
+    userProxySubdomains = proxySubdomains.filter(
+      item => (item.owner_address || '').toLowerCase() === rawUserAddress
+    );
+    userSBTSubdomains = sbtSubdomains.filter(
+      item => (item.owner_address || '').toLowerCase() === rawUserAddress
+    );
+    userNFTWrappers = nftWrappers.filter(
+      item => (item.owner_address || '').toLowerCase() === rawUserAddress
+    );
+  }
     
     const result = {
       allItems,
@@ -409,6 +443,8 @@ async getCollectionsData(forceRefresh = false): Promise<{
       throw error;
     }
   }
+
+  
 
   /**
    * Получение proxy субдоменов пользователя
