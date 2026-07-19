@@ -2302,6 +2302,7 @@ import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInf
 // import { useZones } from "@/hooks/useZones";
 import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
+import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 
 // ====================================================================
 // КОНСТАНТЫ
@@ -2634,18 +2635,60 @@ const ProfileWidget: React.FC = () => {
 
   // ====== [NEW] ЗОНЫ ПОЛЬЗОВАТЕЛЯ — ИЗ БЛОКЧЕЙНА ======
 
+  // const getUserZones = useMemo((): Zone[] => {
+  //   if (!address) return [];
+
+  //   const proxyZones = proxyCollections
+  //     .filter((col) => (col.creator_address || col.owner_address) === address)
+  //     .map((col) => collectionToZone(col));
+
+  //   const sbtZones = sbtCollections
+  //     .filter((col) => (col.creator_address || col.owner_address) === address)
+  //     .map((col) => collectionToZone(col));
+
+  //   return [...proxyZones, ...sbtZones];
+  // }, [address, proxyCollections, sbtCollections]);
+
   const getUserZones = useMemo((): Zone[] => {
     if (!address) return [];
 
+    // Нормализуем адрес: user-friendly → raw (0:...)
+    const normalizedAddress = convertUserFriendlyToRaw(address);
+
+    console.log("🔍 getUserZones filter:", {
+      userFriendly: address,
+      normalized: normalizedAddress,
+    });
+
     const proxyZones = proxyCollections
-      .filter((col) => (col.creator_address || col.owner_address) === address)
+      .filter((col) => {
+        const matches =
+          (col.creator_address || col.owner_address) === normalizedAddress;
+        if (col.creator_address) {
+          console.log(
+            `  proxy col ${col.name}: creator=${col.creator_address} vs user=${normalizedAddress} → ${matches}`
+          );
+        }
+        return matches;
+      })
       .map((col) => collectionToZone(col));
 
     const sbtZones = sbtCollections
-      .filter((col) => (col.creator_address || col.owner_address) === address)
+      .filter((col) => {
+        const matches =
+          (col.creator_address || col.owner_address) === normalizedAddress;
+        if (col.creator_address) {
+          console.log(
+            `  sbt col ${col.name}: creator=${col.creator_address} vs user=${normalizedAddress} → ${matches}`
+          );
+        }
+        return matches;
+      })
       .map((col) => collectionToZone(col));
 
-    return [...proxyZones, ...sbtZones];
+    const result = [...proxyZones, ...sbtZones];
+    console.log(`✅ getUserZones: найдено ${result.length} зон`);
+    return result;
   }, [address, proxyCollections, sbtCollections]);
 
   // ====== [NEW] СУБДОМЕНЫ ПОЛЬЗОВАТЕЛЯ — ИЗ БЛОКЧЕЙНА ======
