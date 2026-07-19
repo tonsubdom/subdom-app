@@ -2324,36 +2324,13 @@ const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL || "";
 const collectionToZone = (col: SimpleCollection): Zone => {
   const metadataName = col.metadata?.token_info?.[0]?.name || col.name || "";
 
-  // Обработка proxy: "*.ton Proxy Domains" → "*.ton"
-  if (metadataName.includes("Proxy Domains")) {
-    const zoneName = metadataName
-      .replace("ton Proxy Domains", "ton") // "*.ton Proxy Domains" → "*.ton"
-      .replace("*.ton Proxy Domains", "*.ton"); // на всякий случай
-
-    return {
-      id: col.address.slice(0, 10),
-      name: zoneName,
-      address: col.address, // нужно для getZoneLength
-      owner: col.creator_address || col.owner_address,
-      collectionAddress: col.address,
-      createdAt: col.lastUpdated || new Date().toISOString(),
-      subdomainsAmount: col.item_count || 0,
-      proxy: col.type === "proxy" ? 1 : 0,
-      status: "active",
-      image: col.metadata?.token_info?.[0]?.image || col.image,
-      description:
-        col.metadata?.token_info?.[0]?.description || col.description,
-      zoneLength: zoneName.length, // <-- NEW
-    } as any as Zone;
-  }
-
-  // DNS-зоны: "Minter DNS Domains" → "minter.ton"
+  // Все DNS-коллекции: "Avel DNS Domains" → "avel.ton"
   const zoneName = metadataName.replace(" DNS Domains", "").toLowerCase();
 
   return {
     id: col.address.slice(0, 10),
     name: zoneName.includes(".ton") ? zoneName : `${zoneName}.ton`,
-    address: col.address, // нужно для getZoneLength
+    address: col.address,
     owner: col.creator_address || col.owner_address,
     collectionAddress: col.address,
     createdAt: col.lastUpdated || new Date().toISOString(),
@@ -2362,7 +2339,7 @@ const collectionToZone = (col: SimpleCollection): Zone => {
     status: "active",
     image: col.metadata?.token_info?.[0]?.image || col.image,
     description: col.metadata?.token_info?.[0]?.description || col.description,
-    zoneLength: zoneName.length, // <-- NEW
+    zoneLength: zoneName.length,
   } as any as Zone;
 };
 
