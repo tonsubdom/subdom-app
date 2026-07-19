@@ -270,7 +270,7 @@ for (let i = 0; i < simpleAllCollections.length; i += concurrency) {
         //   this.getCollectionCreator(col.address),
         //   this.api.getCollectionFirstTxTime(col.address),
         // ]);
-        const { creator, txTime } = await this.getCollectionCreatorAndTime(col.address);
+        const { creator, txTime } = await this.getCollectionCreatorAndTime(col.address); //теперь один запрос
 
         console.log(`⏱️ ${col.address.slice(0,10)}: creator=${!!creator}, txTime=${txTime}`);
 
