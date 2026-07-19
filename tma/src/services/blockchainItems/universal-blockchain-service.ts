@@ -266,10 +266,11 @@ for (let i = 0; i < simpleAllCollections.length; i += concurrency) {
       try {
         // Только 2 запроса на коллекцию (убираем getCollectionByAddress,
         // метаданные будем грузить отдельно — см. ниже)
-        const [creator, txTime] = await Promise.all([
-          this.getCollectionCreator(col.address),
-          this.api.getCollectionFirstTxTime(col.address),
-        ]);
+        // const [creator, txTime] = await Promise.all([
+        //   this.getCollectionCreator(col.address),
+        //   this.api.getCollectionFirstTxTime(col.address),
+        // ]);
+        const { creator, txTime } = await this.getCollectionCreatorAndTime(col.address);
 
         console.log(`⏱️ ${col.address.slice(0,10)}: creator=${!!creator}, txTime=${txTime}`);
 
@@ -1243,6 +1244,30 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
       return null;
     }
   }
+
+  async getCollectionCreatorAndTime(collectionAddress: string): Promise<{ creator: string | null; txTime: number | null }> {
+  try {
+    const response = await this.api.getFirstTransaction(collectionAddress);
+
+    if (!response.transactions || response.transactions.length === 0) {
+      return { creator: null, txTime: null };
+    }
+
+    const firstTx = response.transactions[0];
+
+    const isDeploy = firstTx.orig_status === 'nonexist' && firstTx.prev_trans_lt === '0';
+    const creator = isDeploy && firstTx.in_msg?.source
+      ? firstTx.in_msg.source
+      : firstTx.in_msg?.source ?? null;
+
+    const txTime = firstTx.now ?? null;
+
+    return { creator, txTime };
+  } catch {
+    return { creator: null, txTime: null };
+  }
+}
+
 
   // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
 

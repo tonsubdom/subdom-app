@@ -347,19 +347,20 @@ export class TonCenterAPI {
 // }
 
 
- async getCollectionFirstTxTime(account: string): Promise<number | null> {
+async getCollectionFirstTxTime(account: string): Promise<number | null> {
   try {
     const rawResponse: any = await this.getFirstTransaction(account);
-    const transactions: Array<{ utime: number }> = rawResponse?.transactions ?? [];
+    const transactions: Array<{ now: number }> = rawResponse?.transactions ?? [];
 
     if (transactions.length > 0) {
-      return transactions[0].utime; // Unix timestamp в секундах
+      return transactions[0].now; // ← utime → now
     }
     return null;
   } catch {
     return null;
   }
 }
+
 
 
    /**
