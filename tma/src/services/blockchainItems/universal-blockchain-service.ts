@@ -164,59 +164,135 @@ export class UniversalBlockchainService {
    * Получение только коллекций
    */
 
-  async getCollectionsData(forceRefresh = false): Promise<{
-  allCollections: SimpleCollection[];
-  proxyCollections: SimpleCollection[];
-  sbtCollections: SimpleCollection[];
-  nftWrapperCollections: SimpleCollection[];
-}> {
-  const cacheKey = `collections_data_${this.isTestnet ? 'testnet' : 'mainnet'}`;
+//   async getCollectionsData(forceRefresh = false): Promise<{
+//   allCollections: SimpleCollection[];
+//   proxyCollections: SimpleCollection[];
+//   sbtCollections: SimpleCollection[];
+//   nftWrapperCollections: SimpleCollection[];
+// }> {
+//   const cacheKey = `collections_data_${this.isTestnet ? 'testnet' : 'mainnet'}`;
   
-  if (!forceRefresh) {
-    const cached = this.cache.get<{
-      allCollections: SimpleCollection[];
-      proxyCollections: SimpleCollection[];
-      sbtCollections: SimpleCollection[];
-      nftWrapperCollections: SimpleCollection[];
-    }>(cacheKey);
-    if (cached) return cached;
-  }
+//   if (!forceRefresh) {
+//     const cached = this.cache.get<{
+//       allCollections: SimpleCollection[];
+//       proxyCollections: SimpleCollection[];
+//       sbtCollections: SimpleCollection[];
+//       nftWrapperCollections: SimpleCollection[];
+//     }>(cacheKey);
+//     if (cached) return cached;
+//   }
 
-  console.log('🔄 Загружаем данные коллекций...');
+//   console.log('🔄 Загружаем данные коллекций...');
   
-  try {
-    // Коллекции от владельца платформы
-    const allCollections = await this.getAllCollectionsFromPlatformOwner();
+//   try {
+//     // Коллекции от владельца платформы
+//     const allCollections = await this.getAllCollectionsFromPlatformOwner();
     
-    // Метаданные
-    const metadata = await this.getMetadataForAll(allCollections);
+//     // Метаданные
+//     const metadata = await this.getMetadataForAll(allCollections);
     
-    // Конвертация
-    const simpleAllCollections = convertToSimpleCollections(allCollections, metadata, this.isTestnet);
-    const simpleProxyCollections = filterCollectionsByType(simpleAllCollections, 'proxy');
-    const simpleSBTCollections = filterCollectionsByType(simpleAllCollections, 'sbt');
+//     // Конвертация
+//     const simpleAllCollections = convertToSimpleCollections(allCollections, metadata, this.isTestnet);
+//     const simpleProxyCollections = filterCollectionsByType(simpleAllCollections, 'proxy');
+//     const simpleSBTCollections = filterCollectionsByType(simpleAllCollections, 'sbt');
     
-    // Создаем фиктивную NFT wrapper коллекцию
-    const simpleNFTWrapperCollections: SimpleCollection[] = [];
-    // Можно добавить логику для создания фиктивной коллекции если нужно
+//     // Создаем фиктивную NFT wrapper коллекцию
+//     const simpleNFTWrapperCollections: SimpleCollection[] = [];
+//     // Можно добавить логику для создания фиктивной коллекции если нужно
     
-    const result = {
-      allCollections: [...simpleAllCollections, ...simpleNFTWrapperCollections],
-      proxyCollections: simpleProxyCollections,
-      sbtCollections: simpleSBTCollections,
-      nftWrapperCollections: simpleNFTWrapperCollections
-    };
+//     const result = {
+//       allCollections: [...simpleAllCollections, ...simpleNFTWrapperCollections],
+//       proxyCollections: simpleProxyCollections,
+//       sbtCollections: simpleSBTCollections,
+//       nftWrapperCollections: simpleNFTWrapperCollections
+//     };
     
-    this.cache.set(cacheKey, result);
-    console.log(`✅ Данные коллекций загружены: ${result.allCollections.length} всего`);
+//     this.cache.set(cacheKey, result);
+//     console.log(`✅ Данные коллекций загружены: ${result.allCollections.length} всего`);
     
-    return result;
+//     return result;
     
-  } catch (error) {
-    console.error('❌ Ошибка загрузки данных коллекций:', error);
-    throw error;
+//   } catch (error) {
+//     console.error('❌ Ошибка загрузки данных коллекций:', error);
+//     throw error;
+//   }
+// }
+
+async getCollectionsData(forceRefresh = false): Promise<{
+    allCollections: SimpleCollection[];
+    proxyCollections: SimpleCollection[];
+    sbtCollections: SimpleCollection[];
+    nftWrapperCollections: SimpleCollection[];
+  }> {
+    const cacheKey = `collections_data_${this.isTestnet ? 'testnet' : 'mainnet'}`;
+    
+    if (!forceRefresh) {
+      const cached = this.cache.get<{
+        allCollections: SimpleCollection[];
+        proxyCollections: SimpleCollection[];
+        sbtCollections: SimpleCollection[];
+        nftWrapperCollections: SimpleCollection[];
+      }>(cacheKey);
+      if (cached) return cached;
+    }
+
+    console.log('🔄 Загружаем данные коллекций...');
+    
+    try {
+      // 1️⃣ Коллекции от владельца платформы
+      const allCollections = await this.getAllCollectionsFromPlatformOwner();
+      
+      // 2️⃣ Метаданные
+      const metadata = await this.getMetadataForAll(allCollections);
+      
+      // 3️⃣ Конвертация
+      const simpleAllCollections = convertToSimpleCollections(allCollections, metadata, this.isTestnet);
+      
+      // 4️⃣ Обогащаем — определяем реальных создателей коллекций
+      console.log(`🔍 Определяем создателей для ${simpleAllCollections.length} коллекций...`);
+      const enrichedCollections: SimpleCollection[] = [];
+      
+      for (const col of simpleAllCollections) {
+        let creatorAddress: string | undefined;
+        try {
+          creatorAddress = await this.getCollectionCreator(col.address) ?? undefined;
+        } catch (err) {
+          console.warn(`⚠️ Не удалось определить создателя для ${col.address.slice(0, 10)}...`);
+        }
+        
+        enrichedCollections.push({
+          ...col,
+          creator_address: creatorAddress,
+        });
+        
+        // Задержка между запросами чтобы не упереться в rate-limit
+        await this.delay(200);
+      }
+      
+      console.log(`✅ Коллекций с известным создателем: ${enrichedCollections.filter(c => c.creator_address).length}/${enrichedCollections.length}`);
+      
+      // 5️⃣ Фильтрация по типам
+      const simpleProxyCollections = filterCollectionsByType(enrichedCollections, 'proxy');
+      const simpleSBTCollections = filterCollectionsByType(enrichedCollections, 'sbt');
+      const simpleNFTWrapperCollections: SimpleCollection[] = [];
+      
+      const result = {
+        allCollections: [...enrichedCollections, ...simpleNFTWrapperCollections],
+        proxyCollections: simpleProxyCollections,
+        sbtCollections: simpleSBTCollections,
+        nftWrapperCollections: simpleNFTWrapperCollections
+      };
+      
+      this.cache.set(cacheKey, result);
+      console.log(`✅ Данные коллекций загружены: ${result.allCollections.length} всего`);
+      
+      return result;
+      
+    } catch (error) {
+      console.error('❌ Ошибка загрузки данных коллекций:', error);
+      throw error;
+    }
   }
-}
 
 
   /**
@@ -972,6 +1048,55 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
     });
     
     return metadata;
+  }
+
+  /**
+   * Определяет реального создателя коллекции по первой транзакции (deploy)
+   * 
+   * Логика:
+   * - Берём самую первую транзакцию (sort=asc, limit=1)
+   * - Признаки deploy: orig_status === 'nonexist', prev_trans_lt === '0'
+   * - in_msg.source — адрес создателя (raw-формат 0:...)
+   */
+   /**
+   * Определяет реального создателя коллекции по первой транзакции (deploy)
+   * 
+   * Логика:
+   * - Берём самую первую транзакцию (sort=asc, limit=1) через getFirstTransaction
+   * - Признаки deploy: orig_status === 'nonexist', prev_trans_lt === '0'
+   * - in_msg.source — адрес создателя (raw-формат 0:...)
+   */
+  async getCollectionCreator(collectionAddress: string): Promise<string | null> {
+    try {
+      const response = await this.api.getFirstTransaction(collectionAddress);
+      
+      if (!response.transactions || response.transactions.length === 0) {
+        console.warn(`⚠️ Нет транзакций для коллекции ${collectionAddress.slice(0, 10)}...`);
+        return null;
+      }
+
+      const firstTx = response.transactions[0];
+      
+      // Признаки deploy-транзакции
+      if (
+        firstTx.orig_status === 'nonexist' &&
+        firstTx.prev_trans_lt === '0' &&
+        firstTx.in_msg?.source
+      ) {
+        console.log(`✅ Создатель коллекции ${collectionAddress.slice(0, 10)}...: ${firstTx.in_msg.source}`);
+        return firstTx.in_msg.source;
+      }
+
+      // Запасной вариант — берём source из любого in_msg
+      if (firstTx.in_msg?.source) {
+        return firstTx.in_msg.source;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`❌ Ошибка получения создателя коллекции ${collectionAddress.slice(0, 10)}...:`, error);
+      return null;
+    }
   }
 
   // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================

@@ -127,6 +127,10 @@ export interface SimpleCollection {
   total_items?: number;
   type: CollectionType;
   owner_address: string;
+  creator_address?: string;     // NEW: реальный создатель (из первой транзакции)
+  lastUpdated?: string;         // NEW опционально
+  item_count?: number;          // NEW опционально
+  metadata?: any;               // NEW опционально
 }
 
 // Данные для разных страниц приложения

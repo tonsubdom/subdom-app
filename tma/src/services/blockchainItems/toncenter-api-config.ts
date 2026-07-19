@@ -164,6 +164,28 @@ export class SubdomainClassifier {
 
 // ==================== API КЛИЕНТ ====================
 
+export interface TonCenterTransaction {
+  account: string;
+  hash: string;
+  lt: string;
+  now: number;
+  orig_status: string;
+  end_status: string;
+  prev_trans_hash: string;
+  prev_trans_lt: string;
+  in_msg?: {
+    source: string;
+    destination: string;
+    value: string;
+    message_content?: {
+      decoded?: {
+        '@type'?: string;
+        comment?: string;
+      };
+    };
+  };
+}
+
 export class TonCenterAPI {
   private baseUrl: string;
   private apiKey?: string;
@@ -291,6 +313,7 @@ export class TonCenterAPI {
     return this.request(`/address/${address}`);
   }
   
+  //метод получения транзакций юзера для проверки оплаты.
   async getTransactions(
     address: string,
     limit: number = 100,
@@ -303,6 +326,21 @@ export class TonCenterAPI {
       lt,
       hash,
       to_lt
+    });
+  }
+
+   /**
+   * Получить первую (самую раннюю) транзакцию для адреса.
+   * Используется для определения создателя контракта (deploy-транзакция).
+   * НЕ путать с getTransactions — тот используется для проверки оплат.
+   */
+  async getFirstTransaction(
+    account: string
+  ): Promise<{ transactions: TonCenterTransaction[]; address_book?: Record<string, any> }> {
+    return this.request(`/transactions/${account}`, {
+      limit: 1,
+      offset: 0,
+      sort: 'asc',
     });
   }
 }
