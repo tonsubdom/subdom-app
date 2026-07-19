@@ -2323,18 +2323,36 @@ const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL || "";
  */
 const collectionToZone = (col: SimpleCollection): Zone => {
   const metadataName = col.metadata?.token_info?.[0]?.name || col.name || "";
-  const zoneName = metadataName
-    .replace(" DNS Domains", "")
-    .replace("ton Proxy Domains", "ton");
 
-  // Гарантируем что заканчивается на .ton, но не дублируем
-  // if (!zoneName.endsWith(".ton")) {
-  //   zoneName = zoneName + ".ton";
-  // }
+  // Обработка proxy: "*.ton Proxy Domains" → "*.ton"
+  if (metadataName.includes("Proxy Domains")) {
+    const zoneName = metadataName
+      .replace("ton Proxy Domains", "ton") // "*.ton Proxy Domains" → "*.ton"
+      .replace("*.ton Proxy Domains", "*.ton"); // на всякий случай
+
+    return {
+      id: col.address.slice(0, 10),
+      name: zoneName,
+      address: col.address, // нужно для getZoneLength
+      owner: col.creator_address || col.owner_address,
+      collectionAddress: col.address,
+      createdAt: col.lastUpdated || new Date().toISOString(),
+      subdomainsAmount: col.item_count || 0,
+      proxy: col.type === "proxy" ? 1 : 0,
+      status: "active",
+      image: col.metadata?.token_info?.[0]?.image || col.image,
+      description:
+        col.metadata?.token_info?.[0]?.description || col.description,
+      zoneLength: zoneName.length, // <-- NEW
+    } as any as Zone;
+  }
+
+  // DNS-зоны: "Minter DNS Domains" → "minter.ton"
+  const zoneName = metadataName.replace(" DNS Domains", "").toLowerCase();
 
   return {
     id: col.address.slice(0, 10),
-    name: zoneName,
+    name: zoneName.includes(".ton") ? zoneName : `${zoneName}.ton`,
     address: col.address, // нужно для getZoneLength
     owner: col.creator_address || col.owner_address,
     collectionAddress: col.address,
@@ -2967,7 +2985,7 @@ const ProfileWidget: React.FC = () => {
         {/* [NEW] Изображение зоны в swipe-режиме */}
         {isSwipe && (zone as any).image && (
           <div
-            style={{ marginBottom: 12, borderRadius: 8, overflow: "hidden" }}
+            style={{ marginBottom: 10, borderRadius: 8, overflow: "hidden" }}
           >
             <img
               src={(zone as any).image}
@@ -2975,7 +2993,7 @@ const ProfileWidget: React.FC = () => {
               style={{
                 width: "100%",
                 height: "auto",
-                maxHeight: 180,
+                maxHeight: 140,
                 objectFit: "contain",
                 background: colors.secondaryBg,
                 borderRadius: 8,
@@ -3169,15 +3187,19 @@ const ProfileWidget: React.FC = () => {
       >
         {/* [NEW] Изображение в swipe-режиме */}
         {isSwipe && imgUri && (
-          <div style={{ marginBottom: "12px" }}>
+          <div
+            style={{ marginBottom: 10, borderRadius: 8, overflow: "hidden" }}
+          >
             <img
               src={imgUri}
               alt={subdomain.name}
               style={{
                 width: "100%",
-                height: "200px",
-                objectFit: "cover",
-                borderRadius: "8px",
+                height: "auto",
+                maxHeight: 140,
+                objectFit: "contain",
+                background: colors.secondaryBg,
+                borderRadius: 8,
               }}
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = "none";
