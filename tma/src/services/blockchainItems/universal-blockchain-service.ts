@@ -253,34 +253,28 @@ async getCollectionsData(forceRefresh = false): Promise<{
       console.log(`🔍 Определяем создателей для ${simpleAllCollections.length} коллекций...`);
       const enrichedCollections: SimpleCollection[] = [];
 
-const batchSize = 10;
-for (let i = 0; i < simpleAllCollections.length; i += batchSize) {
-  const batch = simpleAllCollections.slice(i, i + batchSize);
+// Ограничиваем параллельные запросы до 5 одновременных
+const concurrency = 5;
+
+for (let i = 0; i < simpleAllCollections.length; i += concurrency) {
+  const batch = simpleAllCollections.slice(i, i + concurrency);
 
   const results = await Promise.all(
     batch.map(async (col) => {
       try {
-        const [creator, txTime, colMeta] = await Promise.all([
+        // Только 2 запроса на коллекцию (убираем getCollectionByAddress,
+        // метаданные будем грузить отдельно — см. ниже)
+        const [creator, txTime] = await Promise.all([
           this.getCollectionCreator(col.address),
           this.api.getCollectionFirstTxTime(col.address),
-          this.api.getCollectionByAddress(col.address),
         ]);
-
-        const creatorAddress = creator ?? undefined;
-        const firstTxTime = txTime ?? undefined;
-
-        const meta = (colMeta as any)?.metadata;
-        const tokenInfo = meta?.token_info?.[0] || {};
 
         return {
           ...col,
-          creator_address: creatorAddress,
-          lastUpdated: firstTxTime
-            ? new Date(firstTxTime * 1000).toISOString()
+          creator_address: creator ?? undefined,
+          lastUpdated: txTime
+            ? new Date(txTime * 1000).toISOString()
             : col.lastUpdated,
-          name: tokenInfo.name || col.name,
-          description: tokenInfo.description || col.description,
-          image: tokenInfo.image || col.image,
         } as SimpleCollection;
       } catch {
         return col;
@@ -290,10 +284,33 @@ for (let i = 0; i < simpleAllCollections.length; i += batchSize) {
 
   enrichedCollections.push(...results);
 
-  // Задержка только между пачками
-  if (i + batchSize < simpleAllCollections.length) {
-    await this.delay(200);
+  // Задержка между пачками
+  if (i + concurrency < simpleAllCollections.length) {
+    await this.delay(500); // 500 мс вместо 200
   }
+}
+
+// После цикла с создателями, загружаем имена:
+console.log('📊 Загружаем имена коллекций...');
+for (const col of enrichedCollections) {
+  try {
+    const colMeta = await this.api.getCollectionByAddress(col.address);
+    const meta = (colMeta as any)?.metadata;
+    const tokenInfo = meta?.token_info?.[0] || {};
+
+    if (tokenInfo.name) {
+      col.name = tokenInfo.name;
+    }
+    if (tokenInfo.description) {
+      col.description = tokenInfo.description;
+    }
+    if (tokenInfo.image) {
+      col.image = tokenInfo.image;
+    }
+  } catch {
+    
+  }
+  await this.delay(100); // 100 мс между запросами
 }
       
       console.log(`✅ Коллекций с известным создателем: ${enrichedCollections.filter(c => c.creator_address).length}/${enrichedCollections.length}`);
