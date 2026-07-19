@@ -2653,7 +2653,7 @@ const ProfileWidget: React.FC = () => {
     if (!address) return [];
 
     // Нормализуем адрес: user-friendly → raw (0:...)
-    const normalizedAddress = convertUserFriendlyToRaw(address);
+    const normalizedAddress = convertUserFriendlyToRaw(address).toLowerCase();
 
     console.log("🔍 getUserZones filter:", {
       userFriendly: address,
@@ -2662,8 +2662,12 @@ const ProfileWidget: React.FC = () => {
 
     const proxyZones = proxyCollections
       .filter((col) => {
-        const matches =
-          (col.creator_address || col.owner_address) === normalizedAddress;
+        const creator = (
+          col.creator_address ||
+          col.owner_address ||
+          ""
+        ).toLowerCase();
+        const matches = creator === normalizedAddress;
         if (col.creator_address) {
           console.log(
             `  proxy col ${col.name}: creator=${col.creator_address} vs user=${normalizedAddress} → ${matches}`
@@ -2675,8 +2679,12 @@ const ProfileWidget: React.FC = () => {
 
     const sbtZones = sbtCollections
       .filter((col) => {
-        const matches =
-          (col.creator_address || col.owner_address) === normalizedAddress;
+        const creator = (
+          col.creator_address ||
+          col.owner_address ||
+          ""
+        ).toLowerCase();
+        const matches = creator === normalizedAddress;
         if (col.creator_address) {
           console.log(
             `  sbt col ${col.name}: creator=${col.creator_address} vs user=${normalizedAddress} → ${matches}`
