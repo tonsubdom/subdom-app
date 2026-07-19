@@ -252,38 +252,49 @@ async getCollectionsData(forceRefresh = false): Promise<{
       // 4️⃣ Обогащаем — определяем реальных создателей коллекций
       console.log(`🔍 Определяем создателей для ${simpleAllCollections.length} коллекций...`);
       const enrichedCollections: SimpleCollection[] = [];
-      
-      for (const col of simpleAllCollections) {
-        let creatorAddress: string | undefined;
-        let firstTxTime: number | undefined;
-        try {
-          creatorAddress = await this.getCollectionCreator(col.address) ?? undefined;
-        } catch (err) {
-          console.warn(`⚠️ Не удалось определить создателя для ${col.address.slice(0, 10)}...`);
-        }
 
-        try {
-          firstTxTime = await this.api.getCollectionFirstTxTime(col.address) ?? undefined;
-        } catch (err) {
-          console.warn(`⚠️ Не удалось получить время для ${col.address.slice(0, 10)}...`);
-        }
-        
-        // enrichedCollections.push({
-        //   ...col,
-        //   creator_address: creatorAddress,
-        // });
+const batchSize = 10;
+for (let i = 0; i < simpleAllCollections.length; i += batchSize) {
+  const batch = simpleAllCollections.slice(i, i + batchSize);
 
-        enrichedCollections.push({
-  ...col,
-  creator_address: creatorAddress,
-  lastUpdated: firstTxTime
-    ? new Date(firstTxTime * 1000).toISOString()
-    : col.lastUpdated,
-} as SimpleCollection);
-        
-        // Задержка между запросами чтобы не упереться в rate-limit
-        await this.delay(200);
+  const results = await Promise.all(
+    batch.map(async (col) => {
+      try {
+        const [creator, txTime, colMeta] = await Promise.all([
+          this.getCollectionCreator(col.address),
+          this.api.getCollectionFirstTxTime(col.address),
+          this.api.getCollectionByAddress(col.address),
+        ]);
+
+        const creatorAddress = creator ?? undefined;
+        const firstTxTime = txTime ?? undefined;
+
+        const meta = (colMeta as any)?.metadata;
+        const tokenInfo = meta?.token_info?.[0] || {};
+
+        return {
+          ...col,
+          creator_address: creatorAddress,
+          lastUpdated: firstTxTime
+            ? new Date(firstTxTime * 1000).toISOString()
+            : col.lastUpdated,
+          name: tokenInfo.name || col.name,
+          description: tokenInfo.description || col.description,
+          image: tokenInfo.image || col.image,
+        } as SimpleCollection;
+      } catch {
+        return col;
       }
+    })
+  );
+
+  enrichedCollections.push(...results);
+
+  // Задержка только между пачками
+  if (i + batchSize < simpleAllCollections.length) {
+    await this.delay(200);
+  }
+}
       
       console.log(`✅ Коллекций с известным создателем: ${enrichedCollections.filter(c => c.creator_address).length}/${enrichedCollections.length}`);
       
