@@ -271,13 +271,18 @@ for (let i = 0; i < simpleAllCollections.length; i += concurrency) {
           this.api.getCollectionFirstTxTime(col.address),
         ]);
 
+        console.log(`⏱️ ${col.address.slice(0,10)}: creator=${!!creator}, txTime=${txTime}`);
+
         return {
-          ...col,
-          creator_address: creator ?? undefined,
-          lastUpdated: txTime
-            ? new Date(txTime * 1000).toISOString()
-            : col.lastUpdated,
-        } as SimpleCollection;
+        ...col,
+        creator_address: creator ?? undefined,
+        lastUpdated: txTime
+          ? new Date(txTime * 1000).toISOString()
+          : col.lastUpdated,
+        created_at: txTime
+          ? new Date(txTime * 1000).toISOString()
+          : undefined,
+      } as SimpleCollection;
       } catch {
         return col;
       }
@@ -293,8 +298,47 @@ for (let i = 0; i < simpleAllCollections.length; i += concurrency) {
 }
       
       console.log(`✅ Коллекций с известным создателем: ${enrichedCollections.filter(c => c.creator_address).length}/${enrichedCollections.length}`);
+
+      // 5️⃣ Подсчитываем реальное количество итемов в каждой коллекции
+console.log('📊 Подсчитываем количество итемов в коллекциях...');
+
+const { collections: allCollectionsForCount } = await this.getAllCollectionsFromPlatformOwner();
+const proxyCollectionsForCount = allCollectionsForCount.filter(c => this.classifier.isProxyCollection(c));
+const sbtCollectionsForCount = allCollectionsForCount.filter(c => this.classifier.isSBTCollection(c));
+
+const itemCountByCollection = new Map<string, number>();
+
+// Загружаем итемы из proxy и SBT коллекций
+const collectionsToCount = [...proxyCollectionsForCount, ...sbtCollectionsForCount];
+
+if (collectionsToCount.length > 0) {
+  const chunks = this.chunkArray(collectionsToCount, this.config.maxConcurrentRequests);
+
+  for (const chunk of chunks) {
+    const chunkPromises = chunk.map(async (collection) => {
+      try {
+        const items = await this.getItemsFromCollection(collection.address);
+        itemCountByCollection.set(collection.address, items.length);
+      } catch {
+        itemCountByCollection.set(collection.address, 0);
+      }
+    });
+    await Promise.all(chunkPromises);
+  }
+
+  // Проставляем item_count для proxy и SBT коллекций
+  for (const col of enrichedCollections) {
+    if (col.type === 'proxy' || col.type === 'sbt') {
+      const count = itemCountByCollection.get(col.address) || 0;
+      col.item_count = count;
+      col.total_items = count;
+    }
+  }
+
+  console.log(`✅ Количество итемов подсчитано для ${itemCountByCollection.size} коллекций`);
+}
       
-      // 5️⃣ Фильтрация по типам
+      // 6 Фильтрация по типам
       const simpleProxyCollections = filterCollectionsByType(enrichedCollections, 'proxy');
       const simpleSBTCollections = filterCollectionsByType(enrichedCollections, 'sbt');
       const simpleNFTWrapperCollections: SimpleCollection[] = [];

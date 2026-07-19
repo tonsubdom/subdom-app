@@ -122,7 +122,6 @@ export const convertToSimpleCollection = (
     name: tokenInfo.name || zoneName,
     description: tokenInfo.description,
     image: tokenInfo.image,
-    total_items: parseInt(collection.next_item_index) > 0 ? parseInt(collection.next_item_index) : 0,
     type: collectionType,
     owner_address: collection.owner_address
   };

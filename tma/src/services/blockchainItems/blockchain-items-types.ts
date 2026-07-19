@@ -131,6 +131,7 @@ export interface SimpleCollection {
   lastUpdated?: string;         // NEW опционально
   item_count?: number;          // NEW опционально
   metadata?: any;               // NEW опционально
+  created_at?: string; 
 }
 
 // Данные для разных страниц приложения
