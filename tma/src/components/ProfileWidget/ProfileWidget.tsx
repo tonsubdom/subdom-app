@@ -2324,6 +2324,8 @@ const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL || "";
 const collectionToZone = (col: SimpleCollection): Zone => {
   const metadataName = col.metadata?.token_info?.[0]?.name || col.name || "";
 
+  console.log(`Сырое значение метадаты имени для Зоны: ${metadataName}`);
+
   // Все DNS-коллекции: "Avel DNS Domains" → "avel.ton"
   const zoneName = metadataName.replace(" DNS Domains", "").toLowerCase();
 
