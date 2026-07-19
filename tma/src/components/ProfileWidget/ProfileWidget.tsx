@@ -2326,6 +2326,13 @@ const collectionToZone = (col: SimpleCollection): Zone => {
 
   console.log(`Сырое значение метадаты имени для Зоны: ${metadataName}`);
 
+  console.log("🔍 collectionToZone:", {
+    address: col.address,
+    metadataName,
+    colName: col.name,
+    type: col.type,
+  });
+
   // Все DNS-коллекции: "Avel DNS Domains" → "avel.ton"
   const zoneName = metadataName.replace(" DNS Domains", "").toLowerCase();
 
