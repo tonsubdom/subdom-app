@@ -3355,7 +3355,7 @@ const ProfileWidget: React.FC = () => {
           </div>
         </div>
 
-        {/* КНОПКИ */}
+        {/* КНОПКИ: 2 ряда, зеркально зоне */}
         {effectiveStatus === "auction" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             <div
@@ -3378,7 +3378,7 @@ const ProfileWidget: React.FC = () => {
 
         {effectiveStatus !== "auction" && effectiveStatus !== "inactive" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {/* Ряд 1: Продать (только proxy) + Управлять */}
+            {/* Ряд 1: пусто слева, Управлять справа */}
             <div
               style={{
                 display: "grid",
@@ -3386,19 +3386,7 @@ const ProfileWidget: React.FC = () => {
                 gap: "8px",
               }}
             >
-              {!isSbt ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMarket();
-                  }}
-                  style={responsiveButtonStyle(t("sell") || "Продать")}
-                >
-                  {t("sell")}
-                </button>
-              ) : (
-                <div />
-              )}
+              <div />
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -3410,39 +3398,60 @@ const ProfileWidget: React.FC = () => {
               </button>
             </div>
 
-            {/* Ряд 2: Создать сайт + Аватар/Секрет */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "8px",
-              }}
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsExpanded(false);
-                  setTimeout(() => {
-                    window.open(
-                      "https://t.me/Ton_site_builder_bot?startapp",
-                      "_blank"
-                    );
-                  }, 300);
+            {/* Ряд 2: Создать сайт + Аватар/Секрет (или Продать для не-SBT, если хочешь) */}
+            {!isSbt ? (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "8px",
                 }}
-                style={responsiveButtonStyle("Создать сайт")}
               >
-                Создать сайт
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSoonModalOpen(true);
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(false);
+                    setTimeout(() => {
+                      window.open(
+                        "https://t.me/Ton_site_builder_bot?startapp",
+                        "_blank"
+                      );
+                    }, 300);
+                  }}
+                  style={responsiveButtonStyle("Создать сайт")}
+                >
+                  Создать сайт
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSoonModalOpen(true);
+                  }}
+                  style={responsiveButtonStyle("Аватар / Секрет")}
+                >
+                  Аватар / Секрет
+                </button>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "8px",
                 }}
-                style={responsiveButtonStyle("Аватар / Секрет")}
               >
-                Аватар / Секрет
-              </button>
-            </div>
+                <div />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSoonModalOpen(true);
+                  }}
+                  style={responsiveButtonStyle("Аватар / Секрет")}
+                >
+                  Аватар / Секрет
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
