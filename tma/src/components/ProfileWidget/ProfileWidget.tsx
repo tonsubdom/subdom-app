@@ -2330,10 +2330,8 @@ const collectionToZone = (col: SimpleCollection): Zone => {
 
   return {
     id: col.address.slice(0, 10),
-    name: zoneName,
-    // zoneName.endsWith(".ton")
-    //   ? zoneName
-    //   : `${zoneName}.ton`,
+    name: `${zoneName}.ton`,
+    // zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`,
     address: col.address,
     owner: col.creator_address || col.owner_address,
     collectionAddress: col.address,
