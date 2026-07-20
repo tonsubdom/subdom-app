@@ -3002,8 +3002,8 @@ const ProfileWidget: React.FC = () => {
           {(zone as any).image && (
             <div
               style={{
-                width: "80px",
-                height: "80px",
+                width: "120px",
+                height: "120px",
                 borderRadius: "8px",
                 overflow: "hidden",
                 flexShrink: 0,
@@ -3190,8 +3190,8 @@ const ProfileWidget: React.FC = () => {
           {imgUri && (
             <div
               style={{
-                width: "80px",
-                height: "80px",
+                width: "120px",
+                height: "120px",
                 borderRadius: "8px",
                 overflow: "hidden",
                 flexShrink: 0,
@@ -3403,8 +3403,8 @@ const ProfileWidget: React.FC = () => {
           {auction.subdomain && getSubdomainImage(auction.subdomain) && (
             <div
               style={{
-                width: "80px",
-                height: "80px",
+                width: "120px",
+                height: "120px",
                 borderRadius: "8px",
                 overflow: "hidden",
                 flexShrink: 0,
