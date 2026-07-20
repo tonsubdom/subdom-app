@@ -3016,22 +3016,23 @@ const ProfileWidget: React.FC = () => {
 
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: isSwipe ? "1fr" : "1fr 1fr",
+            display: "flex",
+            flexDirection: "row",
             alignItems: "center",
+            justifyContent: "space-between",
             marginBottom: "8px",
-            gap: "18px",
+            gap: "12px",
+            flexWrap: "wrap",
           }}
         >
+          {/* ЛЕВО: name + лейблы */}
           <div
             style={{
               display: "flex",
               flexDirection: "row",
               gap: 8,
-              alignItems: "flex-start",
-              justifyContent: "flex-start",
-              flexWrap: "wrap",
-              marginLeft: isSwipe ? "0" : "12px",
+              alignItems: "center",
+              flexShrink: 0,
             }}
           >
             <div
@@ -3074,14 +3075,32 @@ const ProfileWidget: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* ПРАВО: 3 поля */}
           <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              flexDirection: "column",
-            }}
+            style={{ display: "flex", flexDirection: "column", flexShrink: 0 }}
           >
-            <div>
+            <p
+              style={{
+                margin: "4px 0",
+                color: colors.text,
+                opacity: 0.7,
+                fontSize: "11px",
+              }}
+            >
+              {t("created")}: {new Date(zone.createdAt).toLocaleDateString()}
+            </p>
+            <p
+              style={{
+                margin: "4px 0",
+                color: colors.text,
+                opacity: 0.7,
+                fontSize: "11px",
+              }}
+            >
+              {t("subdomainsAmount")}: {zone.subdomainsAmount}
+            </p>
+            {zone.collectionAddress && (
               <p
                 style={{
                   margin: "4px 0",
@@ -3090,46 +3109,24 @@ const ProfileWidget: React.FC = () => {
                   fontSize: "11px",
                 }}
               >
-                {t("created")}: {new Date(zone.createdAt).toLocaleDateString()}
-              </p>
-              <p
-                style={{
-                  margin: "4px 0",
-                  color: colors.text,
-                  opacity: 0.7,
-                  fontSize: "11px",
-                }}
-              >
-                {t("subdomainsAmount")}: {zone.subdomainsAmount}
-              </p>
-              {zone.collectionAddress && (
-                <p
-                  style={{
-                    margin: "4px 0",
-                    color: colors.text,
-                    opacity: 0.7,
-                    fontSize: "11px",
-                  }}
+                {t("marketCollection")}:{" "}
+                <a
+                  href={createTonViewerLink(zone.collectionAddress)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: colors.link, textDecoration: "none" }}
+                  onMouseOver={(e) =>
+                    (e.currentTarget.style.textDecoration = "underline")
+                  }
+                  onMouseOut={(e) =>
+                    (e.currentTarget.style.textDecoration = "none")
+                  }
                 >
-                  {t("marketCollection")}:{" "}
-                  <a
-                    href={createTonViewerLink(zone.collectionAddress)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: colors.link, textDecoration: "none" }}
-                    onMouseOver={(e) =>
-                      (e.currentTarget.style.textDecoration = "underline")
-                    }
-                    onMouseOut={(e) =>
-                      (e.currentTarget.style.textDecoration = "none")
-                    }
-                  >
-                    {zone.collectionAddress.slice(0, 4)}...
-                    {zone.collectionAddress.slice(-4)}
-                  </a>
-                </p>
-              )}
-            </div>
+                  {zone.collectionAddress.slice(0, 4)}...
+                  {zone.collectionAddress.slice(-4)}
+                </a>
+              </p>
+            )}
           </div>
         </div>
 
