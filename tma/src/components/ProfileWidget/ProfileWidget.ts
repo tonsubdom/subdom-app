@@ -2976,6 +2976,7 @@ const ProfileWidget: React.FC = () => {
   const renderZoneCard = (zone: Zone) => {
     const zoneType = getZoneTypeInfo(zone);
     const zoneStatus = getZoneStatusInfo(zone);
+    const isSwipe = cardView === "swipe";
 
     return (
       <div
@@ -2990,52 +2991,51 @@ const ProfileWidget: React.FC = () => {
           position: "relative" as const,
         }}
       >
-        {/* КАРТИНКА СЛЕВА + КОНТЕНТ СПРАВА */}
+        {/* [NEW] Изображение зоны в swipe-режиме */}
+        {/* ИЗОБРАЖЕНИЕ (swipe) */}
+        {isSwipe && (zone as any).image && (
+          <div
+            style={{ marginBottom: 10, borderRadius: 8, overflow: "hidden" }}
+          >
+            <img
+              src={(zone as any).image}
+              alt={zone.name}
+              style={{
+                width: "100%",
+                height: "auto",
+                maxHeight: 140,
+                objectFit: "contain",
+                background: colors.secondaryBg,
+                borderRadius: 8,
+              }}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = "none";
+              }}
+            />
+          </div>
+        )}
+
+        {/* ГРИД: 2 колонки */}
         <div
           style={{
-            display: "flex",
-            gap: "14px",
-            marginBottom: "10px",
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            alignItems: "start",
+            marginBottom: "8px",
+            gap: "18px",
           }}
         >
-          {/* ЛЕВО: картинка */}
-          {(zone as any).image && (
-            <div
-              style={{
-                width: "80px",
-                height: "80px",
-                borderRadius: "8px",
-                overflow: "hidden",
-                flexShrink: 0,
-                backgroundColor: colors.background,
-              }}
-            >
-              <img
-                src={(zone as any).image}
-                alt={zone.name}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "contain",
-                }}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
-            </div>
-          )}
-
-          {/* ПРАВО: имя + лейблы + 3 поля */}
+          {/* ЛЕВАЯ КОЛОНКА: имя (строка 1) + лейблы (строка 2) */}
           <div
             style={{
-              flex: 1,
-              minWidth: 0,
               display: "flex",
               flexDirection: "column",
-              gap: "6px",
+              gap: 8,
+              alignItems: "flex-start",
+              marginLeft: "12px",
             }}
           >
-            {/* Имя */}
+            {/* Строка 1: имя */}
             <div
               style={{
                 fontWeight: "600",
@@ -3047,15 +3047,15 @@ const ProfileWidget: React.FC = () => {
               .{zone.name}
             </div>
 
-            {/* Лейблы */}
-            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+            {/* Строка 2: лейблы в ряд */}
+            <div style={{ display: "flex", gap: "4px" }}>
               <div
                 style={{
-                  padding: "3px 8px",
+                  padding: "4px 8px",
                   borderRadius: "4px",
                   backgroundColor: zoneType.color,
                   color: "white",
-                  fontSize: "10px",
+                  fontSize: "11px",
                   fontWeight: "600",
                 }}
               >
@@ -3063,68 +3063,68 @@ const ProfileWidget: React.FC = () => {
               </div>
               <div
                 style={{
-                  padding: "3px 8px",
+                  padding: "4px 8px",
                   borderRadius: "4px",
                   backgroundColor: zoneStatus.color,
                   color: "white",
-                  fontSize: "10px",
+                  fontSize: "11px",
                   fontWeight: "600",
                 }}
               >
                 {zoneStatus.status}
               </div>
             </div>
+          </div>
 
-            {/* 3 поля в столбик */}
-            <div>
+          {/* ПРАВАЯ КОЛОНКА: 3 поля в столбик */}
+          <div>
+            <p
+              style={{
+                margin: "4px 0",
+                color: colors.text,
+                opacity: 0.7,
+                fontSize: "11px",
+              }}
+            >
+              {t("created")}: {new Date(zone.createdAt).toLocaleDateString()}
+            </p>
+            <p
+              style={{
+                margin: "4px 0",
+                color: colors.text,
+                opacity: 0.7,
+                fontSize: "11px",
+              }}
+            >
+              {t("subdomainsAmount")}: {zone.subdomainsAmount}
+            </p>
+            {zone.collectionAddress && (
               <p
                 style={{
-                  margin: "2px 0",
+                  margin: "4px 0",
                   color: colors.text,
                   opacity: 0.7,
                   fontSize: "11px",
                 }}
               >
-                {t("created")}: {new Date(zone.createdAt).toLocaleDateString()}
-              </p>
-              <p
-                style={{
-                  margin: "2px 0",
-                  color: colors.text,
-                  opacity: 0.7,
-                  fontSize: "11px",
-                }}
-              >
-                {t("subdomainsAmount")}: {zone.subdomainsAmount}
-              </p>
-              {zone.collectionAddress && (
-                <p
-                  style={{
-                    margin: "2px 0",
-                    color: colors.text,
-                    opacity: 0.7,
-                    fontSize: "11px",
-                  }}
+                {t("marketCollection")}:{" "}
+                <a
+                  href={createTonViewerLink(zone.collectionAddress)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: colors.link, textDecoration: "none" }}
+                  onMouseOver={(e) =>
+                    (e.currentTarget.style.textDecoration = "underline")
+                  }
+                  onMouseOut={(e) =>
+                    (e.currentTarget.style.textDecoration = "none")
+                  }
                 >
-                  {t("marketCollection")}:{" "}
-                  <a
-                    href={createTonViewerLink(zone.collectionAddress)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: colors.link, textDecoration: "none" }}
-                    onMouseOver={(e) =>
-                      (e.currentTarget.style.textDecoration = "underline")
-                    }
-                    onMouseOut={(e) =>
-                      (e.currentTarget.style.textDecoration = "none")
-                    }
-                  >
-                    {zone.collectionAddress.slice(0, 4)}...
-                    {zone.collectionAddress.slice(-4)}
-                  </a>
-                </p>
-              )}
-            </div>
+                  {zone.collectionAddress.slice(0, 4)}...
+                  {zone.collectionAddress.slice(-4)}
+                </a>
+              </p>
+            )}
           </div>
         </div>
 
@@ -3135,6 +3135,7 @@ const ProfileWidget: React.FC = () => {
               width: "100%",
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
+              marginTop: "12px",
               gap: "12px",
             }}
           >
@@ -3156,214 +3157,6 @@ const ProfileWidget: React.FC = () => {
             >
               {t("manageDomain")}
             </button>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderSubdomainCard = (subdomain: Subdomain) => {
-    const statusInfo = getSubdomainStatusInfo(subdomain);
-    const isSbt = isSbtSubdomain(subdomain);
-    const imgUri = getSubdomainImage(subdomain);
-    const isAuction = activeAuctions.some(
-      (a) => a.subdomain?.id === subdomain.id
-    );
-    const effectiveStatus = isAuction ? "auction" : subdomain.status;
-
-    return (
-      <div
-        key={subdomain.id}
-        style={{
-          padding: "12px",
-          border: `1px solid ${colors.border}`,
-          borderRadius: "8px",
-          fontSize: "13px",
-          backgroundColor: colors.secondaryBg,
-          fontFamily: "monospace",
-          position: "relative" as const,
-        }}
-      >
-        {/* КАРТИНКА СЛЕВА + КОНТЕНТ СПРАВА */}
-        <div style={{ display: "flex", gap: "14px", marginBottom: "10px" }}>
-          {/* Картинка */}
-          {imgUri && (
-            <div
-              style={{
-                width: "80px",
-                height: "80px",
-                borderRadius: "8px",
-                overflow: "hidden",
-                flexShrink: 0,
-                backgroundColor: colors.background,
-              }}
-            >
-              <img
-                src={imgUri}
-                alt={subdomain.name}
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
-            </div>
-          )}
-
-          {/* Право */}
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px",
-            }}
-          >
-            <div
-              style={{
-                fontWeight: "600",
-                color: colors.text,
-                fontSize: "16px",
-                wordBreak: "break-word",
-              }}
-            >
-              {subdomain.name}
-            </div>
-
-            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
-              {isSbt && (
-                <div
-                  style={{
-                    padding: "3px 8px",
-                    borderRadius: "4px",
-                    backgroundColor: "#3b82f6",
-                    color: "white",
-                    fontSize: "10px",
-                    fontWeight: "600",
-                  }}
-                >
-                  🔒 SBT
-                </div>
-              )}
-              <div
-                style={{
-                  padding: "3px 8px",
-                  borderRadius: "4px",
-                  backgroundColor:
-                    effectiveStatus === "auction"
-                      ? "#ff9800"
-                      : statusInfo.color,
-                  color: "white",
-                  fontSize: "10px",
-                  fontWeight: "600",
-                }}
-              >
-                {effectiveStatus === "auction" ? "Auction" : statusInfo.status}
-              </div>
-            </div>
-
-            <div>
-              <p
-                style={{
-                  margin: "2px 0",
-                  color: colors.text,
-                  opacity: 0.7,
-                  fontSize: "11px",
-                }}
-              >
-                {t("created")}:{" "}
-                {new Date(subdomain.createdAt).toLocaleDateString()}
-              </p>
-              {subdomain.zoneId && (
-                <p
-                  style={{
-                    margin: "2px 0",
-                    color: colors.text,
-                    opacity: 0.7,
-                    fontSize: "11px",
-                  }}
-                >
-                  {t("zoneId")}: {subdomain.zoneId}
-                </p>
-              )}
-              {subdomain.address && (
-                <p
-                  style={{
-                    margin: "2px 0",
-                    color: colors.text,
-                    opacity: 0.7,
-                    fontSize: "11px",
-                  }}
-                >
-                  {t("address")}:{" "}
-                  <a
-                    href={createTonViewerLink(subdomain.address)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: colors.link, textDecoration: "none" }}
-                    onMouseOver={(e) =>
-                      (e.currentTarget.style.textDecoration = "underline")
-                    }
-                    onMouseOut={(e) =>
-                      (e.currentTarget.style.textDecoration = "none")
-                    }
-                  >
-                    {subdomain.address.slice(0, 4)}...
-                    {subdomain.address.slice(-4)}
-                  </a>
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Кнопки */}
-        {effectiveStatus === "auction" && (
-          <div
-            style={{
-              width: "100%",
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "12px",
-            }}
-          >
-            <button
-              onClick={() => handleGoToAuction(subdomain.name)}
-              style={cardButtonStyle}
-            >
-              {t("goTo")}
-            </button>
-          </div>
-        )}
-        {effectiveStatus !== "auction" && effectiveStatus !== "inactive" && (
-          <div
-            style={{
-              width: "100%",
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "12px",
-            }}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleManage();
-              }}
-              style={cardButtonStyle}
-            >
-              {t("manage")}
-            </button>
-            {!isSbt && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleMarket();
-                }}
-                style={cardButtonStyle}
-              >
-                {t("sell")}
-              </button>
-            )}
           </div>
         )}
       </div>
@@ -3395,119 +3188,94 @@ const ProfileWidget: React.FC = () => {
           backgroundColor: colors.secondaryBg,
           fontFamily: "monospace",
           position: "relative" as const,
+          minHeight: "140px",
         }}
       >
-        {/* КАРТИНКА СЛЕВА + КОНТЕНТ СПРАВА */}
-        <div style={{ display: "flex", gap: "14px", marginBottom: "10px" }}>
-          {/* Картинка (если есть у субдомена) */}
-          {auction.subdomain && getSubdomainImage(auction.subdomain) && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "8px",
+          }}
+        >
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div
               style={{
-                width: "80px",
-                height: "80px",
-                borderRadius: "8px",
-                overflow: "hidden",
-                flexShrink: 0,
-                backgroundColor: colors.background,
+                fontWeight: "600",
+                color: colors.text,
+                fontSize: "16px",
               }}
             >
-              <img
-                src={getSubdomainImage(auction.subdomain)}
-                alt={auction.name}
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
+              {auction.name}
             </div>
-          )}
-
-          {/* Право */}
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              display: "flex",
-              flexDirection: "column",
-              gap: "6px",
-            }}
-          >
             <div
               style={{
-                display: "flex",
-                gap: 8,
-                alignItems: "center",
-                flexWrap: "wrap",
+                padding: "4px 8px",
+                borderRadius: "4px",
+                backgroundColor: colors.cyberpunk,
+                color: isDark ? "black" : "white",
+                fontSize: "11px",
+                fontWeight: "600",
               }}
             >
-              <div
-                style={{
-                  fontWeight: "600",
-                  color: colors.text,
-                  fontSize: "16px",
-                }}
-              >
-                {auction.name}
-              </div>
-              <div
-                style={{
-                  padding: "3px 8px",
-                  borderRadius: "4px",
-                  backgroundColor: colors.cyberpunk,
-                  color: isDark ? "black" : "white",
-                  fontSize: "10px",
-                  fontWeight: "600",
-                }}
-              >
-                {auction.bid}
-              </div>
-            </div>
-
-            <div>
-              <p
-                style={{
-                  margin: "2px 0",
-                  color: isEnded ? colors.text : colors.cyberpunk,
-                  opacity: 0.7,
-                  fontSize: "11px",
-                }}
-              >
-                {isEnded ? `${t("ended")}` : `${t("ends")}`}:{" "}
-                {formatDate(endDate)}
-              </p>
-              {auction.lastBidder && (
-                <p
-                  style={{
-                    margin: "2px 0",
-                    color: colors.text,
-                    opacity: 0.7,
-                    fontSize: "11px",
-                  }}
-                >
-                  {t("bidder")}:{" "}
-                  <a
-                    href={createTonViewerLink(auction.lastBidder)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: colors.link, textDecoration: "none" }}
-                    onMouseOver={(e) =>
-                      (e.currentTarget.style.textDecoration = "underline")
-                    }
-                    onMouseOut={(e) =>
-                      (e.currentTarget.style.textDecoration = "none")
-                    }
-                  >
-                    {auction.lastBidder.slice(0, 6)}...
-                    {auction.lastBidder.slice(-4)}
-                  </a>
-                </p>
-              )}
+              {auction.bid}
             </div>
           </div>
         </div>
 
-        {/* Кнопка */}
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <div style={{ flex: 1 }}>
+            <p
+              style={{
+                margin: "4px 0",
+                color: isEnded ? colors.text : colors.cyberpunk,
+                opacity: 0.7,
+                fontSize: "11px",
+              }}
+            >
+              {isEnded ? `${t("ended")}` : `${t("ends")}`}:{" "}
+              {formatDate(endDate)}
+            </p>
+            {auction.lastBidder && (
+              <p
+                style={{
+                  margin: "4px 0",
+                  color: colors.text,
+                  opacity: 0.7,
+                  fontSize: "11px",
+                }}
+              >
+                {t("bidder")}:{" "}
+                <a
+                  href={createTonViewerLink(auction.lastBidder)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: colors.link, textDecoration: "none" }}
+                  onMouseOver={(e) =>
+                    (e.currentTarget.style.textDecoration = "underline")
+                  }
+                  onMouseOut={(e) =>
+                    (e.currentTarget.style.textDecoration = "none")
+                  }
+                >
+                  {auction.lastBidder.slice(0, 6)}...
+                  {auction.lastBidder.slice(-4)}
+                </a>
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div
+          style={{
+            position: "absolute" as const,
+            bottom: "12px",
+            left: "12px",
+            display: "flex",
+            gap: "8px",
+          }}
+        >
           {checkAuctionTimerEnd(new Date(auction.ends)) ? (
             <button
               onClick={() => handleGoToAuction(auction.name)}
