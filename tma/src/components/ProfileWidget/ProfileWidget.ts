@@ -2509,7 +2509,6 @@ const ProfileWidget: React.FC = () => {
   const [_subdomainsError, setSubdomainsError] = useState<string | null>(null);
   const [balance, setBalance] = useState<string>("0");
 
-  const [soonModalOpen, setSoonModalOpen] = useState<boolean>(false);
   // Фильтры
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filters, setFilters] = useState<FilterState>({
@@ -2974,20 +2973,6 @@ const ProfileWidget: React.FC = () => {
   // РЕНДЕР-КАРТОЧКИ
   // ====================================================================
 
-  const responsiveButtonStyle = (text: string): React.CSSProperties => {
-    const len = text.length;
-    const fontSize =
-      len > 16 ? "9px" : len > 12 ? "10px" : len > 8 ? "11px" : "12px";
-    return {
-      ...cardButtonStyle,
-      fontSize,
-      padding: "8px 6px",
-      whiteSpace: "nowrap" as const,
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-    };
-  };
-
   const renderZoneCard = (zone: Zone) => {
     const zoneType = getZoneTypeInfo(zone);
     const zoneStatus = getZoneStatusInfo(zone);
@@ -3006,12 +2991,19 @@ const ProfileWidget: React.FC = () => {
         }}
       >
         {/* КАРТИНКА СЛЕВА + КОНТЕНТ СПРАВА */}
-        <div style={{ display: "flex", gap: "14px", marginBottom: "10px" }}>
+        <div
+          style={{
+            display: "flex",
+            gap: "14px",
+            marginBottom: "10px",
+          }}
+        >
+          {/* ЛЕВО: картинка */}
           {(zone as any).image && (
             <div
               style={{
-                width: "80px",
-                height: "80px",
+                width: "120px",
+                height: "120px",
                 borderRadius: "8px",
                 overflow: "hidden",
                 flexShrink: 0,
@@ -3021,7 +3013,11 @@ const ProfileWidget: React.FC = () => {
               <img
                 src={(zone as any).image}
                 alt={zone.name}
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                }}
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
@@ -3029,6 +3025,7 @@ const ProfileWidget: React.FC = () => {
             </div>
           )}
 
+          {/* ПРАВО: имя + лейблы + 3 поля */}
           <div
             style={{
               flex: 1,
@@ -3038,6 +3035,7 @@ const ProfileWidget: React.FC = () => {
               gap: "6px",
             }}
           >
+            {/* Имя */}
             <div
               style={{
                 fontWeight: "600",
@@ -3049,6 +3047,7 @@ const ProfileWidget: React.FC = () => {
               .{zone.name}
             </div>
 
+            {/* Лейблы */}
             <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
               <div
                 style={{
@@ -3076,6 +3075,7 @@ const ProfileWidget: React.FC = () => {
               </div>
             </div>
 
+            {/* 3 поля в столбик */}
             <div>
               <p
                 style={{
@@ -3128,74 +3128,34 @@ const ProfileWidget: React.FC = () => {
           </div>
         </div>
 
-        {/* КНОПКИ: ряд 1 + ряд 2 */}
+        {/* КНОПКИ */}
         {zone.status !== "inactive" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {/* Ряд 1 */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "8px",
+          <div
+            style={{
+              width: "100%",
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "12px",
+            }}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddSubdomain();
               }}
+              style={cardButtonStyle}
             >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAddSubdomain();
-                }}
-                style={responsiveButtonStyle(
-                  t("createSubdomain") || "Сделать субдомен"
-                )}
-              >
-                {t("createSubdomain") || "Сделать субдомен"}
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleManage();
-                }}
-                style={responsiveButtonStyle(
-                  t("manageDomain") || "Управлять доменом"
-                )}
-              >
-                {t("manageDomain") || "Управлять доменом"}
-              </button>
-            </div>
-
-            {/* Ряд 2 */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "8px",
+              {t("createSubdomain")}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleManage();
               }}
+              style={cardButtonStyle}
             >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsExpanded(false);
-                  setTimeout(() => {
-                    window.open(
-                      "https://t.me/Ton_site_builder_bot?startapp",
-                      "_blank"
-                    );
-                  }, 300);
-                }}
-                style={responsiveButtonStyle("Создать сайт")}
-              >
-                Создать сайт
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSoonModalOpen(true);
-                }}
-                style={responsiveButtonStyle("Аватар / Секрет")}
-              >
-                Аватар / Секрет
-              </button>
-            </div>
+              {t("manageDomain")}
+            </button>
           </div>
         )}
       </div>
@@ -3224,12 +3184,14 @@ const ProfileWidget: React.FC = () => {
           position: "relative" as const,
         }}
       >
+        {/* КАРТИНКА СЛЕВА + КОНТЕНТ СПРАВА */}
         <div style={{ display: "flex", gap: "14px", marginBottom: "10px" }}>
+          {/* Картинка */}
           {imgUri && (
             <div
               style={{
-                width: "80px",
-                height: "80px",
+                width: "120px",
+                height: "120px",
                 borderRadius: "8px",
                 overflow: "hidden",
                 flexShrink: 0,
@@ -3247,6 +3209,7 @@ const ProfileWidget: React.FC = () => {
             </div>
           )}
 
+          {/* Право */}
           <div
             style={{
               flex: 1,
@@ -3354,17 +3317,19 @@ const ProfileWidget: React.FC = () => {
           </div>
         </div>
 
+        {/* Кнопки */}
         {effectiveStatus === "auction" && (
           <div
             style={{
+              width: "100%",
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              gap: "8px",
+              gap: "12px",
             }}
           >
             <button
               onClick={() => handleGoToAuction(subdomain.name)}
-              style={responsiveButtonStyle(t("goTo") || "Перейти")}
+              style={cardButtonStyle}
             >
               {t("goTo")}
             </button>
@@ -3373,9 +3338,10 @@ const ProfileWidget: React.FC = () => {
         {effectiveStatus !== "auction" && effectiveStatus !== "inactive" && (
           <div
             style={{
+              width: "100%",
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
-              gap: "8px",
+              gap: "12px",
             }}
           >
             <button
@@ -3383,7 +3349,7 @@ const ProfileWidget: React.FC = () => {
                 e.stopPropagation();
                 handleManage();
               }}
-              style={responsiveButtonStyle(t("manage") || "Управлять")}
+              style={cardButtonStyle}
             >
               {t("manage")}
             </button>
@@ -3393,7 +3359,7 @@ const ProfileWidget: React.FC = () => {
                   e.stopPropagation();
                   handleMarket();
                 }}
-                style={responsiveButtonStyle(t("sell") || "Продать")}
+                style={cardButtonStyle}
               >
                 {t("sell")}
               </button>
@@ -3431,12 +3397,14 @@ const ProfileWidget: React.FC = () => {
           position: "relative" as const,
         }}
       >
+        {/* КАРТИНКА СЛЕВА + КОНТЕНТ СПРАВА */}
         <div style={{ display: "flex", gap: "14px", marginBottom: "10px" }}>
+          {/* Картинка (если есть у субдомена) */}
           {auction.subdomain && getSubdomainImage(auction.subdomain) && (
             <div
               style={{
-                width: "80px",
-                height: "80px",
+                width: "120px",
+                height: "120px",
                 borderRadius: "8px",
                 overflow: "hidden",
                 flexShrink: 0,
@@ -3453,6 +3421,8 @@ const ProfileWidget: React.FC = () => {
               />
             </div>
           )}
+
+          {/* Право */}
           <div
             style={{
               flex: 1,
@@ -3492,6 +3462,7 @@ const ProfileWidget: React.FC = () => {
                 {auction.bid}
               </div>
             </div>
+
             <div>
               <p
                 style={{
@@ -3535,18 +3506,19 @@ const ProfileWidget: React.FC = () => {
           </div>
         </div>
 
+        {/* Кнопка */}
         <div style={{ display: "flex", gap: "8px" }}>
           {checkAuctionTimerEnd(new Date(auction.ends)) ? (
             <button
               onClick={() => handleGoToAuction(auction.name)}
-              style={responsiveButtonStyle(t("take") || "Забрать")}
+              style={cardButtonStyle}
             >
               {t("take")}
             </button>
           ) : (
             <button
               onClick={() => handleGoToAuction(auction.name)}
-              style={responsiveButtonStyle(t("goTo") || "Перейти")}
+              style={cardButtonStyle}
             >
               {t("goTo")}
             </button>
