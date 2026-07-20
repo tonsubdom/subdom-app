@@ -2322,42 +2322,11 @@ const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL || "";
  * item_count — количество итемов (подсчитывается на стороне сервиса).
  */
 
-// const collectionToZone = (col: SimpleCollection): Zone => {
-//   const zoneName = (col.name || "")
-//     .replace(" DNS Domains", "")
-//     .replace(" Proxy Domains", "")
-//     .toLowerCase();
-
-//   return {
-//     id: col.address.slice(0, 10),
-//     name: zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`,
-//     address: col.address,
-//     owner: col.creator_address || col.owner_address,
-//     collectionAddress: col.address,
-//     createdAt: col.lastUpdated || new Date().toISOString(),
-//     subdomainsAmount: col.item_count || 0,
-//     proxy: col.type === "proxy" ? 1 : 0,
-//     status: "active",
-//     image: col.metadata?.token_info?.[0]?.image || col.image,
-//     description: col.metadata?.token_info?.[0]?.description || col.description,
-//     zoneLength: zoneName.length,
-//   } as any as Zone;
-// };
-
 const collectionToZone = (col: SimpleCollection): Zone => {
-  const rawName = col.name || "";
-  console.log(
-    `🔍 collectionToZone: raw="${rawName}", address=${col.address.slice(0, 10)}`
-  );
-
-  const zoneName = rawName
+  const zoneName = (col.name || "")
     .replace(" DNS Domains", "")
     .replace(" Proxy Domains", "")
     .toLowerCase();
-
-  console.log(
-    `   zoneName="${zoneName}", endsWith('.ton')=${zoneName.endsWith(".ton")}`
-  );
 
   return {
     id: col.address.slice(0, 10),
