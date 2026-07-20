@@ -2509,7 +2509,7 @@ const ProfileWidget: React.FC = () => {
   const [_subdomainsError, setSubdomainsError] = useState<string | null>(null);
   const [balance, setBalance] = useState<string>("0");
 
-  const [soonModalOpen, setSoonModalOpen] = useState<boolean>(false);
+  const [_soonModalOpen, setSoonModalOpen] = useState<boolean>(false);
   // Фильтры
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filters, setFilters] = useState<FilterState>({
