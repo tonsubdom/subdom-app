@@ -3026,7 +3026,7 @@ const ProfileWidget: React.FC = () => {
           <div
             style={{
               display: "flex",
-              flexDirection: "column",
+              flexDirection: "row",
               gap: 8,
               alignItems: "flex-start",
               justifyContent: "flex-start",
