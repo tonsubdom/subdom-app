@@ -2992,6 +2992,7 @@ const ProfileWidget: React.FC = () => {
         }}
       >
         {/* [NEW] Изображение зоны в swipe-режиме */}
+        {/* ИЗОБРАЖЕНИЕ (swipe) */}
         {isSwipe && (zone as any).image && (
           <div
             style={{ marginBottom: 10, borderRadius: 8, overflow: "hidden" }}
@@ -3014,26 +3015,27 @@ const ProfileWidget: React.FC = () => {
           </div>
         )}
 
+        {/* ГРИД: 2 колонки */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: isSwipe ? "1fr" : "1fr 1fr",
-            alignItems: "center",
+            gridTemplateColumns: "1fr 1fr",
+            alignItems: "start",
             marginBottom: "8px",
             gap: "18px",
           }}
         >
+          {/* ЛЕВАЯ КОЛОНКА: имя (строка 1) + лейблы (строка 2) */}
           <div
             style={{
               display: "flex",
-              flexDirection: "row",
+              flexDirection: "column",
               gap: 8,
               alignItems: "flex-start",
-              justifyContent: "flex-start",
-              flexWrap: "wrap",
-              marginLeft: isSwipe ? "0" : "12px",
+              marginLeft: "12px",
             }}
           >
+            {/* Строка 1: имя */}
             <div
               style={{
                 fontWeight: "600",
@@ -3044,10 +3046,9 @@ const ProfileWidget: React.FC = () => {
             >
               .{zone.name}
             </div>
-            <div
-              className="labelWrapperRow"
-              style={{ display: "flex", gap: "4px" }}
-            >
+
+            {/* Строка 2: лейблы в ряд */}
+            <div style={{ display: "flex", gap: "4px" }}>
               <div
                 style={{
                   padding: "4px 8px",
@@ -3074,14 +3075,30 @@ const ProfileWidget: React.FC = () => {
               </div>
             </div>
           </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              flexDirection: "column",
-            }}
-          >
-            <div>
+
+          {/* ПРАВАЯ КОЛОНКА: 3 поля в столбик */}
+          <div>
+            <p
+              style={{
+                margin: "4px 0",
+                color: colors.text,
+                opacity: 0.7,
+                fontSize: "11px",
+              }}
+            >
+              {t("created")}: {new Date(zone.createdAt).toLocaleDateString()}
+            </p>
+            <p
+              style={{
+                margin: "4px 0",
+                color: colors.text,
+                opacity: 0.7,
+                fontSize: "11px",
+              }}
+            >
+              {t("subdomainsAmount")}: {zone.subdomainsAmount}
+            </p>
+            {zone.collectionAddress && (
               <p
                 style={{
                   margin: "4px 0",
@@ -3090,49 +3107,28 @@ const ProfileWidget: React.FC = () => {
                   fontSize: "11px",
                 }}
               >
-                {t("created")}: {new Date(zone.createdAt).toLocaleDateString()}
-              </p>
-              <p
-                style={{
-                  margin: "4px 0",
-                  color: colors.text,
-                  opacity: 0.7,
-                  fontSize: "11px",
-                }}
-              >
-                {t("subdomainsAmount")}: {zone.subdomainsAmount}
-              </p>
-              {zone.collectionAddress && (
-                <p
-                  style={{
-                    margin: "4px 0",
-                    color: colors.text,
-                    opacity: 0.7,
-                    fontSize: "11px",
-                  }}
+                {t("marketCollection")}:{" "}
+                <a
+                  href={createTonViewerLink(zone.collectionAddress)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: colors.link, textDecoration: "none" }}
+                  onMouseOver={(e) =>
+                    (e.currentTarget.style.textDecoration = "underline")
+                  }
+                  onMouseOut={(e) =>
+                    (e.currentTarget.style.textDecoration = "none")
+                  }
                 >
-                  {t("marketCollection")}:{" "}
-                  <a
-                    href={createTonViewerLink(zone.collectionAddress)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ color: colors.link, textDecoration: "none" }}
-                    onMouseOver={(e) =>
-                      (e.currentTarget.style.textDecoration = "underline")
-                    }
-                    onMouseOut={(e) =>
-                      (e.currentTarget.style.textDecoration = "none")
-                    }
-                  >
-                    {zone.collectionAddress.slice(0, 4)}...
-                    {zone.collectionAddress.slice(-4)}
-                  </a>
-                </p>
-              )}
-            </div>
+                  {zone.collectionAddress.slice(0, 4)}...
+                  {zone.collectionAddress.slice(-4)}
+                </a>
+              </p>
+            )}
           </div>
         </div>
 
+        {/* КНОПКИ */}
         {zone.status !== "inactive" && (
           <div
             style={{
