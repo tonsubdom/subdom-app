@@ -3010,8 +3010,8 @@ const ProfileWidget: React.FC = () => {
           {(zone as any).image && (
             <div
               style={{
-                width: "80px",
-                height: "80px",
+                width: "120px",
+                height: "120px",
                 borderRadius: "8px",
                 overflow: "hidden",
                 flexShrink: 0,
@@ -3224,12 +3224,13 @@ const ProfileWidget: React.FC = () => {
           position: "relative" as const,
         }}
       >
+        {/* КАРТИНКА + КОНТЕНТ */}
         <div style={{ display: "flex", gap: "14px", marginBottom: "10px" }}>
           {imgUri && (
             <div
               style={{
-                width: "80px",
-                height: "80px",
+                width: "120px",
+                height: "120px",
                 borderRadius: "8px",
                 overflow: "hidden",
                 flexShrink: 0,
@@ -3354,49 +3355,102 @@ const ProfileWidget: React.FC = () => {
           </div>
         </div>
 
+        {/* КНОПКИ: 2 ряда, зеркально зоне */}
         {effectiveStatus === "auction" && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "8px",
-            }}
-          >
-            <button
-              onClick={() => handleGoToAuction(subdomain.name)}
-              style={responsiveButtonStyle(t("goTo") || "Перейти")}
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "8px",
+              }}
             >
-              {t("goTo")}
-            </button>
+              <div />
+              <button
+                onClick={() => handleGoToAuction(subdomain.name)}
+                style={responsiveButtonStyle(t("goTo") || "Перейти")}
+              >
+                {t("goTo")}
+              </button>
+            </div>
           </div>
         )}
+
         {effectiveStatus !== "auction" && effectiveStatus !== "inactive" && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "8px",
-            }}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleManage();
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {/* Ряд 1: пусто слева, Управлять справа */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "8px",
               }}
-              style={responsiveButtonStyle(t("manage") || "Управлять")}
             >
-              {t("manage")}
-            </button>
-            {!isSbt && (
+              <div />
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleMarket();
+                  handleManage();
                 }}
-                style={responsiveButtonStyle(t("sell") || "Продать")}
+                style={responsiveButtonStyle(t("manage") || "Управлять")}
               >
-                {t("sell")}
+                {t("manage")}
               </button>
+            </div>
+
+            {/* Ряд 2: Создать сайт + Аватар/Секрет (или Продать для не-SBT, если хочешь) */}
+            {!isSbt ? (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "8px",
+                }}
+              >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsExpanded(false);
+                    setTimeout(() => {
+                      window.open(
+                        "https://t.me/Ton_site_builder_bot?startapp",
+                        "_blank"
+                      );
+                    }, 300);
+                  }}
+                  style={responsiveButtonStyle("Создать сайт")}
+                >
+                  Создать сайт
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSoonModalOpen(true);
+                  }}
+                  style={responsiveButtonStyle("Аватар / Секрет")}
+                >
+                  Аватар / Секрет
+                </button>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "8px",
+                }}
+              >
+                <div />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSoonModalOpen(true);
+                  }}
+                  style={responsiveButtonStyle("Аватар / Секрет")}
+                >
+                  Аватар / Секрет
+                </button>
+              </div>
             )}
           </div>
         )}
