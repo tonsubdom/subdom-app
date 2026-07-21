@@ -6508,6 +6508,1955 @@
 // 5) useRef для apiService.setNetwork (устранение петли)
 // 6) ВСЕ обработчики и UI сохранены без сокращений
 
+// import React, {
+//   useState,
+//   useCallback,
+//   useMemo,
+//   useEffect,
+//   useRef,
+// } from "react";
+// import {
+//   Banner,
+//   Button,
+//   Card,
+//   Input,
+//   List,
+//   IconButton,
+// } from "@telegram-apps/telegram-ui";
+// import { useTonWallet, useTonAddress } from "@tonconnect/ui-react";
+// import { useTonConnectUI } from "@tonconnect/ui-react";
+// import TonWeb from "tonweb";
+// import { Address } from "ton-core";
+// import Box from "@mui/material/Box";
+// import Tabs from "@mui/material/Tabs";
+// import Tab from "@mui/material/Tab";
+
+// import { useTypedDispatch } from "../../hooks/useTypeDispatch";
+// import { Page } from "@/components/Page";
+// import { ShowSnackbar } from "@/components/ShowSnackbar";
+// import { claimSubdomain } from "@/store/nft/actions";
+// import FlipTimer from "./flipTimer/FlipTimer";
+// import { getAuctionInfo, ParsedAuctionInfo } from "./flipTimer/getAuctionInfo";
+// import { useLanguage } from "@/contexts/LanguageContext";
+// import { useTheme } from "@/contexts/ThemeContext";
+// import { useUser } from "@/contexts/UserContext";
+// import { apiService, Subdomain, Zone } from "@/services/api";
+
+// import { checkSBTSubdomain, SBTSubdomainInfo } from "./checkSBTSubdomain";
+// import { calculateProxyNFTAddress } from "./CalculateProxyNFTAddress";
+
+// // ====== ONCHAIN ======
+// import { useBlockchainItems } from "@/services/blockchainItems/blockchain-items-context.tsx";
+// import { SimpleCollection } from "@/services/blockchainItems/blockchain-items-types";
+
+// import ActiveAuctions from "@/components/ActiveAuctions/ActiveAuctions";
+// import { useAuctionIntegration } from "@/hooks/useAuctionIntegration";
+
+// import {
+//   getAuctionParamsFromUrl,
+//   updateAuctionUrl,
+//   copyAuctionUrlToClipboard,
+//   shareAuction,
+//   isAuctionPage,
+//   clearAuctionUrl,
+// } from "@/utils/urlParams";
+
+// import { useLaunchParams } from "@telegram-apps/sdk-react";
+// import { MiniAppLinks } from "@/utils/miniAppLinks";
+// import { AuctionCollectionSelector } from "./AuctionCollectionSelector";
+// import { getUserSbtSubdomainsCount } from "@/utils/sbt-utils";
+// import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
+
+// // ====== ТИПЫ ======
+
+// type CollectionAddressMap = {
+//   [key: string]: string;
+// };
+
+// type ActiveTab = "proxy" | "sbt";
+
+// const mapPrices: Record<number, number> = {
+//   1: 30,
+//   2: 20,
+//   3: 10,
+//   4: 5,
+//   5: 2.5,
+//   6: 1,
+// };
+
+// const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL;
+
+// const normalizeAddress = (addr: string): string => {
+//   if (!addr) return "";
+//   try {
+//     const address = Address.parse(addr);
+//     return address.toString({ bounceable: true, testOnly: false });
+//   } catch (error) {
+//     console.error("Error parsing address:", addr, error);
+//     return addr;
+//   }
+// };
+
+// // ====== collectionToZone — ТОЧНАЯ КОПИЯ ИЗ ProfileWidget ======
+// const collectionToZone = (col: SimpleCollection): Zone => {
+//   const rawName = col.name || "";
+//   const zoneName = rawName
+//     .replace(" DNS Domains", "")
+//     .replace(" Proxy Domains", "")
+//     .toLowerCase();
+//   return {
+//     id: col.address.slice(0, 10),
+//     name: zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`,
+//     address: col.address,
+//     owner: col.creator_address || col.owner_address,
+//     collectionAddress: col.address,
+//     createdAt: col.created_at || col.lastUpdated || new Date().toISOString(),
+//     subdomainsAmount: col.item_count || 0,
+//     proxy: col.type === "proxy" ? 1 : 0,
+//     status: "active",
+//     image: col.metadata?.token_info?.[0]?.image || col.image,
+//     description: col.metadata?.token_info?.[0]?.description || col.description,
+//     zoneLength: zoneName.length,
+//   } as any as Zone;
+// };
+
+// // ====================================================================
+// // КОМПОНЕНТ
+// // ====================================================================
+
+// export const AuctionPage: React.FC<{}> = () => {
+//   const dispatch = useTypedDispatch();
+//   const wallet = useTonWallet();
+//   const userAddress = useTonAddress();
+//   const [tonConnectUI] = useTonConnectUI();
+//   const { refreshSubdomains } = useUser();
+
+//   const [sbtSubdomainInfo, setSbtSubdomainInfo] =
+//     useState<SBTSubdomainInfo | null>(null);
+
+//   const { currentTheme } = useTheme();
+//   const isDark = currentTheme === "dark";
+//   const { t } = useLanguage();
+
+//   const [activeTab, setActiveTab] = useState<ActiveTab>("proxy");
+//   const [selectedDomainZone, setSelectedDomainZone] = useState("");
+//   const [subDomainName, setSubDomainName] = useState("");
+//   const [collectionAddress, setCollectionAddress] = useState("");
+//   const [snackbar, setSnackbar] = useState<JSX.Element | null>(null);
+//   const [auctionInfo, setAuctionInfo] = useState<ParsedAuctionInfo | null>(
+//     null
+//   );
+//   const [isLoading, setIsLoading] = useState(false);
+//   const [nftAddress, setNftAddress] = useState("");
+//   const [hasChecked, setHasChecked] = useState(false);
+//   const [isClaimLoading, setIsClaimLoading] = useState(false);
+//   const [customBidAmount, setCustomBidAmount] = useState("");
+//   const [showCustomInput, setShowCustomInput] = useState(false);
+//   const [manualBidValue, setManualBidValue] = useState("");
+//   const [sbtPurchaseCompleted, setSbtPurchaseCompleted] = useState(false);
+//   const [sbtLoading, setSbtLoading] = useState(false);
+//   const [sbtZonesCount, setSbtZonesCount] = useState<Record<string, number>>(
+//     {}
+//   );
+//   const prevSbtMapRef = useRef<{
+//     cacheKey: string;
+//     map: CollectionAddressMap;
+//   } | null>(null);
+
+//   const isTestnet = wallet?.account?.chain === "-3";
+//   const launchParams = useLaunchParams();
+//   const [, setOpenedViaDeeplink] = useState(false);
+
+//   // ====== ONCHAIN ДАННЫЕ ======
+//   const {
+//     proxyCollections,
+//     sbtCollections,
+//     loadAllData,
+//     isLoading: zonesLoading,
+//     error: zonesError,
+//   } = useBlockchainItems();
+
+//   // ====== getUserZones — ТОЧНАЯ КОПИЯ ProfileWidget (БЕЗ dedupe) ======
+//   const getUserZones = useMemo((): Zone[] => {
+//     if (!userAddress) return [];
+
+//     const normalizedAddress =
+//       convertUserFriendlyToRaw(userAddress).toLowerCase();
+
+//     const proxyZones = proxyCollections
+//       .filter((col) => {
+//         const creator = (
+//           col.creator_address ||
+//           col.owner_address ||
+//           ""
+//         ).toLowerCase();
+//         return creator === normalizedAddress;
+//       })
+//       .map((col) => collectionToZone(col));
+
+//     const sbtZones = sbtCollections
+//       .filter((col) => {
+//         const creator = (
+//           col.creator_address ||
+//           col.owner_address ||
+//           ""
+//         ).toLowerCase();
+//         return creator === normalizedAddress;
+//       })
+//       .map((col) => collectionToZone(col));
+
+//     return [...proxyZones, ...sbtZones];
+//   }, [userAddress, proxyCollections, sbtCollections]);
+
+//   // Разделяем с учётом возможных дубликатов (если proxy и sbt имеют одно имя — будут оба,
+//   // как в ProfileWidget — dedupe НЕ делаем)
+//   const proxyZones: Zone[] = useMemo(
+//     () => getUserZones.filter((z) => z.proxy === 1),
+//     [getUserZones]
+//   );
+//   const sbtZones: Zone[] = useMemo(
+//     () => getUserZones.filter((z) => z.proxy === 0),
+//     [getUserZones]
+//   );
+//   const allZones: Zone[] = getUserZones;
+
+//   const activeSbtZones: Zone[] = useMemo(
+//     () => sbtZones.filter((zone) => zone.status !== "inactive"),
+//     [sbtZones]
+//   );
+
+//   // ====== УСТРАНЕНИЕ ПЕТЛИ: apiService.setNetwork только при реальной смене сети ======
+//   const prevNetworkRef = useRef<boolean | null>(null);
+//   useEffect(() => {
+//     if (wallet && prevNetworkRef.current !== isTestnet) {
+//       prevNetworkRef.current = isTestnet;
+//       apiService.setNetwork(isTestnet);
+//     }
+//   }, [wallet, isTestnet]);
+
+//   const isProxyZone = useCallback((zone: any): boolean => {
+//     const proxyValue = zone.proxy;
+//     if (typeof proxyValue === "number") return proxyValue === 1;
+//     if (typeof proxyValue === "string") {
+//       return proxyValue.toLowerCase() === "proxy" || proxyValue === "1";
+//     }
+//     return false;
+//   }, []);
+
+//   const proxyCollectionAddressesMap = useMemo(() => {
+//     const map: CollectionAddressMap = {};
+//     allZones.forEach((zone) => {
+//       if (isProxyZone(zone) && zone.name && zone.collectionAddress) {
+//         map[zone.name] = zone.collectionAddress;
+//       }
+//     });
+//     return map;
+//   }, [allZones, isProxyZone]);
+
+//   const sbtCollectionAddressesMap = useMemo(() => {
+//     const cacheKey = activeSbtZones
+//       .map((z) => `${z.name}|${z.collectionAddress}`)
+//       .sort()
+//       .join(";");
+//     if (prevSbtMapRef.current && prevSbtMapRef.current.cacheKey === cacheKey)
+//       return prevSbtMapRef.current.map;
+//     const newMap: CollectionAddressMap = {};
+//     activeSbtZones.forEach((zone) => {
+//       if (zone.name && zone.collectionAddress)
+//         newMap[zone.name] = zone.collectionAddress;
+//     });
+//     prevSbtMapRef.current = { cacheKey, map: newMap };
+//     return newMap;
+//   }, [activeSbtZones]);
+
+//   const currentCollectionMap = useMemo(() => {
+//     return activeTab === "proxy"
+//       ? proxyCollectionAddressesMap
+//       : sbtCollectionAddressesMap;
+//   }, [activeTab, proxyCollectionAddressesMap, sbtCollectionAddressesMap]);
+
+//   useEffect(() => {
+//     if (selectedDomainZone && !collectionAddress && allZones.length > 0) {
+//       const zone = allZones.find((z) => z.name === selectedDomainZone);
+//       if (zone?.collectionAddress) {
+//         setCollectionAddress(zone.collectionAddress);
+//       } else {
+//         const addr = currentCollectionMap[selectedDomainZone];
+//         if (addr) setCollectionAddress(addr);
+//       }
+//     }
+//   }, [selectedDomainZone, collectionAddress, allZones, currentCollectionMap]);
+
+//   const domainZoneName = useMemo(() => {
+//     if (!selectedDomainZone) return "";
+//     return selectedDomainZone.split(".")[0];
+//   }, [selectedDomainZone]);
+
+//   const calculateDomainPrice = useMemo(() => {
+//     if (activeTab === "sbt") return 500_000_000;
+//     const len = subDomainName.length;
+//     return Math.floor((mapPrices[len] || 0.5) * 1_000_000_000);
+//   }, [subDomainName, activeTab]);
+
+//   const calculateBidPrice = useMemo(() => {
+//     if (activeTab === "sbt" || !auctionInfo) return 0;
+//     if (customBidAmount && !isNaN(Number(customBidAmount)))
+//       return Math.floor(Number(customBidAmount) * 1_000_000_000);
+//     const maxBid = Number(auctionInfo.maxBid);
+//     return maxBid + Math.ceil(maxBid * 0.05);
+//   }, [auctionInfo, customBidAmount, activeTab]);
+
+//   const canClaim = useMemo(() => {
+//     if (activeTab === "sbt" || !auctionInfo || !userAddress) return false;
+//     try {
+//       if (auctionInfo.maxBidderOwner === null) return false;
+//       return (
+//         !auctionInfo.isActive &&
+//         normalizeAddress(auctionInfo.maxBidderOwner) ===
+//           normalizeAddress(userAddress)
+//       );
+//     } catch {
+//       return false;
+//     }
+//   }, [auctionInfo, userAddress, activeTab]);
+
+//   const marketplaceUrl = useMemo(() => {
+//     if (activeTab === "sbt" || !nftAddress || !collectionAddress) return "";
+//     const base = isTestnet
+//       ? "https://testnet.getgems.io"
+//       : "https://getgems.io";
+//     return `${base}/collection/${collectionAddress}/${nftAddress}`;
+//   }, [nftAddress, collectionAddress, isTestnet, activeTab]);
+
+//   const showSnackbar = useCallback(
+//     (message: string, type: "success" | "error" = "success") => {
+//       setSnackbar(
+//         <ShowSnackbar
+//           message={message}
+//           type={type}
+//           onClose={() => setSnackbar(null)}
+//         />
+//       );
+//     },
+//     []
+//   );
+
+//   const updateUrlWithCurrentAuction = useCallback(() => {
+//     if (selectedDomainZone && subDomainName && activeTab === "proxy") {
+//       updateAuctionUrl({ zone: selectedDomainZone, subdomain: subDomainName });
+//     }
+//   }, [selectedDomainZone, subDomainName, activeTab]);
+
+//   const handleCopyAuctionLink = useCallback(async () => {
+//     if (!selectedDomainZone || !subDomainName) {
+//       showSnackbar(t("selectZoneAndSubdomainFirst"), "error");
+//       return;
+//     }
+//     const success = await copyAuctionUrlToClipboard({
+//       zone: selectedDomainZone,
+//       subdomain: subDomainName,
+//     });
+//     if (success) showSnackbar(t("auctionLinkCopied"), "success");
+//     else showSnackbar(t("failedToCopyLink"), "error");
+//   }, [selectedDomainZone, subDomainName, showSnackbar, t]);
+
+//   const handleShareAuction = useCallback(async () => {
+//     if (!selectedDomainZone || !subDomainName) {
+//       showSnackbar(t("selectZoneAndSubdomainFirst"), "error");
+//       return;
+//     }
+//     const success = await shareAuction({
+//       zone: selectedDomainZone,
+//       subdomain: subDomainName,
+//     });
+//     if (!success) await handleCopyAuctionLink();
+//   }, [
+//     selectedDomainZone,
+//     subDomainName,
+//     showSnackbar,
+//     handleCopyAuctionLink,
+//     t,
+//   ]);
+
+//   useEffect(() => {
+//     const sp = launchParams.startParam;
+//     if (sp) setOpenedViaDeeplink(true);
+//   }, [launchParams.startParam]);
+
+//   useEffect(() => {
+//     const hasUrlParams = isAuctionPage();
+//     const hasDeeplink = !!launchParams.startParam;
+//     if ((hasUrlParams || hasDeeplink) && allZones.length === 0) return;
+//     if (hasDeeplink) {
+//       const sp = launchParams.startParam!;
+//       try {
+//         const { route, params } = MiniAppLinks.parseStartapp(sp);
+//         if (route === "/add-subdomain" && params.zone && params.subdomain) {
+//           loadAuctionFromParams(params.zone, params.subdomain);
+//         }
+//       } catch (e) {
+//         console.error("deeplink parse error:", e);
+//       }
+//     } else if (hasUrlParams) {
+//       const p = getAuctionParamsFromUrl();
+//       if (p.zone && p.subdomain) loadAuctionFromParams(p.zone, p.subdomain);
+//     }
+//     // eslint-disable-next-line
+//   }, [allZones, launchParams.startParam]);
+
+//   // ====== ПРОВЕРКА ИТЕМА ======
+//   const handleCheckItem = useCallback(async () => {
+//     if (!selectedDomainZone || !subDomainName || !collectionAddress) {
+//       showSnackbar(t("pleaseEnterDomainName"), "error");
+//       return;
+//     }
+//     if (!/^[a-z0-9-]+$/.test(subDomainName)) {
+//       showSnackbar(t("subdomainInvalidCharsError"), "error");
+//       return;
+//     }
+//     setIsLoading(true);
+//     setHasChecked(false);
+//     const lowerValue = subDomainName.toLowerCase();
+//     if (activeTab === "sbt") {
+//       const sbtInfo = await checkSBTSubdomain(
+//         lowerValue,
+//         collectionAddress,
+//         isTestnet
+//       );
+//       if (sbtInfo) {
+//         setSbtSubdomainInfo(sbtInfo);
+//         setAuctionInfo(null);
+//         setNftAddress(sbtInfo.nftAddress || "");
+//         showSnackbar(
+//           sbtInfo.isTaken
+//             ? t("sbtSubdomainAlreadyTaken")
+//             : t("sbtSubdomainAvailable"),
+//           sbtInfo.isTaken ? "error" : "success"
+//         );
+//       } else {
+//         setSbtSubdomainInfo(null);
+//         setAuctionInfo(null);
+//         setNftAddress("");
+//         showSnackbar(t("checkingAvailability"), "error");
+//       }
+//     } else {
+//       const info = await getAuctionInfo(
+//         lowerValue,
+//         collectionAddress,
+//         isTestnet
+//       );
+//       if (info) {
+//         setAuctionInfo(info);
+//         setSbtSubdomainInfo(null);
+//         setNftAddress(info.nftAddress || "");
+//         showSnackbar(t("auctionInfoLoaded"), "success");
+//         if (activeTab === "proxy") updateUrlWithCurrentAuction();
+//       } else {
+//         setAuctionInfo(null);
+//         setSbtSubdomainInfo(null);
+//         const proxyNFTAddress = await calculateProxyNFTAddress(
+//           lowerValue,
+//           collectionAddress,
+//           isTestnet
+//         );
+//         if (proxyNFTAddress) {
+//           setNftAddress(proxyNFTAddress);
+//           showSnackbar(t("subdomainAvailableForFirstBid"), "success");
+//         } else {
+//           setNftAddress("");
+//           showSnackbar(t("failedToCalculateNFTAddress"), "error");
+//         }
+//         if (activeTab === "proxy") updateUrlWithCurrentAuction();
+//       }
+//     }
+//     setHasChecked(true);
+//     setIsLoading(false);
+//   }, [
+//     selectedDomainZone,
+//     subDomainName,
+//     collectionAddress,
+//     isTestnet,
+//     t,
+//     activeTab,
+//     updateUrlWithCurrentAuction,
+//     showSnackbar,
+//   ]);
+
+//   const loadUserSbtSubdomainsCount = useCallback(async () => {
+//     if (!userAddress || activeTab !== "sbt") return;
+//     try {
+//       const counts = await getUserSbtSubdomainsCount(userAddress, isTestnet);
+//       setSbtZonesCount(counts);
+//     } catch {
+//       setSbtZonesCount({});
+//     }
+//   }, [userAddress, isTestnet, activeTab]);
+
+//   useEffect(() => {
+//     if (activeTab === "sbt" && userAddress) loadUserSbtSubdomainsCount();
+//     else setSbtZonesCount({});
+//   }, [activeTab, userAddress, loadUserSbtSubdomainsCount]);
+
+//   const loadAuctionFromParams = useCallback(
+//     (zoneName: string, subdomainName: string) => {
+//       setOpenedViaDeeplink(true);
+//       setActiveTab("proxy");
+//       setSelectedDomainZone(zoneName);
+//       setSubDomainName(subdomainName);
+//       const zone = allZones.find((z) => z.name === zoneName);
+//       if (zone?.collectionAddress) setCollectionAddress(zone.collectionAddress);
+//       updateUrlWithCurrentAuction();
+//       setTimeout(() => handleCheckItem(), 500);
+//     },
+//     [allZones, handleCheckItem, updateUrlWithCurrentAuction]
+//   );
+
+//   const handleTabChange = (
+//     _event: React.SyntheticEvent,
+//     newValue: ActiveTab
+//   ) => {
+//     setActiveTab(newValue);
+//     setSelectedDomainZone("");
+//     setSubDomainName("");
+//     setCollectionAddress("");
+//     setAuctionInfo(null);
+//     setNftAddress("");
+//     setHasChecked(false);
+//     setCustomBidAmount("");
+//     setShowCustomInput(false);
+//     setManualBidValue("");
+//     setSbtPurchaseCompleted(false);
+//     setOpenedViaDeeplink(false);
+//     if (newValue === "sbt") clearAuctionUrl();
+//   };
+
+//   const checkItemByName = useCallback(
+//     async (zoneName: string, subdomain: string) => {
+//       setAuctionInfo(null);
+//       setNftAddress("");
+//       setHasChecked(false);
+//       setCustomBidAmount("");
+//       setShowCustomInput(false);
+//       setManualBidValue("");
+//       setSbtPurchaseCompleted(false);
+//       setSelectedDomainZone(zoneName);
+//       setSubDomainName(subdomain);
+//       const zone = allZones.find((z) => z.name === zoneName);
+//       setCollectionAddress(zone?.collectionAddress || "");
+//       await new Promise((r) => setTimeout(r, 100));
+//       await handleCheckItem();
+//     },
+//     [allZones, handleCheckItem]
+//   );
+
+//   const { handleAuctionClick, setSelectedZoneName, setSubdomainName } =
+//     useAuctionIntegration({ zones: allZones, checkItem: checkItemByName });
+
+//   const handleAuctionClickFromComponent = useCallback(
+//     (zoneName: string, subdomainName: string) => {
+//       handleAuctionClick(zoneName, subdomainName);
+//       if (activeTab === "proxy") updateUrlWithCurrentAuction();
+//     },
+//     [handleAuctionClick, activeTab, updateUrlWithCurrentAuction]
+//   );
+
+//   const setupCollectionAddressForZone = useCallback(
+//     (zoneName: string) => {
+//       if (!zoneName) return false;
+//       const zone = allZones.find((z) => z.name === zoneName);
+//       if (zone?.collectionAddress) {
+//         setCollectionAddress(zone.collectionAddress);
+//         return true;
+//       }
+//       const a = currentCollectionMap[zoneName];
+//       if (a) {
+//         setCollectionAddress(a);
+//         return true;
+//       }
+//       return false;
+//     },
+//     [allZones, currentCollectionMap]
+//   );
+
+//   const handleDomainZoneChangeForSelector = useCallback(
+//     (value: string) => {
+//       setSelectedDomainZone(value);
+//       setOpenedViaDeeplink(false);
+//       setSelectedZoneName(value);
+//       setAuctionInfo(null);
+//       setNftAddress("");
+//       setHasChecked(false);
+//       setCustomBidAmount("");
+//       setShowCustomInput(false);
+//       setManualBidValue("");
+//       setSbtPurchaseCompleted(false);
+//       setupCollectionAddressForZone(value);
+//       if (value && subDomainName && activeTab === "proxy")
+//         updateUrlWithCurrentAuction();
+//     },
+//     [
+//       setSelectedZoneName,
+//       setupCollectionAddressForZone,
+//       subDomainName,
+//       activeTab,
+//       updateUrlWithCurrentAuction,
+//     ]
+//   );
+
+//   const handleSubDomainNameChange = useCallback(
+//     (value: string) => {
+//       setSubDomainName(value.toLowerCase());
+//       setSubdomainName(value.toLowerCase());
+//       setAuctionInfo(null);
+//       setNftAddress("");
+//       setHasChecked(false);
+//       setCustomBidAmount("");
+//       setShowCustomInput(false);
+//       setManualBidValue("");
+//       setSbtPurchaseCompleted(false);
+//       if (selectedDomainZone && value && activeTab === "proxy")
+//         updateUrlWithCurrentAuction();
+//     },
+//     [
+//       setSubdomainName,
+//       selectedDomainZone,
+//       activeTab,
+//       updateUrlWithCurrentAuction,
+//     ]
+//   );
+
+//   const handleBidSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+//     const v = e.target.value;
+//     if (v === "custom") {
+//       setShowCustomInput(true);
+//       setCustomBidAmount("");
+//       setManualBidValue("");
+//     } else {
+//       setShowCustomInput(false);
+//       setCustomBidAmount(v);
+//       setManualBidValue("");
+//     }
+//   };
+
+//   const handleManualBidChange = (value: string) => {
+//     setManualBidValue(value);
+//     setCustomBidAmount(value && !isNaN(Number(value)) ? value : "");
+//   };
+
+//   // ====== ПОДГОТОВКА ПЛАТЕЖА (логирование тела транзакции) ======
+//   const logTransactionBody = (label: string, messages: any[]) => {
+//     console.log(
+//       `📦 [${label}] Тело транзакции:`,
+//       JSON.stringify(
+//         {
+//           validUntil: Math.floor(Date.now() / 1000) + 360,
+//           messages: messages.map((m) => ({
+//             amount: m.amount,
+//             address: m.address,
+//             payload: m.payload || "(none)",
+//           })),
+//         },
+//         null,
+//         2
+//       )
+//     );
+//   };
+
+//   // ====== API (БД) ======
+//   const createSubdomainIfNotExists = async (subdomainData: {
+//     name: string;
+//     address: string;
+//     mintPrice: number;
+//     links?: string[];
+//     zoneId?: number;
+//     owner?: string;
+//     status: "active" | "inactive" | "auction" | "claimed";
+//     auctionEndTime?: string;
+//     collectionAddress?: string;
+//   }): Promise<Subdomain> => {
+//     try {
+//       apiService.setNetwork(isTestnet);
+//       try {
+//         return await apiService.getSubdomainByName(subdomainData.name);
+//       } catch {
+//         return await apiService.createSubdomain({ ...subdomainData });
+//       }
+//     } catch (error) {
+//       console.error("createSubdomainIfNotExists:", error);
+//       throw error;
+//     }
+//   };
+
+//   // ====== СТАРТ АУКЦИОНА ======
+//   const handleStartAuction = async () => {
+//     if (!selectedDomainZone || !subDomainName || !collectionAddress) {
+//       showSnackbar(t("pleaseEnterDomainName"), "error");
+//       return;
+//     }
+//     if (!userAddress) {
+//       showSnackbar(t("walletNotConnected"), "error");
+//       return;
+//     }
+//     try {
+//       const tonWeb = new TonWeb();
+//       const cell = new tonWeb.boc.Cell();
+//       cell.bits.writeUint(0, 32);
+//       cell.bits.writeString(`${subDomainName}`);
+//       const payload = TonWeb.utils.bytesToBase64(await cell.toBoc());
+
+//       const messages = [
+//         {
+//           amount: calculateDomainPrice.toString(),
+//           address: collectionAddress,
+//           payload,
+//         },
+//       ];
+//       logTransactionBody("START_AUCTION", messages);
+
+//       await tonConnectUI.sendTransaction({
+//         validUntil: Math.floor(Date.now() / 1000) + 360,
+//         messages,
+//       });
+
+//       const full = `${subDomainName}.${selectedDomainZone}`;
+//       const auctionEndTime = new Date(
+//         Date.now() + 24 * 60 * 60 * 1000
+//       ).toISOString();
+//       try {
+//         apiService.setNetwork(isTestnet);
+//         const zone = allZones.find((z) => z.name === selectedDomainZone);
+//         await apiService.createSubdomain({
+//           name: full,
+//           address: nftAddress,
+//           mintPrice: calculateDomainPrice / 1_000_000_000,
+//           owner: userAddress,
+//           status: "auction",
+//           auctionEndTime,
+//           zoneId: zone?.id,
+//           collectionAddress: zone?.collectionAddress,
+//         });
+//         loadAllData(true);
+//         showSnackbar(t("startAuction"), "success");
+//       } catch (dbError: any) {
+//         console.error("DB error:", dbError);
+//         showSnackbar(t("auctionStartedBlockchainDbError"), "error");
+//       }
+//       setTimeout(() => handleCheckItem(), 2000);
+//     } catch (error: any) {
+//       if (error?.message?.includes("cancelled"))
+//         showSnackbar(t("auctionStartCancelled"), "error");
+//       else if (error?.message?.includes("rejected"))
+//         showSnackbar(t("auctionStartRejected"), "error");
+//       else if (error?.message?.includes("insufficient"))
+//         showSnackbar(t("insufficientFundsForAuctionStart"), "error");
+//       else showSnackbar(t("auctionStartError"), "error");
+//     }
+//   };
+
+//   // ====== СТАВКА ======
+//   const handlePlaceBid = async () => {
+//     if (
+//       !auctionInfo ||
+//       !selectedDomainZone ||
+//       !subDomainName ||
+//       !collectionAddress
+//     ) {
+//       showSnackbar(t("auctionDataNotLoaded"), "error");
+//       return;
+//     }
+//     if (!userAddress) {
+//       showSnackbar(t("walletNotConnected"), "error");
+//       return;
+//     }
+//     try {
+//       const messages = [
+//         { amount: calculateBidPrice.toString(), address: nftAddress },
+//       ];
+//       logTransactionBody("PLACE_BID", messages);
+
+//       await tonConnectUI.sendTransaction({
+//         validUntil: Math.floor(Date.now() / 1000) + 360,
+//         messages,
+//       });
+
+//       const full = `${subDomainName}.${selectedDomainZone}`;
+//       try {
+//         apiService.setNetwork(isTestnet);
+//         const zone = allZones.find((z) => z.name === selectedDomainZone);
+//         const subdomain = await createSubdomainIfNotExists({
+//           name: full,
+//           address: nftAddress,
+//           mintPrice: calculateBidPrice / 1_000_000_000,
+//           owner: userAddress,
+//           status: "auction",
+//           auctionEndTime: new Date(
+//             Date.now() + 24 * 60 * 60 * 1000
+//           ).toISOString(),
+//           zoneId: zone?.id,
+//           collectionAddress: zone?.collectionAddress,
+//         });
+//         await apiService.addBidToSubdomain(subdomain.id, {
+//           bidder: userAddress,
+//           amount: calculateBidPrice,
+//         });
+//         await apiService.updateSubdomainStatus(subdomain.id, "auction");
+//         refreshSubdomains();
+//         loadAllData(true);
+//       } catch (dbError: any) {
+//         console.error("DB error:", dbError);
+//         showSnackbar(t("bidPlacedBlockchainDbError"), "error");
+//       }
+//       showSnackbar(t("bid"), "success");
+//       setCustomBidAmount("");
+//       setShowCustomInput(false);
+//       setManualBidValue("");
+//       setTimeout(() => handleCheckItem(), 2000);
+//     } catch (error: any) {
+//       if (error?.message?.includes("cancelled"))
+//         showSnackbar(t("bidCancelled"), "error");
+//       else if (error?.message?.includes("rejected"))
+//         showSnackbar(t("bidRejected"), "error");
+//       else if (error?.message?.includes("insufficient"))
+//         showSnackbar(t("insufficientFundsForBid"), "error");
+//       else showSnackbar(t("bidError"), "error");
+//     }
+//   };
+
+//   // ====== ПОКУПКА SBT ======
+//   const handlePurchaseSBTSubdomain = async () => {
+//     if (!selectedDomainZone || !subDomainName || !collectionAddress) {
+//       showSnackbar(t("pleaseEnterDomainName"), "error");
+//       return;
+//     }
+//     if (!wallet) {
+//       showSnackbar(t("walletNotConnected"), "error");
+//       return;
+//     }
+//     if (sbtSubdomainInfo?.isTaken) {
+//       showSnackbar(t("sbtSubdomainAlreadyTaken"), "error");
+//       return;
+//     }
+//     setSbtLoading(true);
+//     try {
+//       const tonWeb = new TonWeb();
+//       const cell = new tonWeb.boc.Cell();
+//       cell.bits.writeUint(0, 32);
+//       cell.bits.writeString(`${subDomainName}`);
+//       const payload = TonWeb.utils.bytesToBase64(await cell.toBoc());
+
+//       const messages = [
+//         {
+//           amount: calculateDomainPrice.toString(),
+//           address: collectionAddress,
+//           payload,
+//         },
+//       ];
+//       logTransactionBody("PURCHASE_SBT", messages);
+
+//       await tonConnectUI.sendTransaction({
+//         validUntil: Math.floor(Date.now() / 1000) + 360,
+//         messages,
+//       });
+
+//       const full = `${subDomainName}.${selectedDomainZone}`;
+//       if (!userAddress) throw new Error("No user address");
+//       const nftAddr = sbtSubdomainInfo?.nftAddress || userAddress;
+//       apiService.setNetwork(isTestnet);
+//       const zone = allZones.find((z) => z.name === selectedDomainZone);
+//       await apiService.createSubdomain({
+//         name: full,
+//         address: nftAddr,
+//         mintPrice: calculateDomainPrice / 1_000_000_000,
+//         owner: userAddress,
+//         status: "active",
+//         collectionAddress,
+//         zoneId: zone?.id,
+//       });
+//       showSnackbar(t("sbtSubdomainPurchased"), "success");
+//       setSbtPurchaseCompleted(true);
+//     } catch (error: any) {
+//       if (error?.message?.includes("cancelled"))
+//         showSnackbar(t("sbtPurchaseCancelled"), "error");
+//       else showSnackbar(t("sbtPurchaseError"), "error");
+//     } finally {
+//       setSbtLoading(false);
+//     }
+//   };
+
+//   // ====== CLAIM ======
+//   const handleClaimSubdomain = async () => {
+//     if (!nftAddress) {
+//       showSnackbar(t("nftAddressNotFound"), "error");
+//       return;
+//     }
+//     if (!userAddress) {
+//       showSnackbar(t("walletNotConnected"), "error");
+//       return;
+//     }
+//     setIsClaimLoading(true);
+//     try {
+//       const result = await dispatch(
+//         claimSubdomain({
+//           subdomain_item_address: nftAddress,
+//           query_id: 0,
+//           isTestnet,
+//         })
+//       ).unwrap();
+//       await tonConnectUI.sendTransaction({
+//         validUntil: result.validUntil,
+//         messages: result.messages,
+//       });
+//       const full = `${subDomainName}.${selectedDomainZone}`;
+//       try {
+//         apiService.setNetwork(isTestnet);
+//         const s = await apiService.getSubdomainByName(full);
+//         if (s) await apiService.updateSubdomainStatus(s.id, "claimed");
+//       } catch (e) {
+//         console.error("DB claim error:", e);
+//       }
+//       showSnackbar(t("subdomainClaimedSuccess"), "success");
+//     } catch (error) {
+//       showSnackbar(
+//         error instanceof Error ? error.message : t("subdomainClaimError"),
+//         "error"
+//       );
+//     } finally {
+//       setIsClaimLoading(false);
+//     }
+//   };
+
+//   // ====== UI HELPERS ======
+//   const getImageUrl = () => {
+//     if (!domainZoneName || !subDomainName) return "";
+//     if (activeTab === "proxy")
+//       return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${domainZoneName}/${subDomainName}.png`;
+//     return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${domainZoneName}/${subDomainName}.png`;
+//   };
+
+//   const getActionButtonText = (): string => {
+//     if (activeTab === "sbt") {
+//       if (sbtPurchaseCompleted) return `✅ ${t("purchased")}`;
+//       if (sbtSubdomainInfo?.isTaken)
+//         return `❌ ${t("sbtSubdomainAlreadyTaken")}`;
+//       return `${t("mintSubdomain")} (${t("buyFor1TON")})`;
+//     }
+//     if (!auctionInfo)
+//       return `${t("startAuction")} (${t("price")}: ${
+//         calculateDomainPrice / 1_000_000_000
+//       } TON)`;
+//     if (auctionInfo.isActive)
+//       return `${t("bid")} (${
+//         customBidAmount || (calculateBidPrice / 1_000_000_000).toFixed(2)
+//       } TON)`;
+//     if (canClaim)
+//       return isClaimLoading ? t("claiming") : `🎁 ${t("claimSubdomain")}`;
+//     return "";
+//   };
+
+//   const getActionButtonHandler = (): (() => void) | undefined => {
+//     if (activeTab === "sbt") {
+//       if (sbtPurchaseCompleted || sbtSubdomainInfo?.isTaken) return undefined;
+//       return handlePurchaseSBTSubdomain;
+//     }
+//     if (!auctionInfo) return handleStartAuction;
+//     if (auctionInfo.isActive) return handlePlaceBid;
+//     if (canClaim) return handleClaimSubdomain;
+//     return undefined;
+//   };
+
+//   const getActionButtonDisabled = (): boolean => {
+//     if (activeTab === "sbt")
+//       return (
+//         sbtPurchaseCompleted ||
+//         sbtLoading ||
+//         !selectedDomainZone ||
+//         !subDomainName ||
+//         !!sbtSubdomainInfo?.isTaken
+//       );
+//     if (!auctionInfo) return !selectedDomainZone || !subDomainName;
+//     if (auctionInfo.isActive) return false;
+//     if (canClaim) return isClaimLoading;
+//     return true;
+//   };
+
+//   const themeColors = {
+//     light: { primary: "linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)" },
+//     dark: { primary: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)" },
+//   };
+//   const colors = themeColors[isDark ? "dark" : "light"];
+
+//   const getActionButtonColor = () => {
+//     if (activeTab === "sbt") {
+//       if (sbtPurchaseCompleted) return "#4ade80";
+//       if (sbtSubdomainInfo?.isTaken) return "#888";
+//       return sbtLoading ? "#888" : "#4a90e2";
+//     }
+//     if (!auctionInfo) return "#4ade80";
+//     if (auctionInfo.isActive) return "rgb(74, 144, 226)";
+//     if (canClaim) return isClaimLoading ? "#888" : "#4ade80";
+//     return "transparent";
+//   };
+
+//   useEffect(() => {
+//     if (userAddress) refreshSubdomains();
+//   }, [userAddress, refreshSubdomains]);
+
+//   // ====================================================================
+//   // RENDER
+//   // ====================================================================
+//   return (
+//     <Page back={true}>
+//       {snackbar}
+//       <Box sx={{ display: "flex", justifyContent: "center", mt: 2, mb: 3 }}>
+//         <Tabs
+//           value={activeTab}
+//           onChange={handleTabChange}
+//           sx={{
+//             "& .MuiTab-root": {
+//               color: isDark ? "#ccc" : "#666",
+//               "&.Mui-selected": { color: isDark ? "#FFD700" : "#3B82F6" },
+//             },
+//           }}
+//         >
+//           <Tab label={t("proxyForSale")} value="proxy" />
+//           <Tab label={t("sbtNotForSale")} value="sbt" />
+//         </Tabs>
+//       </Box>
+
+//       {activeTab === "proxy" && (
+//         <div
+//           className="bannerWrapper"
+//           style={{
+//             display: "flex",
+//             width: "100%",
+//             justifyContent: "center",
+//             alignItems: "center",
+//           }}
+//         >
+//           <Banner
+//             type="section"
+//             header={t("proxyAuctionTitle")}
+//             subheader={t("proxyAuctionDescription")}
+//             style={{
+//               textAlign: "center",
+//               marginBottom: "20px",
+//               padding: "15px",
+//               maxWidth: "425px",
+//               background: isDark
+//                 ? "linear-gradient(to bottom, #1a1a1a, #2a2a2a)"
+//                 : "linear-gradient(to bottom, #f5f5f5, #e5e5e5)",
+//               color: isDark ? "#fff" : "#333",
+//             }}
+//           >
+//             <div
+//               style={{
+//                 textAlign: "left",
+//                 marginTop: "15px",
+//                 fontSize: "14px",
+//                 display: "flex",
+//                 flexDirection: "column",
+//                 alignItems: "center",
+//                 maxWidth: "425px",
+//               }}
+//             >
+//               <div
+//                 style={{
+//                   fontWeight: "bold",
+//                   marginBottom: "10px",
+//                   textAlign: "center",
+//                 }}
+//               >
+//                 {t("proxyFeatures")}
+//               </div>
+//               <ul style={{ paddingLeft: "20px", margin: 0 }}>
+//                 <li style={{ marginBottom: "8px" }}>{t("proxyFeature1")}</li>
+//                 <li style={{ marginBottom: "8px" }}>{t("proxyFeature2")}</li>
+//                 <li style={{ marginBottom: "8px" }}>{t("proxyFeature3")}</li>
+//                 <li style={{ marginBottom: "8px" }}>{t("proxyFeature4")}</li>
+//                 <li style={{ marginBottom: "8px" }}>{t("proxyFeature5")}</li>
+//                 <li style={{ marginBottom: "8px" }}>{t("proxyFeature6")}</li>
+//                 <li style={{ marginBottom: "8px" }}>{t("proxyFeature7")}</li>
+//               </ul>
+//             </div>
+//           </Banner>
+//         </div>
+//       )}
+
+//       {activeTab === "sbt" && (
+//         <div
+//           className="bannerWrapper"
+//           style={{
+//             display: "flex",
+//             width: "100%",
+//             justifyContent: "center",
+//             alignItems: "center",
+//           }}
+//         >
+//           <Banner
+//             type="section"
+//             header={t("sbtMintTitle")}
+//             subheader={t("sbtMintDescription")}
+//             style={{
+//               textAlign: "center",
+//               marginBottom: "20px",
+//               padding: "15px",
+//               maxWidth: "425px",
+//               background: isDark
+//                 ? "linear-gradient(to bottom, #1a1a1a, #2a2a2a)"
+//                 : "linear-gradient(to bottom, #f5f5f5, #e5e5e5)",
+//               color: isDark ? "#fff" : "#333",
+//             }}
+//           >
+//             <div
+//               style={{
+//                 textAlign: "left",
+//                 marginTop: "15px",
+//                 fontSize: "14px",
+//                 display: "flex",
+//                 flexDirection: "column",
+//                 alignItems: "center",
+//                 maxWidth: "425px",
+//               }}
+//             >
+//               <div
+//                 style={{
+//                   fontWeight: "bold",
+//                   marginBottom: "10px",
+//                   textAlign: "center",
+//                 }}
+//               >
+//                 {t("sbtFeatures")}
+//               </div>
+//               <ul style={{ paddingLeft: "20px", margin: 0 }}>
+//                 <li style={{ marginBottom: "8px" }}>{t("sbtFeature1")}</li>
+//                 <li style={{ marginBottom: "8px" }}>{t("sbtFeature2")}</li>
+//                 <li style={{ marginBottom: "8px" }}>{t("sbtFeature3")}</li>
+//                 <li style={{ marginBottom: "8px" }}>{t("sbtFeature4")}</li>
+//                 <li style={{ marginBottom: "8px" }}>{t("sbtFeature5")}</li>
+//                 <li style={{ marginBottom: "8px" }}>{t("sbtFeature6")}</li>
+//                 <li style={{ marginBottom: "8px" }}>{t("sbtFeature7")}</li>
+//               </ul>
+//             </div>
+//           </Banner>
+//         </div>
+//       )}
+
+//       {activeTab === "proxy" && (
+//         <ActiveAuctions
+//           isTestnet={isTestnet}
+//           isDark={isDark}
+//           onAuctionClick={handleAuctionClickFromComponent}
+//         />
+//       )}
+
+//       <div
+//         style={{
+//           textAlign: "center",
+//           marginBottom: "10px",
+//           padding: "5px 10px",
+//           borderRadius: "15px",
+//           background: isTestnet ? "#f59e0b" : "#10b981",
+//           color: "white",
+//           fontSize: "12px",
+//           fontWeight: "bold",
+//           maxWidth: "280px",
+//           margin: "0 auto",
+//         }}
+//       >
+//         {isTestnet ? "🌐 Testnet Mode" : "🌐 Mainnet Mode"}
+//       </div>
+
+//       <List
+//         style={{
+//           display: "flex",
+//           flexDirection: "column",
+//           alignItems: "center",
+//           gap: "15px",
+//           paddingBottom: "150px",
+//         }}
+//       >
+//         <div style={{ position: "relative", width: "280px" }}>
+//           <div
+//             style={{
+//               position: "absolute",
+//               left: "-30px",
+//               top: "50%",
+//               transform: "translateY(-50%)",
+//               fontSize: "18px",
+//               fontWeight: "bold",
+//               color: isDark ? "white" : "black",
+//             }}
+//           >
+//             1
+//           </div>
+//           <AuctionCollectionSelector
+//             activeTab={activeTab}
+//             selectedDomainZone={selectedDomainZone}
+//             onDomainZoneChange={handleDomainZoneChangeForSelector}
+//             zonesLoading={zonesLoading}
+//             zonesError={zonesError}
+//             userAddress={userAddress}
+//             isDark={isDark}
+//             t={t}
+//             sbtCollectionAddressesMap={sbtCollectionAddressesMap}
+//             activeSbtZones={activeSbtZones}
+//             proxyZones={proxyZones}
+//             isTestnet={isTestnet}
+//             sbtZonesCount={sbtZonesCount}
+//           />
+//           {zonesError && (
+//             <p style={{ color: "#f87171", fontSize: "12px", marginTop: "5px" }}>
+//               {zonesError}
+//             </p>
+//           )}
+//           {activeTab === "sbt" &&
+//             sbtZones.length === 0 &&
+//             !zonesLoading &&
+//             !zonesError && (
+//               <p
+//                 style={{
+//                   color: "#f59e0b",
+//                   fontSize: "12px",
+//                   marginTop: "5px",
+//                   textAlign: "center",
+//                 }}
+//               >
+//                 {t("noSbtZones")}
+//               </p>
+//             )}
+//         </div>
+
+//         {selectedDomainZone && (
+//           <div
+//             style={{
+//               padding: "8px 12px",
+//               borderRadius: "8px",
+//               background: isDark ? "#2a2a2a" : "#f5f5f5",
+//               border: `1px solid ${isDark ? "#444" : "#ddd"}`,
+//               fontSize: "12px",
+//               color: isDark ? "#ccc" : "#666",
+//               maxWidth: "280px",
+//               textAlign: "center",
+//             }}
+//           >
+//             <p style={{ margin: 0 }}>
+//               <strong>{t("zoneType")}</strong>{" "}
+//               {activeTab === "proxy" ? t("proxyType") : t("sbtType")}
+//             </p>
+//             {collectionAddress ? (
+//               <p
+//                 style={{
+//                   margin: "3px 0 0 0",
+//                   color: "#4caf50",
+//                   fontSize: "11px",
+//                 }}
+//               >
+//                 {t("collectionConfigured")}
+//               </p>
+//             ) : (
+//               <p
+//                 style={{
+//                   margin: "3px 0 0 0",
+//                   color: "#f59e0b",
+//                   fontSize: "11px",
+//                 }}
+//               >
+//                 {t("collectionNotConfigured")}
+//               </p>
+//             )}
+//             <p
+//               style={{
+//                 margin: "3px 0 0 0",
+//                 fontSize: "11px",
+//                 color: isTestnet ? "#f59e0b" : "#10b981",
+//               }}
+//             >
+//               {t("network")} {isTestnet ? t("testnet") : t("mainnet")}
+//             </p>
+//           </div>
+//         )}
+
+//         <div style={{ position: "relative", width: "280px" }}>
+//           <div
+//             style={{
+//               position: "absolute",
+//               left: "-30px",
+//               top: "50%",
+//               transform: "translateY(-50%)",
+//               fontSize: "18px",
+//               fontWeight: "bold",
+//               color: isDark ? "white" : "black",
+//             }}
+//           >
+//             2
+//           </div>
+//           <Input
+//             placeholder={t("enterSubdomainName")}
+//             value={subDomainName}
+//             onChange={(e) => {
+//               const val = e.target.value
+//                 .trim()
+//                 .toLowerCase()
+//                 .replace(/[^a-z0-9-]/g, "");
+//               handleSubDomainNameChange(val);
+//             }}
+//             style={{
+//               width: "280px",
+//               borderRadius: "50%",
+//               padding: "0px 15px",
+//               position: "relative",
+//             }}
+//             before={
+//               <div
+//                 style={{
+//                   position: "absolute",
+//                   left: "15px",
+//                   top: "50%",
+//                   transform: "translateY(-50%)",
+//                   opacity: 0.5,
+//                 }}
+//               >
+//                 🔍
+//               </div>
+//             }
+//           />
+//         </div>
+
+//         <div style={{ position: "relative", width: "280px" }}>
+//           <div
+//             style={{
+//               position: "absolute",
+//               left: "-30px",
+//               top: "50%",
+//               transform: "translateY(-50%)",
+//               fontSize: "18px",
+//               fontWeight: "bold",
+//               color: isDark ? "white" : "black",
+//             }}
+//           >
+//             2.5
+//           </div>
+//           <Button
+//             onClick={handleCheckItem}
+//             disabled={
+//               !selectedDomainZone ||
+//               !subDomainName ||
+//               isLoading ||
+//               !collectionAddress
+//             }
+//             style={{
+//               width: "280px",
+//               borderRadius: "25px",
+//               padding: "10px 15px",
+//               background: isLoading ? "#888" : colors.primary,
+//               opacity: !collectionAddress ? 0.5 : 1,
+//               cursor: !collectionAddress ? "not-allowed" : "pointer",
+//               color: isDark ? "black" : "white",
+//             }}
+//           >
+//             {isLoading ? t("checking") : t("checkingItem")}
+//           </Button>
+//           {!collectionAddress && (
+//             <p
+//               style={{
+//                 color: "#f59e0b",
+//                 fontSize: "12px",
+//                 marginTop: "5px",
+//                 textAlign: "center",
+//               }}
+//             >
+//               {t("noCollectionAddress")}
+//             </p>
+//           )}
+//         </div>
+
+//         {/* AUCTION CARD */}
+//         {hasChecked && auctionInfo && activeTab === "proxy" && (
+//           <Card
+//             style={{
+//               background: "linear-gradient(to bottom, #1a1a1a, #2a2a2a)",
+//               marginBottom: "20px",
+//               padding: "15px",
+//               borderRadius: "10px",
+//               width: "280px",
+//               border: `2px solid ${
+//                 auctionInfo.isActive ? "#4ade80" : "#f87171"
+//               }`,
+//             }}
+//           >
+//             <div style={{ color: "#fff", fontSize: "14px" }}>
+//               <div
+//                 style={{
+//                   marginBottom: "10px",
+//                   textAlign: "center",
+//                   color: auctionInfo.isActive ? "#4ade80" : "#f87171",
+//                   fontWeight: "bold",
+//                 }}
+//               >
+//                 {auctionInfo.isActive
+//                   ? `✅  ${t("bidOnAuction")}`
+//                   : `❌ ${t("subdomainAlreadyTaken")}`}
+//               </div>
+//               <div
+//                 style={{
+//                   width: "100%",
+//                   display: "flex",
+//                   justifyContent: "center",
+//                   alignItems: "center",
+//                 }}
+//               >
+//                 <img
+//                   style={{
+//                     width: "200px",
+//                     height: "200px",
+//                     borderRadius: "25px",
+//                     marginBottom: "15px",
+//                   }}
+//                   src={getImageUrl()}
+//                   alt="subdomainImage"
+//                 />
+//               </div>
+//               <div style={{ marginBottom: "10px" }}>
+//                 <strong>{t("maxBidder")}:</strong>
+//                 <br />
+//                 <code style={{ fontSize: "12px", wordBreak: "break-all" }}>
+//                   <a
+//                     style={{ color: "white" }}
+//                     href={`https://tonviewer.com/${
+//                       auctionInfo.maxBidderOwner || t("domainLeftAuction")
+//                     }`}
+//                   >
+//                     {auctionInfo.maxBidderOwner || t("domainLeftAuction")}
+//                   </a>
+//                 </code>
+//               </div>
+//               <div style={{ marginBottom: "10px" }}>
+//                 <strong>{t("maxBid")}: </strong>
+//                 {Number(auctionInfo.maxBid) === 0
+//                   ? t("hideAfterAuctionEnd")
+//                   : (Number(auctionInfo.maxBid) / 1_000_000_000).toFixed(
+//                       2
+//                     )}{" "}
+//                 TON
+//               </div>
+//               <div style={{ marginBottom: "10px" }}>
+//                 <strong>{t("endTime")}:</strong>{" "}
+//                 {new Date(auctionInfo.timestamp * 1000).toLocaleString()}
+//               </div>
+//               <div>
+//                 <strong>{t("status")}:</strong>
+//                 <span
+//                   style={{
+//                     marginLeft: "5px",
+//                     color: auctionInfo.isActive ? "#4ade80" : "#f87171",
+//                   }}
+//                 >
+//                   {auctionInfo.isActive
+//                     ? `🟢 ${t("active")}`
+//                     : `🔴 ${t("ended")}`}
+//                 </span>
+//               </div>
+//               <div
+//                 style={{
+//                   marginTop: "10px",
+//                   paddingTop: "10px",
+//                   borderTop: "1px solid #444",
+//                   display: "flex",
+//                   justifyContent: "space-between",
+//                   alignItems: "center",
+//                 }}
+//               >
+//                 <div style={{ fontSize: "11px", color: "#aaa" }}>
+//                   <strong>{t("networkLabel")}</strong>{" "}
+//                   {isTestnet ? t("testnet") : t("mainnet")}
+//                 </div>
+//                 {activeTab === "proxy" && (
+//                   <div style={{ display: "flex", gap: "8px" }}>
+//                     <IconButton
+//                       size="s"
+//                       mode="outline"
+//                       onClick={handleCopyAuctionLink}
+//                       title={t("copyAuctionLink")}
+//                       style={{
+//                         backgroundColor: "#333",
+//                         borderColor: "#555",
+//                         color: "white",
+//                         padding: "4px 8px",
+//                         fontSize: "10px",
+//                       }}
+//                     >
+//                       📋
+//                     </IconButton>
+//                     <IconButton
+//                       size="s"
+//                       mode="outline"
+//                       onClick={handleShareAuction}
+//                       title={t("shareAuction")}
+//                       style={{
+//                         backgroundColor: "#333",
+//                         borderColor: "#555",
+//                         color: "white",
+//                         padding: "4px 8px",
+//                         fontSize: "10px",
+//                       }}
+//                     >
+//                       🔗
+//                     </IconButton>
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+//           </Card>
+//         )}
+
+//         {/* SBT CARD */}
+//         {hasChecked && sbtSubdomainInfo && activeTab === "sbt" && (
+//           <Card
+//             style={{
+//               background: sbtSubdomainInfo.isTaken
+//                 ? "linear-gradient(to bottom, #2a1a1a, #3a2a2a)"
+//                 : "linear-gradient(to bottom, #1a2a1a, #2a3a2a)",
+//               marginBottom: "20px",
+//               padding: "15px",
+//               borderRadius: "10px",
+//               width: "280px",
+//               border: sbtSubdomainInfo.isTaken
+//                 ? "2px solid #f87171"
+//                 : "2px solid #4a90e2",
+//             }}
+//           >
+//             <div style={{ color: "#fff", fontSize: "14px" }}>
+//               <div
+//                 style={{
+//                   marginBottom: "10px",
+//                   textAlign: "center",
+//                   color: sbtSubdomainInfo.isTaken ? "#f87171" : "#4a90e2",
+//                   fontWeight: "bold",
+//                 }}
+//               >
+//                 {sbtSubdomainInfo.isTaken
+//                   ? `❌ ${t("sbtSubdomainAlreadyTaken")}`
+//                   : `✅ ${t("sbtSubdomainAvailable")}`}
+//               </div>
+//               <div
+//                 style={{
+//                   width: "100%",
+//                   display: "flex",
+//                   justifyContent: "center",
+//                   alignItems: "center",
+//                 }}
+//               >
+//                 <img
+//                   style={{
+//                     width: "200px",
+//                     height: "200px",
+//                     borderRadius: "25px",
+//                     marginBottom: "15px",
+//                   }}
+//                   src={getImageUrl()}
+//                   alt="subdomainImage"
+//                 />
+//               </div>
+//               {sbtSubdomainInfo.isTaken && sbtSubdomainInfo.ownerAddress && (
+//                 <>
+//                   <div style={{ marginBottom: "10px" }}>
+//                     <strong>{t("sbtOwner")}:</strong>
+//                     <br />
+//                     <code style={{ fontSize: "12px", wordBreak: "break-all" }}>
+//                       <a
+//                         style={{ color: "white" }}
+//                         href={`https://tonviewer.com/${sbtSubdomainInfo.ownerAddress}`}
+//                         target="_blank"
+//                         rel="noopener noreferrer"
+//                       >
+//                         {sbtSubdomainInfo.ownerAddress}
+//                       </a>
+//                     </code>
+//                   </div>
+//                   {sbtSubdomainInfo.nftAddress && (
+//                     <div style={{ marginBottom: "10px" }}>
+//                       <strong>NFT Address:</strong>
+//                       <br />
+//                       <code
+//                         style={{ fontSize: "12px", wordBreak: "break-all" }}
+//                       >
+//                         <a
+//                           style={{ color: "white" }}
+//                           href={`https://tonviewer.com/${sbtSubdomainInfo.nftAddress}`}
+//                           target="_blank"
+//                           rel="noopener noreferrer"
+//                         >
+//                           {sbtSubdomainInfo.nftAddress}
+//                         </a>
+//                       </code>
+//                     </div>
+//                   )}
+//                   {sbtSubdomainInfo.timestamp && (
+//                     <div style={{ marginBottom: "10px" }}>
+//                       <strong>{t("created")}:</strong>{" "}
+//                       {new Date(
+//                         sbtSubdomainInfo.timestamp * 1000
+//                       ).toLocaleString()}
+//                     </div>
+//                   )}
+//                 </>
+//               )}
+//               {!sbtSubdomainInfo.isTaken && (
+//                 <div
+//                   style={{
+//                     marginTop: "10px",
+//                     padding: "8px",
+//                     background: "rgba(74, 144, 226, 0.1)",
+//                     borderRadius: "5px",
+//                     fontSize: "12px",
+//                     color: "#ccc",
+//                     textAlign: "center",
+//                   }}
+//                 >
+//                   {t("sbtForPersonalUse")} • {t("buyFor1TON")}
+//                 </div>
+//               )}
+//               <div
+//                 style={{
+//                   marginTop: "10px",
+//                   paddingTop: "10px",
+//                   borderTop: "1px solid #444",
+//                   fontSize: "11px",
+//                   color: "#aaa",
+//                 }}
+//               >
+//                 <strong>{t("networkLabel")}</strong>{" "}
+//                 {isTestnet ? t("testnet") : t("mainnet")}
+//               </div>
+//             </div>
+//           </Card>
+//         )}
+
+//         {/* FREE SUBDOMAIN */}
+//         {hasChecked && !auctionInfo && !sbtSubdomainInfo && (
+//           <Card
+//             style={{
+//               background:
+//                 activeTab === "sbt"
+//                   ? "linear-gradient(to bottom, #1a2a1a, #2a2a2a)"
+//                   : "linear-gradient(to bottom, #2a1a1a, #2a2a1a)",
+//               marginBottom: "20px",
+//               padding: "15px",
+//               borderRadius: "10px",
+//               width: "280px",
+//               border:
+//                 activeTab === "sbt" ? "2px solid #4a90e2" : "2px solid #4ade80",
+//             }}
+//           >
+//             <div
+//               style={{ color: "#fff", fontSize: "14px", textAlign: "center" }}
+//             >
+//               <div
+//                 style={{
+//                   marginBottom: "10px",
+//                   color: activeTab === "sbt" ? "#4a90e2" : "#4ade80",
+//                   fontWeight: "bold",
+//                 }}
+//               >
+//                 {activeTab === "sbt"
+//                   ? sbtPurchaseCompleted
+//                     ? `✅ ${t("sbtSubdomainPurchased")}`
+//                     : `✅ ${t("sbtSubdomainAvailable")}`
+//                   : `✅ ${t("subdomainAvailable")}`}
+//               </div>
+//               <div
+//                 style={{
+//                   width: "100%",
+//                   display: "flex",
+//                   justifyContent: "center",
+//                   alignItems: "center",
+//                 }}
+//               >
+//                 <img
+//                   style={{
+//                     width: "200px",
+//                     height: "200px",
+//                     borderRadius: "25px",
+//                     marginBottom: "15px",
+//                   }}
+//                   src={getImageUrl()}
+//                   alt="subdomainImage"
+//                 />
+//               </div>
+//               <div style={{ color: "#ccc", fontSize: "13px" }}>
+//                 {activeTab === "sbt"
+//                   ? sbtPurchaseCompleted
+//                     ? t("sbtSubdomainPurchased")
+//                     : t("sbtForPersonalUse")
+//                   : t("makeFirstBid")}
+//               </div>
+//               <div
+//                 style={{
+//                   marginTop: "10px",
+//                   paddingTop: "10px",
+//                   borderTop: "1px solid #444",
+//                   display: "flex",
+//                   justifyContent: "space-between",
+//                   alignItems: "center",
+//                 }}
+//               >
+//                 <div style={{ fontSize: "11px", color: "#aaa" }}>
+//                   <strong>{t("networkLabel")}</strong>{" "}
+//                   {isTestnet ? t("testnet") : t("mainnet")}
+//                 </div>
+//                 {activeTab === "proxy" && (
+//                   <div style={{ display: "flex", gap: "8px" }}>
+//                     <IconButton
+//                       size="s"
+//                       mode="outline"
+//                       onClick={handleCopyAuctionLink}
+//                       title={t("copyAuctionLink")}
+//                       style={{
+//                         backgroundColor: "#333",
+//                         borderColor: "#555",
+//                         color: "white",
+//                         padding: "4px 8px",
+//                         fontSize: "10px",
+//                       }}
+//                     >
+//                       📋
+//                     </IconButton>
+//                     <IconButton
+//                       size="s"
+//                       mode="outline"
+//                       onClick={handleShareAuction}
+//                       title={t("shareAuction")}
+//                       style={{
+//                         backgroundColor: "#333",
+//                         borderColor: "#555",
+//                         color: "white",
+//                         padding: "4px 8px",
+//                         fontSize: "10px",
+//                       }}
+//                     >
+//                       🔗
+//                     </IconButton>
+//                   </div>
+//                 )}
+//               </div>
+//             </div>
+//           </Card>
+//         )}
+
+//         {/* TIMER */}
+//         {activeTab === "proxy" && (
+//           <Card
+//             style={{
+//               background: "linear-gradient(to bottom, black, gray)",
+//               marginBottom: "20px",
+//               padding: "5px 5px 20px 5px",
+//               borderRadius: "10px",
+//               display: "flex",
+//               flexDirection: "column",
+//               alignItems: "center",
+//               gap: "10px",
+//               width: "min-content",
+//             }}
+//           >
+//             <FlipTimer
+//               auctionData={auctionInfo}
+//               defaultTime={hasChecked && !auctionInfo ? 86400 : undefined}
+//               onComplete={() => console.log("Аукцион завершен!")}
+//             />
+//             <div style={{ fontSize: "11px", color: "#aaa" }}>
+//               {t("networkLabel")} {isTestnet ? t("testnet") : t("mainnet")}
+//             </div>
+//           </Card>
+//         )}
+
+//         {/* BID SELECT */}
+//         {hasChecked &&
+//           auctionInfo &&
+//           auctionInfo.isActive &&
+//           activeTab === "proxy" && (
+//             <>
+//               <div style={{ position: "relative", width: "200px" }}>
+//                 <select
+//                   value={showCustomInput ? "custom" : customBidAmount}
+//                   onChange={handleBidSelectChange}
+//                   style={{
+//                     width: "200px",
+//                     borderRadius: "25px",
+//                     padding: "10px 15px",
+//                     fontSize: "14px",
+//                   }}
+//                 >
+//                   <option value="">{`${t("price")}: Min. ${(
+//                     calculateBidPrice / 1_000_000_000
+//                   ).toFixed(2)} TON`}</option>
+//                   <option value="custom">{t("enterValue")}</option>
+//                   <option value="10">10 TON</option>
+//                   <option value="20">20 TON</option>
+//                   <option value="50">50 TON</option>
+//                   <option value="100">100 TON</option>
+//                   <option value="500">500 TON</option>
+//                 </select>
+//               </div>
+//               {showCustomInput && (
+//                 <div style={{ position: "relative", width: "200px" }}>
+//                   <Input
+//                     placeholder={t("yourBid")}
+//                     value={manualBidValue}
+//                     onChange={(e) => handleManualBidChange(e.target.value)}
+//                     style={{
+//                       width: "200px",
+//                       borderRadius: "25px",
+//                       padding: "10px 15px",
+//                       fontSize: "24px",
+//                       fontWeight: "600",
+//                       marginLeft: "20px",
+//                     }}
+//                   />
+//                 </div>
+//               )}
+//             </>
+//           )}
+
+//         {/* Шаг 3: ACTION BUTTON */}
+//         {hasChecked && getActionButtonText() && (
+//           <div style={{ position: "relative", width: "280px" }}>
+//             <div
+//               style={{
+//                 position: "absolute",
+//                 left: "-30px",
+//                 top: "50%",
+//                 transform: "translateY(-50%)",
+//                 fontSize: "18px",
+//                 fontWeight: "bold",
+//                 color: isDark ? "white" : "black",
+//               }}
+//             >
+//               3
+//             </div>
+//             <Button
+//               onClick={getActionButtonHandler()}
+//               disabled={getActionButtonDisabled()}
+//               style={{
+//                 width: "280px",
+//                 borderRadius: "25px",
+//                 padding: "10px 15px",
+//                 backgroundColor: getActionButtonColor(),
+//                 marginBottom:
+//                   activeTab === "proxy" &&
+//                   auctionInfo &&
+//                   !auctionInfo.isActive &&
+//                   !canClaim
+//                     ? "10px"
+//                     : "0",
+//                 display: getActionButtonText() ? "block" : "none",
+//               }}
+//             >
+//               {getActionButtonText()}
+//             </Button>
+//           </div>
+//         )}
+
+//         {/* Шаг 4: MARKETPLACE */}
+//         {hasChecked &&
+//           auctionInfo &&
+//           !auctionInfo.isActive &&
+//           !canClaim &&
+//           activeTab === "proxy" && (
+//             <div style={{ position: "relative", width: "280px" }}>
+//               <div
+//                 style={{
+//                   position: "absolute",
+//                   left: "-30px",
+//                   top: "50%",
+//                   transform: "translateY(-50%)",
+//                   fontSize: "18px",
+//                   fontWeight: "bold",
+//                   color: isDark ? "white" : "black",
+//                 }}
+//               >
+//                 4
+//               </div>
+//               <a
+//                 href={marketplaceUrl}
+//                 target="_blank"
+//                 rel="noopener noreferrer"
+//                 style={{
+//                   display: "block",
+//                   width: "280px",
+//                   borderRadius: "25px",
+//                   padding: "11.75px 15px",
+//                   backgroundColor: "#6366f1",
+//                   color: "white",
+//                   textDecoration: "none",
+//                   textAlign: "center",
+//                   fontWeight: "bold",
+//                   cursor: "pointer",
+//                   border: "none",
+//                 }}
+//               >
+//                 🛍️ {t("viewOnMarketplace")}
+//               </a>
+//             </div>
+//           )}
+
+//         {/* Шаг 4: Создать сайт */}
+//         {(sbtPurchaseCompleted ||
+//           (auctionInfo && !auctionInfo.isActive && canClaim)) && (
+//           <div style={{ position: "relative", width: "280px" }}>
+//             <div
+//               style={{
+//                 position: "absolute",
+//                 left: "-30px",
+//                 top: "50%",
+//                 transform: "translateY(-50%)",
+//                 fontSize: "18px",
+//                 fontWeight: "bold",
+//                 color: isDark ? "white" : "black",
+//               }}
+//             >
+//               4
+//             </div>
+//             <a
+//               href="https://t.me/Ton_site_builder_bot?startapp"
+//               target="_blank"
+//               rel="noopener noreferrer"
+//               style={{
+//                 display: "block",
+//                 width: "280px",
+//                 borderRadius: "25px",
+//                 padding: "11.75px 15px",
+//                 background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+//                 color: "white",
+//                 textDecoration: "none",
+//                 textAlign: "center",
+//                 fontWeight: "bold",
+//                 cursor: "pointer",
+//                 border: "none",
+//                 fontSize: "14px",
+//               }}
+//             >
+//               🏗️ Создать сайт на {subDomainName}.{selectedDomainZone}
+//             </a>
+//           </div>
+//         )}
+//       </List>
+//     </Page>
+//   );
+// };
+
+// export default AuctionPage;
+
+// src/pages/AuctionPage/index.tsx
+// === ФИНАЛЬНАЯ ВЕРСИЯ (v7) ===
+// Исправления:
+// 1) validUntil: +120 (2 минуты) вместо +360 (TON Connect лимит 5 мин)
+// 2) apiService.setNetwork: useRef защита от повторных вызовов (убирает петлю ×256)
+// 3) proxyZones для селекта: ВСЕ прокси-коллекции с платформы (proxyCollections),
+//    а не только юзера. Для SBT — только юзера (как было).
+// 4) collectionToZone из ProfileWidget (copy-paste, без dedupe).
+// 5) Логи тела транзакции при отправке.
+// 6) item_count из col.item_count.
+
 import React, {
   useState,
   useCallback,
@@ -6620,6 +8569,23 @@ const collectionToZone = (col: SimpleCollection): Zone => {
   } as any as Zone;
 };
 
+// ====== Вспомогательная: dedupe по createdAt (latest) для селекта proxy (ВСЕ зоны) ======
+const dedupeByLatest = (cols: SimpleCollection[]): SimpleCollection[] => {
+  const map = new Map<string, SimpleCollection>();
+  for (const c of cols) {
+    const key = (c.name || "").toLowerCase();
+    const exist = map.get(key);
+    if (
+      !exist ||
+      new Date(c.created_at || c.lastUpdated || 0) >
+        new Date(exist.created_at || exist.lastUpdated || 0)
+    ) {
+      map.set(key, c);
+    }
+  }
+  return [...map.values()];
+};
+
 // ====================================================================
 // КОМПОНЕНТ
 // ====================================================================
@@ -6676,14 +8642,18 @@ export const AuctionPage: React.FC<{}> = () => {
     error: zonesError,
   } = useBlockchainItems();
 
-  // ====== getUserZones — ТОЧНАЯ КОПИЯ ProfileWidget (БЕЗ dedupe) ======
-  const getUserZones = useMemo((): Zone[] => {
-    if (!userAddress) return [];
+  // ====== ВСЕ PROXY КОЛЛЕКЦИИ (для селекта) — dedupe по имени, latest по createdAt ======
+  const allProxyZones: Zone[] = useMemo(
+    () => dedupeByLatest(proxyCollections).map((c) => collectionToZone(c)),
+    [proxyCollections]
+  );
 
+  // ====== SBT ЗОНЫ ТОЛЬКО ЮЗЕРА — ТОЧНО КАК В ProfileWidget ======
+  const userSbtZones: Zone[] = useMemo(() => {
+    if (!userAddress) return [];
     const normalizedAddress =
       convertUserFriendlyToRaw(userAddress).toLowerCase();
-
-    const proxyZones = proxyCollections
+    return sbtCollections
       .filter((col) => {
         const creator = (
           col.creator_address ||
@@ -6693,39 +8663,20 @@ export const AuctionPage: React.FC<{}> = () => {
         return creator === normalizedAddress;
       })
       .map((col) => collectionToZone(col));
-
-    const sbtZones = sbtCollections
-      .filter((col) => {
-        const creator = (
-          col.creator_address ||
-          col.owner_address ||
-          ""
-        ).toLowerCase();
-        return creator === normalizedAddress;
-      })
-      .map((col) => collectionToZone(col));
-
-    return [...proxyZones, ...sbtZones];
-  }, [userAddress, proxyCollections, sbtCollections]);
-
-  // Разделяем с учётом возможных дубликатов (если proxy и sbt имеют одно имя — будут оба,
-  // как в ProfileWidget — dedupe НЕ делаем)
-  const proxyZones: Zone[] = useMemo(
-    () => getUserZones.filter((z) => z.proxy === 1),
-    [getUserZones]
-  );
-  const sbtZones: Zone[] = useMemo(
-    () => getUserZones.filter((z) => z.proxy === 0),
-    [getUserZones]
-  );
-  const allZones: Zone[] = getUserZones;
+  }, [userAddress, sbtCollections]);
 
   const activeSbtZones: Zone[] = useMemo(
-    () => sbtZones.filter((zone) => zone.status !== "inactive"),
-    [sbtZones]
+    () => userSbtZones.filter((zone) => zone.status !== "inactive"),
+    [userSbtZones]
   );
 
-  // ====== УСТРАНЕНИЕ ПЕТЛИ: apiService.setNetwork только при реальной смене сети ======
+  // allZones — для поиска collectionAddress (proxy ВСЕ + sbt юзера)
+  const allZones: Zone[] = useMemo(
+    () => [...allProxyZones, ...userSbtZones],
+    [allProxyZones, userSbtZones]
+  );
+
+  // ====== УСТРАНЕНИЕ ПЕТЛИ apiService.setNetwork ======
   const prevNetworkRef = useRef<boolean | null>(null);
   useEffect(() => {
     if (wallet && prevNetworkRef.current !== isTestnet) {
@@ -6737,18 +8688,16 @@ export const AuctionPage: React.FC<{}> = () => {
   const isProxyZone = useCallback((zone: any): boolean => {
     const proxyValue = zone.proxy;
     if (typeof proxyValue === "number") return proxyValue === 1;
-    if (typeof proxyValue === "string") {
+    if (typeof proxyValue === "string")
       return proxyValue.toLowerCase() === "proxy" || proxyValue === "1";
-    }
     return false;
   }, []);
 
   const proxyCollectionAddressesMap = useMemo(() => {
     const map: CollectionAddressMap = {};
     allZones.forEach((zone) => {
-      if (isProxyZone(zone) && zone.name && zone.collectionAddress) {
+      if (isProxyZone(zone) && zone.name && zone.collectionAddress)
         map[zone.name] = zone.collectionAddress;
-      }
     });
     return map;
   }, [allZones, isProxyZone]);
@@ -6760,20 +8709,21 @@ export const AuctionPage: React.FC<{}> = () => {
       .join(";");
     if (prevSbtMapRef.current && prevSbtMapRef.current.cacheKey === cacheKey)
       return prevSbtMapRef.current.map;
-    const newMap: CollectionAddressMap = {};
-    activeSbtZones.forEach((zone) => {
-      if (zone.name && zone.collectionAddress)
-        newMap[zone.name] = zone.collectionAddress;
+    const map: CollectionAddressMap = {};
+    activeSbtZones.forEach((z) => {
+      if (z.name && z.collectionAddress) map[z.name] = z.collectionAddress;
     });
-    prevSbtMapRef.current = { cacheKey, map: newMap };
-    return newMap;
+    prevSbtMapRef.current = { cacheKey, map };
+    return map;
   }, [activeSbtZones]);
 
-  const currentCollectionMap = useMemo(() => {
-    return activeTab === "proxy"
-      ? proxyCollectionAddressesMap
-      : sbtCollectionAddressesMap;
-  }, [activeTab, proxyCollectionAddressesMap, sbtCollectionAddressesMap]);
+  const currentCollectionMap = useMemo(
+    () =>
+      activeTab === "proxy"
+        ? proxyCollectionAddressesMap
+        : sbtCollectionAddressesMap,
+    [activeTab, proxyCollectionAddressesMap, sbtCollectionAddressesMap]
+  );
 
   useEffect(() => {
     if (selectedDomainZone && !collectionAddress && allZones.length > 0) {
@@ -6870,13 +8820,7 @@ export const AuctionPage: React.FC<{}> = () => {
       subdomain: subDomainName,
     });
     if (!success) await handleCopyAuctionLink();
-  }, [
-    selectedDomainZone,
-    subDomainName,
-    showSnackbar,
-    handleCopyAuctionLink,
-    t,
-  ]);
+  }, [selectedDomainZone, subDomainName, showSnackbar, handleCopyAuctionLink]);
 
   useEffect(() => {
     const sp = launchParams.startParam;
@@ -6891,9 +8835,8 @@ export const AuctionPage: React.FC<{}> = () => {
       const sp = launchParams.startParam!;
       try {
         const { route, params } = MiniAppLinks.parseStartapp(sp);
-        if (route === "/add-subdomain" && params.zone && params.subdomain) {
+        if (route === "/add-subdomain" && params.zone && params.subdomain)
           loadAuctionFromParams(params.zone, params.subdomain);
-        }
       } catch (e) {
         console.error("deeplink parse error:", e);
       }
@@ -7143,14 +9086,17 @@ export const AuctionPage: React.FC<{}> = () => {
     setCustomBidAmount(value && !isNaN(Number(value)) ? value : "");
   };
 
-  // ====== ПОДГОТОВКА ПЛАТЕЖА (логирование тела транзакции) ======
-  const logTransactionBody = (label: string, messages: any[]) => {
+  // ====== ВЫЧИСЛЕНИЕ validUntil (2 минуты, лимит TON Connect = 5 минут) ======
+  const getValidUntil = (): number => Math.floor(Date.now() / 1000) + 120;
+
+  // ====== ЛОГ ТЕЛА ТРАНЗАКЦИИ ======
+  const logTx = (label: string, msgs: any[]) => {
     console.log(
       `📦 [${label}] Тело транзакции:`,
       JSON.stringify(
         {
-          validUntil: Math.floor(Date.now() / 1000) + 360,
-          messages: messages.map((m) => ({
+          validUntil: getValidUntil(),
+          messages: msgs.map((m) => ({
             amount: m.amount,
             address: m.address,
             payload: m.payload || "(none)",
@@ -7211,10 +9157,10 @@ export const AuctionPage: React.FC<{}> = () => {
           payload,
         },
       ];
-      logTransactionBody("START_AUCTION", messages);
+      logTx("START_AUCTION", messages);
 
       await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 360,
+        validUntil: getValidUntil(),
         messages,
       });
 
@@ -7272,10 +9218,10 @@ export const AuctionPage: React.FC<{}> = () => {
       const messages = [
         { amount: calculateBidPrice.toString(), address: nftAddress },
       ];
-      logTransactionBody("PLACE_BID", messages);
+      logTx("PLACE_BID", messages);
 
       await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 360,
+        validUntil: getValidUntil(),
         messages,
       });
 
@@ -7351,10 +9297,10 @@ export const AuctionPage: React.FC<{}> = () => {
           payload,
         },
       ];
-      logTransactionBody("PURCHASE_SBT", messages);
+      logTx("PURCHASE_SBT", messages);
 
       await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 360,
+        validUntil: getValidUntil(),
         messages,
       });
 
@@ -7500,7 +9446,6 @@ export const AuctionPage: React.FC<{}> = () => {
   useEffect(() => {
     if (userAddress) refreshSubdomains();
   }, [userAddress, refreshSubdomains]);
-
   // ====================================================================
   // RENDER
   // ====================================================================
@@ -7700,7 +9645,7 @@ export const AuctionPage: React.FC<{}> = () => {
             t={t}
             sbtCollectionAddressesMap={sbtCollectionAddressesMap}
             activeSbtZones={activeSbtZones}
-            proxyZones={proxyZones}
+            proxyZones={allProxyZones}
             isTestnet={isTestnet}
             sbtZonesCount={sbtZonesCount}
           />
@@ -7710,7 +9655,7 @@ export const AuctionPage: React.FC<{}> = () => {
             </p>
           )}
           {activeTab === "sbt" &&
-            sbtZones.length === 0 &&
+            userSbtZones.length === 0 &&
             !zonesLoading &&
             !zonesError && (
               <p
