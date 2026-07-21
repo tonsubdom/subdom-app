@@ -1,0 +1,2846 @@
+// components/ProfileWidget/ProfileWidget.tsx
+// ФИНАЛЬНАЯ ВЕРСИЯ: зоны/субдомены/аукционы — ончейн (через useBlockchainItems)
+// Info-блок — бэкенд (useUser)
+//
+// ⚠️ Импорты useZones / apiService сохранены ради info-блока — НЕ УДАЛЯТЬ.
+
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  useTonAddress,
+  useTonWallet,
+  TonConnectButton,
+} from "@tonconnect/ui-react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useUser } from "@/contexts/UserContext";
+import TonLogo from "@/components/Header/ton.svg";
+
+import { fromNano } from "ton-core";
+
+import SearchAndFilters from "@/components/SearchAndFilters/SearchAndFilters";
+import {
+  FilterState,
+  SortOption,
+  Zone,
+  Subdomain,
+  Auction,
+} from "@/types/profile-widget-filters.types";
+import {
+  getFilteredData,
+  getZoneType,
+} from "@/utils/profile-widget-filter.utils";
+
+// ====== [NEW] БЛОКЧЕЙН-СЕРВИС ======
+import { useBlockchainItems } from "@/services/blockchainItems/blockchain-items-context.tsx";
+import {
+  SimpleCollection,
+  SimpleEnrichedItem,
+  ItemType,
+} from "@/services/blockchainItems/blockchain-items-types";
+import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInfo";
+
+// ====== [KEEP] БЭКЕНД ДЛЯ INFO-БЛОКА ======
+// import { useZones } from "@/hooks/useZones";
+import { apiService } from "@/services/api";
+import PaymentAttemptsSection from "../PaymentAttemptsSection";
+import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
+import searchDog from "@/pages/ManageDomainPage/img/searchDog.gif";
+
+// ====================================================================
+// КОНСТАНТЫ
+// ====================================================================
+
+const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL || "";
+
+// ====================================================================
+// АДАПТЕР: SimpleCollection → Zone
+// ====================================================================
+
+/**
+ * Превращает ончейн-коллекцию (SimpleCollection) в Zone для UI.
+ * Тип (proxy/sbt) уже проставлен в col.type через getCollectionType по code_hash.
+ * creator_address заполняется через getCollectionCreator в сервисе.
+ * item_count — количество итемов (подсчитывается на стороне сервиса).
+ */
+
+// const collectionToZone = (col: SimpleCollection): Zone => {
+//   const zoneName = (col.name || "")
+//     .replace(" DNS Domains", "")
+//     .replace(" Proxy Domains", "")
+//     .toLowerCase();
+
+//   return {
+//     id: col.address.slice(0, 10),
+//     name: zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`,
+//     address: col.address,
+//     owner: col.creator_address || col.owner_address,
+//     collectionAddress: col.address,
+//     createdAt: col.lastUpdated || new Date().toISOString(),
+//     subdomainsAmount: col.item_count || 0,
+//     proxy: col.type === "proxy" ? 1 : 0,
+//     status: "active",
+//     image: col.metadata?.token_info?.[0]?.image || col.image,
+//     description: col.metadata?.token_info?.[0]?.description || col.description,
+//     zoneLength: zoneName.length,
+//   } as any as Zone;
+// };
+
+const collectionToZone = (col: SimpleCollection): Zone => {
+  const rawName = col.name || "";
+  console.log(
+    `🔍 collectionToZone: raw="${rawName}", address=${col.address.slice(0, 10)}`
+  );
+
+  const zoneName = rawName
+    .replace(" DNS Domains", "")
+    .replace(" Proxy Domains", "")
+    .toLowerCase();
+
+  console.log(
+    `   zoneName="${zoneName}", endsWith('.ton')=${zoneName.endsWith(".ton")}`
+  );
+
+  return {
+    id: col.address.slice(0, 10),
+    name: zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`,
+    address: col.address,
+    owner: col.creator_address || col.owner_address,
+    collectionAddress: col.address,
+    createdAt: col.lastUpdated || new Date().toISOString(),
+    subdomainsAmount: col.item_count || 0,
+    proxy: col.type === "proxy" ? 1 : 0,
+    status: "active",
+    image: col.metadata?.token_info?.[0]?.image || col.image,
+    description: col.metadata?.token_info?.[0]?.description || col.description,
+    zoneLength: zoneName.length,
+  } as any as Zone;
+};
+
+// ====================================================================
+// АДАПТЕР: SimpleEnrichedItem → Subdomain
+// ====================================================================
+
+const enrichedItemToSubdomain = (item: SimpleEnrichedItem): Subdomain => {
+  const subName = item.domain.split(".")[0] || "";
+
+  return {
+    id: item.address,
+    name: item.domain,
+    zoneId: item.zone,
+    address: item.address,
+    owner_address: item.owner_address,
+    collectionAddress: item.collection_address,
+    createdAt: item.lastUpdated,
+    status: item.on_sale ? "auction" : "active",
+    mintPrice: 0,
+    lastBid: undefined,
+    lastBidder: undefined,
+    auctionEndTime: undefined,
+    type: item.type,
+    metadata: item.metadata,
+    subdomainLength: subName.length, // <-- NEW
+    zoneLength: item.zone.replace(".ton", "").length, // <-- NEW
+  } as any as Subdomain;
+};
+
+// ====================================================================
+// ОНЧЕЙН-АУКЦИОНЫ
+// ====================================================================
+
+const loadAuctionsFromBlockchain = async (
+  subdomains: Subdomain[],
+  isTestnet: boolean
+): Promise<Auction[]> => {
+  const auctions: Auction[] = [];
+
+  for (const sub of subdomains) {
+    try {
+      // const collectionAddress = sub.collectionAddress;
+      const collectionAddress = (sub as any).collectionAddress as
+        | string
+        | undefined;
+      if (!collectionAddress || !sub.name) continue;
+
+      const subName = sub.name.split(".")[0];
+      const info = await getAuctionInfo(subName, collectionAddress, isTestnet);
+
+      if (info && info.isActive) {
+        auctions.push({
+          name: sub.name,
+          bid: `${(Number(info.maxBid) / 1e9).toFixed(2)} TON`,
+          ends: new Date(info.timestamp * 1000).toISOString(),
+          lastBidder: info.maxBidderOwner || undefined,
+          lastBid: Number(info.maxBid),
+          subdomain: sub,
+        });
+      }
+    } catch {
+      // не на аукционе — пропускаем
+    }
+  }
+
+  return auctions;
+};
+
+// ====================================================================
+// URL КАРТИНКИ СУБДОМЕНА (swipe-режим)
+// ====================================================================
+
+/**
+ * Формирует URL картинки субдомена для swipe-режима.
+ * Тип определяем по полю type (ItemType), которое проставлено
+ * через getItemType по code_hash.  Никаких догадок по URI.
+ */
+const getSubdomainImage = (subdomain: Subdomain): string | undefined => {
+  if (!subdomain.name || !subdomain.zoneId) return undefined;
+
+  const zoneName = String(subdomain.zoneId).replace(".ton", "");
+  const subName = subdomain.name.split(".")[0];
+  const itemType: ItemType = (subdomain as any).type || "proxy_subdomain";
+
+  if (itemType === "sbt_subdomain") {
+    return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${zoneName}/${subName}.png`;
+  }
+  return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zoneName}/${subName}.png`;
+};
+
+// ====================================================================
+// КОМПОНЕНТ
+// ====================================================================
+
+const ProfileWidget: React.FC = () => {
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const wallet = useTonWallet();
+  const address = useTonAddress();
+  const isTestnet = wallet?.account?.chain === "-3";
+
+  const { currentTheme } = useTheme();
+  const isDark = currentTheme === "dark";
+  const { t } = useLanguage();
+
+  // ====== [KEEP] Бэкенд-хуки (для info-блока) ======
+  const { user, refreshUser, connectWallet } = useUser();
+  // const {
+  //   allZones,
+  //   loading: zonesLoading,
+  //   error: zonesError,
+  //   refreshZones,
+  // } = useZones();
+
+  // ====== [NEW] Блокчейн-хук ======
+  const {
+    proxyCollections,
+    sbtCollections,
+    userProxySubdomains,
+    userSBTSubdomains,
+    loadAllData,
+    isLoading: blockchainLoading,
+    error: blockchainError,
+  } = useBlockchainItems();
+
+  // UI state
+  const [domain, setDomain] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<
+    "zones" | "subdomains" | "auctions" | "info"
+  >("zones");
+  const [activeAuctions, setActiveAuctions] = useState<Auction[]>([]);
+  const [auctionsLoading, setAuctionsLoading] = useState<boolean>(false);
+  const [subdomains, setSubdomains] = useState<Subdomain[]>([]);
+  const [_subdomainsLoading, setSubdomainsLoading] = useState<boolean>(false);
+  const [_subdomainsError, setSubdomainsError] = useState<string | null>(null);
+  const [balance, setBalance] = useState<string>("0");
+
+  const [_soonModalOpen, setSoonModalOpen] = useState<boolean>(false);
+  // Фильтры
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [filters, setFilters] = useState<FilterState>({
+    zoneLengths: [],
+    subdomainLengths: [],
+    auctionStatuses: [],
+    zoneTypes: [],
+  });
+  const [sortBy, setSortBy] = useState<SortOption>("name_asc");
+  const [filtersOpen, setFiltersOpen] = useState<boolean>(false);
+  const [cardView, setCardView] = useState<"list" | "swipe">("list");
+  const [swipeIndex, setSwipeIndex] = useState<number>(0);
+
+  // Цвета темы
+  const themeColors = {
+    light: {
+      primary: "linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)",
+      accent: "#3B82F6",
+      background: "#FFFFFF",
+      text: "#1F2937",
+      border: "#E5E7EB",
+      secondaryBg: "#F9FAFB",
+      shadow: "rgba(59, 130, 246, 0.4)",
+      cyberpunk: "#3B82F6",
+      gold: "#FFD700",
+      blue: "#3B82F6",
+      link: "#3B82F6",
+      inputBg: "#FFFFFF",
+      inputBorder: "#D1D5DB",
+      inputText: "#1F2937",
+      dropdownBg: "#FFFFFF",
+      dropdownBorder: "#E5E7EB",
+    },
+    dark: {
+      primary: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)",
+      accent: "#FFD700",
+      background: "#121212",
+      text: "#E5E5E5",
+      border: "#333333",
+      secondaryBg: "#1A1A1A",
+      shadow: "rgba(255, 215, 0, 0.4)",
+      cyberpunk: "#FFD700",
+      gold: "#FFD700",
+      blue: "#00FFFF",
+      link: "#00FFFF",
+      inputBg: "#1A1A1A",
+      inputBorder: "#444444",
+      inputText: "#E5E5E5",
+      dropdownBg: "#1A1A1A",
+      dropdownBorder: "#444444",
+    },
+  };
+  const colors = themeColors[isDark ? "dark" : "light"];
+
+  // ====== [KEEP] СУЩЕСТВУЮЩИЕ УТИЛИТЫ (без изменений) ======
+
+  const checkAuctionTimerEnd = (time: Date) => new Date() <= time;
+
+  const fetchBalanceSimple = async () => {
+    if (!address) {
+      setBalance("0");
+      return;
+    }
+    try {
+      const baseUrl = isTestnet
+        ? "https://testnet.toncenter.com/api/v3/addressInformation"
+        : "https://toncenter.com/api/v3/addressInformation";
+      const apiKey = import.meta.env.VITE_TONCENTER_API_KEY;
+      const url = new URL(baseUrl);
+      url.searchParams.append("address", address);
+      url.searchParams.append("use_v2", "true");
+      if (apiKey) url.searchParams.append("api_key", apiKey);
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        setBalance("0");
+        return;
+      }
+      const data = await response.json();
+      if (data?.balance) {
+        setBalance(parseFloat(fromNano(data.balance)).toFixed(2));
+      } else {
+        setBalance("0");
+      }
+    } catch {
+      setBalance("0");
+    }
+  };
+
+  const handleAddSubdomain = () => {
+    setIsExpanded(false);
+    setTimeout(() => {
+      window.location.href = `/#/add-subdomain`;
+    }, 300);
+  };
+  const handleManage = () => {
+    setIsExpanded(false);
+    setTimeout(() => {
+      window.location.href = `/manage#/manage`;
+    }, 300);
+  };
+  const handleMarket = () => {
+    setIsExpanded(false);
+    setTimeout(() => {
+      window.location.href = `/#/market`;
+    }, 300);
+  };
+  const handleGoToAuction = (_name: string) => {
+    if (typeof window !== "undefined")
+      window.location.href = `/#/add-subdomain`;
+  };
+
+  const fetchDomain = async () => {
+    if (!wallet || !address) return;
+    try {
+      const hexAddress = wallet.account.address;
+      const modeFetchDomainUrl = isTestnet
+        ? "testnet.toncenter.com"
+        : "toncenter.com";
+      const apiKey = import.meta.env.VITE_TONCENTER_API_KEY;
+      const url = new URL(`https://${modeFetchDomainUrl}/api/v3/dns/records`);
+      url.searchParams.append("wallet", hexAddress);
+      url.searchParams.append("limit", "100");
+      url.searchParams.append("offset", "0");
+      if (apiKey) url.searchParams.append("api_key", apiKey);
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        setDomain(null);
+        return;
+      }
+      const data = await response.json();
+      const domainFromRecords = data.records?.find(
+        (record: any) => record.nft_item_owner === hexAddress
+      )?.domain;
+      const domainFromAddressBook = Object.values(
+        data.address_book as Record<
+          string,
+          { user_friendly: string; domain?: string }
+        >
+      ).find((entry: any) => entry.user_friendly === address)?.domain;
+      setDomain(domainFromRecords || domainFromAddressBook || null);
+    } catch {
+      setDomain(null);
+    }
+  };
+
+  const formatBalance = (bal: string) => {
+    const num = parseFloat(bal);
+    return num >= 1000 ? `${(num / 1000).toFixed(1)}k ` : `${bal} `;
+  };
+
+  const createTonViewerLink = (addr: string) => {
+    const baseUrl = isTestnet
+      ? "https://testnet.tonviewer.com"
+      : "https://tonviewer.com";
+    return `${baseUrl}/${addr}`;
+  };
+
+  // ====== [NEW] ЗОНЫ ПОЛЬЗОВАТЕЛЯ — ИЗ БЛОКЧЕЙНА ======
+
+  // const getUserZones = useMemo((): Zone[] => {
+  //   if (!address) return [];
+
+  //   const proxyZones = proxyCollections
+  //     .filter((col) => (col.creator_address || col.owner_address) === address)
+  //     .map((col) => collectionToZone(col));
+
+  //   const sbtZones = sbtCollections
+  //     .filter((col) => (col.creator_address || col.owner_address) === address)
+  //     .map((col) => collectionToZone(col));
+
+  //   return [...proxyZones, ...sbtZones];
+  // }, [address, proxyCollections, sbtCollections]);
+
+  const getUserZones = useMemo((): Zone[] => {
+    if (!address) return [];
+
+    // Нормализуем адрес: user-friendly → raw (0:...)
+    const normalizedAddress = convertUserFriendlyToRaw(address).toLowerCase();
+
+    console.log("🔍 getUserZones filter:", {
+      userFriendly: address,
+      normalized: normalizedAddress,
+    });
+
+    const proxyZones = proxyCollections
+      .filter((col) => {
+        const creator = (
+          col.creator_address ||
+          col.owner_address ||
+          ""
+        ).toLowerCase();
+        const matches = creator === normalizedAddress;
+        if (col.creator_address) {
+          console.log(
+            `  proxy col ${col.name}: creator=${col.creator_address} vs user=${normalizedAddress} → ${matches}`
+          );
+        }
+        return matches;
+      })
+      .map((col) => collectionToZone(col));
+
+    const sbtZones = sbtCollections
+      .filter((col) => {
+        const creator = (
+          col.creator_address ||
+          col.owner_address ||
+          ""
+        ).toLowerCase();
+        const matches = creator === normalizedAddress;
+        if (col.creator_address) {
+          console.log(
+            `  sbt col ${col.name}: creator=${col.creator_address} vs user=${normalizedAddress} → ${matches}`
+          );
+        }
+        return matches;
+      })
+      .map((col) => collectionToZone(col));
+
+    const result = [...proxyZones, ...sbtZones];
+    console.log(`✅ getUserZones: найдено ${result.length} зон`);
+    return result;
+  }, [address, proxyCollections, sbtCollections]);
+
+  // ====== [NEW] СУБДОМЕНЫ ПОЛЬЗОВАТЕЛЯ — ИЗ БЛОКЧЕЙНА ======
+
+  const getUserSubdomainsFromBlockchain = useMemo((): Subdomain[] => {
+    const proxySubs = userProxySubdomains.map((item) =>
+      enrichedItemToSubdomain(item)
+    );
+    const sbtSubs = userSBTSubdomains.map((item) =>
+      enrichedItemToSubdomain(item)
+    );
+    return [...proxySubs, ...sbtSubs];
+  }, [userProxySubdomains, userSBTSubdomains]);
+
+  useEffect(() => {
+    if (getUserSubdomainsFromBlockchain.length > 0) {
+      setSubdomains(getUserSubdomainsFromBlockchain);
+      setSubdomainsLoading(false);
+      setSubdomainsError(null);
+    }
+  }, [getUserSubdomainsFromBlockchain]);
+
+  // ====== [NEW] АУКЦИОНЫ — ОНЧЕЙН ======
+
+  useEffect(() => {
+    if (subdomains.length === 0) return;
+    const load = async () => {
+      setAuctionsLoading(true);
+      try {
+        const auctions = await loadAuctionsFromBlockchain(
+          subdomains,
+          isTestnet
+        );
+        setActiveAuctions(auctions);
+      } catch (err) {
+        console.error("❌ Ошибка загрузки аукционов:", err);
+      } finally {
+        setAuctionsLoading(false);
+      }
+    };
+    load();
+  }, [subdomains, isTestnet]);
+
+  // ====== [NEW] ОСНОВНОЙ ЭФФЕКТ ЗАГРУЗКИ ======
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!address) return;
+      try {
+        apiService.setNetwork(isTestnet);
+        await connectWallet(address, domain || "");
+        console.log("🔄 Начинаем загрузку данных профиля...");
+        await fetchDomain();
+        await new Promise((r) => setTimeout(r, 500));
+        await fetchBalanceSimple();
+        await new Promise((r) => setTimeout(r, 500));
+        await loadAllData();
+        console.log("✅ Все данные профиля загружены");
+      } catch (error) {
+        console.error("❌ Ошибка загрузки:", error);
+      }
+    };
+    loadData();
+  }, [address, isTestnet]);
+
+  // ====== [KEEP] Периодический баланс ======
+  useEffect(() => {
+    if (!address) return;
+    fetchBalanceSimple();
+    const id = setInterval(fetchBalanceSimple, 15000);
+    return () => clearInterval(id);
+  }, [address]);
+
+  // Сброс индекса при смене таба / фильтров
+  useEffect(() => {
+    setSwipeIndex(0);
+  }, [activeTab, searchQuery, filters]);
+
+  // ====== [KEEP] СТАТУСЫ ======
+
+  const getZoneStatusInfo = (zone: any) => {
+    const isProxy =
+      zone.proxy === 1 ||
+      zone.proxy === "Proxy" ||
+      zone.proxy === "proxy" ||
+      zone.proxy === "1";
+    if (isProxy)
+      return {
+        status: "Infinity",
+        color: "#000000ff",
+        description: "Бесконечная зона",
+      };
+    return { status: "Active", color: "#4caf50", description: "Активная зона" };
+  };
+
+  const getSubdomainStatusInfo = (subdomain: Subdomain) => {
+    switch (subdomain.status) {
+      case "active":
+        return { status: "Active", color: "#4caf50", description: "Активный" };
+      case "inactive":
+        return {
+          status: "Inactive",
+          color: "#9ca3af",
+          description: "Неактивный",
+        };
+      case "auction":
+        return {
+          status: "Auction",
+          color: "#ff9800",
+          description: "На аукционе",
+        };
+      case "claimed":
+        return { status: "Claimed", color: "#3b82f6", description: "Получен" };
+      default:
+        return {
+          status: "Unknown",
+          color: "#9ca3af",
+          description: "Неизвестный",
+        };
+    }
+  };
+
+  const getZoneTypeInfo = (zone: Zone) => {
+    const zoneType = getZoneType(zone);
+    switch (zoneType) {
+      case "proxy":
+        return {
+          type: "proxy",
+          label: "🌐 Proxy",
+          color: "#4caf50",
+          description: "Общая зона",
+        };
+      case "sbt":
+        return {
+          type: "sbt",
+          label: "🔒 SBT",
+          color: "#3b82f6",
+          description: "Персональная зона",
+        };
+      default:
+        return {
+          type: "unknown",
+          label: "❓ Unknown",
+          color: "#9ca3af",
+          description: "Неизвестный",
+        };
+    }
+  };
+
+  /**
+   * Определяет SBT по типу итема (ItemType через code_hash).
+   * Раньше проверялось через getZoneType(subdomain.zone) — заменено.
+   */
+  const isSbtSubdomain = (subdomain: Subdomain): boolean => {
+    const itemType: ItemType = (subdomain as any).type || "proxy_subdomain";
+    return itemType === "sbt_subdomain";
+  };
+
+  // ====== [KEEP] ФИЛЬТРАЦИЯ ======
+
+  const getFilteredZones = () =>
+    getFilteredData("zones", getUserZones, searchQuery, filters, sortBy);
+  const getFilteredSubdomains = () =>
+    getFilteredData("subdomains", subdomains, searchQuery, filters, sortBy);
+  const getFilteredAuctions = () =>
+    getFilteredData("auctions", activeAuctions, searchQuery, filters, sortBy);
+
+  const refreshAllData = async () => {
+    if (!address) return;
+    try {
+      await Promise.all([refreshUser(), loadAllData(true)]);
+    } catch (e) {
+      console.error("❌ Ошибка обновления данных:", e);
+    }
+  };
+
+  // ====== [KEEP] СТИЛИ ======
+
+  const cardButtonStyle: React.CSSProperties = {
+    background: isDark ? colors.gold : colors.blue,
+    color: isDark ? "#000" : "#fff",
+    border: "none",
+    outline: "none",
+    padding: "10px 10px",
+    borderRadius: "4px",
+    fontSize: "12px",
+    fontWeight: "600",
+    fontFamily: "monospace",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    boxShadow: `0 0 4px ${colors.shadow}`,
+    transition: "all 0.2s ease",
+    cursor: "pointer",
+    position: "relative",
+    overflow: "hidden",
+    textAlign: "center",
+    marginLeft: "4px",
+    flexShrink: 0,
+  };
+
+  const tabButtonStyle = (isActive: boolean): React.CSSProperties => ({
+    flex: 1,
+    padding: "10px 8px",
+    border: "none",
+    background: "none",
+    cursor: "pointer",
+    fontSize: "11px",
+    fontWeight: "600",
+    fontFamily: "monospace",
+    color: isActive ? colors.cyberpunk : colors.text,
+    borderBottom: isActive ? `2px solid ${colors.cyberpunk}` : "none",
+    transition: "all 0.3s",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  });
+
+  const viewToggleBaseStyle: React.CSSProperties = {
+    background: "none",
+    border: `1px solid ${colors.border}`,
+    borderRadius: "4px",
+    color: colors.text,
+    cursor: "pointer",
+    padding: "5px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "14px",
+    transition: "all 0.2s",
+    width: "28px",
+    height: "28px",
+  };
+
+  const viewToggleActiveStyle: React.CSSProperties = {
+    ...viewToggleBaseStyle,
+    background: colors.cyberpunk,
+    border: `1px solid ${colors.cyberpunk}`,
+    color: isDark ? "#000" : "#fff",
+  };
+
+  // ====================================================================
+  // РЕНДЕР-КАРТОЧКИ
+  // ====================================================================
+
+  const responsiveButtonStyle = (text: string): React.CSSProperties => {
+    const len = text.length;
+    const fontSize =
+      len > 16 ? "9px" : len > 12 ? "10px" : len > 8 ? "11px" : "12px";
+    return {
+      ...cardButtonStyle,
+      fontSize,
+      padding: "8px 6px",
+      whiteSpace: "nowrap" as const,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+    };
+  };
+
+  const renderZoneCard = (zone: Zone) => {
+    const zoneType = getZoneTypeInfo(zone);
+    const zoneStatus = getZoneStatusInfo(zone);
+
+    return (
+      <div
+        key={zone.id}
+        style={{
+          padding: "12px",
+          border: `1px solid ${colors.border}`,
+          borderRadius: "8px",
+          fontSize: "13px",
+          backgroundColor: colors.secondaryBg,
+          fontFamily: "monospace",
+          position: "relative" as const,
+        }}
+      >
+        {/* КАРТИНКА СЛЕВА + КОНТЕНТ СПРАВА */}
+        <div style={{ display: "flex", gap: "14px", marginBottom: "10px" }}>
+          {(zone as any).image && (
+            <div
+              style={{
+                width: "120px",
+                height: "120px",
+                borderRadius: "8px",
+                overflow: "hidden",
+                flexShrink: 0,
+                backgroundColor: colors.background,
+              }}
+            >
+              <img
+                src={(zone as any).image}
+                alt={zone.name}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </div>
+          )}
+
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: "600",
+                color: colors.text,
+                fontSize: "16px",
+                wordBreak: "break-word",
+              }}
+            >
+              .{zone.name}
+            </div>
+
+            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+              <div
+                style={{
+                  padding: "3px 8px",
+                  borderRadius: "4px",
+                  backgroundColor: zoneType.color,
+                  color: "white",
+                  fontSize: "10px",
+                  fontWeight: "600",
+                }}
+              >
+                {zoneType.label}
+              </div>
+              <div
+                style={{
+                  padding: "3px 8px",
+                  borderRadius: "4px",
+                  backgroundColor: zoneStatus.color,
+                  color: "white",
+                  fontSize: "10px",
+                  fontWeight: "600",
+                }}
+              >
+                {zoneStatus.status}
+              </div>
+            </div>
+
+            <div>
+              <p
+                style={{
+                  margin: "2px 0",
+                  color: colors.text,
+                  opacity: 0.7,
+                  fontSize: "11px",
+                }}
+              >
+                {t("created")}: {new Date(zone.createdAt).toLocaleDateString()}
+              </p>
+              <p
+                style={{
+                  margin: "2px 0",
+                  color: colors.text,
+                  opacity: 0.7,
+                  fontSize: "11px",
+                }}
+              >
+                {t("subdomainsAmount")}: {zone.subdomainsAmount}
+              </p>
+              {zone.collectionAddress && (
+                <p
+                  style={{
+                    margin: "2px 0",
+                    color: colors.text,
+                    opacity: 0.7,
+                    fontSize: "11px",
+                  }}
+                >
+                  {t("marketCollection")}:{" "}
+                  <a
+                    href={createTonViewerLink(zone.collectionAddress)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: colors.link, textDecoration: "none" }}
+                    onMouseOver={(e) =>
+                      (e.currentTarget.style.textDecoration = "underline")
+                    }
+                    onMouseOut={(e) =>
+                      (e.currentTarget.style.textDecoration = "none")
+                    }
+                  >
+                    {zone.collectionAddress.slice(0, 4)}...
+                    {zone.collectionAddress.slice(-4)}
+                  </a>
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* КНОПКИ: ряд 1 + ряд 2 */}
+        {zone.status !== "inactive" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {/* Ряд 1 */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "8px",
+              }}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAddSubdomain();
+                }}
+                style={responsiveButtonStyle(
+                  t("createSubdomain") || "Сделать субдомен"
+                )}
+              >
+                {t("createSubdomain") || "Сделать субдомен"}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleManage();
+                }}
+                style={responsiveButtonStyle(
+                  t("manageDomain") || "Управлять доменом"
+                )}
+              >
+                {t("manageDomain") || "Управлять доменом"}
+              </button>
+            </div>
+
+            {/* Ряд 2 */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "8px",
+              }}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(false);
+                  setTimeout(() => {
+                    window.open(
+                      "https://t.me/Ton_site_builder_bot?startapp",
+                      "_blank"
+                    );
+                  }, 300);
+                }}
+                style={responsiveButtonStyle("Создать сайт")}
+              >
+                Создать сайт
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSoonModalOpen(true);
+                }}
+                style={responsiveButtonStyle("Аватар / Секрет")}
+              >
+                Аватар / Секрет
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderSubdomainCard = (subdomain: Subdomain) => {
+    const statusInfo = getSubdomainStatusInfo(subdomain);
+    const isSbt = isSbtSubdomain(subdomain);
+    const imgUri = getSubdomainImage(subdomain);
+    const isAuction = activeAuctions.some(
+      (a) => a.subdomain?.id === subdomain.id
+    );
+    const effectiveStatus = isAuction ? "auction" : subdomain.status;
+
+    return (
+      <div
+        key={subdomain.id}
+        style={{
+          padding: "12px",
+          border: `1px solid ${colors.border}`,
+          borderRadius: "8px",
+          fontSize: "13px",
+          backgroundColor: colors.secondaryBg,
+          fontFamily: "monospace",
+          position: "relative" as const,
+        }}
+      >
+        {/* КАРТИНКА + КОНТЕНТ */}
+        <div style={{ display: "flex", gap: "14px", marginBottom: "10px" }}>
+          {imgUri && (
+            <div
+              style={{
+                width: "120px",
+                height: "120px",
+                borderRadius: "8px",
+                overflow: "hidden",
+                flexShrink: 0,
+                backgroundColor: colors.background,
+              }}
+            >
+              <img
+                src={imgUri}
+                alt={subdomain.name}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </div>
+          )}
+
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: "600",
+                color: colors.text,
+                fontSize: "16px",
+                wordBreak: "break-word",
+              }}
+            >
+              {subdomain.name}
+            </div>
+
+            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+              {isSbt && (
+                <div
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    backgroundColor: "#3b82f6",
+                    color: "white",
+                    fontSize: "10px",
+                    fontWeight: "600",
+                  }}
+                >
+                  🔒 SBT
+                </div>
+              )}
+              <div
+                style={{
+                  padding: "3px 8px",
+                  borderRadius: "4px",
+                  backgroundColor:
+                    effectiveStatus === "auction"
+                      ? "#ff9800"
+                      : statusInfo.color,
+                  color: "white",
+                  fontSize: "10px",
+                  fontWeight: "600",
+                }}
+              >
+                {effectiveStatus === "auction" ? "Auction" : statusInfo.status}
+              </div>
+            </div>
+
+            <div>
+              <p
+                style={{
+                  margin: "2px 0",
+                  color: colors.text,
+                  opacity: 0.7,
+                  fontSize: "11px",
+                }}
+              >
+                {t("created")}:{" "}
+                {new Date(subdomain.createdAt).toLocaleDateString()}
+              </p>
+              {subdomain.zoneId && (
+                <p
+                  style={{
+                    margin: "2px 0",
+                    color: colors.text,
+                    opacity: 0.7,
+                    fontSize: "11px",
+                  }}
+                >
+                  {t("zoneId")}: {subdomain.zoneId}
+                </p>
+              )}
+              {subdomain.address && (
+                <p
+                  style={{
+                    margin: "2px 0",
+                    color: colors.text,
+                    opacity: 0.7,
+                    fontSize: "11px",
+                  }}
+                >
+                  {t("address")}:{" "}
+                  <a
+                    href={createTonViewerLink(subdomain.address)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: colors.link, textDecoration: "none" }}
+                    onMouseOver={(e) =>
+                      (e.currentTarget.style.textDecoration = "underline")
+                    }
+                    onMouseOut={(e) =>
+                      (e.currentTarget.style.textDecoration = "none")
+                    }
+                  >
+                    {subdomain.address.slice(0, 4)}...
+                    {subdomain.address.slice(-4)}
+                  </a>
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* КНОПКИ */}
+        {effectiveStatus === "auction" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "8px",
+              }}
+            >
+              <div />
+              <button
+                onClick={() => handleGoToAuction(subdomain.name)}
+                style={responsiveButtonStyle(t("goTo") || "Перейти")}
+              >
+                {t("goTo")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {effectiveStatus !== "auction" && effectiveStatus !== "inactive" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {/* Ряд 1: Продать (только proxy) + Управлять */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "8px",
+              }}
+            >
+              {!isSbt ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMarket();
+                  }}
+                  style={responsiveButtonStyle(t("sell") || "Продать")}
+                >
+                  {t("sell")}
+                </button>
+              ) : (
+                <div />
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleManage();
+                }}
+                style={responsiveButtonStyle(t("manage") || "Управлять")}
+              >
+                {t("manage")}
+              </button>
+            </div>
+
+            {/* Ряд 2: Создать сайт + Аватар/Секрет */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "8px",
+              }}
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(false);
+                  setTimeout(() => {
+                    window.open(
+                      "https://t.me/Ton_site_builder_bot?startapp",
+                      "_blank"
+                    );
+                  }, 300);
+                }}
+                style={responsiveButtonStyle("Создать сайт")}
+              >
+                Создать сайт
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSoonModalOpen(true);
+                }}
+                style={responsiveButtonStyle("Аватар / Секрет")}
+              >
+                Аватар / Секрет
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // === renderAuctionCard (без существенных изменений) ===
+  const renderAuctionCard = (auction: Auction, idx: number) => {
+    const endDate = new Date(auction.ends);
+    const now = new Date();
+    const isEnded = endDate < now;
+    const formatDate = (date: Date) =>
+      date.toLocaleDateString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+    return (
+      <div
+        key={idx}
+        style={{
+          padding: "12px",
+          border: `1px solid ${colors.border}`,
+          borderRadius: "8px",
+          fontSize: "13px",
+          backgroundColor: colors.secondaryBg,
+          fontFamily: "monospace",
+          position: "relative" as const,
+        }}
+      >
+        <div style={{ display: "flex", gap: "14px", marginBottom: "10px" }}>
+          {auction.subdomain && getSubdomainImage(auction.subdomain) && (
+            <div
+              style={{
+                width: "80px",
+                height: "80px",
+                borderRadius: "8px",
+                overflow: "hidden",
+                flexShrink: 0,
+                backgroundColor: colors.background,
+              }}
+            >
+              <img
+                src={getSubdomainImage(auction.subdomain)}
+                alt={auction.name}
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </div>
+          )}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: "600",
+                  color: colors.text,
+                  fontSize: "16px",
+                }}
+              >
+                {auction.name}
+              </div>
+              <div
+                style={{
+                  padding: "3px 8px",
+                  borderRadius: "4px",
+                  backgroundColor: colors.cyberpunk,
+                  color: isDark ? "black" : "white",
+                  fontSize: "10px",
+                  fontWeight: "600",
+                }}
+              >
+                {auction.bid}
+              </div>
+            </div>
+            <div>
+              <p
+                style={{
+                  margin: "2px 0",
+                  color: isEnded ? colors.text : colors.cyberpunk,
+                  opacity: 0.7,
+                  fontSize: "11px",
+                }}
+              >
+                {isEnded ? `${t("ended")}` : `${t("ends")}`}:{" "}
+                {formatDate(endDate)}
+              </p>
+              {auction.lastBidder && (
+                <p
+                  style={{
+                    margin: "2px 0",
+                    color: colors.text,
+                    opacity: 0.7,
+                    fontSize: "11px",
+                  }}
+                >
+                  {t("bidder")}:{" "}
+                  <a
+                    href={createTonViewerLink(auction.lastBidder)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: colors.link, textDecoration: "none" }}
+                    onMouseOver={(e) =>
+                      (e.currentTarget.style.textDecoration = "underline")
+                    }
+                    onMouseOut={(e) =>
+                      (e.currentTarget.style.textDecoration = "none")
+                    }
+                  >
+                    {auction.lastBidder.slice(0, 6)}...
+                    {auction.lastBidder.slice(-4)}
+                  </a>
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "8px" }}>
+          {checkAuctionTimerEnd(new Date(auction.ends)) ? (
+            <button
+              onClick={() => handleGoToAuction(auction.name)}
+              style={responsiveButtonStyle(t("take") || "Забрать")}
+            >
+              {t("take")}
+            </button>
+          ) : (
+            <button
+              onClick={() => handleGoToAuction(auction.name)}
+              style={responsiveButtonStyle(t("goTo") || "Перейти")}
+            >
+              {t("goTo")}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // ====== SWIPE ======
+  const getSwipeItems = (): {
+    items: any[];
+    renderer: (item: any, idx: number) => JSX.Element;
+  } => {
+    if (activeTab === "zones")
+      return {
+        items: getFilteredZones(),
+        renderer: (item) => renderZoneCard(item),
+      };
+    if (activeTab === "subdomains")
+      return {
+        items: getFilteredSubdomains(),
+        renderer: (item) => renderSubdomainCard(item),
+      };
+    if (activeTab === "auctions")
+      return {
+        items: getFilteredAuctions(),
+        renderer: (item, idx) => renderAuctionCard(item, idx),
+      };
+    return { items: [], renderer: () => <></> };
+  };
+
+  const { items: swipeItems, renderer: swipeRenderer } = getSwipeItems();
+
+  // ====================================================================
+  // RENDER
+  // ====================================================================
+  return (
+    <>
+      {/* Кнопка открытия */}
+      {!isExpanded && (
+        <div
+          onClick={() => setIsExpanded(true)}
+          style={{
+            position: "fixed",
+            bottom: "80px",
+            left: "20px",
+            width: "60px",
+            height: "60px",
+            borderRadius: "50%",
+            background: colors.primary,
+            boxShadow: `0 4px 12px ${colors.shadow}`,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 998,
+            transition: "all 0.3s ease",
+          }}
+          onMouseOver={(e) => {
+            e.currentTarget.style.transform = "scale(1.1)";
+            e.currentTarget.style.boxShadow = `0 6px 20px ${colors.shadow}`;
+          }}
+          onMouseOut={(e) => {
+            e.currentTarget.style.transform = "scale(1)";
+            e.currentTarget.style.boxShadow = `0 4px 12px ${colors.shadow}`;
+          }}
+          title="Профиль"
+        >
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={isDark ? "black" : "white"}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+      )}
+
+      {/* ПАНЕЛЬ */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: "20px",
+          left: isExpanded ? "15px" : "calc(15px - 420px)",
+          transition: "left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+          width: "min(400px, calc(100% - 30px))",
+          height: "100%",
+          minHeight: "200px",
+          maxHeight: "95vh",
+          backgroundColor: colors.background,
+          borderRadius: "12px",
+          boxShadow: "0 5px 40px rgba(0, 0, 0, 0.2)",
+          zIndex: 999,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+          border: `1px solid ${colors.border}`,
+        }}
+      >
+        {/* HEADER */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "12px 12px",
+            background: colors.primary,
+            color: isDark ? "black" : "white",
+            borderBottom: `1px solid ${colors.border}`,
+          }}
+        >
+          <div>
+            <h3
+              style={{
+                margin: "0 0 4px 0",
+                fontSize: "16px",
+                fontFamily: "monospace",
+              }}
+            >
+              👤 {t("profile")}
+            </h3>
+            <div
+              className="addressModeRow"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <p style={{ margin: 0, fontSize: "12px", opacity: 0.9 }}>
+                {address
+                  ? `${t("connected")}: ${address.slice(
+                      0,
+                      6
+                    )}...${address.slice(-4)}`
+                  : t("connectWalletForHistory")}
+              </p>
+              {wallet && (
+                <div
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    padding: "4px 8px",
+                    borderRadius: "6px",
+                    background: isTestnet ? "#f59e0b" : "#10b981",
+                    color: "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  <span style={{ fontSize: "10px" }}>
+                    {isTestnet ? "🟡" : "🟢"}
+                  </span>
+                  <span>{isTestnet ? "Testnet" : "Mainnet"}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={() => setIsExpanded(false)}
+            style={{
+              background: "none",
+              border: "none",
+              color: isDark ? "black" : "white",
+              fontSize: "24px",
+              cursor: "pointer",
+              padding: "0",
+              width: "32px",
+              height: "32px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "transform 0.2s",
+            }}
+            title="Закрыть"
+            onMouseOver={(e) =>
+              (e.currentTarget.style.transform = "scale(1.2)")
+            }
+            onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* CONTENT */}
+        <div
+          style={{
+            padding: "16px 16px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            flex: 1,
+            minHeight: 0,
+            overflow: "hidden",
+          }}
+        >
+          {/* user info */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: "10px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-start",
+                gap: "16px",
+                flex: 1,
+              }}
+            >
+              <div
+                style={{
+                  width: "50px",
+                  height: "50px",
+                  borderRadius: "50%",
+                  background: colors.primary,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  boxShadow: `0 4px 12px ${colors.shadow}`,
+                }}
+              >
+                <svg
+                  width="33"
+                  height="33"
+                  viewBox="0 0 24 24"
+                  fill={isDark ? "black" : "white"}
+                  stroke={isDark ? "black" : "white"}
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              </div>
+              <div
+                className="domainAndBalance"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  justifyContent: "center",
+                }}
+              >
+                <p
+                  style={{
+                    margin: "0",
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    color: colors.text,
+                    fontFamily: "monospace",
+                  }}
+                >
+                  {address ? `${domain || "Connected"}` : ""}
+                </p>
+                <div
+                  className="amountWithLogo"
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: "0",
+                      fontSize: "14px",
+                      fontWeight: "300",
+                      color: colors.text,
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    {address ? formatBalance(balance) : `${t("guest")}`}
+                  </p>
+                  {address ? (
+                    <img
+                      src={TonLogo}
+                      alt="TON"
+                      style={{ width: "16px", height: "16px" }}
+                    />
+                  ) : (
+                    ""
+                  )}
+                </div>
+              </div>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "12px",
+                flex: 1,
+                alignItems: "center",
+              }}
+            >
+              <TonConnectButton />
+            </div>
+          </div>
+
+          {address ? (
+            <>
+              {/* TABS */}
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  gap: "4px",
+                  borderBottom: `1px solid ${colors.border}`,
+                }}
+              >
+                <button
+                  onClick={() => setActiveTab("zones")}
+                  style={tabButtonStyle(activeTab === "zones")}
+                >
+                  🌐 {t("zones")}
+                </button>
+                <button
+                  onClick={() => setActiveTab("subdomains")}
+                  style={tabButtonStyle(activeTab === "subdomains")}
+                >
+                  🔗 {t("subdomains")}
+                </button>
+                <button
+                  onClick={() => setActiveTab("auctions")}
+                  style={tabButtonStyle(activeTab === "auctions")}
+                >
+                  ⚡ {t("auctions")}
+                </button>
+                <button
+                  onClick={() => setActiveTab("info")}
+                  style={tabButtonStyle(activeTab === "info")}
+                >
+                  ℹ️ {t("info")}
+                </button>
+              </div>
+
+              {/* FILTERS + VIEW TOGGLE */}
+              {activeTab !== "info" && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "0 4px",
+                    position: "relative",
+                    zIndex: 100,
+                  }}
+                >
+                  {/* Кнопка фильтра */}
+                  <div style={{ position: "relative" }}>
+                    <button
+                      onClick={() => setFiltersOpen(!filtersOpen)}
+                      title={t("filters") || "Фильтры"}
+                      style={{
+                        background: filtersOpen
+                          ? `rgba(${isDark ? "255,215,0" : "59,130,246"}, 0.15)`
+                          : "none",
+                        border: `1px solid ${
+                          filtersOpen ? colors.cyberpunk : colors.border
+                        }`,
+                        borderRadius: "6px",
+                        color: filtersOpen ? colors.cyberpunk : colors.text,
+                        cursor: "pointer",
+                        padding: "6px 10px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        fontSize: "12px",
+                        fontFamily: "monospace",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                      </svg>
+                      {t("filters") || "Filter"}
+                    </button>
+
+                    {/* Дропдаун фильтров */}
+                    {filtersOpen && (
+                      <>
+                        <div
+                          onClick={() => setFiltersOpen(false)}
+                          style={{
+                            position: "fixed",
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            zIndex: 997,
+                          }}
+                        />
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            marginTop: "8px",
+                            zIndex: 998,
+                            width: "320px",
+                            maxWidth: "calc(100vw - 80px)",
+                            background: colors.dropdownBg,
+                            border: `1px solid ${colors.dropdownBorder}`,
+                            borderRadius: "8px",
+                            boxShadow: `0 8px 30px ${colors.shadow}`,
+                            padding: "12px",
+                          }}
+                        >
+                          <SearchAndFilters
+                            searchQuery={searchQuery}
+                            setSearchQuery={setSearchQuery}
+                            filters={filters}
+                            setFilters={setFilters}
+                            sortBy={sortBy}
+                            setSortBy={setSortBy}
+                            activeTab={activeTab}
+                            colors={colors}
+                            isDark={isDark}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Счётчик + переключатели вида */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "11px",
+                        color: colors.text,
+                        opacity: 0.7,
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      {activeTab === "zones" &&
+                        `${getFilteredZones().length}/${getUserZones.length}`}
+                      {activeTab === "subdomains" &&
+                        `${getFilteredSubdomains().length}/${
+                          subdomains.length
+                        }`}
+                      {activeTab === "auctions" &&
+                        `${getFilteredAuctions().length}/${
+                          activeAuctions.length
+                        }`}
+                    </span>
+                    <button
+                      onClick={() => setCardView("list")}
+                      style={
+                        cardView === "list"
+                          ? viewToggleActiveStyle
+                          : viewToggleBaseStyle
+                      }
+                      title={t("listView") || "Список"}
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <line x1="8" y1="6" x2="21" y2="6" />
+                        <line x1="8" y1="12" x2="21" y2="12" />
+                        <line x1="8" y1="18" x2="21" y2="18" />
+                        <line x1="3" y1="6" x2="3.01" y2="6" />
+                        <line x1="3" y1="12" x2="3.01" y2="12" />
+                        <line x1="3" y1="18" x2="3.01" y2="18" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => setCardView("swipe")}
+                      style={
+                        cardView === "swipe"
+                          ? viewToggleActiveStyle
+                          : viewToggleBaseStyle
+                      }
+                      title={t("swipeView") || "Лента"}
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                      >
+                        <rect x="2" y="4" width="20" height="16" rx="2" />
+                        <polygon points="10 8 6 12 10 16" />
+                        <polygon points="14 8 18 12 14 16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* LIST VIEW */}
+
+              {cardView === "list" && (
+                <>
+                  {/* ЗОНЫ */}
+                  {activeTab === "zones" && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "12px",
+                        overflowY: "auto",
+                        flex: 1,
+                        minHeight: 0,
+                        paddingRight: "6px",
+                      }}
+                    >
+                      {blockchainLoading ? (
+                        <div
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "20px",
+                            color: colors.text,
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          <img
+                            src={searchDog}
+                            alt="Loading"
+                            style={{ width: 100, height: 100 }}
+                          />
+                          <div style={{ fontSize: 16, marginTop: 12 }}>
+                            {t("loadingZones") || "Загрузка данных..."}
+                          </div>
+                          <div
+                            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
+                          >
+                            {t("pleaseWait") || "Пожалуйста, подождите"}
+                          </div>
+                        </div>
+                      ) : blockchainError ? (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "20px",
+                            color: "#f87171",
+                          }}
+                        >
+                          <p>
+                            {t("error")}: {blockchainError}
+                          </p>
+                        </div>
+                      ) : getFilteredZones().length === 0 ? (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "20px",
+                            color: colors.text,
+                            opacity: 0.7,
+                          }}
+                        >
+                          <p>
+                            {searchQuery || filters.zoneLengths.length > 0
+                              ? t("noZonesMatchingFilters")
+                              : t("noZones")}
+                          </p>
+                          <button
+                            onClick={() =>
+                              (window.location.href = "#/create-collection")
+                            }
+                            style={{
+                              background: colors.primary,
+                              color: isDark ? "#000" : "#fff",
+                              border: "none",
+                              outline: "none",
+                              padding: "8px 16px",
+                              borderRadius: "6px",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              fontFamily: "monospace",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                              boxShadow: `0 0 8px ${colors.shadow}`,
+                              transition: "all 0.3s ease",
+                              cursor: "pointer",
+                              marginTop: "10px",
+                            }}
+                          >
+                            {t("createFirstZone")}
+                          </button>
+                        </div>
+                      ) : (
+                        getFilteredZones().map((zone) => renderZoneCard(zone))
+                      )}
+                    </div>
+                  )}
+
+                  {/* СУБДОМЕНЫ */}
+                  {activeTab === "subdomains" && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "12px",
+                        overflowY: "auto",
+                        flex: 1,
+                        minHeight: 0,
+                        paddingRight: "6px",
+                      }}
+                    >
+                      {blockchainLoading ? (
+                        <div
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "20px",
+                            color: colors.text,
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          <img
+                            src={searchDog}
+                            alt="Loading"
+                            style={{ width: 100, height: 100 }}
+                          />
+                          <div style={{ fontSize: 16, marginTop: 12 }}>
+                            {t("loadingSubdomains") || "Загрузка данных..."}
+                          </div>
+                          <div
+                            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
+                          >
+                            {t("pleaseWait") || "Пожалуйста, подождите"}
+                          </div>
+                        </div>
+                      ) : blockchainError ? (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "20px",
+                            color: "#f87171",
+                          }}
+                        >
+                          <p>
+                            {t("error")}: {blockchainError}
+                          </p>
+                        </div>
+                      ) : getFilteredSubdomains().length === 0 ? (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "20px",
+                            color: colors.text,
+                            opacity: 0.7,
+                          }}
+                        >
+                          <p>
+                            {searchQuery ||
+                            filters.zoneLengths.length > 0 ||
+                            filters.subdomainLengths.length > 0
+                              ? t("noSubdomainsMatchingFilters")
+                              : t("noSubdomains")}
+                          </p>
+                          <button
+                            onClick={() =>
+                              (window.location.href = "#/add-subdomain")
+                            }
+                            style={{
+                              background: colors.primary,
+                              color: isDark ? "#000" : "#fff",
+                              border: "none",
+                              outline: "none",
+                              padding: "8px 16px",
+                              borderRadius: "6px",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              fontFamily: "monospace",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                              boxShadow: `0 0 8px ${colors.shadow}`,
+                              transition: "all 0.3s ease",
+                              cursor: "pointer",
+                              marginTop: "10px",
+                            }}
+                          >
+                            {t("createFirstSubdomain")}
+                          </button>
+                        </div>
+                      ) : (
+                        getFilteredSubdomains().map((subdomain) =>
+                          renderSubdomainCard(subdomain)
+                        )
+                      )}
+                    </div>
+                  )}
+
+                  {/* АУКЦИОНЫ */}
+                  {activeTab === "auctions" && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "12px",
+                        overflowY: "auto",
+                        flex: 1,
+                        minHeight: 0,
+                        paddingRight: "6px",
+                      }}
+                    >
+                      {auctionsLoading ? (
+                        <div
+                          style={{
+                            flex: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "20px",
+                            color: colors.text,
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          <img
+                            src={searchDog}
+                            alt="Loading"
+                            style={{ width: 100, height: 100 }}
+                          />
+                          <div style={{ fontSize: 16, marginTop: 12 }}>
+                            {t("loadingAuctions") || "Загрузка данных..."}
+                          </div>
+                          <div
+                            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
+                          >
+                            {t("pleaseWait") || "Пожалуйста, подождите"}
+                          </div>
+                        </div>
+                      ) : getFilteredAuctions().length === 0 ? (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "20px",
+                            color: colors.text,
+                            opacity: 0.7,
+                          }}
+                        >
+                          <p>
+                            {searchQuery
+                              ? t("noAuctionsMatchingFilters")
+                              : t("noAuctions")}
+                          </p>
+                          <button
+                            onClick={() =>
+                              (window.location.href = "/add-subdomain")
+                            }
+                            style={{
+                              background: colors.primary,
+                              color: isDark ? "#000" : "#fff",
+                              border: "none",
+                              outline: "none",
+                              padding: "8px 16px",
+                              borderRadius: "6px",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                              fontFamily: "monospace",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                              boxShadow: `0 0 8px ${colors.shadow}`,
+                              transition: "all 0.3s ease",
+                              cursor: "pointer",
+                              marginTop: "10px",
+                            }}
+                          >
+                            {t("createAuction")}
+                          </button>
+                        </div>
+                      ) : (
+                        getFilteredAuctions().map((auction, idx) =>
+                          renderAuctionCard(auction, idx)
+                        )
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* SWIPE VIEW */}
+              {activeTab !== "info" && cardView === "swipe" && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    flex: 1,
+                    minHeight: 0,
+                    overflow: "hidden",
+                    position: "relative",
+                  }}
+                >
+                  {swipeItems.length === 0 ? (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "20px",
+                        color: colors.text,
+                        opacity: 0.7,
+                        marginTop: "40px",
+                      }}
+                    >
+                      <p>{t("noItems") || "Нет элементов для отображения"}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: "100%",
+                          overflow: "hidden",
+                          position: "relative",
+                        }}
+                      >
+                        {swipeItems.length > 1 && (
+                          <button
+                            onClick={() =>
+                              setSwipeIndex(
+                                (prev) =>
+                                  (prev - 1 + swipeItems.length) %
+                                  swipeItems.length
+                              )
+                            }
+                            style={{
+                              position: "absolute",
+                              left: 0,
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              background: "none",
+                              border: "none",
+                              color: colors.cyberpunk,
+                              fontSize: "28px",
+                              cursor: "pointer",
+                              zIndex: 10,
+                              padding: "8px",
+                            }}
+                          >
+                            ◀
+                          </button>
+                        )}
+
+                        <div
+                          style={{
+                            width: "90%",
+                            maxWidth: "340px",
+                            transition: "transform 0.3s ease",
+                          }}
+                        >
+                          {swipeItems[swipeIndex] &&
+                            swipeRenderer(swipeItems[swipeIndex], swipeIndex)}
+                        </div>
+
+                        {swipeItems.length > 1 && (
+                          <button
+                            onClick={() =>
+                              setSwipeIndex(
+                                (prev) => (prev + 1) % swipeItems.length
+                              )
+                            }
+                            style={{
+                              position: "absolute",
+                              right: 0,
+                              top: "50%",
+                              transform: "translateY(-50%)",
+                              background: "none",
+                              border: "none",
+                              color: colors.cyberpunk,
+                              fontSize: "28px",
+                              cursor: "pointer",
+                              zIndex: 10,
+                              padding: "8px",
+                            }}
+                          >
+                            ▶
+                          </button>
+                        )}
+                      </div>
+
+                      {swipeItems.length > 1 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "6px",
+                            padding: "8px 0 4px",
+                          }}
+                        >
+                          {swipeItems.map((_, i) => (
+                            <div
+                              key={i}
+                              onClick={() => setSwipeIndex(i)}
+                              style={{
+                                width: "8px",
+                                height: "8px",
+                                borderRadius: "50%",
+                                background:
+                                  i === swipeIndex
+                                    ? colors.cyberpunk
+                                    : colors.border,
+                                cursor: "pointer",
+                                transition: "background 0.2s",
+                              }}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* INFO TAB — [KEEP] Бэкенд (useUser) без изменений */}
+              {activeTab === "info" && (
+                <div
+                  className="scrollPartWrapper"
+                  style={{
+                    overflow: "scroll",
+                    height: "100%",
+                  }}
+                >
+                  <div>
+                    <p
+                      style={{
+                        margin: "0 0 12px 0",
+                        fontSize: "13px",
+                        color: colors.text,
+                        fontWeight: "600",
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      📊 {t("statistics")}:
+                    </p>
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "8px",
+                        fontSize: "13px",
+                        color: colors.text,
+                        opacity: 0.8,
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("totalZones")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: colors.cyberpunk,
+                          }}
+                        >
+                          {user?.zones || 0}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("proxyZones")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: "#4caf50",
+                          }}
+                        >
+                          {user?.proxyZones || 0}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("sbtZones")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: "#3b82f6",
+                          }}
+                        >
+                          {user?.sbtZones || 0}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("totalSubdomains")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: colors.cyberpunk,
+                          }}
+                        >
+                          {user?.subdomains || 0}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("proxySubdomains")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: "#4caf50",
+                          }}
+                        >
+                          {user?.proxySubdomains || 0}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("sbtSubdomains")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: "#3b82f6",
+                          }}
+                        >
+                          {user?.sbtSubdomains || 0}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginTop: "12px",
+                          paddingTop: "12px",
+                          borderTop: `1px solid ${colors.border}`,
+                        }}
+                      >
+                        <span>{t("activeAuctions")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: colors.cyberpunk,
+                          }}
+                        >
+                          {activeAuctions.length}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginTop: "12px",
+                          paddingTop: "12px",
+                          borderTop: `1px solid ${colors.border}`,
+                        }}
+                      >
+                        <span style={{ fontWeight: "600" }}>
+                          {t("totalPaidAttempts")}:
+                        </span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: colors.cyberpunk,
+                          }}
+                        >
+                          {(() => {
+                            if (!user?.totalPaidAttempts) return 0;
+                            const a = user.totalPaidAttempts;
+                            const proxyTotal = Object.values(
+                              a.proxy || {}
+                            ).reduce((x, y) => x + y, 0);
+                            const sbtTotal = Object.values(a.sbt || {}).reduce(
+                              (x, y) => x + y,
+                              0
+                            );
+                            return proxyTotal + sbtTotal;
+                          })()}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("proxyPaidAttempts")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: "#4caf50",
+                          }}
+                        >
+                          {(() => {
+                            if (!user?.totalPaidAttempts) return 0;
+                            return Object.values(
+                              user.totalPaidAttempts.proxy || {}
+                            ).reduce((x, y) => x + y, 0);
+                          })()}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("sbtPaidAttempts")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: "#3b82f6",
+                          }}
+                        >
+                          {(() => {
+                            if (!user?.totalPaidAttempts) return 0;
+                            return Object.values(
+                              user.totalPaidAttempts.sbt || {}
+                            ).reduce((x, y) => x + y, 0);
+                          })()}
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginTop: "12px",
+                          paddingTop: "12px",
+                          borderTop: `1px solid ${colors.border}`,
+                        }}
+                      >
+                        <span style={{ fontWeight: "600" }}>
+                          {t("totalZoneSpending")}:
+                        </span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: colors.cyberpunk,
+                          }}
+                        >
+                          {user?.totalZoneSpending?.toFixed(2) || "0.00"}{" "}
+                          <img
+                            src={TonLogo}
+                            alt="TON"
+                            style={{ width: "16px", height: "16px" }}
+                          />
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("proxyZoneSpending")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: "#4caf50",
+                          }}
+                        >
+                          {user?.totalProxyZoneSpending?.toFixed(2) || "0.00"}{" "}
+                          <img
+                            src={TonLogo}
+                            alt="TON"
+                            style={{ width: "16px", height: "16px" }}
+                          />
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("sbtZoneSpending")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: "#3b82f6",
+                          }}
+                        >
+                          {user?.totalSbtZoneSpending?.toFixed(2) || "0.00"}{" "}
+                          <img
+                            src={TonLogo}
+                            alt="TON"
+                            style={{ width: "16px", height: "16px" }}
+                          />
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("totalSubdomainSpending")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: colors.cyberpunk,
+                          }}
+                        >
+                          {user?.totalSubdomainSpending?.toFixed(2) || "0.00"}{" "}
+                          <img
+                            src={TonLogo}
+                            alt="TON"
+                            style={{ width: "16px", height: "16px" }}
+                          />
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("proxySubdomainSpending")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: "#4caf50",
+                          }}
+                        >
+                          {user?.totalProxySubdomainSpending?.toFixed(2) ||
+                            "0.00"}{" "}
+                          <img
+                            src={TonLogo}
+                            alt="TON"
+                            style={{ width: "16px", height: "16px" }}
+                          />
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{t("sbtSubdomainSpending")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: "#3b82f6",
+                          }}
+                        >
+                          {user?.totalSbtSubdomainSpending?.toFixed(2) ||
+                            "0.00"}{" "}
+                          <img
+                            src={TonLogo}
+                            alt="TON"
+                            style={{ width: "16px", height: "16px" }}
+                          />
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginTop: "12px",
+                          paddingTop: "12px",
+                          borderTop: `1px solid ${colors.border}`,
+                        }}
+                      >
+                        <span style={{ fontWeight: "600" }}>
+                          {t("totalProfit")}:
+                        </span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: "#10b981",
+                          }}
+                        >
+                          {user?.totalProfit?.toFixed(2) || "0.00"}{" "}
+                          <img
+                            src={TonLogo}
+                            alt="TON"
+                            style={{ width: "16px", height: "16px" }}
+                          />
+                        </span>
+                      </div>
+
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          marginTop: "12px",
+                          paddingTop: "12px",
+                          borderTop: `1px solid ${colors.border}`,
+                        }}
+                      >
+                        <span>{t("registrationDate")}:</span>
+                        <span
+                          style={{
+                            fontWeight: "600",
+                            color: colors.cyberpunk,
+                          }}
+                        >
+                          {user?.registrationDate
+                            ? new Date(
+                                user.registrationDate
+                              ).toLocaleDateString("ru-RU")
+                            : user?.createdAt
+                            ? new Date(user.createdAt).toLocaleDateString(
+                                "ru-RU"
+                              )
+                            : "-"}
+                        </span>
+                      </div>
+
+                      <PaymentAttemptsSection
+                        address={address}
+                        colors={colors}
+                        isDark={isDark}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* FOOTER */}
+              <div
+                style={{
+                  paddingTop: "12px",
+                  borderTop: `1px solid ${colors.border}`,
+                  fontSize: "11px",
+                  color: colors.text,
+                  opacity: 0.6,
+                  textAlign: "center",
+                  lineHeight: "1.5",
+                  fontFamily: "monospace",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "end",
+                }}
+              >
+                <button
+                  onClick={refreshAllData}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: colors.cyberpunk,
+                    cursor: "pointer",
+                    fontSize: "12px",
+                    textDecoration: "underline",
+                    fontFamily: "monospace",
+                    marginTop: "5px",
+                    fontWeight: "900",
+                  }}
+                >
+                  🔄 {t("refreshData")}
+                </button>
+              </div>
+            </>
+          ) : (
+            /* НЕ ПОДКЛЮЧЕН */
+            <div
+              style={{
+                padding: "20px",
+                backgroundColor: colors.secondaryBg,
+                borderRadius: "8px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: "48px", marginBottom: "12px" }}>🔐</div>
+              <p
+                style={{
+                  margin: "0 0 8px 0",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color: colors.text,
+                  fontFamily: "monospace",
+                }}
+              >
+                {t("accessRestricted")}
+              </p>
+              <p
+                style={{
+                  margin: "0",
+                  fontSize: "12px",
+                  color: colors.text,
+                  opacity: 0.7,
+                  lineHeight: "1.5",
+                }}
+              >
+                {t("connectWalletForHistory")}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div
+          onClick={() => setIsExpanded(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.3)",
+            zIndex: 998,
+          }}
+        />
+      )}
+
+      <style>{`
+        :global(.ton-connect-button) {
+          width: 100%;
+          padding: 10px 12px !important;
+          background: ${colors.primary} !important;
+          border: none !important;
+          border-radius: 8px !important;
+          color: ${isDark ? "black" : "white"} !important;
+          font-weight: 600 !important;
+          font-size: 13px !important;
+          cursor: pointer !important;
+          transition: all 0.3s ease !important;
+          box-shadow: 0 4px 12px ${colors.shadow} !important;
+          font-family: monospace !important;
+          textTransform: uppercase !important;
+          letterSpacing: 0.5px !important;
+        }
+        :global(.ton-connect-button:hover) {
+          background: ${colors.accent} !important;
+          box-shadow: 0 6px 20px ${colors.shadow} !important;
+          transform: translateY(-2px) !important;
+        }
+        button[style*="background: linear-gradient"]:hover {
+          transform: translateY(-2px) !important;
+          box-shadow: 0 4px 12px ${colors.shadow} !important;
+          filter: brightness(1.1);
+        }
+        button[style*="background: linear-gradient"]:active {
+          transform: translateY(0) !important;
+          boxShadow: 0 2px 6px ${colors.shadow} !important;
+        }
+      `}</style>
+    </>
+  );
+};
+
+export default ProfileWidget;
