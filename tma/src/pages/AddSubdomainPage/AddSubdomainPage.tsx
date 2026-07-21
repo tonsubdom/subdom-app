@@ -4530,6 +4530,16 @@
 // Все вызовы API (createSubdomain, addBid, updateSubdomainStatus) — на бэкенд (СОХРАНЕНЫ)
 // dedupe с приоритетом proxy > sbt, фильтр SBT по creator_address, item_count, кнопка «Создать сайт»
 
+// src/pages/AuctionPage/index.tsx
+// ФИНАЛЬНАЯ ВЕРСИЯ (v5):
+// - Дедупликация зон с приоритетом proxy над sbt
+// - Фильтрация по code_hash (неизвестные коллекции не попадают в селектор)
+// - creator_address как owner
+// - item_count для subdomainsAmount
+// - Перенос длинных имён (word-break вместо truncate)
+// - collectionAddress для транзакций из SimpleCollection (редюс), а не из бэкенда
+// - SBT зоны только текущего пользователя
+
 import React, {
   useState,
   useCallback,
@@ -4567,7 +4577,7 @@ import { apiService, Subdomain, Zone } from "@/services/api";
 import { checkSBTSubdomain, SBTSubdomainInfo } from "./checkSBTSubdomain";
 import { calculateProxyNFTAddress } from "./CalculateProxyNFTAddress";
 
-// ====== ONCHAIN REDUX ======
+// ====== ONCHAIN ======
 import { useBlockchainItems } from "@/services/blockchainItems/blockchain-items-context.tsx";
 import { SimpleCollection } from "@/services/blockchainItems/blockchain-items-types";
 
@@ -4587,7 +4597,6 @@ import { useLaunchParams } from "@telegram-apps/sdk-react";
 import { MiniAppLinks } from "@/utils/miniAppLinks";
 import { AuctionCollectionSelector } from "./AuctionCollectionSelector";
 import { getUserSbtSubdomainsCount } from "@/utils/sbt-utils";
-import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 
 // ====== ТИПЫ ======
 
@@ -4619,83 +4628,51 @@ const normalizeAddress = (addr: string): string => {
   }
 };
 
-// ====== ДЕДУПЛИКАЦИЯ SimpleCollection ======
-// Нормализует имя (убирает суффиксы "Proxy Domains"/"DNS Domains"), lowercase, trim.
-// Оставляет самую позднюю по created_at/lastUpdated.
-// Если имя уже заканчивается на .ton или .test — не добавляет суффикс.
-const normalizeCollectionName = (col: SimpleCollection): string => {
-  return (col.name || "")
-    .replace(/ Proxy Domains/i, "")
-    .replace(/ DNS Domains/i, "")
-    .toLowerCase()
-    .trim();
-};
+// ====== ДЕДУПЛИКАЦИЯ: proxy приоритетнее sbt, иначе latest по created_at ======
 
-/**
- * Дедупликация с приоритетом proxy > sbt:
- * 1. Собираем все коллекции по нормализованному имени.
- * 2. Если для имени есть proxy-коллекция, используем её и удаляем sbt-дубликат.
- * 3. Если несколько proxy (или несколько sbt) — берём самую позднюю по created_at/lastUpdated.
- */
-const dedupeProxyPriority = (
-  proxyCols: SimpleCollection[],
-  sbtCols: SimpleCollection[]
-): { proxyZones: SimpleCollection[]; sbtZones: SimpleCollection[] } => {
-  // Map: нормализованное имя → { proxy: лучшая proxy, sbt: лучшая sbt }
-  const map = new Map<
-    string,
-    { proxy: SimpleCollection | null; sbt: SimpleCollection | null }
-  >();
-
-  const pickLatest = (a: SimpleCollection, b: SimpleCollection) => {
-    const dateA = new Date(a.created_at || a.lastUpdated || 0).getTime();
-    const dateB = new Date(b.created_at || b.lastUpdated || 0).getTime();
-    return dateA >= dateB ? a : b;
-  };
-
-  for (const col of proxyCols) {
-    const key = normalizeCollectionName(col);
-    const entry = map.get(key) || { proxy: null, sbt: null };
-    entry.proxy = entry.proxy ? pickLatest(entry.proxy, col) : col;
-    map.set(key, entry);
+const dedupeZones = (all: Zone[]): Zone[] => {
+  // Группируем по имени зоны (ключ)
+  const map = new Map<string, Zone[]>();
+  for (const z of all) {
+    const key = z.name.toLowerCase();
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(z);
   }
 
-  for (const col of sbtCols) {
-    const key = normalizeCollectionName(col);
-    const entry = map.get(key) || { proxy: null, sbt: null };
-    entry.sbt = entry.sbt ? pickLatest(entry.sbt, col) : col;
-    map.set(key, entry);
-  }
-
-  const resultProxy: SimpleCollection[] = [];
-  const resultSbt: SimpleCollection[] = [];
-
-  for (const [, entry] of map) {
-    if (entry.proxy) {
-      // Если есть proxy — используем proxy, sbt НЕ добавляем
-      resultProxy.push(entry.proxy);
-    } else if (entry.sbt) {
-      // Если proxy нет, но есть sbt — добавляем sbt
-      resultSbt.push(entry.sbt);
+  const result: Zone[] = [];
+  for (const [, zones] of map) {
+    // Если есть proxy — берём proxy (их может быть несколько, берём latest)
+    const proxyZones = zones.filter((z) => z.proxy === 1);
+    if (proxyZones.length > 0) {
+      const latest = proxyZones.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )[0];
+      result.push(latest);
+      continue;
     }
+    // Иначе все sbt — берём latest
+    const latest = zones.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0];
+    result.push(latest);
   }
-
-  return { proxyZones: resultProxy, sbtZones: resultSbt };
+  return result;
 };
 
 // ====== КОНВЕРТАЦИЯ SimpleCollection → Zone ======
+
 const collectionToZone = (col: SimpleCollection, proxy: number): Zone => {
-  const rawName = normalizeCollectionName(col);
-  const name =
-    rawName.endsWith(".ton") || rawName.endsWith(".test")
-      ? rawName
-      : rawName + ".ton";
+  const rawName = col.name || "";
+  const zoneName = rawName
+    .replace(/ Proxy Domains/i, "")
+    .replace(/ DNS Domains/i, "")
+    .toLowerCase();
 
   return {
-    id: col.address
-      ? parseInt(col.address.slice(0, 8), 16) || Date.now()
-      : Date.now(),
-    name,
+    id: col.address ? parseInt(col.address.slice(0, 8), 16) || 0 : 0,
+    name: zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`,
     address: col.address,
     collectionAddress: col.address,
     wrapperAddress: undefined,
@@ -4710,7 +4687,9 @@ const collectionToZone = (col: SimpleCollection, proxy: number): Zone => {
   };
 };
 
-// ========================================================================
+// ====================================================================
+// КОМПОНЕНТ
+// ====================================================================
 
 export const AuctionPage: React.FC<{}> = () => {
   const dispatch = useTypedDispatch();
@@ -4752,11 +4731,10 @@ export const AuctionPage: React.FC<{}> = () => {
   } | null>(null);
 
   const isTestnet = wallet?.account?.chain === "-3";
-
   const launchParams = useLaunchParams();
   const [, setOpenedViaDeeplink] = useState(false);
 
-  // ====== ONCHAIN ДАННЫЕ (useBlockchainItems) ======
+  // ====== ONCHAIN ДАННЫЕ ======
   const {
     proxyCollections,
     sbtCollections,
@@ -4765,44 +4743,29 @@ export const AuctionPage: React.FC<{}> = () => {
     error: zonesError,
   } = useBlockchainItems();
 
-  // ====== ДЕДУПЛИКАЦИЯ + ПРИОРИТЕТ PROXY ======
-  const deduped = useMemo(
-    () => dedupeProxyPriority(proxyCollections, sbtCollections),
-    [proxyCollections, sbtCollections]
+  // Конвертируем SimpleCollection[] → Zone[] с дедупликацией
+  const allZones: Zone[] = useMemo(() => {
+    const proxyZones = proxyCollections.map((c) => collectionToZone(c, 1));
+    const sbtZones = sbtCollections.map((c) => collectionToZone(c, 0));
+    return dedupeZones([...proxyZones, ...sbtZones]);
+  }, [proxyCollections, sbtCollections]);
+
+  const proxyZones: Zone[] = useMemo(
+    () => allZones.filter((z) => z.proxy === 1),
+    [allZones]
   );
 
-  // ====== КОНВЕРТИРУЕМ SimpleCollection[] → Zone[] ======
-  const onchainProxyZones: Zone[] = useMemo(
-    () => deduped.proxyZones.map((c) => collectionToZone(c, 1)),
-    [deduped.proxyZones]
+  const sbtZones: Zone[] = useMemo(
+    () => allZones.filter((z) => z.proxy === 0),
+    [allZones]
   );
-
-  const onchainSbtZonesAll: Zone[] = useMemo(
-    () => deduped.sbtZones.map((c) => collectionToZone(c, 0)),
-    [deduped.sbtZones]
-  );
-
-  // ====== SBT ТОЛЬКО ЮЗЕРА (как в ProfileWidget) ======
-  const onchainSbtZones: Zone[] = useMemo(() => {
-    if (!userAddress) return onchainSbtZonesAll;
-    const normalizedAddress =
-      convertUserFriendlyToRaw(userAddress).toLowerCase();
-    return onchainSbtZonesAll.filter((zone) => {
-      const owner = (zone.owner || "").toLowerCase();
-      return owner === normalizedAddress;
-    });
-  }, [onchainSbtZonesAll, userAddress]);
-
-  const allZones: Zone[] = useMemo(
-    () => [...onchainProxyZones, ...onchainSbtZones],
-    [onchainProxyZones, onchainSbtZones]
-  );
-  const proxyZones: Zone[] = onchainProxyZones;
-  const sbtZones: Zone[] = onchainSbtZones;
 
   const activeSbtZones: Zone[] = useMemo(
-    () => sbtZones.filter((zone) => zone.status !== "inactive"),
-    [sbtZones]
+    () =>
+      sbtZones.filter(
+        (zone) => zone.status !== "inactive" && zone.owner === userAddress
+      ),
+    [sbtZones, userAddress]
   );
 
   // Устанавливаем сеть в apiService при изменении isTestnet
@@ -4863,17 +4826,18 @@ export const AuctionPage: React.FC<{}> = () => {
       : sbtCollectionAddressesMap;
   }, [activeTab, proxyCollectionAddressesMap, sbtCollectionAddressesMap]);
 
+  // Устанавливаем collectionAddress из SimpleCollection при выборе зоны
   useEffect(() => {
     if (selectedDomainZone && !collectionAddress && allZones.length > 0) {
       const zone = allZones.find((z) => z.name === selectedDomainZone);
       if (zone?.collectionAddress) {
         console.log(
-          `✅ Устанавливаем collectionAddress из базы: ${zone.collectionAddress}`
+          `✅ Устанавливаем collectionAddress из редукса: ${zone.collectionAddress}`
         );
         setCollectionAddress(zone.collectionAddress);
       } else {
         console.log(
-          `⚠️ У зоны "${selectedDomainZone}" нет collectionAddress в базе`
+          `⚠️ У зоны "${selectedDomainZone}" нет collectionAddress в редуксе`
         );
         const addressFromMap = currentCollectionMap[selectedDomainZone];
         if (addressFromMap) {
@@ -5630,9 +5594,9 @@ export const AuctionPage: React.FC<{}> = () => {
     if (userAddress) refreshSubdomains();
   }, [userAddress, refreshSubdomains]);
 
-  // ========================================================================
+  // ====================================================================
   // RENDER
-  // ========================================================================
+  // ====================================================================
   return (
     <Page back={true}>
       {snackbar}
