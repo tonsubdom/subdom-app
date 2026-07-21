@@ -6499,6 +6499,15 @@
 // ВСЁ ОСТАЛЬНОЕ — БЕЗ ИЗМЕНЕНИЙ
 // ============================================================
 
+// src/pages/AuctionPage/index.tsx
+// ИТОГОВАЯ ВЕРСИЯ: все правки применены.
+// 1) getUserZones из ProfileWidget (convertUserFriendlyToRaw, БЕЗ dedupe)
+// 2) collectionAddress из SimpleCollection.address
+// 3) item_count из SimpleCollection.item_count
+// 4) Логи тела транзакции при отправке
+// 5) useRef для apiService.setNetwork (устранение петли)
+// 6) ВСЕ обработчики и UI сохранены без сокращений
+
 import React, {
   useState,
   useCallback,
@@ -6588,7 +6597,7 @@ const normalizeAddress = (addr: string): string => {
   }
 };
 
-// ====== ТОЧНАЯ КОПИЯ collectionToZone ИЗ ProfileWidget ======
+// ====== collectionToZone — ТОЧНАЯ КОПИЯ ИЗ ProfileWidget ======
 const collectionToZone = (col: SimpleCollection): Zone => {
   const rawName = col.name || "";
   const zoneName = rawName
@@ -6601,7 +6610,7 @@ const collectionToZone = (col: SimpleCollection): Zone => {
     address: col.address,
     owner: col.creator_address || col.owner_address,
     collectionAddress: col.address,
-    createdAt: col.lastUpdated || new Date().toISOString(),
+    createdAt: col.created_at || col.lastUpdated || new Date().toISOString(),
     subdomainsAmount: col.item_count || 0,
     proxy: col.type === "proxy" ? 1 : 0,
     status: "active",
@@ -6611,51 +6620,11 @@ const collectionToZone = (col: SimpleCollection): Zone => {
   } as any as Zone;
 };
 
-// ====== ДЕДУПЛИКАЦИЯ: proxy > sbt, latest по createdAt (как в ProfileWidget) ======
-const dedupeByPriority = (zones: Zone[]): Zone[] => {
-  const map = new Map<string, Zone>();
-
-  for (const z of zones) {
-    const key = z.name.toLowerCase();
-    const existing = map.get(key);
-
-    if (!existing) {
-      // Нет дубликата — записываем
-      map.set(key, z);
-      continue;
-    }
-
-    // Приоритет: proxy > sbt
-    const zPriority = z.proxy === 1 ? 1 : 0;
-    const exPriority = existing.proxy === 1 ? 1 : 0;
-
-    if (zPriority > exPriority) {
-      // proxy побеждает sbt
-      map.set(key, z);
-    } else if (zPriority === exPriority) {
-      // Оба одного типа — берём latest по createdAt
-      const zTime = new Date(z.createdAt).getTime();
-      const exTime = new Date(existing.createdAt).getTime();
-      if (zTime > exTime) {
-        map.set(key, z);
-      }
-    }
-    // иначе sbt не может заменить proxy (zPriority < exPriority) — пропускаем
-  }
-
-  return [...map.values()];
-};
-
 // ====================================================================
 // КОМПОНЕНТ
 // ====================================================================
 
 export const AuctionPage: React.FC<{}> = () => {
-  // ==================================================================
-  // ВЕСЬ СТЕЙТ И ХУКИ — ТОЧНО КАК В АКТУАЛЬНОЙ ВЕРСИИ
-  // (копирую без сокращений, потому что ты просил полный файл)
-  // ==================================================================
-
   const dispatch = useTypedDispatch();
   const wallet = useTonWallet();
   const userAddress = useTonAddress();
@@ -6707,36 +6676,40 @@ export const AuctionPage: React.FC<{}> = () => {
     error: zonesError,
   } = useBlockchainItems();
 
-  // ====== ИЗМЕНЕНИЕ v8: getUserZones с dedupe ======
+  // ====== getUserZones — ТОЧНАЯ КОПИЯ ProfileWidget (БЕЗ dedupe) ======
   const getUserZones = useMemo((): Zone[] => {
     if (!userAddress) return [];
 
     const normalizedAddress =
       convertUserFriendlyToRaw(userAddress).toLowerCase();
 
-    const allCols: SimpleCollection[] = [
-      ...proxyCollections,
-      ...sbtCollections,
-    ];
+    const proxyZones = proxyCollections
+      .filter((col) => {
+        const creator = (
+          col.creator_address ||
+          col.owner_address ||
+          ""
+        ).toLowerCase();
+        return creator === normalizedAddress;
+      })
+      .map((col) => collectionToZone(col));
 
-    // Фильтруем (как в ProfileWidget)
-    const userCols = allCols.filter((col) => {
-      const creator = (
-        col.creator_address ||
-        col.owner_address ||
-        ""
-      ).toLowerCase();
-      return creator === normalizedAddress;
-    });
+    const sbtZones = sbtCollections
+      .filter((col) => {
+        const creator = (
+          col.creator_address ||
+          col.owner_address ||
+          ""
+        ).toLowerCase();
+        return creator === normalizedAddress;
+      })
+      .map((col) => collectionToZone(col));
 
-    // Конвертируем в Zone
-    const allConverted = userCols.map((col) => collectionToZone(col));
-
-    // ДЕДУПЛИКАЦИЯ (proxy > sbt, latest по createdAt)
-    return dedupeByPriority(allConverted);
+    return [...proxyZones, ...sbtZones];
   }, [userAddress, proxyCollections, sbtCollections]);
 
-  // proxyZones / sbtZones — уже после дедупликации
+  // Разделяем с учётом возможных дубликатов (если proxy и sbt имеют одно имя — будут оба,
+  // как в ProfileWidget — dedupe НЕ делаем)
   const proxyZones: Zone[] = useMemo(
     () => getUserZones.filter((z) => z.proxy === 1),
     [getUserZones]
@@ -6747,17 +6720,18 @@ export const AuctionPage: React.FC<{}> = () => {
   );
   const allZones: Zone[] = getUserZones;
 
-  // ====== ОСТАЛЬНОЙ КОД — ПОЛНАЯ КОПИЯ АКТУАЛЬНОЙ ВЕРСИИ ======
-  // (все хуки useMemo/useCallback/useEffect/обработчики/функции — без изменений,
-  //  только переменные proxyZones/sbtZones/allZones теперь из getUserZones)
-
   const activeSbtZones: Zone[] = useMemo(
     () => sbtZones.filter((zone) => zone.status !== "inactive"),
     [sbtZones]
   );
 
+  // ====== УСТРАНЕНИЕ ПЕТЛИ: apiService.setNetwork только при реальной смене сети ======
+  const prevNetworkRef = useRef<boolean | null>(null);
   useEffect(() => {
-    if (wallet) apiService.setNetwork(isTestnet);
+    if (wallet && prevNetworkRef.current !== isTestnet) {
+      prevNetworkRef.current = isTestnet;
+      apiService.setNetwork(isTestnet);
+    }
   }, [wallet, isTestnet]);
 
   const isProxyZone = useCallback((zone: any): boolean => {
@@ -6820,16 +6794,16 @@ export const AuctionPage: React.FC<{}> = () => {
 
   const calculateDomainPrice = useMemo(() => {
     if (activeTab === "sbt") return 500_000_000;
-    const domainLength = subDomainName.length;
-    return Math.floor((mapPrices[domainLength] || 0.5) * 1_000_000_000);
+    const len = subDomainName.length;
+    return Math.floor((mapPrices[len] || 0.5) * 1_000_000_000);
   }, [subDomainName, activeTab]);
 
   const calculateBidPrice = useMemo(() => {
     if (activeTab === "sbt" || !auctionInfo) return 0;
     if (customBidAmount && !isNaN(Number(customBidAmount)))
       return Math.floor(Number(customBidAmount) * 1_000_000_000);
-    const currentMaxBid = Number(auctionInfo.maxBid);
-    return currentMaxBid + Math.ceil(currentMaxBid * 0.05);
+    const maxBid = Number(auctionInfo.maxBid);
+    return maxBid + Math.ceil(maxBid * 0.05);
   }, [auctionInfo, customBidAmount, activeTab]);
 
   const canClaim = useMemo(() => {
@@ -6848,10 +6822,10 @@ export const AuctionPage: React.FC<{}> = () => {
 
   const marketplaceUrl = useMemo(() => {
     if (activeTab === "sbt" || !nftAddress || !collectionAddress) return "";
-    const baseUrl = isTestnet
+    const base = isTestnet
       ? "https://testnet.getgems.io"
       : "https://getgems.io";
-    return `${baseUrl}/collection/${collectionAddress}/${nftAddress}`;
+    return `${base}/collection/${collectionAddress}/${nftAddress}`;
   }, [nftAddress, collectionAddress, isTestnet, activeTab]);
 
   const showSnackbar = useCallback(
@@ -6920,7 +6894,9 @@ export const AuctionPage: React.FC<{}> = () => {
         if (route === "/add-subdomain" && params.zone && params.subdomain) {
           loadAuctionFromParams(params.zone, params.subdomain);
         }
-      } catch {}
+      } catch (e) {
+        console.error("deeplink parse error:", e);
+      }
     } else if (hasUrlParams) {
       const p = getAuctionParamsFromUrl();
       if (p.zone && p.subdomain) loadAuctionFromParams(p.zone, p.subdomain);
@@ -6928,6 +6904,7 @@ export const AuctionPage: React.FC<{}> = () => {
     // eslint-disable-next-line
   }, [allZones, launchParams.startParam]);
 
+  // ====== ПРОВЕРКА ИТЕМА ======
   const handleCheckItem = useCallback(async () => {
     if (!selectedDomainZone || !subDomainName || !collectionAddress) {
       showSnackbar(t("pleaseEnterDomainName"), "error");
@@ -7166,8 +7143,26 @@ export const AuctionPage: React.FC<{}> = () => {
     setCustomBidAmount(value && !isNaN(Number(value)) ? value : "");
   };
 
-  // ====== ФУНКЦИИ API (БД) — БЕЗ ИЗМЕНЕНИЙ ======
+  // ====== ПОДГОТОВКА ПЛАТЕЖА (логирование тела транзакции) ======
+  const logTransactionBody = (label: string, messages: any[]) => {
+    console.log(
+      `📦 [${label}] Тело транзакции:`,
+      JSON.stringify(
+        {
+          validUntil: Math.floor(Date.now() / 1000) + 360,
+          messages: messages.map((m) => ({
+            amount: m.amount,
+            address: m.address,
+            payload: m.payload || "(none)",
+          })),
+        },
+        null,
+        2
+      )
+    );
+  };
 
+  // ====== API (БД) ======
   const createSubdomainIfNotExists = async (subdomainData: {
     name: string;
     address: string;
@@ -7192,6 +7187,7 @@ export const AuctionPage: React.FC<{}> = () => {
     }
   };
 
+  // ====== СТАРТ АУКЦИОНА ======
   const handleStartAuction = async () => {
     if (!selectedDomainZone || !subDomainName || !collectionAddress) {
       showSnackbar(t("pleaseEnterDomainName"), "error");
@@ -7207,16 +7203,21 @@ export const AuctionPage: React.FC<{}> = () => {
       cell.bits.writeUint(0, 32);
       cell.bits.writeString(`${subDomainName}`);
       const payload = TonWeb.utils.bytesToBase64(await cell.toBoc());
+
+      const messages = [
+        {
+          amount: calculateDomainPrice.toString(),
+          address: collectionAddress,
+          payload,
+        },
+      ];
+      logTransactionBody("START_AUCTION", messages);
+
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 360,
-        messages: [
-          {
-            amount: calculateDomainPrice.toString(),
-            address: collectionAddress,
-            payload,
-          },
-        ],
+        messages,
       });
+
       const full = `${subDomainName}.${selectedDomainZone}`;
       const auctionEndTime = new Date(
         Date.now() + 24 * 60 * 60 * 1000
@@ -7252,6 +7253,7 @@ export const AuctionPage: React.FC<{}> = () => {
     }
   };
 
+  // ====== СТАВКА ======
   const handlePlaceBid = async () => {
     if (
       !auctionInfo ||
@@ -7267,12 +7269,16 @@ export const AuctionPage: React.FC<{}> = () => {
       return;
     }
     try {
+      const messages = [
+        { amount: calculateBidPrice.toString(), address: nftAddress },
+      ];
+      logTransactionBody("PLACE_BID", messages);
+
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 360,
-        messages: [
-          { amount: calculateBidPrice.toString(), address: nftAddress },
-        ],
+        messages,
       });
+
       const full = `${subDomainName}.${selectedDomainZone}`;
       try {
         apiService.setNetwork(isTestnet);
@@ -7316,6 +7322,7 @@ export const AuctionPage: React.FC<{}> = () => {
     }
   };
 
+  // ====== ПОКУПКА SBT ======
   const handlePurchaseSBTSubdomain = async () => {
     if (!selectedDomainZone || !subDomainName || !collectionAddress) {
       showSnackbar(t("pleaseEnterDomainName"), "error");
@@ -7336,16 +7343,21 @@ export const AuctionPage: React.FC<{}> = () => {
       cell.bits.writeUint(0, 32);
       cell.bits.writeString(`${subDomainName}`);
       const payload = TonWeb.utils.bytesToBase64(await cell.toBoc());
+
+      const messages = [
+        {
+          amount: calculateDomainPrice.toString(),
+          address: collectionAddress,
+          payload,
+        },
+      ];
+      logTransactionBody("PURCHASE_SBT", messages);
+
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 360,
-        messages: [
-          {
-            amount: calculateDomainPrice.toString(),
-            address: collectionAddress,
-            payload,
-          },
-        ],
+        messages,
       });
+
       const full = `${subDomainName}.${selectedDomainZone}`;
       if (!userAddress) throw new Error("No user address");
       const nftAddr = sbtSubdomainInfo?.nftAddress || userAddress;
@@ -7371,6 +7383,7 @@ export const AuctionPage: React.FC<{}> = () => {
     }
   };
 
+  // ====== CLAIM ======
   const handleClaimSubdomain = async () => {
     if (!nftAddress) {
       showSnackbar(t("nftAddressNotFound"), "error");
@@ -7412,6 +7425,7 @@ export const AuctionPage: React.FC<{}> = () => {
     }
   };
 
+  // ====== UI HELPERS ======
   const getImageUrl = () => {
     if (!domainZoneName || !subDomainName) return "";
     if (activeTab === "proxy")
@@ -7488,7 +7502,7 @@ export const AuctionPage: React.FC<{}> = () => {
   }, [userAddress, refreshSubdomains]);
 
   // ====================================================================
-  // RENDER — ПОЛНАЯ КОПИЯ БЕЗ ИЗМЕНЕНИЙ
+  // RENDER
   // ====================================================================
   return (
     <Page back={true}>
@@ -7500,9 +7514,7 @@ export const AuctionPage: React.FC<{}> = () => {
           sx={{
             "& .MuiTab-root": {
               color: isDark ? "#ccc" : "#666",
-              "&.Mui-selected": {
-                color: isDark ? "#FFD700" : "#3B82F6",
-              },
+              "&.Mui-selected": { color: isDark ? "#FFD700" : "#3B82F6" },
             },
           }}
         >
@@ -7511,7 +7523,6 @@ export const AuctionPage: React.FC<{}> = () => {
         </Tabs>
       </Box>
 
-      {/* PROXY BANNER */}
       {activeTab === "proxy" && (
         <div
           className="bannerWrapper"
@@ -7571,7 +7582,6 @@ export const AuctionPage: React.FC<{}> = () => {
         </div>
       )}
 
-      {/* SBT BANNER */}
       {activeTab === "sbt" && (
         <div
           className="bannerWrapper"
@@ -7665,7 +7675,6 @@ export const AuctionPage: React.FC<{}> = () => {
           paddingBottom: "150px",
         }}
       >
-        {/* Шаг 1 */}
         <div style={{ position: "relative", width: "280px" }}>
           <div
             style={{
@@ -7767,7 +7776,6 @@ export const AuctionPage: React.FC<{}> = () => {
           </div>
         )}
 
-        {/* Шаг 2 */}
         <div style={{ position: "relative", width: "280px" }}>
           <div
             style={{
@@ -7814,7 +7822,6 @@ export const AuctionPage: React.FC<{}> = () => {
           />
         </div>
 
-        {/* Шаг 2.5 */}
         <div style={{ position: "relative", width: "280px" }}>
           <div
             style={{
