@@ -4525,6 +4525,11 @@
 // ФИНАЛЬНАЯ ВЕРСИЯ: селекты зон — из useBlockchainItems (ончейн)
 // Все вызовы API (createSubdomain, addBid, updateSubdomainStatus) — на бэкенд (СОХРАНЕНЫ)
 // dedupe коллекций, кнопка «Создать сайт»
+// src/pages/AuctionPage/index.tsx
+// ФИНАЛЬНАЯ ВЕРСИЯ: селекты зон — из useBlockchainItems (ончейн)
+// Все вызовы API (createSubdomain, addBid, updateSubdomainStatus) — на бэкенд (СОХРАНЕНЫ)
+// dedupe с приоритетом proxy > sbt, фильтр SBT по creator_address, item_count, кнопка «Создать сайт»
+
 import React, {
   useState,
   useCallback,
@@ -4582,6 +4587,9 @@ import { useLaunchParams } from "@telegram-apps/sdk-react";
 import { MiniAppLinks } from "@/utils/miniAppLinks";
 import { AuctionCollectionSelector } from "./AuctionCollectionSelector";
 import { getUserSbtSubdomainsCount } from "@/utils/sbt-utils";
+import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
+
+// ====== ТИПЫ ======
 
 type CollectionAddressMap = {
   [key: string]: string;
@@ -4611,33 +4619,73 @@ const normalizeAddress = (addr: string): string => {
   }
 };
 
-// ====== ДЕДУПЛИКАЦИЯ SimpleCollection (поздняя по created_at/lastUpdated) ======
-const dedupeByLatest = (cols: SimpleCollection[]): SimpleCollection[] => {
-  const map = new Map<string, SimpleCollection>();
-  for (const c of cols) {
-    const key = (c.name || "")
-      .toLowerCase()
-      .replace(" proxy domains", "")
-      .replace(" dns domains", "");
-    const exist = map.get(key);
-    if (
-      !exist ||
-      new Date(c.created_at || c.lastUpdated || 0).getTime() >
-        new Date(exist.created_at || exist.lastUpdated || 0).getTime()
-    ) {
-      map.set(key, c);
-    }
-  }
-  return Array.from(map.values());
-};
-
-// ====== КОНВЕРТАЦИЯ SimpleCollection → Zone ======
-const collectionToZone = (col: SimpleCollection, proxy: number): Zone => {
-  const rawName = (col.name || "")
+// ====== ДЕДУПЛИКАЦИЯ SimpleCollection ======
+// Нормализует имя (убирает суффиксы "Proxy Domains"/"DNS Domains"), lowercase, trim.
+// Оставляет самую позднюю по created_at/lastUpdated.
+// Если имя уже заканчивается на .ton или .test — не добавляет суффикс.
+const normalizeCollectionName = (col: SimpleCollection): string => {
+  return (col.name || "")
     .replace(/ Proxy Domains/i, "")
     .replace(/ DNS Domains/i, "")
     .toLowerCase()
     .trim();
+};
+
+/**
+ * Дедупликация с приоритетом proxy > sbt:
+ * 1. Собираем все коллекции по нормализованному имени.
+ * 2. Если для имени есть proxy-коллекция, используем её и удаляем sbt-дубликат.
+ * 3. Если несколько proxy (или несколько sbt) — берём самую позднюю по created_at/lastUpdated.
+ */
+const dedupeProxyPriority = (
+  proxyCols: SimpleCollection[],
+  sbtCols: SimpleCollection[]
+): { proxyZones: SimpleCollection[]; sbtZones: SimpleCollection[] } => {
+  // Map: нормализованное имя → { proxy: лучшая proxy, sbt: лучшая sbt }
+  const map = new Map<
+    string,
+    { proxy: SimpleCollection | null; sbt: SimpleCollection | null }
+  >();
+
+  const pickLatest = (a: SimpleCollection, b: SimpleCollection) => {
+    const dateA = new Date(a.created_at || a.lastUpdated || 0).getTime();
+    const dateB = new Date(b.created_at || b.lastUpdated || 0).getTime();
+    return dateA >= dateB ? a : b;
+  };
+
+  for (const col of proxyCols) {
+    const key = normalizeCollectionName(col);
+    const entry = map.get(key) || { proxy: null, sbt: null };
+    entry.proxy = entry.proxy ? pickLatest(entry.proxy, col) : col;
+    map.set(key, entry);
+  }
+
+  for (const col of sbtCols) {
+    const key = normalizeCollectionName(col);
+    const entry = map.get(key) || { proxy: null, sbt: null };
+    entry.sbt = entry.sbt ? pickLatest(entry.sbt, col) : col;
+    map.set(key, entry);
+  }
+
+  const resultProxy: SimpleCollection[] = [];
+  const resultSbt: SimpleCollection[] = [];
+
+  for (const [, entry] of map) {
+    if (entry.proxy) {
+      // Если есть proxy — используем proxy, sbt НЕ добавляем
+      resultProxy.push(entry.proxy);
+    } else if (entry.sbt) {
+      // Если proxy нет, но есть sbt — добавляем sbt
+      resultSbt.push(entry.sbt);
+    }
+  }
+
+  return { proxyZones: resultProxy, sbtZones: resultSbt };
+};
+
+// ====== КОНВЕРТАЦИЯ SimpleCollection → Zone ======
+const collectionToZone = (col: SimpleCollection, proxy: number): Zone => {
+  const rawName = normalizeCollectionName(col);
   const name =
     rawName.endsWith(".ton") || rawName.endsWith(".test")
       ? rawName
@@ -4661,6 +4709,8 @@ const collectionToZone = (col: SimpleCollection, proxy: number): Zone => {
     updatedAt: col.lastUpdated || col.created_at || new Date().toISOString(),
   };
 };
+
+// ========================================================================
 
 export const AuctionPage: React.FC<{}> = () => {
   const dispatch = useTypedDispatch();
@@ -4715,15 +4765,33 @@ export const AuctionPage: React.FC<{}> = () => {
     error: zonesError,
   } = useBlockchainItems();
 
+  // ====== ДЕДУПЛИКАЦИЯ + ПРИОРИТЕТ PROXY ======
+  const deduped = useMemo(
+    () => dedupeProxyPriority(proxyCollections, sbtCollections),
+    [proxyCollections, sbtCollections]
+  );
+
   // ====== КОНВЕРТИРУЕМ SimpleCollection[] → Zone[] ======
   const onchainProxyZones: Zone[] = useMemo(
-    () => dedupeByLatest(proxyCollections).map((c) => collectionToZone(c, 1)),
-    [proxyCollections]
+    () => deduped.proxyZones.map((c) => collectionToZone(c, 1)),
+    [deduped.proxyZones]
   );
-  const onchainSbtZones: Zone[] = useMemo(
-    () => dedupeByLatest(sbtCollections).map((c) => collectionToZone(c, 0)),
-    [sbtCollections]
+
+  const onchainSbtZonesAll: Zone[] = useMemo(
+    () => deduped.sbtZones.map((c) => collectionToZone(c, 0)),
+    [deduped.sbtZones]
   );
+
+  // ====== SBT ТОЛЬКО ЮЗЕРА (как в ProfileWidget) ======
+  const onchainSbtZones: Zone[] = useMemo(() => {
+    if (!userAddress) return onchainSbtZonesAll;
+    const normalizedAddress =
+      convertUserFriendlyToRaw(userAddress).toLowerCase();
+    return onchainSbtZonesAll.filter((zone) => {
+      const owner = (zone.owner || "").toLowerCase();
+      return owner === normalizedAddress;
+    });
+  }, [onchainSbtZonesAll, userAddress]);
 
   const allZones: Zone[] = useMemo(
     () => [...onchainProxyZones, ...onchainSbtZones],
