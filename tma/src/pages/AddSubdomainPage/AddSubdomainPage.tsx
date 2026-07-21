@@ -4540,6 +4540,15 @@
 // - collectionAddress для транзакций из SimpleCollection (редюс), а не из бэкенда
 // - SBT зоны только текущего пользователя
 
+// src/pages/AuctionPage/index.tsx
+// ФИНАЛЬНАЯ ВЕРСИЯ (v6):
+// Точное повторение логики ProfileWidget.getUserZones:
+// - Нормализация адреса через convertUserFriendlyToRaw
+// - creator_address || owner_address для фильтрации SBT-зон
+// - collectionToZone из ProfileWidget (copy-paste)
+// - word-break: break-word для длинных имён
+// - collectionAddress для транзакций из SimpleCollection.address (ончейн)
+
 import React, {
   useState,
   useCallback,
@@ -4597,6 +4606,7 @@ import { useLaunchParams } from "@telegram-apps/sdk-react";
 import { MiniAppLinks } from "@/utils/miniAppLinks";
 import { AuctionCollectionSelector } from "./AuctionCollectionSelector";
 import { getUserSbtSubdomainsCount } from "@/utils/sbt-utils";
+import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 
 // ====== ТИПЫ ======
 
@@ -4628,63 +4638,27 @@ const normalizeAddress = (addr: string): string => {
   }
 };
 
-// ====== ДЕДУПЛИКАЦИЯ: proxy приоритетнее sbt, иначе latest по created_at ======
-
-const dedupeZones = (all: Zone[]): Zone[] => {
-  // Группируем по имени зоны (ключ)
-  const map = new Map<string, Zone[]>();
-  for (const z of all) {
-    const key = z.name.toLowerCase();
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(z);
-  }
-
-  const result: Zone[] = [];
-  for (const [, zones] of map) {
-    // Если есть proxy — берём proxy (их может быть несколько, берём latest)
-    const proxyZones = zones.filter((z) => z.proxy === 1);
-    if (proxyZones.length > 0) {
-      const latest = proxyZones.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )[0];
-      result.push(latest);
-      continue;
-    }
-    // Иначе все sbt — берём latest
-    const latest = zones.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )[0];
-    result.push(latest);
-  }
-  return result;
-};
-
-// ====== КОНВЕРТАЦИЯ SimpleCollection → Zone ======
-
-const collectionToZone = (col: SimpleCollection, proxy: number): Zone => {
+// ====== ТОЧНАЯ КОПИЯ collectionToZone из ProfileWidget ======
+const collectionToZone = (col: SimpleCollection): Zone => {
   const rawName = col.name || "";
   const zoneName = rawName
-    .replace(/ Proxy Domains/i, "")
-    .replace(/ DNS Domains/i, "")
+    .replace(" DNS Domains", "")
+    .replace(" Proxy Domains", "")
     .toLowerCase();
-
   return {
-    id: col.address ? parseInt(col.address.slice(0, 8), 16) || 0 : 0,
+    id: col.address.slice(0, 10),
     name: zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`,
     address: col.address,
+    owner: col.creator_address || col.owner_address,
     collectionAddress: col.address,
-    wrapperAddress: undefined,
-    proxy,
-    registrationDate:
-      col.created_at || col.lastUpdated || new Date().toISOString(),
+    createdAt: col.lastUpdated || new Date().toISOString(),
     subdomainsAmount: col.item_count || 0,
-    owner: col.creator_address || col.owner_address || "",
-    status: "active" as const,
-    createdAt: col.created_at || col.lastUpdated || new Date().toISOString(),
-    updatedAt: col.lastUpdated || col.created_at || new Date().toISOString(),
-  };
+    proxy: col.type === "proxy" ? 1 : 0,
+    status: "active",
+    image: col.metadata?.token_info?.[0]?.image || col.image,
+    description: col.metadata?.token_info?.[0]?.description || col.description,
+    zoneLength: zoneName.length,
+  } as any as Zone;
 };
 
 // ====================================================================
@@ -4743,38 +4717,59 @@ export const AuctionPage: React.FC<{}> = () => {
     error: zonesError,
   } = useBlockchainItems();
 
-  // Конвертируем SimpleCollection[] → Zone[] с дедупликацией
-  const allZones: Zone[] = useMemo(() => {
-    const proxyZones = proxyCollections.map((c) => collectionToZone(c, 1));
-    const sbtZones = sbtCollections.map((c) => collectionToZone(c, 0));
-    return dedupeZones([...proxyZones, ...sbtZones]);
-  }, [proxyCollections, sbtCollections]);
+  // ====== ТОЧНО КАК В ProfileWidget: getUserZones ======
+  const getUserZones = useMemo((): Zone[] => {
+    if (!userAddress) return [];
 
+    const normalizedAddress =
+      convertUserFriendlyToRaw(userAddress).toLowerCase();
+
+    const proxyZones = proxyCollections
+      .filter((col) => {
+        const creator = (
+          col.creator_address ||
+          col.owner_address ||
+          ""
+        ).toLowerCase();
+        return creator === normalizedAddress;
+      })
+      .map((col) => collectionToZone(col));
+
+    const sbtZones = sbtCollections
+      .filter((col) => {
+        const creator = (
+          col.creator_address ||
+          col.owner_address ||
+          ""
+        ).toLowerCase();
+        return creator === normalizedAddress;
+      })
+      .map((col) => collectionToZone(col));
+
+    return [...proxyZones, ...sbtZones];
+  }, [userAddress, proxyCollections, sbtCollections]);
+
+  // proxyZones = все proxy из getUserZones (для селекта proxy)
+  // sbtZones = только sbt из getUserZones (для селекта sbt)
+  // allZones = все (для поиска collectionAddress)
+  const allZones: Zone[] = getUserZones;
   const proxyZones: Zone[] = useMemo(
     () => allZones.filter((z) => z.proxy === 1),
     [allZones]
   );
-
   const sbtZones: Zone[] = useMemo(
     () => allZones.filter((z) => z.proxy === 0),
     [allZones]
   );
 
   const activeSbtZones: Zone[] = useMemo(
-    () =>
-      sbtZones.filter(
-        (zone) => zone.status !== "inactive" && zone.owner === userAddress
-      ),
-    [sbtZones, userAddress]
+    () => sbtZones.filter((zone) => zone.status !== "inactive"),
+    [sbtZones]
   );
 
-  // Устанавливаем сеть в apiService при изменении isTestnet
   useEffect(() => {
     if (wallet) {
       apiService.setNetwork(isTestnet);
-      console.log(
-        `🌐 API сеть установлена: ${isTestnet ? "testnet" : "mainnet"}`
-      );
     }
   }, [wallet, isTestnet]);
 
@@ -4795,7 +4790,6 @@ export const AuctionPage: React.FC<{}> = () => {
         map[zone.name] = zone.collectionAddress;
       }
     });
-    console.log("🌐 Proxy коллекции загружены:", Object.keys(map).length);
     return map;
   }, [allZones, isProxyZone]);
 
@@ -4831,19 +4825,10 @@ export const AuctionPage: React.FC<{}> = () => {
     if (selectedDomainZone && !collectionAddress && allZones.length > 0) {
       const zone = allZones.find((z) => z.name === selectedDomainZone);
       if (zone?.collectionAddress) {
-        console.log(
-          `✅ Устанавливаем collectionAddress из редукса: ${zone.collectionAddress}`
-        );
         setCollectionAddress(zone.collectionAddress);
       } else {
-        console.log(
-          `⚠️ У зоны "${selectedDomainZone}" нет collectionAddress в редуксе`
-        );
         const addressFromMap = currentCollectionMap[selectedDomainZone];
         if (addressFromMap) {
-          console.log(
-            `✅ Устанавливаем collectionAddress из мапы: ${addressFromMap}`
-          );
           setCollectionAddress(addressFromMap);
         }
       }
@@ -4952,12 +4937,7 @@ export const AuctionPage: React.FC<{}> = () => {
   useEffect(() => {
     const startappParam = launchParams.startParam;
     if (startappParam) {
-      console.log(`🔗 AuctionPage открыт через deeplink: ${startappParam}`);
       setOpenedViaDeeplink(true);
-      const parts = startappParam.split("_");
-      if (parts[0] === "add-subdomain") {
-        console.log("✅ Пользователь перешел на аукцион из уведомления");
-      }
     }
   }, [launchParams.startParam]);
 
@@ -4965,7 +4945,6 @@ export const AuctionPage: React.FC<{}> = () => {
     const hasUrlParams = isAuctionPage();
     const hasDeeplink = !!launchParams.startParam;
     if ((hasUrlParams || hasDeeplink) && allZones.length === 0) {
-      console.log("⏳ Ждем загрузку зон...");
       return;
     }
     if (hasDeeplink) {
@@ -5011,8 +4990,7 @@ export const AuctionPage: React.FC<{}> = () => {
       if (sbtInfo) {
         setSbtSubdomainInfo(sbtInfo);
         setAuctionInfo(null);
-        if (sbtInfo.nftAddress) setNftAddress(sbtInfo.nftAddress);
-        else setNftAddress("");
+        setNftAddress(sbtInfo.nftAddress || "");
         if (sbtInfo.isTaken)
           showSnackbar(t("sbtSubdomainAlreadyTaken"), "error");
         else showSnackbar(t("sbtSubdomainAvailable"), "success");
@@ -5031,8 +5009,7 @@ export const AuctionPage: React.FC<{}> = () => {
       if (info) {
         setAuctionInfo(info);
         setSbtSubdomainInfo(null);
-        if (info.nftAddress) setNftAddress(info.nftAddress);
-        else setNftAddress("");
+        setNftAddress(info.nftAddress || "");
         showSnackbar(t("auctionInfoLoaded"), "success");
         if (activeTab === "proxy") updateUrlWithCurrentAuction();
       } else {
@@ -5072,8 +5049,7 @@ export const AuctionPage: React.FC<{}> = () => {
     try {
       const counts = await getUserSbtSubdomainsCount(userAddress, isTestnet);
       setSbtZonesCount(counts);
-    } catch (error) {
-      console.error("❌ Ошибка загрузки SBT субдоменов:", error);
+    } catch {
       setSbtZonesCount({});
     }
   }, [userAddress, isTestnet, activeTab]);
@@ -5098,7 +5074,6 @@ export const AuctionPage: React.FC<{}> = () => {
     [allZones, handleCheckItem, updateUrlWithCurrentAuction]
   );
 
-  // ====== ТАБЫ ======
   const handleTabChange = (
     _event: React.SyntheticEvent,
     newValue: ActiveTab
@@ -5214,7 +5189,6 @@ export const AuctionPage: React.FC<{}> = () => {
     ]
   );
 
-  // ====== SELECT BID ======
   const handleBidSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const v = e.target.value;
     if (v === "custom") {
@@ -5233,7 +5207,7 @@ export const AuctionPage: React.FC<{}> = () => {
     setCustomBidAmount(value && !isNaN(Number(value)) ? value : "");
   };
 
-  // ====== БД: createSubdomainIfNotExists ======
+  // ====== БД ======
   const createSubdomainIfNotExists = async (subdomainData: {
     name: string;
     address: string;
@@ -5482,16 +5456,13 @@ export const AuctionPage: React.FC<{}> = () => {
     }
   };
 
-  // ====== URL КАРТИНКИ ======
   const getImageUrl = () => {
     if (!domainZoneName || !subDomainName) return "";
     if (activeTab === "proxy")
       return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${domainZoneName}/${subDomainName}.png`;
-    else
-      return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${domainZoneName}/${subDomainName}.png`;
+    return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${domainZoneName}/${subDomainName}.png`;
   };
 
-  // ====== ТЕКСТЫ КНОПОК ======
   const getActionButtonText = (): string => {
     if (activeTab === "sbt") {
       if (sbtPurchaseCompleted) return `✅ ${t("purchased")}`;
@@ -5541,39 +5512,9 @@ export const AuctionPage: React.FC<{}> = () => {
   const themeColors = {
     light: {
       primary: "linear-gradient(135deg, #3B82F6 0%, #60A5FA 100%)",
-      accent: "#3B82F6",
-      background: "#FFFFFF",
-      text: "#1F2937",
-      border: "#E5E7EB",
-      secondaryBg: "#F9FAFB",
-      shadow: "rgba(59, 130, 246, 0.4)",
-      cyberpunk: "#3B82F6",
-      gold: "#FFD700",
-      blue: "#3B82F6",
-      link: "#3B82F6",
-      inputBg: "#FFFFFF",
-      inputBorder: "#D1D5DB",
-      inputText: "#1F2937",
-      dropdownBg: "#FFFFFF",
-      dropdownBorder: "#E5E7EB",
     },
     dark: {
       primary: "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)",
-      accent: "#FFD700",
-      background: "#121212",
-      text: "#E5E5E5",
-      border: "#333333",
-      secondaryBg: "#1A1A1A",
-      shadow: "rgba(255, 215, 0, 0.4)",
-      cyberpunk: "#FFD700",
-      gold: "#FFD700",
-      blue: "#00FFFF",
-      link: "#00FFFF",
-      inputBg: "#1A1A1A",
-      inputBorder: "#444444",
-      inputText: "#E5E5E5",
-      dropdownBg: "#1A1A1A",
-      dropdownBorder: "#444444",
     },
   };
   const colors = themeColors[isDark ? "dark" : "light"];
@@ -5600,7 +5541,6 @@ export const AuctionPage: React.FC<{}> = () => {
   return (
     <Page back={true}>
       {snackbar}
-
       <Box sx={{ display: "flex", justifyContent: "center", mt: 2, mb: 3 }}>
         <Tabs
           value={activeTab}
@@ -5747,7 +5687,6 @@ export const AuctionPage: React.FC<{}> = () => {
         />
       )}
 
-      {/* Индикатор сети */}
       <div
         style={{
           textAlign: "center",
@@ -5805,13 +5744,7 @@ export const AuctionPage: React.FC<{}> = () => {
             sbtZonesCount={sbtZonesCount}
           />
           {zonesError && (
-            <p
-              style={{
-                color: "#f87171",
-                fontSize: "12px",
-                marginTop: "5px",
-              }}
-            >
+            <p style={{ color: "#f87171", fontSize: "12px", marginTop: "5px" }}>
               {zonesError}
             </p>
           )}
@@ -6171,12 +6104,7 @@ export const AuctionPage: React.FC<{}> = () => {
                   <div style={{ marginBottom: "10px" }}>
                     <strong>{t("sbtOwner")}:</strong>
                     <br />
-                    <code
-                      style={{
-                        fontSize: "12px",
-                        wordBreak: "break-all",
-                      }}
-                    >
+                    <code style={{ fontSize: "12px", wordBreak: "break-all" }}>
                       <a
                         style={{ color: "white" }}
                         href={`https://tonviewer.com/${sbtSubdomainInfo.ownerAddress}`}
@@ -6192,10 +6120,7 @@ export const AuctionPage: React.FC<{}> = () => {
                       <strong>NFT Address:</strong>
                       <br />
                       <code
-                        style={{
-                          fontSize: "12px",
-                          wordBreak: "break-all",
-                        }}
+                        style={{ fontSize: "12px", wordBreak: "break-all" }}
                       >
                         <a
                           style={{ color: "white" }}
@@ -6266,11 +6191,7 @@ export const AuctionPage: React.FC<{}> = () => {
             }}
           >
             <div
-              style={{
-                color: "#fff",
-                fontSize: "14px",
-                textAlign: "center",
-              }}
+              style={{ color: "#fff", fontSize: "14px", textAlign: "center" }}
             >
               <div
                 style={{
