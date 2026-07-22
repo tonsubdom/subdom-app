@@ -428,7 +428,7 @@ export const useCollectionAddressFromZone = (
   activeTab: "proxy" | "sbt",
   selectedDomainZone: string,
   proxyCollections: SimpleCollection[],
-  sbtCollectionAddressesMap: Record<string, string> = {},
+  // sbtCollectionAddressesMap: Record<string, string> = {},
   proxyZones: Zone[] = [],
   sbtZones: Zone[] = [],
   sbtCollections: SimpleCollection[]
@@ -462,7 +462,6 @@ export const useCollectionAddressFromZone = (
     activeTab,
     selectedDomainZone,
     proxyCollections,
-    sbtCollectionAddressesMap,
     proxyZones,
     sbtZones,
     sbtCollections,

@@ -9680,7 +9680,7 @@ export const AuctionPage: React.FC<{}> = () => {
             userAddress={userAddress}
             isDark={isDark}
             t={t}
-            sbtCollectionAddressesMap={sbtCollectionAddressesMap}
+            // sbtCollectionAddressesMap={sbtCollectionAddressesMap}
             activeSbtZones={activeSbtZones}
             proxyZones={allProxyZones}
             isTestnet={isTestnet}
