@@ -8516,7 +8516,7 @@ import { AuctionCollectionSelector } from "./AuctionCollectionSelector";
 import { getUserSbtSubdomainsCount } from "@/utils/sbt-utils";
 import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 
-// ====== ТИПЫ ======
+// ====== ТИПЫ =====
 
 type CollectionAddressMap = {
   [key: string]: string;
