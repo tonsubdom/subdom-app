@@ -8545,6 +8545,24 @@ const normalizeAddress = (addr: string): string => {
     return addr;
   }
 };
+// ====== ДЕДУПЛИКАЦИЯ С ПРИОРИТЕТОМ PROXY > SBT ======
+// Если зона есть и в proxy и в sbt — proxy выигрывает, из sbt убираем
+const dedupeSbtAgainstProxy = (
+  sbtZones: Zone[],
+  proxyZones: Zone[]
+): Zone[] => {
+  const proxyNames = new Set(proxyZones.map((z) => z.name));
+  // Группируем sbt по имени, оставляем latest по createdAt
+  const sbtMap = new Map<string, Zone>();
+  for (const z of sbtZones) {
+    const exist = sbtMap.get(z.name);
+    if (!exist || new Date(z.createdAt) > new Date(exist.createdAt)) {
+      sbtMap.set(z.name, z);
+    }
+  }
+  // Убираем те, что уже есть в proxy
+  return [...sbtMap.values()].filter((z) => !proxyNames.has(z.name));
+};
 
 // ====== collectionToZone — ТОЧНАЯ КОПИЯ ИЗ ProfileWidget ======
 const collectionToZone = (col: SimpleCollection): Zone => {
@@ -8649,11 +8667,28 @@ export const AuctionPage: React.FC<{}> = () => {
   );
 
   // ====== SBT ЗОНЫ ТОЛЬКО ЮЗЕРА — ТОЧНО КАК В ProfileWidget ======
+  // const userSbtZones: Zone[] = useMemo(() => {
+  //   if (!userAddress) return [];
+  //   const normalizedAddress =
+  //     convertUserFriendlyToRaw(userAddress).toLowerCase();
+  //   return sbtCollections
+  //     .filter((col) => {
+  //       const creator = (
+  //         col.creator_address ||
+  //         col.owner_address ||
+  //         ""
+  //       ).toLowerCase();
+  //       return creator === normalizedAddress;
+  //     })
+  //     .map((col) => collectionToZone(col));
+  // }, [userAddress, sbtCollections]);
+
+  // СТАЛО:
   const userSbtZones: Zone[] = useMemo(() => {
     if (!userAddress) return [];
     const normalizedAddress =
       convertUserFriendlyToRaw(userAddress).toLowerCase();
-    return sbtCollections
+    const rawSbt = sbtCollections
       .filter((col) => {
         const creator = (
           col.creator_address ||
@@ -8663,7 +8698,9 @@ export const AuctionPage: React.FC<{}> = () => {
         return creator === normalizedAddress;
       })
       .map((col) => collectionToZone(col));
-  }, [userAddress, sbtCollections]);
+    // Убираем SBT-зоны, которые уже есть в proxy (proxy выигрывает)
+    return dedupeSbtAgainstProxy(rawSbt, allProxyZones);
+  }, [userAddress, sbtCollections, allProxyZones]);
 
   const activeSbtZones: Zone[] = useMemo(
     () => userSbtZones.filter((zone) => zone.status !== "inactive"),
