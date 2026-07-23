@@ -307,7 +307,7 @@ export const AuctionCollectionSelector: React.FC<
         isTestnet
       );
 
-      // Возвращаем количество для конкретной зоны
+      // Возвращаем количество для конкретной зоны_
       const count = userSbtCounts[zoneName] || 0;
       console.log(`✅ Found ${count} SBT subdomains for ${zoneName}`);
 
