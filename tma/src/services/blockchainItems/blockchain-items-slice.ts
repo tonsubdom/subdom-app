@@ -6,7 +6,7 @@
  */
 
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { AppData, SimpleEnrichedItem, SimpleCollection, NetworkType } from './blockchain-items-types';
+import { AppData, SimpleEnrichedItem, SimpleCollection, NetworkType, CollectionType } from './blockchain-items-types';
 import { UniversalBlockchainService } from './universal-blockchain-service';
 
 // ==================== СОСТОЯНИЕ ====================
@@ -630,7 +630,7 @@ export const selectApiKey = (state: { blockchainItems: BlockchainItemsState }) =
   state.blockchainItems.serviceConfig.apiKey;
 
 // Утилитарные селекторы
-export const selectCollectionsByType = (type: 'proxy' | 'sbt' | 'nft_wrapper') => 
+export const selectCollectionsByType = (type: CollectionType) => 
   (state: { blockchainItems: BlockchainItemsState }) => {
     switch (type) {
       case 'proxy': return state.blockchainItems.proxyCollections;
