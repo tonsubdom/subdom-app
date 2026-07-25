@@ -10501,7 +10501,7 @@ import { MiniAppLinks } from "@/utils/miniAppLinks";
 import { AuctionCollectionSelector } from "./AuctionCollectionSelector";
 import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 
-// ====== ТИПЫ ======
+// ====== ТИПЫ =====
 
 type CollectionAddressMap = {
   [key: string]: string;
