@@ -13087,6 +13087,13 @@ export const AuctionPage: React.FC<{}> = () => {
 
   // ====== СТАРТ АУКЦИОНА ======
   const handleStartAuction = async () => {
+    console.log("🚀 handleStartAuction ВЫЗВАН", {
+      selectedDomainZone,
+      subDomainName,
+      collectionAddress,
+      userAddress,
+      isTestnet,
+    });
     if (!selectedDomainZone || !subDomainName || !collectionAddress) {
       showSnackbar(t("pleaseEnterDomainName"), "error");
       return;
@@ -13141,6 +13148,9 @@ export const AuctionPage: React.FC<{}> = () => {
       }
       setTimeout(() => handleCheckItem(), 2000);
     } catch (error: any) {
+      console.error("START_AUCTION FULL ERROR:", error);
+      console.error("ERROR MESSAGE:", error?.message);
+      console.error("ERROR STACK:", error?.stack);
       if (error?.message?.includes("cancelled"))
         showSnackbar(t("auctionStartCancelled"), "error");
       else if (error?.message?.includes("rejected"))
