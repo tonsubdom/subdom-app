@@ -215,6 +215,7 @@ export const ManageDomainPage: FC = () => {
         item.metadata?.token_info?.[0]?.extra?._image_small;
 
       return {
+        id: item.address,
         title: name,
         address: item.address,
         isZone,
