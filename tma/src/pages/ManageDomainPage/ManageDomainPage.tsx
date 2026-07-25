@@ -74,6 +74,7 @@ interface DisplayItem {
   title: string;
   name?: string;
   address: string;
+  image?: string;
   isZone?: boolean;
   isSubdomain?: boolean;
   zoneData?: any;
@@ -90,6 +91,7 @@ interface DisplayItem {
   lastBidder?: string;
   bids?: any[];
   links?: any[];
+  wrapperAddress?: string;
 }
 
 export const ManageDomainPage: FC = () => {
