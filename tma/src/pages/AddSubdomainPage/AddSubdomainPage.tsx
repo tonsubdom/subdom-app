@@ -13109,10 +13109,17 @@ export const AuctionPage: React.FC<{}> = () => {
       cell.bits.writeString(`${subDomainName}`);
       const payload = TonWeb.utils.bytesToBase64(await cell.toBoc());
 
+      const userFriendlyCollectionAddress = Address.parse(
+        collectionAddress
+      ).toString({
+        bounceable: true,
+        testOnly: isTestnet,
+      });
+
       const messages = [
         {
           amount: calculateDomainPrice.toString(),
-          address: collectionAddress,
+          address: userFriendlyCollectionAddress,
           payload,
         },
       ];
@@ -13252,10 +13259,17 @@ export const AuctionPage: React.FC<{}> = () => {
       cell.bits.writeString(`${subDomainName}`);
       const payload = TonWeb.utils.bytesToBase64(await cell.toBoc());
 
+      const userFriendlyCollectionAddress = Address.parse(
+        collectionAddress
+      ).toString({
+        bounceable: true,
+        testOnly: isTestnet,
+      });
+
       const messages = [
         {
           amount: calculateDomainPrice.toString(),
-          address: collectionAddress,
+          address: userFriendlyCollectionAddress,
           payload,
         },
       ];
