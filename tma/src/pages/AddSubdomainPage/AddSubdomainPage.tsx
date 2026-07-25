@@ -10547,7 +10547,7 @@ const dedupeSbtAgainstProxy = (
   return [...sbtMap.values()].filter((z) => !proxyNames.has(z.name));
 };
 
-// ====== collectionToZone — ТОЧНАЯ КОПИЯ ИЗ ProfileWidget ======
+// ====== collectionToZone — ТОЧНАЯ КОПИЯ ИЗ ProfileWidget =====
 const collectionToZone = (col: SimpleCollection): Zone => {
   const rawName = col.name || "";
   const zoneName = rawName
