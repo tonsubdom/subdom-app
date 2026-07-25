@@ -10435,6 +10435,14 @@
 // 2) isTestnet и sbtZonesCount убраны из передачи в AuctionCollectionSelector
 // 3) Количество субдоменов берётся из zone.subdomainsAmount (item_count)
 
+// src/pages/AuctionPage/index.tsx
+// === ФИНАЛЬНАЯ ВЕРСИЯ (v9 — КОСТЫЛИ НА ЗОНЫ + subdomainsAmount) ===
+// Исправления:
+// 1) Костыль-фильтр в allProxyZones: выкидываем пустые, "*", "pseudonym"
+// 2) subdomainsAmount из zone передаётся в CustomZoneSelector через sbtZonesCount
+//    (используем существующий пропс как «предзагруженные количества»)
+// 3) isTestnet и getUserSbtSubdomainsCount полностью убраны
+
 import React, {
   useState,
   useCallback,
@@ -10578,6 +10586,14 @@ const dedupeByLatest = (cols: SimpleCollection[]): SimpleCollection[] => {
   return [...map.values()];
 };
 
+// ====== КОСТЫЛЬ: список зон, которые НЕ показываем в селекте ======
+const EXCLUDED_ZONE_NAMES = new Set([
+  ".ton", // пустое имя → .ton
+  "*.ton", // wildcard
+  "pseudonym.ton", // нежелательная
+  "мистика.ton", // если есть кириллические
+]);
+
 // ====================================================================
 // КОМПОНЕНТ
 // ====================================================================
@@ -10632,9 +10648,17 @@ export const AuctionPage: React.FC<{}> = () => {
     error: zonesError,
   } = useBlockchainItems();
 
-  // ====== ВСЕ PROXY КОЛЛЕКЦИИ (для селекта) ======
+  // ====== ВСЕ PROXY КОЛЛЕКЦИИ (для селекта) + КОСТЫЛЬ-ФИЛЬТР ======
   const allProxyZones: Zone[] = useMemo(
-    () => dedupeByLatest(proxyCollections).map((c) => collectionToZone(c)),
+    () =>
+      dedupeByLatest(proxyCollections)
+        .map((c) => collectionToZone(c))
+        .filter(
+          (z) =>
+            !EXCLUDED_ZONE_NAMES.has(z.name) &&
+            z.name !== ".ton" &&
+            !z.name.startsWith("*")
+        ),
     [proxyCollections]
   );
 
@@ -10665,6 +10689,16 @@ export const AuctionPage: React.FC<{}> = () => {
     () => [...allProxyZones, ...userSbtZones],
     [allProxyZones, userSbtZones]
   );
+
+  // ====== ПРЕДЗАГРУЖЕННЫЕ КОЛИЧЕСТВА СУБДОМЕНОВ (из item_count) ======
+  // Передаём в CustomZoneSelector как sbtZonesCount — для режима SBT
+  const sbtZonesCountFromItemCount: Record<string, number> = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const z of activeSbtZones) {
+      map[z.name] = z.subdomainsAmount || 0;
+    }
+    return map;
+  }, [activeSbtZones]);
 
   // ====== УСТРАНЕНИЕ ПЕТЛИ apiService.setNetwork ======
   const prevNetworkRef = useRef<boolean | null>(null);
@@ -11619,6 +11653,9 @@ export const AuctionPage: React.FC<{}> = () => {
             t={t}
             activeSbtZones={activeSbtZones}
             proxyZones={allProxyZones}
+            sbtZonesCount={
+              activeTab === "sbt" ? sbtZonesCountFromItemCount : undefined
+            }
           />
           {zonesError && (
             <p style={{ color: "#f87171", fontSize: "12px", marginTop: "5px" }}>
