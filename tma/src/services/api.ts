@@ -125,6 +125,7 @@ class ApiService {
   }
 
   setNetwork(isTestnet: boolean) {
+    if (this.isTestnet === isTestnet) return;  // ← уже в нужной сети
     this.isTestnet = isTestnet;
     console.log(`🌐 API переключен на ${isTestnet ? 'testnet' : 'mainnet'}`);
   }

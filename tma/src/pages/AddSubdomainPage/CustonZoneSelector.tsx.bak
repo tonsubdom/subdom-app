@@ -46,10 +46,6 @@ const formatZoneName = (zoneName: string): string => {
   return zone;
 };
 
-const getZoneDisplayName = (zoneName: string): string => {
-  return zoneName.split('.')[0];
-};
-
 // Типы сортировки
 type SortType = 'name' | 'subdomains' | 'date';
 type SortDirection = 'asc' | 'desc';
@@ -522,7 +518,7 @@ export const CustomZoneSelector: React.FC<CustomZoneSelectorProps> = ({
                 whiteSpace: 'nowrap',
                 fontFamily: 'monospace'
               }}>
-                .{getZoneDisplayName(selectedZoneInfo.name)}
+                .{formatZoneName(selectedZoneInfo.name)}
               </span>
               {mode === 'sbt' && (
                 <span style={{ 
@@ -841,27 +837,16 @@ export const CustomZoneSelector: React.FC<CustomZoneSelectorProps> = ({
                     }}
                   >
                     {/* Имя зоны */}
-                    // <div style={{
-                    //   textAlign: 'left',
-                    //   overflow: 'hidden',
-                    //   textOverflow: 'ellipsis',
-                    //   whiteSpace: 'nowrap',
-                    //   color: 'black',
-                    //   fontFamily: 'monospace',
-                    //   display: 'flex',
-                    //   alignItems: 'center',
-                    //   gap: '6px'
-                    // }}>
                     <div style={{
                       textAlign: 'left',
-                      overflowWrap: 'break-word',   // ← перенос длинных слов
-                      wordBreak: 'break-word',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
                       color: 'black',
                       fontFamily: 'monospace',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
-                      minHeight: '32px'             // ← фиксированная минимальная высота
+                      gap: '6px'
                     }}>
                       <span style={{
                         width: '8px',
@@ -871,7 +856,7 @@ export const CustomZoneSelector: React.FC<CustomZoneSelectorProps> = ({
                         flexShrink: 0
                       }} />
                       <span style={{color: isDark ? 'white' : 'black'}}>
-                        .{getZoneDisplayName(zone.name)}
+                        .{formatZoneName(zone.name)}
                         {mode === 'sbt' && ' 🔒'}
                       </span>
                       {isUserZone && mode !== 'sbt' && <div className="ownLabel" style={{display: 'flex', alignItems: 'flex-end', justifyContent: 'left'}}><p style={{color: colors.accent, margin: 0}}>{t('yourZone')}</p></div>}

@@ -340,9 +340,15 @@ if (collectionsToCount.length > 0) {
 }
       
       // 6 Фильтрация по типам
-      const simpleProxyCollections = filterCollectionsByType(enrichedCollections, 'proxy');
-      const simpleSBTCollections = filterCollectionsByType(enrichedCollections, 'sbt');
-      const simpleNFTWrapperCollections: SimpleCollection[] = [];
+
+const OLD_WRAPPER_COLLECTION = import.meta.env.VITE_OLD_WRAPPER_COLLECTION_MAINNET;
+
+const simpleProxyCollections = filterCollectionsByType(enrichedCollections, 'proxy')
+  .filter(c => c.address !== OLD_WRAPPER_COLLECTION);
+
+const simpleSBTCollections = filterCollectionsByType(enrichedCollections, 'sbt');
+const simpleNFTWrapperCollections: SimpleCollection[] = [];
+
       
       const result = {
         allCollections: [...enrichedCollections, ...simpleNFTWrapperCollections],
