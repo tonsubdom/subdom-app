@@ -105,6 +105,28 @@ export const convertToSimpleEnrichedItem = (
 /**
  * Конвертация в SimpleCollection
  */
+// export const convertToSimpleCollection = (
+//   collection: TonCenterCollection,
+//   metadata?: any,
+//   isTestnet: boolean = false
+// ): SimpleCollection => {
+//   const collectionMetadata = metadata?.[collection.address];
+//   const tokenInfo = collectionMetadata?.token_info?.[0] || {};
+//   const collectionType = getCollectionType(collection.code_hash, isTestnet);
+  
+//   // Извлекаем имя зоны из URI коллекции
+//   const zoneName = extractZoneName(collection.collection_content?.uri || '');
+  
+//   return {
+//     address: collection.address,
+//     name: tokenInfo.name || zoneName,
+//     description: tokenInfo.description,
+//     image: tokenInfo.image,
+//     type: collectionType,
+//     owner_address: collection.owner_address
+//   };
+// };
+
 export const convertToSimpleCollection = (
   collection: TonCenterCollection,
   metadata?: any,
@@ -113,13 +135,13 @@ export const convertToSimpleCollection = (
   const collectionMetadata = metadata?.[collection.address];
   const tokenInfo = collectionMetadata?.token_info?.[0] || {};
   const collectionType = getCollectionType(collection.code_hash, isTestnet);
-  
-  // Извлекаем имя зоны из URI коллекции
-  const zoneName = extractZoneName(collection.collection_content?.uri || '');
-  
+
+  // ИСПРАВЛЕНИЕ: извлекаем domain (полное имя), а не zone (только TLD)
+  const { domain: collectionDomain } = extractDomainAndZone(collection.collection_content?.uri || '');
+
   return {
     address: collection.address,
-    name: tokenInfo.name || zoneName,
+    name: tokenInfo.name || collectionDomain || 'Без названия',
     description: tokenInfo.description,
     image: tokenInfo.image,
     type: collectionType,
