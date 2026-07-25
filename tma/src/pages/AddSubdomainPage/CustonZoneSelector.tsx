@@ -157,7 +157,7 @@ export const CustomZoneSelector: React.FC<CustomZoneSelectorProps> = ({
 
     setLoadingZoneId(zoneId);
     try {
-      apiService.setNetwork(isTestnet);
+      // apiService.setNetwork(isTestnet);
       const subdomains = await apiService.getZoneSubdomains(zoneId);
       setZoneSubdomains((prev) => ({ ...prev, [zoneId]: subdomains }));
       console.log(`✅ Loaded ${subdomains.length} subdomains for ${zoneName}`);
@@ -199,9 +199,12 @@ export const CustomZoneSelector: React.FC<CustomZoneSelectorProps> = ({
     }
   };
 
+  const zonesLoadedRef = useRef(false);
+
   // Загружаем данные для ВСЕХ зон при открытии dropdown
   useEffect(() => {
-    if (isOpen && zones.length > 0) {
+    if (isOpen && zones.length > 0 && !zonesLoadedRef.current) {
+      zonesLoadedRef.current = true;
       console.log(`🔄 Loading data for ${zones.length} zones (mode: ${mode})`);
 
       if (mode === "proxy") {
@@ -236,7 +239,10 @@ export const CustomZoneSelector: React.FC<CustomZoneSelectorProps> = ({
         });
       }
     }
-  }, [isOpen, zones, mode, sbtZonesCount]);
+    if (!isOpen) {
+      zonesLoadedRef.current = false;
+    }
+  }, [isOpen, zones.length, mode]);
 
   // Получаем количество субдоменов для зоны
   const getZoneSubdomainCount = (zone: Zone): number => {

@@ -341,7 +341,7 @@ if (collectionsToCount.length > 0) {
       
       // 6 Фильтрация по типам
 
-const OLD_WRAPPER_COLLECTION = import.meta.env.VITE_OLD_WRAPPER_COLLECTION_MAINNET;
+const OLD_WRAPPER_COLLECTION = (import.meta.env.VITE_OLD_WRAPPER_COLLECTION_MAINNET || '').toLowerCase();
 
 const simpleProxyCollections = filterCollectionsByType(enrichedCollections, 'proxy')
   .filter(c => c.address !== OLD_WRAPPER_COLLECTION);
