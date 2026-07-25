@@ -10441,7 +10441,7 @@
 // 1) Костыль-фильтр в allProxyZones: выкидываем пустые, "*", "pseudonym"
 // 2) subdomainsAmount из zone передаётся в CustomZoneSelector через sbtZonesCount
 //    (используем существующий пропс как «предзагруженные количества»)
-// 3) isTestnet и getUserSbtSubdomainsCount полностью убраны
+// 3) isTestnet и getUserSbtSubdomainsCount полностью убран
 
 import React, {
   useState,
