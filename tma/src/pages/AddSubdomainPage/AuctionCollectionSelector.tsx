@@ -490,8 +490,6 @@ interface AuctionCollectionSelectorProps {
   t: (key: string) => string;
   activeSbtZones?: Zone[];
   proxyZones?: Zone[];
-  isTestnet?: boolean;
-  sbtZonesCount?: Record<string, number>;
 }
 
 export const AuctionCollectionSelector: React.FC<
