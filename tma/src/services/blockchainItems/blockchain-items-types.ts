@@ -76,7 +76,7 @@ export interface MetadataItem {
 export type ItemType = 'proxy_subdomain' | 'sbt_subdomain' | 'nft_wrapper';
 
 // Тип для коллекций
-export type CollectionType = 'proxy' | 'sbt' | 'nft_wrapper';
+export type CollectionType = 'proxy' | 'sbt' | 'nft_wrapper' | 'unknown';
 
 // Упрощенный тип для передачи данных из сервиса
 export interface SimpleEnrichedItem {
@@ -210,7 +210,7 @@ export const getCollectionType = (codeHash: string, isTestnet: boolean): Collect
   if (codeHash === hashes.SBT_COLLECTION) return 'sbt';
   if (codeHash === hashes.NFT_WRAPPER_COLLECTION) return 'nft_wrapper';
   
-  return 'proxy'; // По умолчанию
+  return 'unknown'; // По умолчанию
 };
 
 // Функция для извлечения домена и зоны из URI
