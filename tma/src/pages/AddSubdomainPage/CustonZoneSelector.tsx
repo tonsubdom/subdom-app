@@ -13,7 +13,7 @@ interface CustomZoneSelectorProps {
   isDark: boolean;
   placeholder?: string;
   isLoading?: boolean;
-  isTestnet?: boolean;
+  // isTestnet?: boolean;
   mode?: "proxy" | "sbt";
   // Для SBT: функция для загрузки субдоменов SBT зоны
   loadSbtSubdomains?: (zoneName: string) => Promise<number>;
@@ -62,7 +62,7 @@ export const CustomZoneSelector: React.FC<CustomZoneSelectorProps> = ({
   isDark,
   placeholder = "Choose zone...",
   isLoading = false,
-  isTestnet = false,
+  // isTestnet = false,
   mode = "proxy",
   loadSbtSubdomains,
   sbtZonesCount = {},
