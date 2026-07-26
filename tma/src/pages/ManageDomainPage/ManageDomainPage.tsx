@@ -5822,7 +5822,7 @@ export const ManageDomainPage: FC = () => {
                       Site:{" "}
                     </span>
                     <a
-                      href={`tonsite://${item.name}.ton`}
+                      href={`tonsite://${item.title}`}
                       style={{
                         color: isDark ? "#4CAF50" : "#4CAF50",
                         textDecoration: "none",
