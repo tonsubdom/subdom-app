@@ -4008,7 +4008,7 @@ export const ManageDomainPage: FC = () => {
               </Button>
             </div>
 
-            {/* Дополнительная информация */}
+            {/* Дополнительная информацияя */}
             <div
               style={{
                 display: "grid",
