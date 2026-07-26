@@ -5770,7 +5770,7 @@ export const ManageDomainPage: FC = () => {
         {/* ====== СПИСОК ====== */}
         {!isLoading && displayItems.length > 0 && (
           <List style={{ background: "transparent", marginBottom: "120px" }}>
-            {displayItems.map((item: DisplayItem) => (
+            {/* {displayItems.map((item: DisplayItem) => (
               <div
                 key={item.id}
                 style={{
@@ -5784,7 +5784,7 @@ export const ManageDomainPage: FC = () => {
                   padding: "12px",
                 }}
               >
-                {/* Картинка с отступами */}
+              
                 <div style={{ paddingBottom: "12px" }}>
                   <img
                     src={getItemImageUrl(item)}
@@ -5802,9 +5802,8 @@ export const ManageDomainPage: FC = () => {
                   />
                 </div>
 
-                {/* Текстовая часть */}
                 <div style={{ paddingBottom: "12px" }}>
-                  {/* Site: ссылка */}
+         
                   <div
                     style={{
                       fontSize: "14px",
@@ -5833,7 +5832,7 @@ export const ManageDomainPage: FC = () => {
                     </a>
                   </div>
 
-                  {/* Tonviewer: raw адрес */}
+           
                   <div
                     style={{
                       fontSize: "12px",
@@ -5882,7 +5881,7 @@ export const ManageDomainPage: FC = () => {
                   )}
                 </div>
 
-                {/* Кнопка */}
+  
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -5912,7 +5911,7 @@ export const ManageDomainPage: FC = () => {
               </div>
             ))}
 
-            {/* ====== ПАГИНАЦИЯ ТОЧКАМИ ====== */}
+         
             {totalPages > 1 && (
               <div
                 style={{
@@ -6017,7 +6016,7 @@ export const ManageDomainPage: FC = () => {
               </div>
             )}
 
-            {/* Счётчик страниц */}
+  
             <div
               style={{
                 textAlign: "center",
@@ -6031,7 +6030,173 @@ export const ManageDomainPage: FC = () => {
               {allFilteredItems.length} {t("items") || "элементов"}
             </div>
           </List>
-        )}
+        )} */}
+        {displayItems.map((item: DisplayItem) => (
+          <div
+            key={item.id}
+            onClick={() => handleItemClick(item)}
+            style={{
+              marginBottom: "8px",
+              background: isDark ? "#2d2d2d" : "white",
+              borderRadius: "12px",
+              cursor: "pointer",
+              overflow: "hidden",
+              border: `1px solid ${isDark ? "#444" : "#e0e0e0"}`,
+              transition: "all 0.2s ease",
+              padding: "12px",
+              display: "flex",
+              gap: "12px",
+              alignItems: "stretch",
+            }}
+          >
+            {/* Колонка 1: картинка 140×140 */}
+            <div
+              style={{
+                width: "140px",
+                height: "140px",
+                flexShrink: 0,
+                borderRadius: "8px",
+                overflow: "hidden",
+                background: isDark ? "#1a1a1a" : "#f9f9f9",
+              }}
+            >
+              <img
+                src={getItemImageUrl(item)}
+                alt={item.title}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = searchDog;
+                }}
+              />
+            </div>
+        {/* Колонка 2: текст + кнопка */}
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          {/* Текстовый блок */}
+          <div>
+            {/* Site: ссылка */}
+            <div
+              style={{
+                fontSize: "14px",
+                fontWeight: "600",
+                color: isDark ? "white" : "black",
+                marginBottom: "6px",
+                wordBreak: "break-word",
+              }}
+            >
+              <span
+                style={{
+                  color: isDark ? "#aaaaaa" : "#888",
+                  fontWeight: "400",
+                }}
+              >
+                Site:{" "}
+              </span>
+              <a
+                href={`/manage#/manage?address=${item.address}`}
+                style={{
+                  color: isDark ? "#4CAF50" : "#4CAF50",
+                  textDecoration: "none",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {item.title}
+              </a>
+            </div>
+              
+            {/* Tonviewer: адрес с shorten */}
+            <div
+              style={{
+                fontSize: "12px",
+                color: isDark ? "#aaaaaa" : "#666666",
+                marginBottom: "6px",
+                wordBreak: "break-all",
+              }}
+            >
+              <span style={{ fontWeight: "400" }}>Address: </span>
+              <a
+                href={`${isTestnet ? "https://testnet.tonviewer.com" : "https://tonviewer.com"}/${item.address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: isDark ? "#64B5F6" : "#1976D2",
+                  textDecoration: "none",
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {shortenAddress(item.address)}
+              </a>
+            </div>
+              
+            {item.isZone && (
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: isDark ? "#aaaaaa" : "#666666",
+                  marginBottom: "6px",
+                }}
+              >
+                {item.proxy === 0 ? t("sbtZone") : t("proxyZone")} ·{" "}
+                {item.subdomainsAmount || 0} {t("subdomains")}
+              </div>
+            )}
+            {item.isSubdomain && (
+              <div
+                style={{
+                  fontSize: "12px",
+                  color: isDark ? "#aaaaaa" : "#666666",
+                  marginBottom: "6px",
+                }}
+              >
+                {t("subdomainLabel")} ·{" "}
+                {item.mintPrice ? `${item.mintPrice} TON` : "Free"}
+              </div>
+            )}
+          </div>
+          
+          {/* Кнопка */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleItemClick(item);
+            }}
+            style={{
+              width: "100%",
+              padding: "10px",
+              background: "#4CAF50",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "14px",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              marginTop: "8px",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = "0.9";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = "1";
+            }}
+          >
+            {t("choose")}
+          </button>
+        </div>
+          
+          </div>
+        ))}
 
         {/* ====== PLACEHOLDER (нет элементов) ====== */}
         {!isLoading &&
