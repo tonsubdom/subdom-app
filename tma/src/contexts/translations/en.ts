@@ -624,4 +624,55 @@ bundleWillCreateSubdomainCollection: 'Bundle will create subdomain collection',
 subdomainAvailableForFirstBid: 'Subdomain available for first bid',
 failedToCalculateNFTAddress: 'Failed to calculate NFT address',
 
+
+//ManageDomainPage
+
+loadingProxyDomains: 'Loading proxy domains...',
+
+
+searchAndFilter: 'Search & Filter',
+hideFilters: 'Hide Filters',
+showFilters: 'Advanced Filters',
+searchByName: 'Search by name...',
+shortToLong: 'Short → Long',
+longToShort: 'Long → Short',
+length: 'Length',
+min: 'Min',
+statusFilter: 'Status',
+typeFilter: 'Type',
+all: 'All',
+
+
+noElements: 'No elements',
+noElementsDescription: 'You have no elements in this category',
+listLoadMore: 'Show more',
+listShowing: 'Showing',
+listOf: 'of',
+
+
+choose: 'Select',
+manageDNSRecordsTitle: 'Manage DNS Records',
+addressForManage: 'Address to manage:',
+
+subdomainLabel: 'Subdomain',
+
+
+manualAddressInput: 'Manual Address Input',
+enterNFTOrCollectionAddress: 'Enter NFT or collection address...',
+check: 'Check',
+addressHint: 'Enter NFT address (.ton, t.me) or collection to check',
+
+
+renew: 'Renew domain',
+renewPrice: '0.05 TON',
+
+
+itemNotFound: 'Item not found',
+nftNotFound: 'NFT not found',
+itemFound: 'Item found',
+nftVerified: 'NFT verified',
+itemVerified: 'Item verified',
+nftVerifiedSuccessfully: 'NFT verified successfully',
+itemVerifiedSuccessfully: 'Item verified successfully',
+itemFoundSuccessfully: 'Item found successfully',
   }

@@ -748,6 +748,63 @@ bundleWillCreateSubdomainCollection: 'Bundle создаст коллекцию �
 subdomainAvailableForFirstBid: 'Субдомен доступен для первой ставки',
 failedToCalculateNFTAddress: 'Не удалось рассчитать адрес NFT',
 
+// ManageDomainPage.tsx
+// ManageDomainPage — лоадеры
+loadingProxyDomains: 'Загрузка proxy-доменов...',
 
+
+// ManageDomainPage — поиск и фильтрация
+searchAndFilter: 'Поиск и фильтрация',
+hideFilters: 'Скрыть фильтры',
+showFilters: 'Расширенные фильтры',
+searchByName: 'Поиск по названию...',
+shortToLong: 'Короткие → Длинные',
+longToShort: 'Длинные → Короткие',
+length: 'Длина',
+min: 'Мин',
+statusFilter: 'Статус',
+typeFilter: 'Тип',
+all: 'Все',
+
+
+// ManageDomainPage — список
+noElements: 'Нет элементов',
+noElementsDescription: 'У вас нет элементов в этой категории',
+listLoadMore: 'Показать ещё',
+listShowing: 'Показано',
+listOf: 'из',
+
+
+// ManageDomainPage — карточка
+choose: 'Выбрать',
+manageDNSRecordsTitle: 'Управление DNS записями',
+addressForManage: 'Адрес для управления:',
+
+
+// ManageDomainPage — тип элемента
+subdomainLabel: 'Субдомен',
+
+
+// ManageDomainPage — Any tab
+manualAddressInput: 'Ручной ввод адреса',
+enterNFTOrCollectionAddress: 'Введите адрес NFT или коллекции...',
+check: 'Проверить',
+addressHint: 'Введите адрес NFT (.ton, t.me) или коллекции для проверки',
+
+
+// ManageDomainPage — renewal
+renew: 'Продлить домен',
+renewPrice: '0.05 TON',
+
+
+// ManageDomainPage — item page
+itemNotFound: 'Элемент не найден',
+nftNotFound: 'NFT не найден',
+itemFound: 'Элемент найден',
+nftVerified: 'NFT проверен',
+itemVerified: 'Элемент проверен',
+nftVerifiedSuccessfully: 'NFT успешно проверен',
+itemVerifiedSuccessfully: 'Элемент успешно проверен',
+itemFoundSuccessfully: 'Элемент успешно найден',
 
   }
