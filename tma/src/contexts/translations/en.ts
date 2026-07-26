@@ -30,7 +30,7 @@ export const enTranslations = {
     edit: 'Edit',
 
     withdrawBalanceFromCollection: 'Withdraw balance from collection',
-    automaticPayouts: 'Automatic payouts from the Subdom Zone to your wallet in the amount of 95% of the mint price, 5% - service fee',
+    automaticPayouts: 'Automatic payouts from the Subdom Zone to your wallet in the amount of 90% of the mint price, 10% - service fee',
     history: 'History',
 
     // CreateCollectionPage - новые ключи
@@ -198,7 +198,7 @@ export const enTranslations = {
     infoAboutZone: 'Info about zone',
     countNFTs: 'Count NFTs',
     countHolders: 'Count holders',
-    pricesTON: 'Prices (TON)',
+    pricesTON: 'Prices (GRAM)',
     floorLabel: 'Floor',
     average: 'Average',
     max: 'Max',
@@ -215,7 +215,7 @@ export const enTranslations = {
   sbtPurchaseError: 'Error purchasing SBT subdomain',
   purchaseSBTSubdomain: 'Purchase SBT subdomain',
   purchased: 'Purchased',
-  buyFor1TON: '0.5 TON',
+  buyFor1TON: '0.5 GRAM',
   sbtSubdomainInfo: 'SBT subdomain information',
   sbtOwner: 'SBT owner',
   sbtCollection: 'SBT collection',
@@ -251,7 +251,7 @@ export const enTranslations = {
   sbtFeature3: 'Creation and use of subdomains is possible only for the domain owner',
   sbtFeature4: 'DNS records management (except subdomain field for subdomains) through manager',
   sbtFeature5: 'Unlimited ownership of subdomain',
-  sbtFeature6: 'Price does not depend on subdomain length and is always 1 TON',
+  sbtFeature6: 'Price does not depend on subdomain length and is always 0.5 GRAM',
   sbtFeature7: 'Acquisition happens instantly, without waiting',
   
   // General
@@ -268,7 +268,7 @@ export const enTranslations = {
   proxyZoneFeature4: 'Nominally, the owner of the domain becomes the NFT-wrapper address, which you own. You can transfer (put up for sale) the NFT-wrapper (bundle) together with the domain and the locked subdomain collection.',
   proxyZoneFeature5: 'Minting subdomains in Proxy-zone happens through Auction.',
   proxyZoneFeature6: 'Anyone can initiate the start of an auction for a subdomain in Proxy-zone (not only the zone owner)',
-  proxyZoneFeature7: 'Starting prices for subdomains in proxy-zone depend on the number of characters in the subdomain: 1 - 30 TON, 2 -20 TON, 3 - 10 TON, 4 - 5 TON, 5 - 2.5 TON, 6 - 1 TON, 7+ - 0.5 TON',
+  proxyZoneFeature7: 'Starting prices for subdomains in proxy-zone depend on the number of characters in the subdomain: 1 - 30 GRAM, 2 -20 GRAM, 3 - 10 GRAM, 4 - 5 GRAM, 5 - 2.5 GRAM, 6 - 1 GRAM, 7+ - 0.5 GRAM',
   proxyZoneFeature8: 'Auction duration is 24 hours. Bids made in the last hour reset the countdown timer to 1 hour.',
   proxyZoneFeature9: 'The zone owner receives 90% of the cost for each subdomain mint on their proxy-zone automatically. 10% is divided by the service between the team and expenses for maintaining smart contracts.',
   proxyZoneFeature10: 'Only the subdomain owner can change DNS records on created subdomains from proxy-zone. (Zone owner cannot edit other subdomains from their zone)',
@@ -283,7 +283,7 @@ export const enTranslations = {
   sbtZoneFeature5: 'This mode of using subdomains is created "for yourself", which is well suited for developers and service owners.',
   sbtZoneFeature6: 'Minting subdomains in SBT-zone happens instantly (not auction).',
   sbtZoneFeature7: 'Only you can make bids on subdomains in SBT-zone.',
-  sbtZoneFeature8: 'The price for subdomains does not depend on their length, and is always 0.5 TON.',
+  sbtZoneFeature8: 'The price for subdomains does not depend on their length, and is always 0.5 GRAM.',
   sbtZoneFeature9: 'The SBT-zone owner does not receive money from subdomain minting. Revenue goes to the service (team and for maintaining the life of the collection smart contracts)',
   sbtZoneFeature10: 'Only the zone owner can change DNS records on created subdomains from SBT-zone.',
   sbtZoneFeature11: 'All created subdomains have no expiration date for ownership (unlimited).',
@@ -330,7 +330,7 @@ marketTitle: '🏠 Market',
     marketNoLink: 'No marketplace link',
     marketClaimedInfo: 'Subdomains with "claimed" status are available for purchase',
     marketMakeOfferInfo: 'Click "Make Offer" to go to GetGems',
-    marketPriceInfo: 'Prices are displayed in TON (1 decimal place)',
+    marketPriceInfo: 'Prices are displayed in GRAM (1 decimal place)',
     marketNetworkInfo: 'Network',
     marketTestnet: 'Testnet (kQ addresses)',
     marketMainnet: 'Mainnet (EQ/UQ addresses)',
@@ -664,7 +664,7 @@ addressHint: 'Enter NFT address (.ton, t.me) or collection to check',
 
 
 renew: 'Renew domain',
-renewPrice: '0.05 TON',
+renewPrice: '0.05 GRAM',
 
 
 itemNotFound: 'Item not found',

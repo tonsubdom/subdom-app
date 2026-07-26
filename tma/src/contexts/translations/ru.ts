@@ -30,7 +30,7 @@ export const ruTranslations = {
     edit: 'Редактировать',
 
     withdrawBalanceFromCollection: 'Вывести баланс из коллекции',
-    automaticPayouts: 'Автоматические выплаты из Subdom Zone на ваш кошелек в размере 90% от цены минта, 5% - комиссия сервиса',
+    automaticPayouts: 'Автоматические выплаты из Subdom Zone на ваш кошелек в размере 90% от цены минта, 10% - комиссия сервиса',
     history: 'История',
 
     // CreateCollectionPage - новые ключи
@@ -190,7 +190,7 @@ export const ruTranslations = {
     infoAboutZone: 'Информация о зоне',
     countNFTs: 'Количество NFT',
     countHolders: 'Количество держателей',
-    pricesTON: 'Цены (TON)',
+    pricesTON: 'Цены (GRAM)',
     floorLabel: 'Floor',
     average: 'Средняя',
     max: 'Максимальная',
@@ -207,7 +207,7 @@ export const ruTranslations = {
   sbtPurchaseError: 'Ошибка при покупке SBT субдомена',
   purchaseSBTSubdomain: 'Купить SBT субдомен',
   purchased: 'Куплено',
-  buyFor1TON: '0.5 TON',
+  buyFor1TON: '0.5 GRAM',
   sbtSubdomainInfo: 'Информация о SBT субдомене',
   sbtOwner: 'Владелец SBT',
   sbtCollection: 'SBT коллекция',
@@ -243,7 +243,7 @@ export const ruTranslations = {
   sbtFeature3: 'Создание и использование субдоменов возможно только владельцу домена',
   sbtFeature4: 'Управление DNS-записями (кроме поля субдоменов у субдоменов) через менеджер',
   sbtFeature5: 'Владение субдоменом бессрочно',
-  sbtFeature6: 'Цена не зависит от длины субдомена и всегда равна 1 TON',
+  sbtFeature6: 'Цена не зависит от длины субдомена и всегда равна 0.5 GRAM',
   sbtFeature7: 'Приобретение происходит моментально, без ожидания',
   
   // Общие
@@ -260,7 +260,7 @@ export const ruTranslations = {
   proxyZoneFeature4: 'Номинально владельцем домена становится адрес НФТ-обертки, владельцем которого являетесь вы. Вы можете передавать (выставлять на продажу) НФТ-обертку(бандл) вместе с доменом и заблокированной субдоменной коллекцией.',
   proxyZoneFeature5: 'Минт субдоменов в Proxy-зоне происходит через Аукцион.',
   proxyZoneFeature6: 'Инициировать начало аукциона на субдомен в Proxy-зоне может любой (не только владелец зоны)',
-  proxyZoneFeature7: 'Стартовые цены на субдомены в proxy-зоне зависят от количества знаков в субдомене: 1 - 30 TON, 2 -20 TON, 3 - 10 TON, 4 - 5 TON, 5 - 2.5 TON, 6 - 1 TON, 7+ - 0.5 TON',
+  proxyZoneFeature7: 'Стартовые цены на субдомены в proxy-зоне зависят от количества знаков в субдомене: 1 - 30 GRAM, 2 -20 GRAM, 3 - 10 GRAM, 4 - 5 GRAM, 5 - 2.5 GRAM, 6 - 1 GRAM, 7+ - 0.5 GRAM',
   proxyZoneFeature8: 'Длительность аукциона составляет 24 часа. Ставки, сделанные в последний час - откатывают счетчик обратного отсчета до 1 часа.',
   proxyZoneFeature9: 'Владелец зоны получает 90% стоимости при каждом минте субдомена на его proxy-зоне автоматически. 10% сервис делит между командой и расходной частью для поддержания смартконтрактов.',
   proxyZoneFeature10: 'Менять DNS-записи на созданных субдоменах от proxy-зоны может только владелец субдомена.(Владелец зоны не имеет возможности редактировать чужие субдомены от своей зоны)',
@@ -275,7 +275,7 @@ export const ruTranslations = {
   sbtZoneFeature5: 'Этот режим использования субдоменов создан «для себя», что хорошо подойдет разработчикам и владельцам сервисов.',
   sbtZoneFeature6: 'Минт субдоменов в SBT-зоне происходит мгновенно (не аукцион).',
   sbtZoneFeature7: 'Делать ставки на субдомены в SBT-зоне можете только Вы.',
-  sbtZoneFeature8: 'Цена на субдомены не зависит от их длины, и всегда равна 0.5 TON.',
+  sbtZoneFeature8: 'Цена на субдомены не зависит от их длины, и всегда равна 0.5 GRAM.',
   sbtZoneFeature9: 'Владелец SBT-зоны не получает денег от минта субдоменов. Выручка отходит сервису (команде и на поддержание жизни смартконтрактов коллекции)',
   sbtZoneFeature10: 'Менять DNS-записи на созданных субдоменах от SBT-зоны может только владелец зоны.',
   sbtZoneFeature11: 'Вcе созданные субдомены не имеют срока истечения владения ими (бессрочны).',
@@ -323,7 +323,7 @@ export const ruTranslations = {
     marketNoLink: 'No marketplace link',
     marketClaimedInfo: 'Субдомены со статусом "claimed" доступны для покупки',
     marketMakeOfferInfo: 'Нажмите "Make Offer" для перехода на GetGems',
-    marketPriceInfo: 'Цены отображаются в TON (1 знак после запятой)',
+    marketPriceInfo: 'Цены отображаются в GRAM (1 знак после запятой)',
     marketNetworkInfo: 'Сеть',
     marketTestnet: 'Testnet (kQ адреса)',
     marketMainnet: 'Mainnet (EQ/UQ адреса)',
@@ -794,7 +794,7 @@ addressHint: 'Введите адрес NFT (.ton, t.me) или коллекци
 
 // ManageDomainPage — renewal
 renew: 'Продлить домен',
-renewPrice: '0.05 TON',
+renewPrice: '0.05 GRAM',
 
 
 // ManageDomainPage — item page
