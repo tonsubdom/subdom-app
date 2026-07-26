@@ -4775,12 +4775,12 @@ export const ManageDomainPage: FC = () => {
   };
 
   // ====== TONVIEWER-ССЫЛКА ======
-  const createTonViewerLink = (addr: string): string => {
-    const baseUrl = isTestnet
-      ? "https://testnet.tonviewer.com"
-      : "https://tonviewer.com";
-    return `${baseUrl}/${addr}`;
-  };
+  // const createTonViewerLink = (addr: string): string => {
+  //   const baseUrl = isTestnet
+  //     ? "https://testnet.tonviewer.com"
+  //     : "https://tonviewer.com";
+  //   return `${baseUrl}/${addr}`;
+  // };
 
   // ====== ФОРМА ======
   const resetFormData = () => {
