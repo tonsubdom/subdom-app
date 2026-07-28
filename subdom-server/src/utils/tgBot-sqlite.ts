@@ -34,6 +34,7 @@ interface TelegramCallbackQuery {
   message?: {
     chat: {
       id: number;
+      type?: string;  
     };
     message_id: number;
   };
@@ -373,51 +374,101 @@ class TelegramBotService {
    * - Для SBT-субдомена (имя из 3+ частей, proxy=0): /api/v1/sbt-subdomain/metadata/ton/{zoneName}/{subName}.png
    * - Для Proxy-субдомена (имя из 3+ частей, proxy=1): /api/v1/subdomain/metadata/ton/{zoneName}/{subName}.png
    */
+  // private getNotificationImageUrl(name: string, isProxy: boolean): string | null {
+  //   const parts = name.split('.');
+  //   const isZone = parts.length === 2;
+
+  //   if (isZone) {
+  //     if (isProxy) {
+  //       return `${API_PAYLOAD_URL}/api/v1/proxy/metadata/ton/${name}.png`;
+  //     } else {
+  //       return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${name}.png`;
+  //     }
+  //   }
+
+  //   const subName = parts[0];
+  //   const zoneName = parts.slice(1).join('.');
+
+  //   if (isProxy) {
+  //     return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zoneName}/${subName}.png`;
+  //   } else {
+  //     return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${zoneName}/${subName}.png`;
+  //   }
+  // }
+
   private getNotificationImageUrl(name: string, isProxy: boolean): string | null {
-    const parts = name.split('.');
-    const isZone = parts.length === 2;
+  const parts = name.split('.');
+  const isZone = parts.length === 2;
 
-    if (isZone) {
-      if (isProxy) {
-        return `${API_PAYLOAD_URL}/api/v1/proxy/metadata/ton/${name}.png`;
-      } else {
-        return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${name}.png`;
-      }
-    }
-
-    const subName = parts[0];
-    const zoneName = parts.slice(1).join('.');
-
+  if (isZone) {
+    // Для зоны: убираем .ton из имени, т.к. /ton/ в пути уже это обозначает
+    const zoneNameWithoutTld = parts[0]!; // "pension" из "pension.ton"
     if (isProxy) {
-      return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zoneName}/${subName}.png`;
+      return `${API_PAYLOAD_URL}/api/v1/proxy/metadata/ton/${zoneNameWithoutTld}.png`;
     } else {
-      return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${zoneName}/${subName}.png`;
+      return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${zoneNameWithoutTld}.png`;
     }
   }
+
+  // Для субдомена (3+ частей): sub.zone.ton
+  const subName = parts[0];                        // "mysub"
+  const zoneName = parts.slice(1, -1).join('.');   // "zone" (без .ton!)
+  // Если zoneName пустой (sub.ton), берём subName как зону
+  const effectiveZone = zoneName || parts[0]!;
+
+  if (isProxy) {
+    return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${effectiveZone}/${subName}.png`;
+  } else {
+    return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${effectiveZone}/${subName}.png`;
+  }
+}
+
 
   /**
    * Отправляет фото с подписью. Если фото не грузится — fallback на текст.
    */
+  // private async sendPhotoWithCaption(
+  //   chatId: string,
+  //   photoUrl: string,
+  //   caption: string,
+  //   inlineKeyboard?: any
+  // ): Promise<void> {
+  //   try {
+  //     await this.bot!.sendPhoto(chatId, photoUrl, {
+  //       caption,
+  //       parse_mode: 'HTML',
+  //       ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {})
+  //     });
+  //   } catch (e) {
+  //     console.warn(`⚠️ Не удалось отправить фото (${photoUrl}), fallback на текст`);
+  //     await this.bot!.sendMessage(chatId, caption, {
+  //       parse_mode: 'HTML',
+  //       ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {})
+  //     });
+  //   }
+  // }
+
   private async sendPhotoWithCaption(
-    chatId: string,
-    photoUrl: string,
-    caption: string,
-    inlineKeyboard?: any
-  ): Promise<void> {
-    try {
-      await this.bot!.sendPhoto(chatId, photoUrl, {
-        caption,
-        parse_mode: 'HTML',
-        ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {})
-      });
-    } catch (e) {
-      console.warn(`⚠️ Не удалось отправить фото (${photoUrl}), fallback на текст`);
-      await this.bot!.sendMessage(chatId, caption, {
-        parse_mode: 'HTML',
-        ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {})
-      });
-    }
+  chatId: string,
+  photoUrl: string,
+  caption: string,
+  inlineKeyboard?: any
+): Promise<void> {
+  try {
+    await (this.bot! as any).sendPhoto(chatId, photoUrl, {
+      caption,
+      parse_mode: 'HTML',
+      ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {})
+    });
+  } catch (e) {
+    console.warn(`⚠️ Не удалось отправить фото (${photoUrl}), fallback на текст`);
+    await this.bot!.sendMessage(chatId, caption, {
+      parse_mode: 'HTML',
+      ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {})
+    });
   }
+}
+
 
   // ==================== ИНИЦИАЛИЗАЦИЯ БОТА ====================
 
@@ -476,11 +527,60 @@ class TelegramBotService {
     });
 
     // /start — с меню команд и инструкцией по подписке
-    this.bot.onText(/\/start/, (msg: TelegramMessage) => {
-      const chatId = msg.chat.id;
-      const isSubscribed = this.subscriptions.some(s => s.chatId === chatId.toString() && s.isActive);
+//     this.bot.onText(/\/start/, (msg: TelegramMessage) => {
+//       const chatId = msg.chat.id;
+//       const isSubscribed = this.subscriptions.some(s => s.chatId === chatId.toString() && s.isActive);
 
-      const startMessage = `
+//       const startMessage = `
+// 🤖 <b>Subdom Bot — TON DNS Subdomains</b>
+
+// Этот бот отправляет уведомления о:
+// • Новых Proxy-зонах и SBT-зонах
+// • Сминченных субдоменах
+// • Аукционах и ставках
+// • Новых пользователях
+// • Сообщениях от клиентов (для техподдержки)
+
+// <b>📋 Доступные команды:</b>
+// /subscribe — подписаться на уведомления
+// /unsubscribe — отписаться
+// /status — статус подписки и системы
+// /network — информация о сетях
+
+// 📌 <b>Как подписаться:</b>
+// 1. Нажмите /subscribe или кнопку «✅ Подписаться» ниже
+// 2. Для владельца: бот сам определит вас как owner (если ваш ID совпадает с TELEGRAM_OWNER_ID)
+// 3. Для каналов: добавьте бота в канал, дайте права админа и нажмите /subscribe
+
+// 🔗 <b>Веб-приложение:</b> ${DeeplinkUtils.generateHomeLink()}
+
+// <b>Статус подписки:</b> ${isSubscribed ? '✅ Активна' : '❌ Не подписан'}
+//       `.trim();
+
+//       const inlineKeyboard = [
+//         [
+//           { text: '✅ Подписаться', callback_data: 'cmd_subscribe' },
+//           { text: '❌ Отписаться', callback_data: 'cmd_unsubscribe' }
+//         ],
+//         [
+//           { text: '📊 Статус', callback_data: 'cmd_status' },
+//           { text: '🌐 Сеть', callback_data: 'cmd_network' }
+//         ],
+//         [
+//           { text: '🔗 Открыть Subdom', url: DeeplinkUtils.generateHomeLink() }
+//         ]
+//       ];
+
+//       this.bot!.sendMessage(chatId, startMessage, {
+//         parse_mode: 'HTML',
+//         reply_markup: { inline_keyboard: inlineKeyboard }
+//       });
+//     });
+this.bot.onText(/\/start/, (msg: TelegramMessage) => {
+  const chatId = msg.chat.id;
+  const isSubscribed = this.subscriptions.some(s => s.chatId === chatId.toString() && s.isActive);
+
+  const startMessage = `
 🤖 <b>Subdom Bot — TON DNS Subdomains</b>
 
 Этот бот отправляет уведомления о:
@@ -497,34 +597,36 @@ class TelegramBotService {
 /network — информация о сетях
 
 📌 <b>Как подписаться:</b>
-1. Нажмите /subscribe или кнопку «✅ Подписаться» ниже
-2. Для владельца: бот сам определит вас как owner (если ваш ID совпадает с TELEGRAM_OWNER_ID)
-3. Для каналов: добавьте бота в канал, дайте права админа и нажмите /subscribe
+Нажмите /subscribe или кнопку «✅ Подписаться» ниже
 
 🔗 <b>Веб-приложение:</b> ${DeeplinkUtils.generateHomeLink()}
 
 <b>Статус подписки:</b> ${isSubscribed ? '✅ Активна' : '❌ Не подписан'}
       `.trim();
 
-      const inlineKeyboard = [
-        [
-          { text: '✅ Подписаться', callback_data: 'cmd_subscribe' },
-          { text: '❌ Отписаться', callback_data: 'cmd_unsubscribe' }
-        ],
-        [
-          { text: '📊 Статус', callback_data: 'cmd_status' },
-          { text: '🌐 Сеть', callback_data: 'cmd_network' }
-        ],
-        [
-          { text: '🔗 Открыть Subdom', url: DeeplinkUtils.generateHomeLink() }
-        ]
-      ];
+  const inlineKeyboard = [
+    [
+      { text: '✅ Подписаться', callback_data: 'cmd_subscribe' },
+      { text: '❌ Отписаться', callback_data: 'cmd_unsubscribe' }
+    ],
+    [
+      { text: '📊 Статус', callback_data: 'cmd_status' },
+      { text: '🌐 Сеть', callback_data: 'cmd_network' }
+    ],
+    [
+      { text: '🔌 Подключить к чату', callback_data: 'cmd_connect_chat' }
+    ],
+    [
+      { text: '🔗 Открыть Subdom', url: DeeplinkUtils.generateHomeLink() }
+    ]
+  ];
 
-      this.bot!.sendMessage(chatId, startMessage, {
-        parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
-    });
+  this.bot!.sendMessage(chatId, startMessage, {
+    parse_mode: 'HTML',
+    reply_markup: { inline_keyboard: inlineKeyboard }
+  });
+});
+
 
     // /subscribe
     this.bot.onText(/\/subscribe/, (msg: TelegramMessage) => {
@@ -576,8 +678,8 @@ class TelegramBotService {
 
         // Кнопки меню
         if (data === 'cmd_subscribe') {
-          // const chatType = callbackQuery.message?.chat.type || 'private';
-          const chatType = (callbackQuery.message?.chat as any)?.type || 'private';
+          const chatType = callbackQuery.message?.chat.type || 'private';
+          // const chatType = (callbackQuery.message?.chat as any)?.type || 'private';
           const subType = chatId.toString() === this.ownerId ? 'owner' : 'public';
           this.addSubscription(chatId.toString(), chatType, subType);
           await this.bot!.sendMessage(chatId, `✅ Вы подписаны на уведомления как <b>${subType}</b>.\n\nТеперь вы будете получать:\n• Уведомления о новых зонах\n• Уведомления о субдоменах\n• Уведомления об аукционах и ставках\n• Уведомления о новых пользователях`, { parse_mode: 'HTML' });
@@ -590,7 +692,33 @@ class TelegramBotService {
           await this.bot!.sendMessage(chatId, `📊 <b>Статус</b>\n\nВаш ID: <code>${chatId}</code>\nПодписан: ${subs.length > 0 ? '✅ Да' : '❌ Нет'}\n\n<b>Все подписки (${this.subscriptions.length}):</b>\n${allSubs || 'нет'}\n\nВремя: ${new Date().toLocaleString('ru-RU')}`, { parse_mode: 'HTML' });
         } else if (data === 'cmd_network') {
           await this.bot!.sendMessage(chatId, `🌐 <b>Сети</b>\n\n• Testnet: https://testnet.tonviewer.com\n• Mainnet: https://tonviewer.com\n\nУведомления приходят для обеих сетей.`, { parse_mode: 'HTML' });
-        } else if (data.startsWith('reply_')) {
+        } else if (data === 'cmd_connect_chat') {
+  const instructions = `
+🔌 <b>Как подключить бота к чату/каналу</b>
+
+1️⃣ <b>Добавьте бота в чат:</b>
+   • Откройте чат/канал → «Управление» → «Администраторы»
+   • Нажмите «Добавить администратора»
+   • Найдите @subdom
+
+2️⃣ <b>Выдайте права:</b>
+   • ✅ Отправка сообщений
+   • ✅ Закрепление сообщений (опционально)
+
+3️⃣ <b>Активируйте подписку:</b>
+   • В чате/канале напишите /subscribe
+   • Бот начнёт отправлять уведомления в этот чат
+
+4️⃣ <b>Проверьте:</b>
+   • Команда /status покажет все активные подписки
+
+⚠️ <b>Важно:</b> Бот должен быть администратором для отправки сообщений в чат/канал.
+  `.trim();
+  await this.bot!.sendMessage(chatId, instructions, { parse_mode: 'HTML' });
+}
+
+        
+        else if (data.startsWith('reply_')) {
           await this.handleReplyCallback(callbackQuery);
         }
 
