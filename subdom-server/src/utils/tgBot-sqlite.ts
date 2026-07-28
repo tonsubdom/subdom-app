@@ -594,7 +594,7 @@ this.bot.onText(/\/start/, (msg: TelegramMessage) => {
 /subscribe — подписаться на уведомления
 /unsubscribe — отписаться
 /status — статус подписки и системы
-/network — информация о сетях
+
 
 📌 <b>Как подписаться:</b>
 Нажмите /subscribe или кнопку «✅ Подписаться» ниже
@@ -606,19 +606,19 @@ this.bot.onText(/\/start/, (msg: TelegramMessage) => {
 
   const inlineKeyboard = [
     [
-      { text: '✅ Подписаться', callback_data: 'cmd_subscribe' },
-      { text: '❌ Отписаться', callback_data: 'cmd_unsubscribe' }
-    ],
-    [
-      { text: '📊 Статус', callback_data: 'cmd_status' },
-      { text: '🌐 Сеть', callback_data: 'cmd_network' }
+      { text: '🔗 Открыть Subdom', url: DeeplinkUtils.generateHomeLink() }
     ],
     [
       { text: '🔌 Подключить к чату', callback_data: 'cmd_connect_chat' }
     ],
     [
-      { text: '🔗 Открыть Subdom', url: DeeplinkUtils.generateHomeLink() }
-    ]
+      { text: '✅ Подписаться', callback_data: 'cmd_subscribe' },
+      { text: '❌ Отписаться', callback_data: 'cmd_unsubscribe' }
+    ],
+    [
+      { text: '📊 Статус', callback_data: 'cmd_status' },
+    ],
+    
   ];
 
   this.bot!.sendMessage(chatId, startMessage, {
@@ -656,14 +656,6 @@ this.bot.onText(/\/start/, (msg: TelegramMessage) => {
       );
     });
 
-    // /network
-    this.bot.onText(/\/network/, (msg: TelegramMessage) => {
-      this.bot!.sendMessage(
-        msg.chat.id,
-        `🌐 <b>Информация о сетях</b>\n\nБот поддерживает уведомления для:\n• <b>Testnet</b> (тестовая сеть)\n• <b>Mainnet</b> (основная сеть)\n\nВсе уведомления содержат информацию о сети.\n\n<b>Tonviewer (testnet):</b> https://testnet.tonviewer.com\n<b>Tonviewer (mainnet):</b> https://tonviewer.com`,
-        { parse_mode: 'HTML' }
-      );
-    });
 
     // callback_query — обрабатываем кнопки меню
     this.bot.on('callback_query', async (callbackQuery: TelegramCallbackQuery) => {
@@ -690,8 +682,6 @@ this.bot.onText(/\/start/, (msg: TelegramMessage) => {
           const subs = this.subscriptions.filter(s => s.chatId === chatId.toString());
           const allSubs = this.subscriptions.map(s => `• <code>${s.chatId}</code> (${s.chatType}, ${s.subscriptionType})`).join('\n');
           await this.bot!.sendMessage(chatId, `📊 <b>Статус</b>\n\nВаш ID: <code>${chatId}</code>\nПодписан: ${subs.length > 0 ? '✅ Да' : '❌ Нет'}\n\n<b>Все подписки (${this.subscriptions.length}):</b>\n${allSubs || 'нет'}\n\nВремя: ${new Date().toLocaleString('ru-RU')}`, { parse_mode: 'HTML' });
-        } else if (data === 'cmd_network') {
-          await this.bot!.sendMessage(chatId, `🌐 <b>Сети</b>\n\n• Testnet: https://testnet.tonviewer.com\n• Mainnet: https://tonviewer.com\n\nУведомления приходят для обеих сетей.`, { parse_mode: 'HTML' });
         } else if (data === 'cmd_connect_chat') {
   const instructions = `
 🔌 <b>Как подключить бота к чату/каналу</b>
@@ -1071,8 +1061,8 @@ ${network}
 
 ${network}
 🌐 Домен: <code>${domain}</code>
-👤 Владелец: ${this.formatTonviewerLink(address, isTestnet)}
 📍 Адрес коллекции: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
+👤 Владелец: ${this.formatTonviewerLink(address, isTestnet)}
 
 ⏰ Время развертывания: ${new Date().toLocaleString('ru-RU')}
 💡 Теперь можно создавать субдомены в этой Proxy-зоне!
@@ -1101,11 +1091,11 @@ ${network}
 
 ${network}
 🏷️ Название: <code>${name}</code>
+📦 Адрес коллекции: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
 📍 Адрес домена: ${this.formatTonviewerLink(address, isTestnet)}
 👤 Владелец: ${this.formatTonviewerLink(owner, isTestnet)}
 💰 Цена: ${price} TON
 🎫 Тип: SBT (не для продажи)
-📦 Адрес коллекции: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
 
 Это <code>${currentID + 1}</code> по счету зона на этом домене.
       `.trim();
@@ -1339,11 +1329,11 @@ ${network}
 
 ${network}
 🏷️ Название: <code>${name}</code>
+📦 Адрес коллекции: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
 📍 Адрес домена: ${this.formatTonviewerLink(address, isTestnet)}
 👤 Владелец: ${this.formatTonviewerLink(owner, isTestnet)}
 💰 Цена: ${price} TON
 🎫 Тип: SBT (не для продажи)
-📦 Адрес коллекции: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
 
 Это <code>${currentID + 1}</code> по счету зона на этом домене.
 
