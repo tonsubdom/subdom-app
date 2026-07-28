@@ -2324,15 +2324,26 @@ class TelegramBotService {
 }
 
   private getLang(chatId: string): string {
-    const sub = this.subscriptions.find(s => s.chatId === chatId && s.isActive);
+    const sub = this.subscriptions.find(s => s.chatId === chatId);
     return sub?.lang || 'ru';
   }
 
+  // private setLang(chatId: string, lang: string): void {
+  //   const db = this.testnetDb;
+  //   db.prepare(`UPDATE bot_subscriptions SET lang = ? WHERE chatId = ? AND isActive = 1`).run(lang, chatId);
+  //   this.loadSubscriptions();
+  // }
+
   private setLang(chatId: string, lang: string): void {
-    const db = this.testnetDb;
-    db.prepare(`UPDATE bot_subscriptions SET lang = ? WHERE chatId = ? AND isActive = 1`).run(lang, chatId);
-    this.loadSubscriptions();
+  const db = this.testnetDb;
+  const existing = db.prepare(`SELECT id FROM bot_subscriptions WHERE chatId = ?`).get(chatId);
+  if (existing) {
+    db.prepare(`UPDATE bot_subscriptions SET lang = ? WHERE chatId = ?`).run(lang, chatId);
+  } else {
+    db.prepare(`INSERT INTO bot_subscriptions (chatId, chatType, subscriptionType, isActive, lang) VALUES (?, 'private', 'public', 0, ?)`).run(chatId, lang);
   }
+  this.loadSubscriptions();
+}
 
   private t(chatId: string): typeof LANG.ru {
     const lang = this.getLang(chatId);
