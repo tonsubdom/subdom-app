@@ -6067,7 +6067,7 @@ class TelegramBotService {
       this.bot!.sendMessage(msg.chat.id, '❌ Вы отписались от уведомлений. Чтобы снова подписаться, используйте /subscribe');
     });
 
-    // /status
+    // /statuss
     this.bot.onText(/\/status/, (msg: TelegramMessage) => {
       const chatId = msg.chat.id.toString();
       const subs = this.subscriptions.filter(s => s.chatId === chatId);
