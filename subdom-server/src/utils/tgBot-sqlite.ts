@@ -5531,10 +5531,10 @@ import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import Database from 'better-sqlite3';
 
+// Загружаем переменные окружения
 dotenv.config();
 
-// ==================== ИНТЕРФЕЙСЫ ====================
-
+// Интерфейсы для типизации
 interface TelegramMessage {
   chat: {
     id: number;
@@ -5542,7 +5542,9 @@ interface TelegramMessage {
   };
   text?: string;
   reply_to_message?: {
-    from?: { id: number };
+    from?: {
+      id: number;
+    };
     message_id?: number;
     text?: string;
   };
@@ -5552,7 +5554,9 @@ interface TelegramCallbackQuery {
   id: string;
   data?: string;
   message?: {
-    chat: { id: number };
+    chat: {
+      id: number;
+    };
     message_id: number;
   };
 }
@@ -5586,19 +5590,27 @@ class DeeplinkUtils {
 
   static generateTelegramDeeplink(route: string, params: Record<string, string> = {}): string {
     let startappParam = route.replace(/^\/+/, '');
+
     if (Object.keys(params).length > 0) {
       const paramString = Object.entries(params)
         .filter(([_, value]) => value)
         .map(([key, value]) => `${key}_${value}`)
         .join('_');
-      if (paramString) startappParam = `${startappParam}_${paramString}`;
+
+      if (paramString) {
+        startappParam = `${startappParam}_${paramString}`;
+      }
     }
-    return `https://t.me/${this.BOT_USERNAME}?startapp=${encodeURIComponent(startappParam)}`;
+
+    const encodedParam = encodeURIComponent(startappParam);
+    return `https://t.me/${this.BOT_USERNAME}?startapp=${encodedParam}`;
   }
 
   static generateAddSubdomainLink(zoneName: string, subdomainName?: string): string {
     const params: Record<string, string> = { zone: zoneName };
-    if (subdomainName) params.subdomain = subdomainName;
+    if (subdomainName) {
+      params.subdomain = subdomainName;
+    }
     return this.generateTelegramDeeplink('/add-subdomain', params);
   }
 
@@ -5607,7 +5619,10 @@ class DeeplinkUtils {
   }
 
   static generateAuctionLink(zoneName: string, subdomainName: string): string {
-    return this.generateTelegramDeeplink('/add-subdomain', { zone: zoneName, subdomain: subdomainName });
+    return this.generateTelegramDeeplink('/add-subdomain', {
+      zone: zoneName,
+      subdomain: subdomainName
+    });
   }
 
   static generateHomeLink(): string {
@@ -5616,46 +5631,59 @@ class DeeplinkUtils {
 
   static parseStartappParam(startappParam: string): { route: string; params: Record<string, string> } {
     const parts = startappParam.split('_');
-    if (parts.length === 0) return { route: '/', params: {} };
+
+    if (parts.length === 0) {
+      return { route: '/', params: {} };
+    }
+
     const firstPart = parts[0]!;
     const route = firstPart.startsWith('/') ? firstPart : `/${firstPart}`;
     const params: Record<string, string> = {};
+
     for (let i = 1; i < parts.length; i += 2) {
       if (i + 1 < parts.length) {
         const key = parts[i];
         const value = parts[i + 1];
-        if (key !== undefined && value !== undefined) params[key] = value;
+        if (key !== undefined && value !== undefined) {
+          params[key] = value;
+        }
       }
     }
+
     return { route, params };
   }
 
   static formatDomainForUrl(domain: string): [string, string] {
     if (!domain) return ['', ''];
     const parts = domain.split('.');
+
     if (parts.length >= 2) {
-      return [parts[0] || '', parts.slice(1).join('.') || ''];
+      const subdomainName = parts[0] || '';
+      const zoneName = parts.slice(1).join('.') || '';
+      return [subdomainName, zoneName];
     }
+
     return ['', ''];
   }
 
   static generateLinkForNotification(type: 'bundle' | 'auction' | 'bid' | 'market', domain?: string): string {
     switch (type) {
-      case 'bundle': {
+      case 'bundle':
         if (!domain) throw new Error('Domain is required for bundle notification');
         const [_, zoneName] = this.formatDomainForUrl(domain);
         if (!zoneName) throw new Error(`Invalid domain format: ${domain}`);
         return this.generateAddSubdomainLink(zoneName);
-      }
+
       case 'auction':
-      case 'bid': {
+      case 'bid':
         if (!domain) throw new Error('Domain is required for auction/bid notification');
         const [subdomainName, zoneName2] = this.formatDomainForUrl(domain);
         if (!zoneName2 || !subdomainName) throw new Error(`Invalid domain format for auction: ${domain}`);
         return this.generateAuctionLink(zoneName2, subdomainName);
-      }
+
       case 'market':
         return this.generateMarketLink();
+
       default:
         throw new Error(`Unknown notification type: ${type}`);
     }
@@ -5670,12 +5698,14 @@ class TelegramBotService {
   private groupId: string = process.env.TELEGRAM_GROUP_ID || '';
   private replyContext = new Map<number, MessageContext>();
   private messageContexts = new Map<string, MessageContext>();
-  private replyContextTimeouts = new Map<number, NodeJS.Timeout>();
 
+  // Базы данных
   private testnetDb: Database.Database;
   private mainnetDb: Database.Database;
 
-  // Кэш подписок (загружается при старте)
+  private replyContextTimeouts = new Map<number, NodeJS.Timeout>();
+
+  // Кэш подписок (загружается из БД при старте)
   private subscriptions: BotSubscription[] = [];
 
   constructor() {
@@ -5684,17 +5714,24 @@ class TelegramBotService {
     console.log('👤 TELEGRAM_OWNER_ID:', process.env.TELEGRAM_OWNER_ID ? '✅ Установлен' : '❌ Отсутствует');
     console.log('👥 TELEGRAM_GROUP_ID:', process.env.TELEGRAM_GROUP_ID ? '✅ Установлен' : '❌ Отсутствует');
 
+    // Инициализируем базы данных
     this.testnetDb = new Database('nft-domains.db');
     this.mainnetDb = new Database('nft-domains-mainnet.db');
 
-    console.log(`💾 Базы данных: testnet=${!!this.testnetDb}, mainnet=${!!this.mainnetDb}`);
+    console.log(`💾 Базы данных инициализированы: testnet=${!!this.testnetDb}, mainnet=${!!this.mainnetDb}`);
 
     this.testnetDb.pragma('journal_mode = WAL');
     this.mainnetDb.pragma('journal_mode = WAL');
 
+    // Инициализируем таблицы чатов
     this.initializeChatTables();
+
+    // Инициализируем таблицу подписок
     this.initializeSubscriptionTable();
+
+    // Загружаем подписки из БД
     this.loadSubscriptions();
+
     this.initializeBot();
   }
 
@@ -5706,6 +5743,7 @@ class TelegramBotService {
       const exists = db.prepare(
         `SELECT name FROM sqlite_master WHERE type='table' AND name='bot_subscriptions'`
       ).get();
+
       if (!exists) {
         db.exec(`
           CREATE TABLE IF NOT EXISTS bot_subscriptions (
@@ -5724,40 +5762,56 @@ class TelegramBotService {
   }
 
   private loadSubscriptions(): void {
-    this.subscriptions = this.testnetDb.prepare(
-      `SELECT * FROM bot_subscriptions WHERE isActive = 1`
-    ).all() as BotSubscription[];
-    console.log(`📋 Загружено ${this.subscriptions.length} активных подписок`);
+    const db = this.testnetDb;
+    const subs = db.prepare(`SELECT * FROM bot_subscriptions WHERE isActive = 1`).all() as BotSubscription[];
+    this.subscriptions = subs;
+    console.log(`📋 Загружено ${subs.length} активных подписок`);
 
-    // Восстанавливаем ownerId/groupId из подписок, если не заданы в env
-    for (const s of this.subscriptions) {
-      if (s.subscriptionType === 'owner' && !this.ownerId) this.ownerId = s.chatId;
-      if (s.subscriptionType === 'public' && !this.groupId) this.groupId = s.chatId;
+    // Восстанавливаем ownerId и groupId из подписок (если не заданы в env)
+    for (const s of subs) {
+      if (s.subscriptionType === 'owner' && !this.ownerId) {
+        this.ownerId = s.chatId;
+      }
+      if (s.subscriptionType === 'public' && !this.groupId) {
+        this.groupId = s.chatId;
+      }
     }
   }
 
   private addSubscription(chatId: string, chatType: string, subscriptionType: string): void {
-    this.testnetDb.prepare(`
+    const db = this.testnetDb;
+    db.prepare(`
       INSERT OR REPLACE INTO bot_subscriptions (chatId, chatType, subscriptionType, isActive)
       VALUES (?, ?, ?, 1)
     `).run(chatId, chatType, subscriptionType);
+
     this.loadSubscriptions();
   }
 
   private removeSubscription(chatId: string): void {
-    this.testnetDb.prepare(
-      `UPDATE bot_subscriptions SET isActive = 0 WHERE chatId = ?`
-    ).run(chatId);
+    const db = this.testnetDb;
+    db.prepare(`UPDATE bot_subscriptions SET isActive = 0 WHERE chatId = ?`).run(chatId);
     this.loadSubscriptions();
   }
 
-  // ==================== ТАБЛИЦЫ ЧАТОВ ====================
+  // ==================== ИНИЦИАЛИЗАЦИЯ ТАБЛИЦ ЧАТОВ ====================
 
   private initializeChatTables(): void {
     const initializeDb = (db: Database.Database, dbName: string) => {
       console.log(`💾 Инициализация таблиц в БД: ${dbName}`);
 
-      if (!db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='chats'`).get()) {
+      const chatsTableExists = db.prepare(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='chats'`
+      ).get();
+
+      const messagesTableExists = db.prepare(
+        `SELECT name FROM sqlite_master WHERE type='table' AND name='messages'`
+      ).get();
+
+      console.log(`💾 Таблица chats существует: ${!!chatsTableExists}`);
+      console.log(`💾 Таблица messages существует: ${!!messagesTableExists}`);
+
+      if (!chatsTableExists) {
         db.exec(`
           CREATE TABLE IF NOT EXISTS chats (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -5772,7 +5826,7 @@ class TelegramBotService {
         console.log('✅ Таблица chats создана');
       }
 
-      if (!db.prepare(`SELECT name FROM sqlite_master WHERE type='table' AND name='messages'`).get()) {
+      if (!messagesTableExists) {
         db.exec(`
           CREATE TABLE IF NOT EXISTS messages (
             id TEXT PRIMARY KEY,
@@ -5791,7 +5845,7 @@ class TelegramBotService {
     initializeDb(this.mainnetDb, 'mainnet');
   }
 
-  // ==================== ВСПОМОГАТЕЛЬНЫЕ ====================
+  // ==================== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ====================
 
   private getDatabase(isTestnet: boolean): Database.Database {
     return isTestnet ? this.testnetDb : this.mainnetDb;
@@ -5812,6 +5866,7 @@ class TelegramBotService {
   }
 
   private isGroupAvailable(): boolean {
+    // Проверяем: если есть подписки типа 'public', группа доступна
     return !!(this.bot && this.subscriptions.some(s => s.subscriptionType === 'public' && s.isActive));
   }
 
@@ -5819,33 +5874,38 @@ class TelegramBotService {
     return isTestnet ? '🔬 <b>Сеть:</b> Testnet' : '🌐 <b>Сеть:</b> Mainnet';
   }
 
-  private getTonviewerBaseUrl(isTestnet: boolean): string {
+  private getTonviewerAddress(address: string): string {
+    return `<a href="https://tonviewer.com/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
+  }
+
+  private getTonviewerUrl(isTestnet: boolean): string {
     return isTestnet ? 'https://testnet.tonviewer.com' : 'https://tonviewer.com';
   }
 
   private formatTonviewerLink(address: string, isTestnet: boolean): string {
-    if (!address) return '<code>неизвестно</code>';
-    const base = this.getTonviewerBaseUrl(isTestnet);
+    const base = this.getTonviewerUrl(isTestnet);
     return `<a href="${base}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
   }
 
   private formatDomainForUrl(domain: string): string[] {
     if (!domain) return [];
-    return domain.split('.');
+    const parts = domain.split('.');
+    return parts;
   }
 
   /**
-   * Определяет URL картинки-превью для уведомления.
-   * - SBT-зона (2 части, proxy=0): /api/v1/sbt-subdomain/metadata/ton/{zoneName}.png
-   * - Proxy-зона (2 части, proxy=1): /api/v1/proxy/metadata/ton/{zoneName}.png
-   * - SBT-субдомен (3+ частей, proxy=0): /api/v1/sbt-subdomain/metadata/ton/{zoneName}/{subName}.png
-   * - Proxy-субдомен (3+ частей, proxy=1): /api/v1/subdomain/metadata/ton/{zoneName}/{subName}.png
+   * Определяет URL картинки для уведомления.
+   * - Для SBT-зоны (имя из 2 частей, proxy=0): /api/v1/sbt-subdomain/metadata/ton/{zoneName}.png
+   * - Для Proxy-зоны (имя из 2 частей, proxy=1): /api/v1/proxy/metadata/ton/{zoneName}.png
+   * - Для SBT-субдомена (имя из 3+ частей, proxy=0): /api/v1/sbt-subdomain/metadata/ton/{zoneName}/{subName}.png
+   * - Для Proxy-субдомена (имя из 3+ частей, proxy=1): /api/v1/subdomain/metadata/ton/{zoneName}/{subName}.png
    */
   private getNotificationImageUrl(name: string, isProxy: boolean): string | null {
     const parts = name.split('.');
     const isZone = parts.length === 2;
 
     if (isZone) {
+      // Это зона
       if (isProxy) {
         return `${API_PAYLOAD_URL}/api/v1/proxy/metadata/ton/${name}.png`;
       } else {
@@ -5853,9 +5913,10 @@ class TelegramBotService {
       }
     }
 
-    // Субдомен
+    // Это субдомен
     const subName = parts[0];
     const zoneName = parts.slice(1).join('.');
+
     if (isProxy) {
       return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zoneName}/${subName}.png`;
     } else {
@@ -5864,7 +5925,7 @@ class TelegramBotService {
   }
 
   /**
-   * Отправляет фото с подписью. При ошибке — fallback на текст.
+   * Отправляет фото с подписью. Если фото не грузится — fallback на текст.
    */
   private async sendPhotoWithCaption(
     chatId: string,
@@ -5879,15 +5940,11 @@ class TelegramBotService {
         ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {})
       });
     } catch (e) {
-      console.warn(`⚠️ Fallback на текст (фото недоступно: ${photoUrl})`);
-      try {
-        await this.bot!.sendMessage(chatId, caption, {
-          parse_mode: 'HTML',
-          ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {})
-        });
-      } catch (e2) {
-        console.error('❌ Не удалось отправить даже текст:', (e2 as Error).message);
-      }
+      console.warn(`⚠️ Не удалось отправить фото (${photoUrl}), fallback на текст`);
+      await this.bot!.sendMessage(chatId, caption, {
+        parse_mode: 'HTML',
+        ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {})
+      });
     }
   }
 
@@ -5895,15 +5952,20 @@ class TelegramBotService {
 
   private initializeBot(): void {
     const token = process.env.TELEGRAM_BOT_TOKEN;
+
     if (!token) {
       console.warn('⚠️ TELEGRAM_BOT_TOKEN не установлен. Telegram бот отключен.');
       return;
     }
 
     try {
-      this.bot = new TelegramBot(token, { polling: true });
+      this.bot = new TelegramBot(token, {
+        polling: true
+      });
+
       this.setupHandlers();
       console.log('✅ Telegram Bot инициализирован и запущен');
+
       this.sendTestNotification();
     } catch (error) {
       console.error('❌ Ошибка инициализации Telegram бота:', error);
@@ -5912,6 +5974,7 @@ class TelegramBotService {
 
   private async sendTestNotification(): Promise<void> {
     if (!this.isBotAvailable()) return;
+
     try {
       await this.bot!.sendMessage(
         this.ownerId,
@@ -5921,7 +5984,8 @@ class TelegramBotService {
       console.log('✅ Тестовое уведомление отправлено');
     } catch (error: unknown) {
       if (error instanceof Error && 'response' in error) {
-        console.error((error as { response: { data: any; status: number } }).response.data);
+        const axiosError = error as { response: { data: any; status: number } };
+        console.error(axiosError.response.data);
       } else if (error instanceof Error) {
         console.error(error.message);
       } else {
@@ -5930,61 +5994,60 @@ class TelegramBotService {
     }
   }
 
-  // ==================== ХЕНДЛЕРЫ КОМАНД ====================
+  // ==================== ОБРАБОТЧИКИ КОМАНД ====================
 
   private setupHandlers(): void {
     if (!this.bot) return;
 
-    // Отладка всех входящих сообщений
+    // Отладка всех сообщений
     this.bot.on('message', (msg: TelegramMessage) => {
-      console.log(`📨 [DEBUG] chatId=${msg.chat.id}, text=${msg.text?.substring(0, 50)}`);
+      console.log(`📨 [DEBUG] Сообщение получено: chatId=${msg.chat.id}, text=${msg.text?.substring(0, 50)}`);
     });
 
     // /start
     this.bot.onText(/\/start/, (msg: TelegramMessage) => {
+      const chatId = msg.chat.id;
       this.bot!.sendMessage(
-        msg.chat.id,
-        `🤖 <b>Бот поддержки Subdom (TON DNS Subdomains)</b>\n\nДоступные команды:\n/subscribe — подписаться на уведомления\n/unsubscribe — отписаться\n/status — статус\n/network — сети`,
+        chatId,
+        `🤖 <b>Бот поддержки Subdom (TON DNS Subdomains)</b>\n\nЭтот бот отправляет уведомления о:\n• Новых чатах\n• Сообщениях от пользователей\n• Новых зонах\n• Сминченных субдоменах\n• Новых пользователях\n• Аукционах\n• Ставках\n\nСтатус: <b>✅ Активен</b>`,
         { parse_mode: 'HTML' }
       );
-    });
-
-    // /subscribe
-    this.bot.onText(/\/subscribe/, (msg: TelegramMessage) => {
-      const chatId = msg.chat.id.toString();
-      const chatType = msg.chat.type || 'private';
-      const subType = msg.chat.id === parseInt(this.ownerId) ? 'owner' : 'public';
-      this.addSubscription(chatId, chatType, subType);
-      this.bot!.sendMessage(msg.chat.id, `✅ Вы подписаны на уведомления (${subType})`);
-    });
-
-    // /unsubscribe
-    this.bot.onText(/\/unsubscribe/, (msg: TelegramMessage) => {
-      this.removeSubscription(msg.chat.id.toString());
-      this.bot!.sendMessage(msg.chat.id, '❌ Вы отписались от уведомлений');
     });
 
     // /status
     this.bot.onText(/\/status/, (msg: TelegramMessage) => {
       const chatId = msg.chat.id;
-      const subsList = this.subscriptions
-        .map(s => `• ${s.chatId} (${s.subscriptionType})`)
-        .join('\n') || 'нет';
-
+      const subs = this.subscriptions.filter(s => s.chatId === chatId.toString());
       this.bot!.sendMessage(
         chatId,
-        `📊 <b>Статус системы</b>\n\nБот: ✅ Активен\nВладелец: <code>${this.ownerId || '—'}</code>\nЧат ID: <code>${chatId}</code>\n\n<b>Активные подписки:</b>\n${subsList}\n\nВремя: ${new Date().toLocaleString('ru-RU')}`,
+        `📊 <b>Статус системы</b>\n\nБот: <b>✅ Активен</b>\nВладелец: <code>${this.ownerId}</code>\nЧат ID: <code>${chatId}</code>\nПодписан: ${subs.length > 0 ? '✅ Да' : '❌ Нет'}\nВремя: ${new Date().toLocaleString('ru-RU')}`,
         { parse_mode: 'HTML' }
       );
     });
 
     // /network
     this.bot.onText(/\/network/, (msg: TelegramMessage) => {
+      const chatId = msg.chat.id;
       this.bot!.sendMessage(
-        msg.chat.id,
-        `🌐 <b>Информация о сетях</b>\n\n• <b>Testnet</b> (тестовая сеть)\n• <b>Mainnet</b> (основная сеть)\n\nВсе уведомления содержат информацию о сети.`,
+        chatId,
+        `🌐 <b>Информация о сетях</b>\n\nБот поддерживает уведомления для:\n• <b>Testnet</b> (тестовая сеть)\n• <b>Mainnet</b> (основная сеть)\n\nВсе уведомления содержат информацию о сети.`,
         { parse_mode: 'HTML' }
       );
+    });
+
+    // /subscribe — подписаться на уведомления
+    this.bot.onText(/\/subscribe/, (msg: TelegramMessage) => {
+      const chatId = msg.chat.id.toString();
+      const chatType = msg.chat.type || 'private';
+      const subType = msg.chat.id === parseInt(this.ownerId) ? 'owner' : 'public';
+      this.addSubscription(chatId, chatType, subType);
+      this.bot!.sendMessage(msg.chat.id, '✅ Вы подписаны на уведомления');
+    });
+
+    // /unsubscribe — отписаться
+    this.bot.onText(/\/unsubscribe/, (msg: TelegramMessage) => {
+      this.removeSubscription(msg.chat.id.toString());
+      this.bot!.sendMessage(msg.chat.id, '❌ Вы отписались от уведомлений');
     });
 
     // callback_query
@@ -5996,6 +6059,8 @@ class TelegramBotService {
 
         if (!data || !chatId || !messageId) return;
 
+        console.log(`📨 Callback получен: ${data}`);
+
         if (data.startsWith('reply_')) {
           await this.handleReplyCallback(callbackQuery);
         }
@@ -6006,23 +6071,35 @@ class TelegramBotService {
       }
     });
 
-    // Обработчик для reply-сообщений техподдержки
+    // Обработчик текстовых сообщений (для ответов техподдержки)
     this.bot.on('message', async (msg: any) => {
       try {
-        // Пропускаем команды — они уже обработаны onText
-        if (msg.text && msg.text.startsWith('/')) return;
+        // Пропускаем команды — их обрабатывают onText-обработчики выше
+        if (msg.text && msg.text.startsWith('/')) {
+          return;
+        }
+
+        console.log(`📨 Получено сообщение в чате ${msg.chat.id}: ${msg.text?.substring(0, 50)}...`);
+        console.log(`📨 reply_to_message:`, msg.reply_to_message);
 
         const context = this.replyContext.get(msg.chat.id);
+        console.log(`📨 Активный контекст для чата ${msg.chat.id}:`, context);
 
         if (context && msg.text) {
+          console.log(`✅ Найден активный контекст! Обрабатываем как ответ техподдержки...`);
           await this.handleSupportReply(msg);
         } else if (msg.reply_to_message && msg.text) {
+          console.log(`📨 Это ответ на сообщение ${msg.reply_to_message.message_id}`);
+          console.log(`📨 Отправитель ответа:`, msg.reply_to_message.from);
           await this.handleSupportReply(msg);
         } else {
+          console.log(`❌ Нет активного контекста и не ответ на сообщение`);
+
           if (msg.chat.id.toString() === this.ownerId && msg.text) {
+            console.log(`ℹ️ Сообщение от владельца без контекста: ${msg.text}`);
             if (this.bot) {
               await this.bot.sendMessage(msg.chat.id,
-                'ℹ️ Чтобы ответить клиенту, нажмите кнопку "↩️ Ответить" под уведомлением.'
+                'ℹ️ Чтобы ответить клиенту, сначала нажмите кнопку "Ответить" под уведомлением о сообщении.'
               );
             }
           }
@@ -6033,12 +6110,14 @@ class TelegramBotService {
     });
 
     this.bot.on('polling_error', (error: Error) => {
-      if (error.message.includes('ESOCKETTIMEDOUT') || error.message.includes('ETIMEDOUT')) return;
+      if (error.message.includes('ESOCKETTIMEDOUT') || error.message.includes('ETIMEDOUT')) {
+        return;
+      }
       console.error('❌ Ошибка Telegram polling:', error);
     });
   }
 
-  // ==================== REPLY / SUPPORT ====================
+  // ==================== ОБРАБОТКА REPLY / SUPPORT ====================
 
   private async handleReplyCallback(callbackQuery: TelegramCallbackQuery): Promise<void> {
     try {
@@ -6047,6 +6126,8 @@ class TelegramBotService {
       const messageId = callbackQuery.message?.message_id;
 
       if (!data || !chatId || !messageId) return;
+
+      console.log(`📨 Callback получен: ${data}`);
 
       if (data.startsWith('reply_')) {
         await this.handleReplyCallbackData(data, chatId, messageId);
@@ -6062,37 +6143,61 @@ class TelegramBotService {
 
   private async handleReplyCallbackData(data: string, chatId: number, messageId: number): Promise<void> {
     const parts = data.split('_');
-    if (parts.length !== 2 || parts[0] !== 'reply') return;
+    if (parts.length !== 2 || parts[0] !== 'reply') {
+      console.error('❌ Неверный формат callback_data:', data);
+      return;
+    }
 
     const contextId = parts[1];
-    if (!contextId) return;
-
+    if (!contextId) {
+      console.error('❌ contextId не определен');
+      return;
+    }
     const context = this.messageContexts.get(contextId);
 
     if (!context) {
+      console.error('❌ Контекст не найден для ID:', contextId);
+      console.error('❌ Все доступные контексты:', Array.from(this.messageContexts.entries()));
       if (this.bot) {
-        await this.bot.sendMessage(chatId, '❌ Контекст сообщения устарел или не найден.', { parse_mode: 'HTML' });
+        await this.bot.sendMessage(chatId, '❌ Контекст сообщения устарел или не найден.', {
+          parse_mode: 'HTML'
+        });
       }
       return;
     }
 
     const { domain, userAddress, isTestnet } = context;
 
-    this.replyContext.set(chatId, { domain, userAddress, isTestnet });
+    console.log(`💬 Обработка ответа для: ${domain} - ${userAddress} (${isTestnet ? 'testnet' : 'mainnet'})`);
+    console.log(`💬 Сохраняем контекст для чата ${chatId}:`, context);
+
+    this.replyContext.set(chatId, {
+      domain,
+      userAddress,
+      isTestnet
+    });
+
+    console.log(`💬 Контекст сохранен. Все контексты:`, Array.from(this.replyContext.entries()));
 
     if (this.replyContextTimeouts.has(chatId)) {
       clearTimeout(this.replyContextTimeouts.get(chatId)!);
     }
 
     const timeout = setTimeout(() => {
+      console.log(`⏰ Таймаут контекста для чата ${chatId}`);
       this.replyContext.delete(chatId);
       this.replyContextTimeouts.delete(chatId);
+
       if (this.bot) {
-        this.bot.sendMessage(chatId, '⏰ Контекст ответа истек. Нажмите кнопку "↩️ Ответить" заново.');
+        this.bot.sendMessage(chatId,
+          '⏰ Контекст ответа истек. Чтобы ответить клиенту, нажмите кнопку "Ответить" заново.'
+        );
       }
     }, 10 * 60 * 1000);
 
     this.replyContextTimeouts.set(chatId, timeout);
+
+    console.log(`💬 Контекст сохранен с таймаутом 10 минут. Все контексты:`, Array.from(this.replyContext.entries()));
 
     const instruction = `
 ✍️ <b>ОТВЕТИТЬ КЛИЕНТУ</b>
@@ -6101,8 +6206,9 @@ class TelegramBotService {
 👤 Адрес: <code>${userAddress}</code>
 🌐 Сеть: ${isTestnet ? 'Testnet' : 'Mainnet'}
 
-📝 <b>Напишите ответ ниже:</b>
-    `.trim();
+📝 <b>Напишите ответ ниже этим сообщением:</b>
+(Просто ответьте на это сообщение текстом)
+  `.trim();
 
     if (this.bot) {
       await this.bot.sendMessage(chatId, instruction, {
@@ -6117,13 +6223,29 @@ class TelegramBotService {
       const chatId = msg.chat.id;
       const replyText = msg.text;
 
-      if (!replyText) return;
+      console.log(`📤 Получен ответ от оператора в чате ${chatId}: ${replyText}`);
+      console.log(`📤 Контекст для чата ${chatId}:`, this.replyContext.get(chatId));
+
+      if (!replyText) {
+        console.log('❌ Сообщение не содержит текста');
+        if (this.bot) {
+          await this.bot.sendMessage(chatId, '❌ Сообщение не содержит текста');
+        }
+        return;
+      }
 
       const context = this.replyContext.get(chatId);
       if (!context) {
+        console.log('❌ Контекст ответа не найден для чата:', chatId);
+        console.log('❌ Все контексты:', Array.from(this.replyContext.entries()));
+
+        if (msg.reply_to_message && msg.reply_to_message.text) {
+          console.log('ℹ️ Пытаемся извлечь контекст из reply_to_message...');
+        }
+
         if (this.bot) {
           await this.bot.sendMessage(chatId,
-            '❌ Контекст ответа не найден. Используйте кнопку "↩️ Ответить" под уведомлением.'
+            '❌ Контекст ответа не найден. Используйте кнопку "Ответить" под уведомлением о сообщении.'
           );
         }
         return;
@@ -6131,29 +6253,39 @@ class TelegramBotService {
 
       const { domain, userAddress, isTestnet } = context;
 
+      console.log(`📤 Отправка ответа техподдержки: ${domain} - ${userAddress} (${isTestnet ? 'testnet' : 'mainnet'})`);
+
       const success = await this.saveOperatorReplyToDatabase(domain, userAddress, replyText, isTestnet);
 
       if (success) {
+        console.log(`✅ Ответ оператора сохранен в БД для ${domain}`);
+
         if (this.bot) {
           await this.bot.sendMessage(chatId, `
-✅ <b>ОТВЕТ ОТПРАВЛЕН КЛИЕНТУ</b>
+✅ <b>ОТВЕТ ОТПРАВЛЕН КЛИЕНТУ И СОХРАНЕН В БАЗУ</b>
 
 🌐 Домен: <code>${domain}</code>
 👤 Адрес: <code>${userAddress}</code>
 🌐 Сеть: ${isTestnet ? 'Testnet' : 'Mainnet'}
 
-💬 ${replyText}
+💬 Ваш ответ:
+${replyText}
 
-⏰ ${new Date().toLocaleString('ru-RU')}
-          `.trim(), { parse_mode: 'HTML' });
+⏰ Сохранено: ${new Date().toLocaleString('ru-RU')}
+        `.trim(), { parse_mode: 'HTML' });
         }
 
         this.replyContext.delete(chatId);
+
         if (this.replyContextTimeouts.has(chatId)) {
           clearTimeout(this.replyContextTimeouts.get(chatId)!);
           this.replyContextTimeouts.delete(chatId);
         }
+
+        console.log(`✅ Контекст и таймаут удалены для чата ${chatId}`);
+        console.log(`✅ Ответ оператора сохранен в базу (${isTestnet ? 'testnet' : 'mainnet'}): ${domain} - ${userAddress}`);
       } else {
+        console.log('❌ Ошибка при сохранении ответа в базу данных');
         if (this.bot) {
           await this.bot.sendMessage(chatId, '❌ Ошибка при сохранении ответа в базу данных');
         }
@@ -6167,6 +6299,8 @@ class TelegramBotService {
     }
   }
 
+  // ==================== РАБОТА С БД (ЧАТЫ) ====================
+
   private async saveOperatorReplyToDatabase(
     domain: string,
     userAddress: string,
@@ -6174,21 +6308,38 @@ class TelegramBotService {
     isTestnet: boolean
   ): Promise<boolean> {
     try {
+      console.log(`💾 Попытка сохранения ответа оператора в БД: ${domain}, ${userAddress}, ${isTestnet ? 'testnet' : 'mainnet'}`);
+
       const db = this.getDatabase(isTestnet);
 
       let chat = db.prepare('SELECT * FROM chats WHERE domain = ? AND userAddress = ?').get(domain, userAddress) as any;
 
+      console.log(`💾 Найден чат:`, chat);
+
       if (!chat) {
-        const stmt = db.prepare(`INSERT INTO chats (domain, userAddress) VALUES (?, ?) RETURNING *`);
+        console.log(`💾 Чат не найден, создаем новый для ${domain} - ${userAddress}`);
+        const stmt = db.prepare(`
+          INSERT INTO chats (domain, userAddress)
+          VALUES (?, ?)
+          RETURNING *
+        `);
+
         chat = stmt.get(domain, userAddress);
+        console.log(`💾 Создан новый чат:`, chat);
       }
 
       const messageId = Math.random().toString(36).substring(2, 15);
-      db.prepare('INSERT INTO messages (id, chatId, sender, text) VALUES (?, ?, ?, ?)')
+      console.log(`💾 Добавляем сообщение оператора с ID: ${messageId}`);
+
+      const result = db.prepare('INSERT INTO messages (id, chatId, sender, text) VALUES (?, ?, ?, ?)')
         .run(messageId, chat.id, 'operator', replyText);
 
-      db.prepare('UPDATE chats SET updatedAt = CURRENT_TIMESTAMP WHERE id = ?').run(chat.id);
+      console.log(`💾 Результат вставки сообщения:`, result);
 
+      db.prepare('UPDATE chats SET updatedAt = CURRENT_TIMESTAMP WHERE id = ?')
+        .run(chat.id);
+
+      console.log(`✅ Ответ оператора сохранен в БД для чата ${domain} (${isTestnet ? 'testnet' : 'mainnet'})`);
       return true;
     } catch (error) {
       console.error('❌ Ошибка при сохранении ответа оператора в БД:', error);
@@ -6196,22 +6347,32 @@ class TelegramBotService {
     }
   }
 
-  // ==================== УВЕДОМЛЕНИЯ ВЛАДЕЛЬЦУ ====================
+  // ==================== УВЕДОМЛЕНИЯ ДЛЯ ВЛАДЕЛЬЦА ====================
 
   async sendNewMessageNotification(domain: string, userAddress: string, messageText: string, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
 
     try {
       const network = this.formatNetwork(isTestnet);
+
       const messageId = this.generateMessageId(domain, userAddress);
 
-      this.messageContexts.set(messageId, { domain, userAddress, isTestnet });
+      this.messageContexts.set(messageId, {
+        domain,
+        userAddress,
+        isTestnet
+      });
 
       if (this.messageContexts.size > 100) {
         const keys = Array.from(this.messageContexts.keys());
         for (let i = 0; i < 50; i++) {
           const key = keys[i];
-          if (key) this.messageContexts.delete(key);
+          if (key) {
+            this.messageContexts.delete(key);
+          }
         }
       }
 
@@ -6227,7 +6388,12 @@ ${messageText.substring(0, 500)}${messageText.length > 500 ? '...' : ''}
       `.trim();
 
       const inlineKeyboard = [
-        [{ text: '↩️ Ответить', callback_data: `reply_${messageId}` }]
+        [
+          {
+            text: '↩️ Ответить',
+            callback_data: `reply_${messageId}`
+          }
+        ]
       ];
 
       await this.bot!.sendMessage(this.ownerId, message, {
@@ -6235,19 +6401,28 @@ ${messageText.substring(0, 500)}${messageText.length > 500 ? '...' : ''}
         reply_markup: { inline_keyboard: inlineKeyboard }
       });
 
-      console.log(`✅ Уведомление о сообщении (${isTestnet ? 'testnet' : 'mainnet'})`);
+      console.log(`✅ Уведомление о сообщении отправлено в Telegram (${isTestnet ? 'testnet' : 'mainnet'})`);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления в Telegram:', error);
     }
   }
 
   async sendNewChatNotification(domain: string, userAddress: string, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
 
     try {
       const network = this.formatNetwork(isTestnet);
+
       const chatIdHash = this.generateMessageId(domain, userAddress);
-      this.messageContexts.set(`chat_${chatIdHash}`, { domain, userAddress, isTestnet });
+
+      this.messageContexts.set(`chat_${chatIdHash}`, {
+        domain,
+        userAddress,
+        isTestnet
+      });
 
       const message = `
 🔔 <b>НОВЫЙ ЧАТ!</b>
@@ -6260,7 +6435,12 @@ ${network}
       `.trim();
 
       const inlineKeyboard = [
-        [{ text: '↩️ Ответить', callback_data: `reply_${chatIdHash}` }]
+        [
+          {
+            text: '↩️ Ответить',
+            callback_data: `reply_${chatIdHash}`
+          }
+        ]
       ];
 
       await this.bot!.sendMessage(this.ownerId, message, {
@@ -6268,19 +6448,19 @@ ${network}
         reply_markup: { inline_keyboard: inlineKeyboard }
       });
 
-      console.log(`✅ Уведомление о чате (${isTestnet ? 'testnet' : 'mainnet'})`);
+      console.log(`✅ Уведомление о новом чате отправлено в Telegram (${isTestnet ? 'testnet' : 'mainnet'})`);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления в Telegram:', error);
     }
   }
 
-  // ==================== ГРУППОВАЯ РАССЫЛКА ====================
+  // ==================== ОТПРАВКА В ГРУППУ (ВСЕМ PUBLIC-ПОДПИСЧИКАМ) ====================
 
   private async sendGroupNotification(message: string, inlineKeyboard?: any, photoUrl?: string): Promise<boolean> {
     const publicSubs = this.subscriptions.filter(s => s.subscriptionType === 'public' && s.isActive);
 
     if (publicSubs.length === 0) {
-      console.warn('⚠️ Нет активных public-подписчиков');
+      console.warn('⚠️ Нет активных public-подписок. Пропускаем отправку.');
       return false;
     }
 
@@ -6291,7 +6471,9 @@ ${network}
           await this.sendPhotoWithCaption(sub.chatId, photoUrl, message, inlineKeyboard);
         } else {
           const options: any = { parse_mode: 'HTML' };
-          if (inlineKeyboard) options.reply_markup = { inline_keyboard: inlineKeyboard };
+          if (inlineKeyboard) {
+            options.reply_markup = { inline_keyboard: inlineKeyboard };
+          }
           await this.bot!.sendMessage(sub.chatId, message, options);
         }
         sent = true;
@@ -6302,12 +6484,13 @@ ${network}
     return sent;
   }
 
-  // ==================== PUBLIC: PROXY ЗОНА ====================
+  // ==================== PUBLIC УВЕДОМЛЕНИЯ (С ТОНВЬЮВЕРОМ И КАРТИНКАМИ) ====================
 
+  // --- PROXY ЗОНА ---
   async sendPublicProxyZoneCreatedNotification(name: string, address: string, owner: string, price: number, isTestnet: boolean = true): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
-      const tonviewerBase = this.getTonviewerBaseUrl(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
 
       const message = `
 🌐 <b>НОВАЯ PROXY ЗОНА СОЗДАНА!</b>
@@ -6324,8 +6507,18 @@ ${network}
       `.trim();
 
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(name, '');
-      const inlineKeyboard = [[{ text: '🔗 Создать субдомен', url: miniAppLink }]];
-      const photoUrl = this.getNotificationImageUrl(name, true); // proxy=1, зона
+      console.log(`Сгенерирована ссылка для перехода в miniapp для proxy-зоны: ${miniAppLink}`);
+
+      const inlineKeyboard = [
+        [
+          {
+            text: '🔗 Создать субдомен',
+            url: miniAppLink
+          }
+        ]
+      ];
+
+      const photoUrl = this.getNotificationImageUrl(name, true);
 
       return await this.sendGroupNotification(message, inlineKeyboard, photoUrl);
     } catch (error) {
@@ -6333,13 +6526,11 @@ ${network}
       return false;
     }
   }
-
-  // ==================== PUBLIC: BUNDLE DEPLOYED ====================
-
+  // --- BUNDLE DEPLOYED ---
   async sendPublicBundleDeployedNotification(domain: string, address: string, bundleAddress: string, isTestnet: boolean = true): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
-      const tonviewerBase = this.getTonviewerBaseUrl(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
 
       const message = `
 📦 <b>Создание PROXY-зоны завершено!</b>
@@ -6354,8 +6545,18 @@ ${network}
       `.trim();
 
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(domain, '');
-      const inlineKeyboard = [[{ text: '🔗 Создать субдомен', url: miniAppLink }]];
-      const photoUrl = this.getNotificationImageUrl(domain, true); // proxy=1, зона
+      console.log(`Сгенерирована ссылка для перехода в miniapp для proxy-зоны: ${miniAppLink}`);
+
+      const inlineKeyboard = [
+        [
+          {
+            text: '🔗 Создать субдомен',
+            url: miniAppLink
+          }
+        ]
+      ];
+
+      const photoUrl = this.getNotificationImageUrl(domain, true);
 
       return await this.sendGroupNotification(message, inlineKeyboard, photoUrl);
     } catch (error) {
@@ -6364,13 +6565,12 @@ ${network}
     }
   }
 
-  // ==================== PUBLIC: SBT ЗОНА ====================
-
+  // --- SBT ЗОНА ---
   async sendPublicSBTZoneCreatedNotification(name: string, address: string, owner: string, price: number, bundleAddress: string, currentID: number, isTestnet: boolean = true): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
-      const tonviewerBase = this.getTonviewerBaseUrl(isTestnet);
-      const [, zoneName] = DeeplinkUtils.formatDomainForUrl(name);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
+      const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(name);
 
       const message = `
 🔒 <b>НОВАЯ SBT ЗОНА СОЗДАНА!</b>
@@ -6386,9 +6586,19 @@ ${network}
 Это <code>${currentID + 1}</code> по счету зона на этом домене.
       `.trim();
 
-      const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string);
-      const inlineKeyboard = [[{ text: '🔗 Создать субдомен', url: miniAppLink }]];
-      const photoUrl = this.getNotificationImageUrl(name, false); // proxy=0, зона
+      const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
+      console.log(`Сгенерирована ссылка для перехода в miniapp для SBT-зоны: ${miniAppLink}`);
+
+      const inlineKeyboard = [
+        [
+          {
+            text: '💰 Сделать ставку',
+            url: miniAppLink
+          }
+        ]
+      ];
+
+      const photoUrl = this.getNotificationImageUrl(name, false); // SBT-зона: /api/v1/sbt-subdomain/metadata/ton/{name}.png
 
       return await this.sendGroupNotification(message, inlineKeyboard, photoUrl);
     } catch (error) {
@@ -6397,39 +6607,43 @@ ${network}
     }
   }
 
-  // ==================== ZONE STATUS CHANGED (владелец) ====================
-
+  // --- ZONE STATUS CHANGED (только владельцу) ---
   async sendZoneStatusChangedNotification(name: string, address: string, status: string, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
 
     try {
       const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
 
       const message = `
 🔒 <b>SBT ЗОНА ПРЕКРАТИЛА АКТИВНОСТЬ!</b>
 
 ${network}
 🏷️ Название: <code>${name}</code>
-📍 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
+📍 Адрес: <a href="${tonviewerBase}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>
 🎫 Статус изменён на: <code>${status}</code>
 
-⏰ Время завершения: ${new Date().toLocaleString('ru-RU')}
+⏰ Время завершения работы: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
+      await this.bot!.sendMessage(this.ownerId, message, {
+        parse_mode: 'HTML'
+      });
 
-      console.log(`✅ Уведомление о статусе зоны (${isTestnet ? 'testnet' : 'mainnet'})`);
+      console.log(`✅ Уведомление о SBT зоне отправлено в Telegram (${isTestnet ? 'testnet' : 'mainnet'})`);
     } catch (error) {
-      console.error('❌ Ошибка при отправке уведомления о статусе зоны:', error);
+      console.error('❌ Ошибка при отправке уведомления о SBT зоне:', error);
     }
   }
 
-  // ==================== PUBLIC: АУКЦИОН ====================
-
+  // --- АУКЦИОН ---
   async sendPublicAuctionStartedNotification(domain: string, address: string, price: number, isTestnet: boolean = true): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
-      const tonviewerBase = this.getTonviewerBaseUrl(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
       const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(domain);
 
       const message = `
@@ -6448,8 +6662,18 @@ ${network}
       `.trim();
 
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
-      const inlineKeyboard = [[{ text: '💰 Сделать ставку', url: miniAppLink }]];
-      const photoUrl = this.getNotificationImageUrl(domain, true); // proxy=1, субдомен
+      console.log(`Сгенерирована ссылка для перехода в miniapp для аукциона на proxy-субдомен: ${miniAppLink}`);
+
+      const inlineKeyboard = [
+        [
+          {
+            text: '💰 Сделать ставку',
+            url: miniAppLink
+          }
+        ]
+      ];
+
+      const photoUrl = this.getNotificationImageUrl(domain, true); // Proxy-субдомен
 
       return await this.sendGroupNotification(message, inlineKeyboard, photoUrl);
     } catch (error) {
@@ -6458,14 +6682,13 @@ ${network}
     }
   }
 
-  // ==================== PUBLIC: НОВАЯ СТАВКА ====================
-
+  // --- НОВАЯ СТАВКА ---
   async sendPublicNewBidNotification(domain: string, bidder: string, amount: number, previousBidder: string, isTestnet: boolean = true): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
-      const tonviewerBase = this.getTonviewerBaseUrl(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
       const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(domain);
-      const previousInfo = previousBidder
+      const previousBidderInfo = previousBidder
         ? `\n👤 Предыдущий ставщик: <a href="${tonviewerBase}/${previousBidder}">${previousBidder.slice(0, 6)}...${previousBidder.slice(-4)}</a>`
         : '';
 
@@ -6475,15 +6698,25 @@ ${network}
 ${network}
 🌐 Домен: <code>${domain}</code>
 👤 Ставщик: <a href="${tonviewerBase}/${bidder}">${bidder.slice(0, 6)}...${bidder.slice(-4)}</a>
-💵 Сумма: ${amount} TON${previousInfo}
+💵 Сумма: ${amount} TON${previousBidderInfo}
 🎯 Тип: Proxy аукцион
 
 ⏰ Время ставки: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
-      const inlineKeyboard = [[{ text: '💰 Сделать ставку', url: miniAppLink }]];
-      const photoUrl = this.getNotificationImageUrl(domain, true); // proxy=1, субдомен
+      console.log(`Сгенерирована ссылка для перехода в miniapp для аукциона на proxy-субдомен: ${miniAppLink}`);
+
+      const inlineKeyboard = [
+        [
+          {
+            text: '💰 Сделать ставку',
+            url: miniAppLink
+          }
+        ]
+      ];
+
+      const photoUrl = this.getNotificationImageUrl(domain, true);
 
       return await this.sendGroupNotification(message, inlineKeyboard, photoUrl);
     } catch (error) {
@@ -6492,12 +6725,11 @@ ${network}
     }
   }
 
-  // ==================== PUBLIC: SBT СУБДОМЕН СМИНЧЕН ====================
-
+  // --- SBT СУБДОМЕН СМИНЧЕН ---
   async sendPublicSBTSubdomainMintedNotification(domain: string, address: string, owner: string, price: number, isTestnet: boolean = true): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
-      const tonviewerBase = this.getTonviewerBaseUrl(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
 
       const message = `
 🎫 <b>НОВЫЙ SBT СУБДОМЕН СМИНЧЕН!</b>
@@ -6513,7 +6745,7 @@ ${network}
 🎊 Поздравляем нового владельца!
       `.trim();
 
-      const photoUrl = this.getNotificationImageUrl(domain, false); // proxy=0, субдомен
+      const photoUrl = this.getNotificationImageUrl(domain, false); // SBT-субдомен
 
       return await this.sendGroupNotification(message, undefined, photoUrl);
     } catch (error) {
@@ -6522,12 +6754,11 @@ ${network}
     }
   }
 
-  // ==================== PUBLIC: АУКЦИОН ЗАВЕРШЕН ====================
-
+  // --- АУКЦИОН ЗАВЕРШЕН ---
   async sendPublicAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
-      const tonviewerBase = this.getTonviewerBaseUrl(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
 
       const message = `
 🎉 <b>АУКЦИОН ЗАВЕРШЕН!</b>
@@ -6543,8 +6774,18 @@ ${network}
       `.trim();
 
       const miniAppLink = DeeplinkUtils.generateMarketLink();
-      const inlineKeyboard = [[{ text: '💰 Посмотреть в маркете', url: miniAppLink }]];
-      const photoUrl = this.getNotificationImageUrl(domain, true); // proxy=1, субдомен
+      console.log(`Сгенерирована ссылка для перехода в miniapp для маркета: ${miniAppLink}`);
+
+      const inlineKeyboard = [
+        [
+          {
+            text: '💰 Посмотреть в маркете',
+            url: miniAppLink
+          }
+        ]
+      ];
+
+      const photoUrl = this.getNotificationImageUrl(domain, true);
 
       return await this.sendGroupNotification(message, inlineKeyboard, photoUrl);
     } catch (error) {
@@ -6553,17 +6794,17 @@ ${network}
     }
   }
 
-  // ==================== PUBLIC: НОВЫЙ ПОЛЬЗОВАТЕЛЬ ====================
-
+  // --- НОВЫЙ ПОЛЬЗОВАТЕЛЬ ---
   async sendPublicNewUserNotification(address: string, isTestnet: boolean = true): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
 
       const message = `
 👤 <b>НОВЫЙ ПОЛЬЗОВАТЕЛЬ ЗАРЕГИСТРИРОВАН!</b>
 
 ${network}
-📍 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
+📍 Адрес: <a href="${tonviewerBase}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>
 
 ⏰ Время регистрации: ${new Date().toLocaleString('ru-RU')}
       `.trim();
@@ -6575,30 +6816,45 @@ ${network}
     }
   }
 
-  // ==================== СОВМЕСТИМОСТЬ (владелец + группа) ====================
+  // ==================== СТАРЫЕ МЕТОДЫ (ВЛАДЕЛЕЦ + ГРУППА) ====================
 
   async sendProxyZoneCreatedNotification(name: string, address: string, owner: string, price: number, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
 
     try {
       const network = this.formatNetwork(isTestnet);
-      const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(name, '');
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
 
       const message = `
 🌐 <b>НОВАЯ PROXY ЗОНА СОЗДАНА!</b>
 
 ${network}
 🏷️ Название: <code>${name}</code>
-📍 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
-👤 Владелец: ${this.formatTonviewerLink(owner, isTestnet)}
+📍 Адрес: <a href="${tonviewerBase}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>
+👤 Владелец: <a href="${tonviewerBase}/${owner}">${owner.slice(0, 6)}...${owner.slice(-4)}</a>
 💰 Цена: ${price} TON
 🛡️ Тип: Proxy (для продажи)
 
+
 ⏰ Время создания: ${new Date().toLocaleString('ru-RU')}
+
 💡 Теперь можно создавать субдомены в этой Proxy-зоне!
       `.trim();
 
-      const inlineKeyboard = [[{ text: '🔗 Создать субдомен', url: miniAppLink }]];
+      const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(name, '');
+      console.log(`Сгенерирована ссылка для перехода в miniapp для proxy-зоны: ${miniAppLink}`);
+
+      const inlineKeyboard = [
+        [
+          {
+            text: '🔗 Создать субдомен',
+            url: miniAppLink
+          }
+        ]
+      ];
 
       await this.bot!.sendMessage(this.ownerId, message, {
         parse_mode: 'HTML',
@@ -6612,35 +6868,47 @@ ${network}
   }
 
   async sendSBTZoneCreatedNotification(name: string, address: string, owner: string, price: number, bundleAddress: string, currentID: number, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
 
     try {
       const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
+      const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(name);
 
       const message = `
 🔒 <b>НОВАЯ SBT ЗОНА СОЗДАНА!</b>
 
 ${network}
 🏷️ Название: <code>${name}</code>
-📍 Адрес домена: ${this.formatTonviewerLink(address, isTestnet)}
-👤 Владелец: ${this.formatTonviewerLink(owner, isTestnet)}
+📍 Адрес домена: <a href="${tonviewerBase}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>
+👤 Владелец: <a href="${tonviewerBase}/${owner}">${owner.slice(0, 6)}...${owner.slice(-4)}</a>
 💰 Цена: ${price} TON
 🎫 Тип: SBT (не для продажи)
-📦 Адрес коллекции: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
+📦 Адрес коллекции: <a href="${tonviewerBase}/${bundleAddress}">${bundleAddress.slice(0, 6)}...${bundleAddress.slice(-4)}</a>
 
 Это <code>${currentID + 1}</code> по счету зона на этом домене.
 
 ⏰ Время создания: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      const inlineKeyboard = [[{ text: '🔗 Создать субдомен', url: 'https://subdom.zone/#/add-subdomain' }]];
+      const inlineKeyboard = [
+        [
+          {
+            text: '🔗 Создать субдомен',
+            url: 'https://subdom.zone/#/add-subdomain'
+          }
+        ]
+      ];
 
       await this.bot!.sendMessage(this.ownerId, message, {
         parse_mode: 'HTML',
         reply_markup: { inline_keyboard: inlineKeyboard }
       });
 
-      console.log(`✅ Уведомление о SBT зоне (${isTestnet ? 'testnet' : 'mainnet'})`);
+      console.log(`✅ Уведомление о SBT зоне отправлено в Telegram (${isTestnet ? 'testnet' : 'mainnet'})`);
 
       await this.sendPublicSBTZoneCreatedNotification(name, address, owner, price, bundleAddress, currentID, isTestnet);
     } catch (error) {
@@ -6649,10 +6917,14 @@ ${network}
   }
 
   async sendAuctionStartedNotification(domain: string, address: string, price: number, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
 
     try {
       const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
       const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(domain);
 
       const message = `
@@ -6660,7 +6932,7 @@ ${network}
 
 ${network}
 🌐 Домен: <code>${domain}</code>
-👤 Владелец: ${this.formatTonviewerLink(address, isTestnet)}
+👤 Владелец: <a href="${tonviewerBase}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>
 💰 Стартовая цена: ${price} TON
 🎯 Тип: Proxy аукцион
 
@@ -6671,14 +6943,22 @@ ${network}
       `.trim();
 
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
-      const inlineKeyboard = [[{ text: '💰 Сделать ставку', url: miniAppLink }]];
+
+      const inlineKeyboard = [
+        [
+          {
+            text: '💰 Сделать ставку',
+            url: miniAppLink,
+          }
+        ]
+      ];
 
       await this.bot!.sendMessage(this.ownerId, message, {
         parse_mode: 'HTML',
         reply_markup: { inline_keyboard: inlineKeyboard }
       });
 
-      console.log(`✅ Уведомление о старте аукциона (${isTestnet ? 'testnet' : 'mainnet'})`);
+      console.log(`✅ Уведомление о старте аукциона отправлено в Telegram (${isTestnet ? 'testnet' : 'mainnet'})`);
 
       await this.sendPublicAuctionStartedNotification(domain, address, price, isTestnet);
     } catch (error) {
@@ -6687,13 +6967,17 @@ ${network}
   }
 
   async sendNewBidNotification(domain: string, bidder: string, amount: number, previousBidder: string, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
 
     try {
       const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
       const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(domain);
-      const previousInfo = previousBidder
-        ? `\n👤 Предыдущий ставщик: ${this.formatTonviewerLink(previousBidder, isTestnet)}`
+      const previousBidderInfo = previousBidder
+        ? `\n👤 Предыдущий ставщик: <a href="${tonviewerBase}/${previousBidder}">${previousBidder.slice(0, 6)}...${previousBidder.slice(-4)}</a>`
         : '';
 
       const message = `
@@ -6701,21 +6985,30 @@ ${network}
 
 ${network}
 🌐 Домен: <code>${domain}</code>
-👤 Ставщик: ${this.formatTonviewerLink(bidder, isTestnet)}
-💵 Сумма: ${amount} TON${previousInfo}
+👤 Ставщик: <a href="${tonviewerBase}/${bidder}">${bidder.slice(0, 6)}...${bidder.slice(-4)}</a>
+💵 Сумма: ${amount} TON${previousBidderInfo}
 
 ⏰ Время ставки: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
-      const inlineKeyboard = [[{ text: '💰 Сделать ставку', url: miniAppLink }]];
+      console.log(`Сгенерирована ссылка для перехода в miniapp для аукциона на proxy-субдомен: ${miniAppLink}`);
+
+      const inlineKeyboard = [
+        [
+          {
+            text: '💰 Сделать ставку',
+            url: miniAppLink
+          }
+        ]
+      ];
 
       await this.bot!.sendMessage(this.ownerId, message, {
         parse_mode: 'HTML',
         reply_markup: { inline_keyboard: inlineKeyboard }
       });
 
-      console.log(`✅ Уведомление о новой ставке (${isTestnet ? 'testnet' : 'mainnet'})`);
+      console.log(`✅ Уведомление о новой ставке отправлено в Telegram (${isTestnet ? 'testnet' : 'mainnet'})`);
 
       await this.sendPublicNewBidNotification(domain, bidder, amount, previousBidder, isTestnet);
     } catch (error) {
@@ -6724,26 +7017,32 @@ ${network}
   }
 
   async sendSBTSubdomainMintedNotification(domain: string, address: string, owner: string, price: number, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
 
     try {
       const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
 
       const message = `
 🎫 <b>НОВЫЙ SBT СУБДОМЕН СМИНЧЕН!</b>
 
 ${network}
 🌐 Домен: <code>${domain}</code>
-📍 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
-👤 Владелец: ${this.formatTonviewerLink(owner, isTestnet)}
+📍 Адрес: <a href="${tonviewerBase}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>
+👤 Владелец: <a href="${tonviewerBase}/${owner}">${owner.slice(0, 6)}...${owner.slice(-4)}</a>
 💰 Цена: ${price} TON
 
 ⏰ Время минта: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
+      await this.bot!.sendMessage(this.ownerId, message, {
+        parse_mode: 'HTML'
+      });
 
-      console.log(`✅ Уведомление о SBT субдомене (${isTestnet ? 'testnet' : 'mainnet'})`);
+      console.log(`✅ Уведомление о SBT субдомене отправлено в Telegram (${isTestnet ? 'testnet' : 'mainnet'})`);
 
       await this.sendPublicSBTSubdomainMintedNotification(domain, address, owner, price, isTestnet);
     } catch (error) {
@@ -6752,31 +7051,44 @@ ${network}
   }
 
   async sendAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
 
     try {
       const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
 
       const message = `
 🎉 <b>АУКЦИОН ЗАВЕРШЕН!</b>
 
 ${network}
 🌐 Домен: <code>${domain}</code>
-👑 Победитель: ${this.formatTonviewerLink(winner, isTestnet)}
+👑 Победитель: <a href="${tonviewerBase}/${winner}">${winner.slice(0, 6)}...${winner.slice(-4)}</a>
 🏆 Финальная цена: ${finalPrice} TON
 
 ⏰ Время завершения: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
       const miniAppLink = DeeplinkUtils.generateMarketLink();
-      const inlineKeyboard = [[{ text: '💰 Посмотреть в маркете', url: miniAppLink }]];
+      console.log(`Сгенерирована ссылка для перехода в miniapp для маркета: ${miniAppLink}`);
+
+      const inlineKeyboard = [
+        [
+          {
+            text: '💰 Посмотреть в маркете',
+            url: miniAppLink
+          }
+        ]
+      ];
 
       await this.bot!.sendMessage(this.ownerId, message, {
         parse_mode: 'HTML',
         reply_markup: { inline_keyboard: inlineKeyboard }
       });
 
-      console.log(`✅ Уведомление о завершении аукциона (${isTestnet ? 'testnet' : 'mainnet'})`);
+      console.log(`✅ Уведомление о завершении аукциона отправлено в Telegram (${isTestnet ? 'testnet' : 'mainnet'})`);
 
       await this.sendPublicAuctionEndedNotification(domain, winner, finalPrice, isTestnet);
     } catch (error) {
@@ -6785,23 +7097,29 @@ ${network}
   }
 
   async sendNewUserNotification(address: string, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
 
     try {
       const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
 
       const message = `
 👤 <b>НОВЫЙ ПОЛЬЗОВАТЕЛЬ ЗАРЕГИСТРИРОВАН!</b>
 
 ${network}
-📍 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
+📍 Адрес: <a href="${tonviewerBase}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>
 
 ⏰ Время регистрации: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
+      await this.bot!.sendMessage(this.ownerId, message, {
+        parse_mode: 'HTML'
+      });
 
-      console.log(`✅ Уведомление о новом пользователе (${isTestnet ? 'testnet' : 'mainnet'})`);
+      console.log(`✅ Уведомление о новом пользователе отправлено в Telegram (${isTestnet ? 'testnet' : 'mainnet'})`);
 
       await this.sendPublicNewUserNotification(address, isTestnet);
     } catch (error) {
@@ -6809,14 +7127,21 @@ ${network}
     }
   }
 
-  // ==================== ЧАТЫ ====================
+  // ==================== МЕТОДЫ ДЛЯ РАБОТЫ С ЧАТАМИ ====================
 
   getChatHistory(domain: string, userAddress: string, isTestnet: boolean = true): any[] {
     try {
       const db = this.getDatabase(isTestnet);
+
       const chat = db.prepare('SELECT * FROM chats WHERE domain = ? AND userAddress = ?').get(domain, userAddress) as any;
-      if (!chat) return [];
-      return db.prepare('SELECT * FROM messages WHERE chatId = ? ORDER BY timestamp ASC').all(chat.id) as any[];
+
+      if (!chat) {
+        return [];
+      }
+
+      const messages = db.prepare('SELECT * FROM messages WHERE chatId = ? ORDER BY timestamp ASC').all(chat.id) as any[];
+
+      return messages;
     } catch (error) {
       console.error('❌ Ошибка при получении истории чата:', error);
       return [];
@@ -6830,7 +7155,12 @@ ${network}
       let chat = db.prepare('SELECT * FROM chats WHERE domain = ? AND userAddress = ?').get(domain, userAddress) as any;
 
       if (!chat) {
-        const stmt = db.prepare(`INSERT INTO chats (domain, userAddress) VALUES (?, ?) RETURNING *`);
+        const stmt = db.prepare(`
+          INSERT INTO chats (domain, userAddress)
+          VALUES (?, ?)
+          RETURNING *
+        `);
+
         chat = stmt.get(domain, userAddress);
       }
 
@@ -6838,9 +7168,10 @@ ${network}
       db.prepare('INSERT INTO messages (id, chatId, sender, text) VALUES (?, ?, ?, ?)')
         .run(messageId, chat.id, 'user', messageText);
 
-      db.prepare('UPDATE chats SET updatedAt = CURRENT_TIMESTAMP WHERE id = ?').run(chat.id);
+      db.prepare('UPDATE chats SET updatedAt = CURRENT_TIMESTAMP WHERE id = ?')
+        .run(chat.id);
 
-      console.log(`✅ Сообщение пользователя сохранено (${isTestnet ? 'testnet' : 'mainnet'})`);
+      console.log(`✅ Сообщение пользователя сохранено в БД для чата ${domain} (${isTestnet ? 'testnet' : 'mainnet'})`);
       return true;
     } catch (error) {
       console.error('❌ Ошибка при сохранении сообщения пользователя в БД:', error);
@@ -6852,7 +7183,7 @@ ${network}
     try {
       const db = this.getDatabase(isTestnet);
 
-      return db.prepare(`
+      const chats = db.prepare(`
         SELECT c.*,
                (SELECT COUNT(*) FROM messages m WHERE m.chatId = c.id) as messageCount,
                (SELECT MAX(timestamp) FROM messages m WHERE m.chatId = c.id) as lastMessageTime
@@ -6860,6 +7191,8 @@ ${network}
         WHERE c.status = 'active'
         ORDER BY c.updatedAt DESC
       `).all() as any[];
+
+      return chats;
     } catch (error) {
       console.error('❌ Ошибка при получении активных чатов:', error);
       return [];
@@ -6869,20 +7202,219 @@ ${network}
   closeChat(domain: string, userAddress: string, isTestnet: boolean = true): boolean {
     try {
       const db = this.getDatabase(isTestnet);
-      const result = db.prepare(
-        'UPDATE chats SET status = "closed", updatedAt = CURRENT_TIMESTAMP WHERE domain = ? AND userAddress = ?'
-      ).run(domain, userAddress);
-      return result.changes > 0;
+
+      const result = db.prepare('UPDATE chats SET status = "closed", updatedAt = CURRENT_TIMESTAMP WHERE domain = ? AND userAddress = ?')
+        .run(domain, userAddress);
+
+      if (result.changes > 0) {
+        console.log(`✅ Чат ${domain} - ${userAddress} закрыт (${isTestnet ? 'testnet' : 'mainnet'})`);
+        return true;
+      }
+
+      return false;
     } catch (error) {
       console.error('❌ Ошибка при закрытии чата:', error);
       return false;
     }
   }
 
+  // ==================== УВЕДОМЛЕНИЯ О ПЛАТЕЖАХ ====================
+
+  async sendPaymentRecordedNotification(
+    address: string,
+    zoneType: string,
+    length: number,
+    isTestnet: boolean = true
+  ): Promise<void> {
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
+
+    try {
+      const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
+      const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
+      const formattedLength = length === 9 ? '9+' : String(length);
+
+      const message = `
+💰 <b>ОПЛАЧЕННАЯ ПОПЫТКА ДОБАВЛЕНА!</b>
+
+${network}
+👤 Адрес: <a href="${tonviewerBase}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>
+🏷️ Тип зоны: ${zoneTypeText}
+📏 Длина: ${formattedLength} символов
+
+⏰ Время: ${new Date().toLocaleString('ru-RU')}
+
+💡 Пользователь оплатил создание ${zoneTypeText.toLowerCase()}-зоны длиной ${formattedLength} символов.
+Теперь он может создать зону без повторной оплаты.
+    `.trim();
+
+      await this.bot!.sendMessage(this.ownerId, message, {
+        parse_mode: 'HTML'
+      });
+
+      console.log(`✅ Уведомление об оплаченной попытке отправлено владельцу (${isTestnet ? 'testnet' : 'mainnet'})`);
+
+      await this.sendPublicPaymentRecordedNotification(address, zoneType, length, isTestnet);
+    } catch (error) {
+      console.error('❌ Ошибка при отправке уведомления об оплаченной попытке:', error);
+    }
+  }
+
+  async sendPublicPaymentRecordedNotification(
+    address: string,
+    zoneType: string,
+    length: number,
+    isTestnet: boolean = true
+  ): Promise<boolean> {
+    try {
+      const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
+      const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
+      const formattedLength = length === 9 ? '9+' : String(length);
+
+      const message = `
+💰 <b>НОВАЯ ОПЛАЧЕННАЯ ПОПЫТКА!</b>
+
+${network}
+👤 Адрес: <a href="${tonviewerBase}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>
+🏷️ Тип зоны: ${zoneTypeText}
+📏 Длина: ${formattedLength} символов
+
+⏰ Время: ${new Date().toLocaleString('ru-RU')}
+
+🎯 Пользователь оплатил создание ${zoneTypeText.toLowerCase()}-зоны!
+    `.trim();
+
+      return await this.sendGroupNotification(message);
+    } catch (error) {
+      console.error('❌ Ошибка при отправке публичного уведомления об оплаченной попытке:', error);
+      return false;
+    }
+  }
+
+  async sendPaymentConsumedNotification(
+    address: string,
+    zoneType: string,
+    length: number,
+    isTestnet: boolean = true
+  ): Promise<void> {
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
+
+    try {
+      const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
+      const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
+      const formattedLength = length === 9 ? '9+' : String(length);
+
+      const message = `
+💸 <b>ОПЛАЧЕННАЯ ПОПЫТКА ИСПОЛЬЗОВАНА!</b>
+
+${network}
+👤 Адрес: <a href="${tonviewerBase}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>
+🏷️ Тип зоны: ${zoneTypeText}
+📏 Длина: ${formattedLength} символов
+
+⏰ Время: ${new Date().toLocaleString('ru-RU')}
+
+✅ Пользователь использовал оплаченную попытку для создания ${zoneTypeText.toLowerCase()}-зоны.
+    `.trim();
+
+      await this.bot!.sendMessage(this.ownerId, message, {
+        parse_mode: 'HTML'
+      });
+
+      console.log(`✅ Уведомление об использовании оплаченной попытки отправлено владельцу (${isTestnet ? 'testnet' : 'mainnet'})`);
+
+      await this.sendPublicPaymentConsumedNotification(address, zoneType, length, isTestnet);
+    } catch (error) {
+      console.error('❌ Ошибка при отправке уведомления об использовании оплаченной попытки:', error);
+    }
+  }
+
+  async sendPublicPaymentConsumedNotification(
+    address: string,
+    zoneType: string,
+    length: number,
+    isTestnet: boolean = true
+  ): Promise<boolean> {
+    try {
+      const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
+      const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
+
+      const message = `
+💸 <b>ОПЛАЧЕННАЯ ПОПЫТКА ИСПОЛЬЗОВАНА!</b>
+
+${network}
+👤 Адрес: <a href="${tonviewerBase}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>
+🏷️ Тип зоны: ${zoneTypeText}
+📏 Длина: ${length} символов
+
+⏰ Время: ${new Date().toLocaleString('ru-RU')}
+
+✅ Пользователь создал ${zoneTypeText.toLowerCase()}-зону используя оплаченную попытку!
+    `.trim();
+
+      return await this.sendGroupNotification(message);
+    } catch (error) {
+      console.error('❌ Ошибка при отправке публичного уведомления об использовании оплаченной попытки:', error);
+      return false;
+    }
+  }
+
+  async sendPaymentErrorNotification(
+    address: string,
+    zoneType: string,
+    length: number,
+    errorMessage: string,
+    isTestnet: boolean = true
+  ): Promise<void> {
+    if (!this.isBotAvailable()) {
+      console.warn('⚠️ Telegram не настроен. Пропускаем отправку уведомления.');
+      return;
+    }
+
+    try {
+      const network = this.formatNetwork(isTestnet);
+      const tonviewerBase = this.getTonviewerUrl(isTestnet);
+      const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
+
+      const message = `
+❌ <b>ОШИБКА ПРИ ОПЛАТЕ ПОПЫТКИ!</b>
+
+${network}
+👤 Адрес: <a href="${tonviewerBase}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>
+🏷️ Тип зоны: ${zoneTypeText}
+📏 Длина: ${length} символов
+
+⚠️ Ошибка: ${errorMessage}
+
+⏰ Время: ${new Date().toLocaleString('ru-RU')}
+    `.trim();
+
+      await this.bot!.sendMessage(this.ownerId, message, {
+        parse_mode: 'HTML'
+      });
+
+      console.log(`✅ Уведомление об ошибке оплаты отправлено владельцу (${isTestnet ? 'testnet' : 'mainnet'})`);
+    } catch (error) {
+      console.error('❌ Ошибка при отправке уведомления об ошибке оплаты:', error);
+    }
+  }
+
+  // ==================== СТАТИСТИКА ====================
+
   getChatStats(isTestnet: boolean = true): any {
     try {
       const db = this.getDatabase(isTestnet);
-      return db.prepare(`
+
+      const stats = db.prepare(`
         SELECT
           COUNT(*) as totalChats,
           SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as activeChats,
@@ -6892,147 +7424,22 @@ ${network}
           (SELECT COUNT(*) FROM messages WHERE sender = 'operator') as operatorMessages
         FROM chats
       `).get() as any;
+
+      return stats;
     } catch (error) {
       console.error('❌ Ошибка при получении статистики чатов:', error);
-      return { totalChats: 0, activeChats: 0, closedChats: 0, totalMessages: 0, userMessages: 0, operatorMessages: 0 };
-    }
-  }
-
-  // ==================== УВЕДОМЛЕНИЯ О ПЛАТЕЖАХ ====================
-
-  async sendPaymentRecordedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
-
-    try {
-      const network = this.formatNetwork(isTestnet);
-      const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
-      const formattedLength = length === 9 ? '9+' : String(length);
-
-      const message = `
-💰 <b>ОПЛАЧЕННАЯ ПОПЫТКА ДОБАВЛЕНА!</b>
-
-${network}
-👤 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
-🏷️ Тип зоны: ${zoneTypeText}
-📏 Длина: ${formattedLength} символов
-
-⏰ Время: ${new Date().toLocaleString('ru-RU')}
-
-💡 Пользователь оплатил создание ${zoneTypeText.toLowerCase()}-зоны длиной ${formattedLength} символов.
-      `.trim();
-
-      await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
-
-      await this.sendPublicPaymentRecordedNotification(address, zoneType, length, isTestnet);
-    } catch (error) {
-      console.error('❌ Ошибка при отправке уведомления об оплаченной попытке:', error);
-    }
-  }
-
-  async sendPublicPaymentRecordedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true): Promise<boolean> {
-    try {
-      const network = this.formatNetwork(isTestnet);
-      const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
-      const formattedLength = length === 9 ? '9+' : String(length);
-
-      const message = `
-💰 <b>НОВАЯ ОПЛАЧЕННАЯ ПОПЫТКА!</b>
-
-${network}
-👤 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
-🏷️ Тип зоны: ${zoneTypeText}
-📏 Длина: ${formattedLength} символов
-
-⏰ Время: ${new Date().toLocaleString('ru-RU')}
-      `.trim();
-
-      return await this.sendGroupNotification(message);
-    } catch (error) {
-      console.error('❌ Ошибка при отправке публичного уведомления об оплаченной попытке:', error);
-      return false;
-    }
-  }
-
-  async sendPaymentConsumedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
-
-    try {
-      const network = this.formatNetwork(isTestnet);
-      const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
-      const formattedLength = length === 9 ? '9+' : String(length);
-
-      const message = `
-💸 <b>ОПЛАЧЕННАЯ ПОПЫТКА ИСПОЛЬЗОВАНА!</b>
-
-${network}
-👤 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
-🏷️ Тип зоны: ${zoneTypeText}
-📏 Длина: ${formattedLength} символов
-
-⏰ Время: ${new Date().toLocaleString('ru-RU')}
-
-✅ Пользователь использовал оплаченную попытку.
-      `.trim();
-
-      await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
-
-      await this.sendPublicPaymentConsumedNotification(address, zoneType, length, isTestnet);
-    } catch (error) {
-      console.error('❌ Ошибка при отправке уведомления об использовании оплаченной попытки:', error);
-    }
-  }
-
-  async sendPublicPaymentConsumedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true): Promise<boolean> {
-    try {
-      const network = this.formatNetwork(isTestnet);
-      const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
-
-      const message = `
-💸 <b>ОПЛАЧЕННАЯ ПОПЫТКА ИСПОЛЬЗОВАНА!</b>
-
-${network}
-👤 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
-🏷️ Тип зоны: ${zoneTypeText}
-📏 Длина: ${length} символов
-
-⏰ Время: ${new Date().toLocaleString('ru-RU')}
-      `.trim();
-
-      return await this.sendGroupNotification(message);
-    } catch (error) {
-      console.error('❌ Ошибка при отправке публичного уведомления об использовании оплаченной попытки:', error);
-      return false;
-    }
-  }
-
-  async sendPaymentErrorNotification(address: string, zoneType: string, length: number, errorMessage: string, isTestnet: boolean = true): Promise<void> {
-    if (!this.isBotAvailable()) return;
-
-    try {
-      const network = this.formatNetwork(isTestnet);
-      const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
-
-      const message = `
-❌ <b>ОШИБКА ПРИ ОПЛАТЕ ПОПЫТКИ!</b>
-
-${network}
-👤 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
-🏷️ Тип зоны: ${zoneTypeText}
-📏 Длина: ${length} символов
-
-⚠️ Ошибка: ${errorMessage}
-
-⏰ Время: ${new Date().toLocaleString('ru-RU')}
-      `.trim();
-
-      await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
-    } catch (error) {
-      console.error('❌ Ошибка при отправке уведомления об ошибке оплаты:', error);
+      return {
+        totalChats: 0,
+        activeChats: 0,
+        closedChats: 0,
+        totalMessages: 0,
+        userMessages: 0,
+        operatorMessages: 0
+      };
     }
   }
 }
 
-// ==================== ЭКСПОРТ ====================
-
+// Создаем и экспортируем экземпляр бота
 const telegramBotService = new TelegramBotService();
 export default telegramBotService;
