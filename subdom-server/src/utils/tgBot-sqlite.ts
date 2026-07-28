@@ -2276,7 +2276,7 @@ class TelegramBotService {
   }
 
   private loadSubscriptions(): void {
-    const db = this.testnetDb;
+    const db = this.mainnetDb;
     const subs = db.prepare(`SELECT * FROM bot_subscriptions WHERE isActive = 1`).all() as BotSubscription[];
     this.subscriptions = subs;
     console.log(`📋 Загружено ${subs.length} активных подписок`);
@@ -2335,7 +2335,7 @@ class TelegramBotService {
   // }
 
   private setLang(chatId: string, lang: string): void {
-  const db = this.testnetDb;
+  const db = this.mainnetDb;
   const existing = db.prepare(`SELECT id FROM bot_subscriptions WHERE chatId = ?`).get(chatId);
   if (existing) {
     db.prepare(`UPDATE bot_subscriptions SET lang = ? WHERE chatId = ?`).run(lang, chatId);
@@ -2351,7 +2351,7 @@ class TelegramBotService {
   }
 
   private addSubscription(chatId: string, chatType: string, subscriptionType: string): void {
-    const db = this.testnetDb;
+    const db = this.mainnetDb;
     db.prepare(`
       INSERT OR REPLACE INTO bot_subscriptions (chatId, chatType, subscriptionType, isActive, lang)
       VALUES (?, ?, ?, 1, 'ru')
@@ -2361,7 +2361,7 @@ class TelegramBotService {
   }
 
   private removeSubscription(chatId: string): void {
-    const db = this.testnetDb;
+    const db = this.mainnetDb;
     db.prepare(`UPDATE bot_subscriptions SET isActive = 0 WHERE chatId = ?`).run(chatId);
     this.loadSubscriptions();
   }
