@@ -2297,18 +2297,18 @@ class TelegramBotService {
   try {
     // --- Русские команды ---
     await this.bot.setMyCommands([
+      { command: 'start', description: '🔄 Перезапустить бота / главное меню' },
       { command: 'subscribe', description: '✅ Подписаться на уведомления' },
       { command: 'unsubscribe', description: '❌ Отписаться от уведомлений' },
       { command: 'status', description: '📊 Статус подписки и системы' },
-      { command: 'start', description: '🔄 Перезапустить бота / главное меню' },
     ], { language_code: 'ru' });
 
     // --- Английские команды ---
     await this.bot.setMyCommands([
+      { command: 'start', description: '🔄 Restart bot / main menu' },
       { command: 'subscribe', description: '✅ Subscribe to notifications' },
       { command: 'unsubscribe', description: '❌ Unsubscribe' },
       { command: 'status', description: '📊 Subscription & system status' },
-      { command: 'start', description: '🔄 Restart bot / main menu' },
     ], { language_code: 'en' });
 
     // --- Кнопка Web App ---
@@ -2609,6 +2609,7 @@ ${$.startSubStatus} ${isSubscribed ? $.active : $.inactive}
           this.setLang(chatIdStr, newLang);
           const msg = newLang === 'ru' ? LANG.ru.langChangedRu : LANG.en.langChangedEn;
           await this.bot!.sendMessage(chatId, msg);
+          await this.setupBotMenu();
         } else if (data === 'cmd_connect_chat') {
           const instructions = `
 ${$.connectTitle}
