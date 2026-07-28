@@ -6055,7 +6055,7 @@ class TelegramBotService {
     // /subscribe
     this.bot.onText(/\/subscribe/, (msg: TelegramMessage) => {
       const chatId = msg.chat.id.toString();
-      const chatType = msg.chat.type || 'private';
+      const chatType = (msg.chat as any).type || 'private';
       const subType = chatId === this.ownerId ? 'owner' : 'public';
       this.addSubscription(chatId, chatType, subType);
       this.bot!.sendMessage(msg.chat.id, `✅ Вы подписаны на уведомления как <b>${subType}</b>.\n\nТеперь вы будете получать:\n• Уведомления о новых зонах\n• Уведомления о субдоменах\n• Уведомления об аукционах и ставках\n• Уведомления о новых пользователях`, { parse_mode: 'HTML' });
@@ -6449,7 +6449,8 @@ ${network}
 
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(name, '');
       const inlineKeyboard = [[{ text: '🔗 Создать субдомен', url: miniAppLink }]];
-      const photoUrl = this.getNotificationImageUrl(name, true);
+      // const photoUrl = this.getNotificationImageUrl(name, true);
+      const photoUrl = this.getNotificationImageUrl(name, true) ?? undefined;
 
       return await this.sendGroupNotification(message, inlineKeyboard, photoUrl);
     } catch (error) {
@@ -6476,7 +6477,8 @@ ${network}
 
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(domain, '');
       const inlineKeyboard = [[{ text: '🔗 Создать субдомен', url: miniAppLink }]];
-      const photoUrl = this.getNotificationImageUrl(domain, true);
+      // const photoUrl = this.getNotificationImageUrl(domain, true);
+      const photoUrl = this.getNotificationImageUrl(domain, true) ?? undefined;
 
       return await this.sendGroupNotification(message, inlineKeyboard, photoUrl);
     } catch (error) {
@@ -6507,7 +6509,8 @@ ${network}
 
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
       const inlineKeyboard = [[{ text: '💰 Сделать ставку', url: miniAppLink }]];
-      const photoUrl = this.getNotificationImageUrl(name, false);
+      // const photoUrl = this.getNotificationImageUrl(name, false);
+      const photoUrl = this.getNotificationImageUrl(name, true) ?? undefined;
 
       return await this.sendGroupNotification(message, inlineKeyboard, photoUrl);
     } catch (error) {
@@ -6562,7 +6565,8 @@ ${network}
 
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
       const inlineKeyboard = [[{ text: '💰 Сделать ставку', url: miniAppLink }]];
-      const photoUrl = this.getNotificationImageUrl(domain, true);
+      // const photoUrl = this.getNotificationImageUrl(domain, true);
+      const photoUrl = this.getNotificationImageUrl(domain, true) ?? undefined;
 
       return await this.sendGroupNotification(message, inlineKeyboard, photoUrl);
     } catch (error) {
@@ -6594,7 +6598,8 @@ ${network}
 
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
       const inlineKeyboard = [[{ text: '💰 Сделать ставку', url: miniAppLink }]];
-      const photoUrl = this.getNotificationImageUrl(domain, true);
+      // const photoUrl = this.getNotificationImageUrl(domain, true);
+      const photoUrl = this.getNotificationImageUrl(domain, true) ?? undefined;
 
       return await this.sendGroupNotification(message, inlineKeyboard, photoUrl);
     } catch (error) {
@@ -6622,7 +6627,8 @@ ${network}
 🎊 Поздравляем нового владельца!
       `.trim();
 
-      const photoUrl = this.getNotificationImageUrl(domain, false);
+      // const photoUrl = this.getNotificationImageUrl(domain, false);
+      const photoUrl = this.getNotificationImageUrl(domain, true) ?? undefined;
 
       return await this.sendGroupNotification(message, undefined, photoUrl);
     } catch (error) {
@@ -6651,7 +6657,8 @@ ${network}
 
       const miniAppLink = DeeplinkUtils.generateMarketLink();
       const inlineKeyboard = [[{ text: '💰 Посмотреть в маркете', url: miniAppLink }]];
-      const photoUrl = this.getNotificationImageUrl(domain, true);
+      // const photoUrl = this.getNotificationImageUrl(domain, true);
+      const photoUrl = this.getNotificationImageUrl(domain, true) ?? undefined;
 
       return await this.sendGroupNotification(message, inlineKeyboard, photoUrl);
     } catch (error) {
