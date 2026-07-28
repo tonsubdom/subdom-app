@@ -1794,7 +1794,7 @@ declare module 'node-telegram-bot-api' {
   interface TelegramBot {
     getMe(): Promise<{ id: number; username: string }>;
     setMyCommands(commands: Array<{ command: string; description: string }>, opts?: { language_code?: string }): Promise<boolean>;
-    setChatMenuButton(opts: { text?: string; web_app?: { url: string } }): Promise<boolean>;
+    setChatMenuButton(opts: { menu_button: { type: 'web_app'; text: string; web_app: { url: string } } }): Promise<boolean>;
   }
 }
 
@@ -2312,10 +2312,10 @@ class TelegramBotService {
     ], { language_code: 'en' });
 
     // --- Кнопка Web App ---
-    await this.bot.setChatMenuButton({
-      text: '🔗 Открыть Subdom',
-      web_app: { url: 'https://subdom.zone' },
-    });
+    await (this.bot as any).setChatMenuButton({
+  text: '🔗 Открыть Subdom',
+  web_app: { url: 'https://subdom.zone' },
+});
 
     console.log('✅ Меню команд и кнопка приложения настроены');
   } catch (error) {
