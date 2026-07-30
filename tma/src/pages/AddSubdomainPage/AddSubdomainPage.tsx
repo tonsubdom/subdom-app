@@ -13144,7 +13144,11 @@ export const AuctionPage: React.FC<{}> = () => {
           owner: userAddress,
           status: "auction",
           auctionEndTime,
-          zoneId: zone?.id,
+          // zoneId omitted: on-chain-sourced zone.id (collectionToZone) is
+          // col.address.slice(0, 10), not the backend's zones.id — sending it
+          // trips the zoneId FK constraint on subdomains and aborts the insert
+          // before the bot notification fires. collectionAddress is the real
+          // on-chain identifier for this zone.
           collectionAddress: zone?.collectionAddress,
         });
         loadAllData(true);
@@ -13207,7 +13211,7 @@ export const AuctionPage: React.FC<{}> = () => {
           auctionEndTime: new Date(
             Date.now() + 24 * 60 * 60 * 1000
           ).toISOString(),
-          zoneId: zone?.id,
+          // zoneId omitted, see handleStartAuction — same FK mismatch.
           collectionAddress: zone?.collectionAddress,
         });
         await apiService.addBidToSubdomain(subdomain.id, {
@@ -13284,7 +13288,6 @@ export const AuctionPage: React.FC<{}> = () => {
       if (!userAddress) throw new Error("No user address");
       const nftAddr = sbtSubdomainInfo?.nftAddress || userAddress;
       apiService.setNetwork(isTestnet);
-      const zone = allZones.find((z) => z.name === selectedDomainZone);
       await apiService.createSubdomain({
         name: full,
         address: nftAddr,
@@ -13292,7 +13295,7 @@ export const AuctionPage: React.FC<{}> = () => {
         owner: userAddress,
         status: "active",
         collectionAddress,
-        zoneId: zone?.id,
+        // zoneId omitted, see handleStartAuction — same FK mismatch.
       });
       showSnackbar(t("sbtSubdomainPurchased"), "success");
       setSbtPurchaseCompleted(true);
