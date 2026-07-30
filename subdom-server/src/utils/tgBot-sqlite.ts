@@ -3008,7 +3008,7 @@ ${$.hintProxyZone}
       const network = this.formatNetwork(isTestnet);
       const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(name);
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
-      const inlineKeyboard = [[{ text: LANG.ru.btnPlaceBid, url: miniAppLink }]];
+      const inlineKeyboard = [[{ text: LANG.ru.btnCreateSubdomain, url: miniAppLink }]];
 
       return await this.sendGroupNotification((lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
