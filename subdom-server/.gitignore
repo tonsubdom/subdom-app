@@ -19,6 +19,11 @@ build/
 # Database files
 data/*.json
 !data/.gitkeep
+*.db
+*.db-shm
+*.db-wal
+*.db.backup*
+db/
 
 # Logs
 logs
