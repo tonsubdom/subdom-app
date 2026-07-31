@@ -172,14 +172,18 @@ export const BlockchainItemsProvider: React.FC<BlockchainItemsProviderProps> = (
     })).unwrap();
   }, [dispatch, network, apiKey]);
   
+  // Завязано на wallet?.account?.address (примитив), а не на весь объект
+  // wallet — у TonConnect SDK он не гарантированно стабилен по ссылке между
+  // рендерами, и колбэк, зависящий от него целиком, мог пересоздаваться чаще,
+  // чем логически менялся сам адрес кошелька.
+  const walletAddress = wallet?.account?.address || null;
+
   const loadAllData = useCallback(async (forceRefresh = false) => {
-    const userAddress = wallet?.account?.address || null;
-    
     await dispatch(loadAllAppData({
-      userAddress: userAddress || undefined,
+      userAddress: walletAddress || undefined,
       forceRefresh
     })).unwrap();
-  }, [dispatch, wallet]);
+  }, [dispatch, walletAddress]);
 
   /**
    * Вызывать вместо loadAllData() в эффектах монтирования страниц/виджетов.
@@ -194,7 +198,6 @@ export const BlockchainItemsProvider: React.FC<BlockchainItemsProviderProps> = (
    * (аукционы, проверка существующей зоны) не найдёт то, что реально есть.
    */
   const ensureData = useCallback(async () => {
-    const walletAddress = wallet?.account?.address || null;
     const isFresh =
       hasFetchedThisSession &&
       !!appData &&
@@ -206,7 +209,7 @@ export const BlockchainItemsProvider: React.FC<BlockchainItemsProviderProps> = (
     if (isFresh) return;
 
     await loadAllData();
-  }, [appData, lastUpdated, hasFetchedThisSession, network, resolvedNetwork, currentUserAddress, wallet, loadAllData]);
+  }, [appData, lastUpdated, hasFetchedThisSession, network, resolvedNetwork, currentUserAddress, walletAddress, loadAllData]);
 
   const loadCollections = useCallback(async (forceRefresh = false) => {
     await dispatch(loadCollectionsData({ forceRefresh })).unwrap();

@@ -421,7 +421,11 @@ const MarketPage: React.FC = () => {
     };
     
     loadBlockchainData();
-  }, [ensureData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- строго один раз на
+    // маунт: ensureData меняет идентичность после каждого fetch (appData/
+    // lastUpdated в её зависимостях), зависимость от неё самой вызывала
+    // повторные срабатывания эффекта при каждой загрузке.
+  }, []);
 
   // Обновление marketItems при изменении данных или таба
   useEffect(() => {
