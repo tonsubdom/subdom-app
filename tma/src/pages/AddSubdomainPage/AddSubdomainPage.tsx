@@ -12438,7 +12438,7 @@ import { getAuctionInfo, ParsedAuctionInfo } from "./flipTimer/getAuctionInfo";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useUser } from "@/contexts/UserContext";
-import { apiService, Subdomain, Zone } from "@/services/api";
+import { apiService, Zone } from "@/services/api";
 
 import { checkSBTSubdomain, SBTSubdomainInfo } from "./checkSBTSubdomain";
 import { calculateProxyNFTAddress } from "./CalculateProxyNFTAddress";
@@ -13061,30 +13061,6 @@ export const AuctionPage: React.FC<{}> = () => {
   };
 
   // ====== API (БД) ======
-  const createSubdomainIfNotExists = async (subdomainData: {
-    name: string;
-    address: string;
-    mintPrice: number;
-    links?: string[];
-    zoneId?: number;
-    owner?: string;
-    status: "active" | "inactive" | "auction" | "claimed";
-    auctionEndTime?: string;
-    collectionAddress?: string;
-  }): Promise<Subdomain> => {
-    try {
-      apiService.setNetwork(isTestnet);
-      try {
-        return await apiService.getSubdomainByName(subdomainData.name);
-      } catch {
-        return await apiService.createSubdomain({ ...subdomainData });
-      }
-    } catch (error) {
-      console.error("createSubdomainIfNotExists:", error);
-      throw error;
-    }
-  };
-
   // ====== СТАРТ АУКЦИОНА ======
   const handleStartAuction = async () => {
     console.log("🚀 handleStartAuction ВЫЗВАН", {
@@ -13131,30 +13107,19 @@ export const AuctionPage: React.FC<{}> = () => {
       });
 
       const full = `${subDomainName}.${selectedDomainZone}`;
-      const auctionEndTime = new Date(
-        Date.now() + 24 * 60 * 60 * 1000
-      ).toISOString();
       try {
         apiService.setNetwork(isTestnet);
-        const zone = allZones.find((z) => z.name === selectedDomainZone);
-        await apiService.createSubdomain({
+        await apiService.notifySubdomainCreated({
           name: full,
           address: nftAddress,
           mintPrice: calculateDomainPrice / 1_000_000_000,
           owner: userAddress,
           status: "auction",
-          auctionEndTime,
-          // zoneId omitted: on-chain-sourced zone.id (collectionToZone) is
-          // col.address.slice(0, 10), not the backend's zones.id — sending it
-          // trips the zoneId FK constraint on subdomains and aborts the insert
-          // before the bot notification fires. collectionAddress is the real
-          // on-chain identifier for this zone.
-          collectionAddress: zone?.collectionAddress,
         });
         loadAllData(true);
         showSnackbar(t("startAuction"), "success");
       } catch (dbError: any) {
-        console.error("DB error:", dbError);
+        console.error("Notify error:", dbError);
         showSnackbar(t("auctionStartedBlockchainDbError"), "error");
       }
       setTimeout(() => handleCheckItem(), 2000);
@@ -13201,28 +13166,16 @@ export const AuctionPage: React.FC<{}> = () => {
       const full = `${subDomainName}.${selectedDomainZone}`;
       try {
         apiService.setNetwork(isTestnet);
-        const zone = allZones.find((z) => z.name === selectedDomainZone);
-        const subdomain = await createSubdomainIfNotExists({
-          name: full,
-          address: nftAddress,
-          mintPrice: calculateBidPrice / 1_000_000_000,
-          owner: userAddress,
-          status: "auction",
-          auctionEndTime: new Date(
-            Date.now() + 24 * 60 * 60 * 1000
-          ).toISOString(),
-          // zoneId omitted, see handleStartAuction — same FK mismatch.
-          collectionAddress: zone?.collectionAddress,
-        });
-        await apiService.addBidToSubdomain(subdomain.id, {
+        await apiService.notifyNewBid({
+          domain: full,
           bidder: userAddress,
-          amount: calculateBidPrice,
+          amount: calculateBidPrice / 1_000_000_000,
+          previousBidder: auctionInfo.maxBidderOwner || undefined,
         });
-        await apiService.updateSubdomainStatus(subdomain.id, "auction");
         refreshSubdomains();
         loadAllData(true);
       } catch (dbError: any) {
-        console.error("DB error:", dbError);
+        console.error("Notify error:", dbError);
         showSnackbar(t("bidPlacedBlockchainDbError"), "error");
       }
       showSnackbar(t("bid"), "success");
@@ -13287,16 +13240,21 @@ export const AuctionPage: React.FC<{}> = () => {
       const full = `${subDomainName}.${selectedDomainZone}`;
       if (!userAddress) throw new Error("No user address");
       const nftAddr = sbtSubdomainInfo?.nftAddress || userAddress;
-      apiService.setNetwork(isTestnet);
-      await apiService.createSubdomain({
-        name: full,
-        address: nftAddr,
-        mintPrice: calculateDomainPrice / 1_000_000_000,
-        owner: userAddress,
-        status: "active",
-        collectionAddress,
-        // zoneId omitted, see handleStartAuction — same FK mismatch.
-      });
+      // Минт на чейне уже прошёл (транзакция выше подтверждена) — запись в
+      // бэкенд-БД дальше чисто для статистики (см. остальные хендлеры выше),
+      // не должна валить успешный флоу, если бэкенд недоступен/ответил ошибкой.
+      try {
+        apiService.setNetwork(isTestnet);
+        await apiService.notifySubdomainCreated({
+          name: full,
+          address: nftAddr,
+          mintPrice: calculateDomainPrice / 1_000_000_000,
+          owner: userAddress,
+          status: "active",
+        });
+      } catch (dbError) {
+        console.error("Notify error:", dbError);
+      }
       showSnackbar(t("sbtSubdomainPurchased"), "success");
       setSbtPurchaseCompleted(true);
     } catch (error: any) {
@@ -13334,10 +13292,13 @@ export const AuctionPage: React.FC<{}> = () => {
       const full = `${subDomainName}.${selectedDomainZone}`;
       try {
         apiService.setNetwork(isTestnet);
-        const s = await apiService.getSubdomainByName(full);
-        if (s) await apiService.updateSubdomainStatus(s.id, "claimed");
+        await apiService.notifyAuctionEnded({
+          domain: full,
+          winner: userAddress,
+          finalPrice: auctionInfo ? Number(auctionInfo.maxBid) / 1_000_000_000 : 0,
+        });
       } catch (e) {
-        console.error("DB claim error:", e);
+        console.error("Notify claim error:", e);
       }
       showSnackbar(t("subdomainClaimedSuccess"), "success");
     } catch (error) {

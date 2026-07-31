@@ -735,6 +735,85 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
+  // Relay-only: сообщает боту о создании зоны (proxy/SBT), ничего не пишет в
+  // БД — старый createZone()/POST /api/zones остаётся отдельно для легаси-читателей.
+  async notifyZoneCreated(zoneData: {
+    name: string;
+    address: string;
+    collectionAddress?: string;
+    proxy: boolean;
+    owner: string;
+    zonePrice: number;
+    currentID?: number;
+  }): Promise<void> {
+    try {
+      await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/zone-created`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(zoneData),
+      });
+    } catch (error) {
+      console.error('Error notifying about zone creation:', error);
+    }
+  }
+
+  // Relay-only: сообщает боту о создании субдомена (SBT-минт или старт
+  // proxy-аукциона), ничего не пишет в БД.
+  async notifySubdomainCreated(subdomainData: {
+    name: string;
+    address: string;
+    mintPrice: number;
+    owner: string;
+    status: 'auction' | 'active';
+  }): Promise<void> {
+    try {
+      await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/subdomain-created`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(subdomainData),
+      });
+    } catch (error) {
+      console.error('Error notifying about subdomain creation:', error);
+    }
+  }
+
+  // Relay-only: сообщает боту о новой ставке на аукционе. Полная история
+  // ставок читается ончейн (getAuctionBidHistory), в БД ничего не пишем.
+  async notifyNewBid(bidData: {
+    domain: string;
+    bidder: string;
+    amount: number;
+    previousBidder?: string;
+  }): Promise<void> {
+    try {
+      await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/bid`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bidData),
+      });
+    } catch (error) {
+      console.error('Error notifying about new bid:', error);
+    }
+  }
+
+  // Relay-only: сообщает боту о завершении аукциона клеймом. Финальную цену
+  // берём из уже загруженного ончейн auctionInfo — в БД ничего не пишем.
+  async notifyAuctionEnded(data: {
+    domain: string;
+    winner: string;
+    finalPrice: number;
+  }): Promise<void> {
+    try {
+      await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/auction-ended`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    } catch (error) {
+      console.error('Error notifying about auction end:', error);
+    }
+  }
+
   // ========== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ==========
   async checkDomainAvailability(domain: string): Promise<boolean> {
     try {

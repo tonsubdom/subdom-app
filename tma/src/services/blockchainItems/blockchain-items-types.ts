@@ -122,6 +122,7 @@ export interface SimpleEnrichedItem {
 export interface SimpleCollection {
   address: string;
   name: string;
+  domain?: string;               // NEW: домен, извлечённый из collection_content.uri (для сопоставления с доменом без обращения к бэкенду)
   description?: string;
   image?: string;
   total_items?: number;

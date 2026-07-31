@@ -3168,6 +3168,121 @@ app.post('/api/notifications/dns-record', (req, res) => {
   }
 });
 
+// Зона создана (proxy или SBT). Старый POST /api/zones (пишет в zones + счётчики
+// users) намеренно не трогаем и не убираем — это отдельный, всё ещё рабочий путь
+// для легаси-читателей (админ-панель и т.п.). Новый флоу создания зоны на фронте
+// зовёт этот эндпоинт вместо него — данные летят прямо в бота, без персиста.
+app.post('/api/notifications/zone-created', (req, res) => {
+  try {
+    const { name, address, collectionAddress, proxy, owner, zonePrice, currentID } = req.body;
+    const isTestnet = req.isTestnet;
+
+    if (!name || !address || !owner) {
+      return res.status(400).json({
+        success: false,
+        message: 'Название зоны, владелец и адрес обязательны'
+      });
+    }
+
+    if (proxy) {
+      telegramBot.sendProxyZoneCreatedNotification(name, address, owner, zonePrice, isTestnet);
+    } else {
+      telegramBot.sendSBTZoneCreatedNotification(name, address, owner, zonePrice, collectionAddress || address, currentID, isTestnet);
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при отправке уведомления о создании зоны:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
+// Субдомен создан: SBT-минт (status=active) или старт proxy-аукциона (status=auction).
+// Старый POST /api/subdomains аналогично не трогаем — тот же принцип, что и выше.
+app.post('/api/notifications/subdomain-created', (req, res) => {
+  try {
+    const { name, address, mintPrice, owner, status } = req.body;
+    const isTestnet = req.isTestnet;
+
+    if (!name || !address || mintPrice === undefined || !['auction', 'active'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Некорректные параметры уведомления'
+      });
+    }
+
+    if (status === 'auction') {
+      telegramBot.sendAuctionStartedNotification(name, address, mintPrice, isTestnet);
+    } else {
+      telegramBot.sendSBTSubdomainMintedNotification(name, address, owner, mintPrice, isTestnet);
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при отправке уведомления о создании субдомена:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
+// Новая ставка на proxy-аукционе. Полная история ставок теперь читается ончейн
+// (getAuctionBidHistory), поэтому бэкенду для этого уведомления не нужен ни
+// DB-id субдомена, ни запись в subdomains — только сам факт ставки для бота.
+app.post('/api/notifications/bid', (req, res) => {
+  try {
+    const { domain, bidder, amount, previousBidder } = req.body;
+    const isTestnet = req.isTestnet;
+
+    if (!domain || !bidder || amount === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'domain, bidder и amount обязательны'
+      });
+    }
+
+    telegramBot.sendNewBidNotification(domain, bidder, amount, previousBidder || '', isTestnet);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при отправке уведомления о ставке:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
+// Аукцион завершён клеймом. Финальную цену фронт берёт из уже загруженного
+// on-chain auctionInfo.maxBid — бэкенду тут искать/обновлять нечего.
+app.post('/api/notifications/auction-ended', (req, res) => {
+  try {
+    const { domain, winner, finalPrice } = req.body;
+    const isTestnet = req.isTestnet;
+
+    if (!domain || !winner || finalPrice === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'domain, winner и finalPrice обязательны'
+      });
+    }
+
+    telegramBot.sendAuctionEndedNotification(domain, winner, finalPrice, isTestnet);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при отправке уведомления о завершении аукциона:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
 // ========== СТАТИСТИКА ==========
 
 // Получить статистику

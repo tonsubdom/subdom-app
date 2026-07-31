@@ -2297,6 +2297,7 @@ import {
   ItemType,
 } from "@/services/blockchainItems/blockchain-items-types";
 import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInfo";
+import { getAuctionBidHistory } from "@/pages/AddSubdomainPage/flipTimer/getAuctionBidHistory";
 import { mapWithConcurrency } from "@/utils/concurrency";
 import { createAuctionUrl } from "@/utils/urlParams";
 import { useBlockchainLoadProgress } from "@/hooks/useBlockchainLoadProgress";
@@ -2406,6 +2407,40 @@ const enrichedItemToSubdomain = (item: SimpleEnrichedItem): Subdomain => {
 };
 
 // ====================================================================
+// СТАТИЧНЫЕ ТАБЛИЦЫ ЦЕН — для post-factum подсчёта трат в INFO-блоке.
+// Значения синхронны с CreateCollectionPage.calculateZonePrice (зоны) и
+// AddSubdomainPage.mapPrices/flat 0.5 TON (субдомены). Дубликат таблицы —
+// уже устоявшийся в проекте паттерн (та же таблица продублирована и в
+// PaymentAttemptsSection.tsx), общий модуль заводить не стали.
+// ====================================================================
+
+const ZONE_PRICE_PROXY: Record<number, number> = { 4: 100, 5: 50, 6: 40, 7: 30, 8: 20 };
+const ZONE_PRICE_SBT: Record<number, number> = { 4: 5, 5: 2.5, 6: 2, 7: 1.5, 8: 1 };
+const getZonePrice = (length: number, isProxy: boolean): number => {
+  const table = isProxy ? ZONE_PRICE_PROXY : ZONE_PRICE_SBT;
+  return table[length] ?? (isProxy ? 10 : 0.5);
+};
+
+// Аукционные proxy-субдомены: реальную цену продажи (последний бид) для уже
+// заклейменного итема на чейне достать нельзя — get_auction_info отдаёт
+// пустой/невалидный стек после клейма (см. AddSubdomainPage/getAuctionInfo.ts).
+// Раз "моими" субдомены становятся только после клейма, живой лукап почти
+// всегда провалится — считаем сразу по стартовой цене длины, без лишних
+// сетевых запросов (это ещё и то самое "не тормозить процессы на старте").
+const SUBDOMAIN_PRICE_PROXY: Record<number, number> = { 1: 30, 2: 20, 3: 10, 4: 5, 5: 2.5, 6: 1 };
+const SBT_SUBDOMAIN_PRICE = 0.5;
+const getSubdomainPrice = (length: number, isProxy: boolean): number => {
+  if (!isProxy) return SBT_SUBDOMAIN_PRICE;
+  return SUBDOMAIN_PRICE_PROXY[length] ?? 0.5;
+};
+
+// "Прибыль" (доход с чужих ставок на proxy-зонах юзера) считается отдельно от
+// profitStats — по истории транзакций (последний бид = выигрышный), не по
+// статичной таблице. Столько же воркеров, сколько уже держит ActiveAuctions
+// под тот же toncenter-ключ (см. AUCTION_CHECK_CONCURRENCY там же).
+const PROFIT_CHECK_CONCURRENCY = 10;
+
+// ====================================================================
 // ОНЧЕЙН-АУКЦИОНЫ
 // ====================================================================
 
@@ -2506,6 +2541,7 @@ const ProfileWidget: React.FC = () => {
   const {
     proxyCollections,
     sbtCollections,
+    proxySubdomains: allProxySubdomains,
     userProxySubdomains,
     userSBTSubdomains,
     loadAllData,
@@ -2783,6 +2819,122 @@ const ProfileWidget: React.FC = () => {
     );
     return [...proxySubs, ...sbtSubs];
   }, [userProxySubdomains, userSBTSubdomains]);
+
+  // ====== [NEW] INFO: траты post-factum по уже загруженным ончейн-данным ======
+  // Считается из тех же getUserZones/getUserSubdomainsFromBlockchain, что уже
+  // используются для вкладок "Зоны"/"Субдомены" — никаких дополнительных
+  // сетевых запросов, поэтому не задерживает то, что нужно раньше при старте.
+  const profitStats = useMemo(() => {
+    const proxyZones = getUserZones.filter((z: any) => z.proxy === 1);
+    const sbtZones = getUserZones.filter((z: any) => z.proxy !== 1);
+
+    const proxyZoneSpending = proxyZones.reduce(
+      (sum: number, z: any) => sum + getZonePrice(z.zoneLength, true),
+      0
+    );
+    const sbtZoneSpending = sbtZones.reduce(
+      (sum: number, z: any) => sum + getZonePrice(z.zoneLength, false),
+      0
+    );
+
+    const proxySubs = getUserSubdomainsFromBlockchain.filter(
+      (s: any) => s.type === "proxy_subdomain"
+    );
+    const sbtSubs = getUserSubdomainsFromBlockchain.filter(
+      (s: any) => s.type === "sbt_subdomain"
+    );
+
+    const proxySubdomainSpending = proxySubs.reduce(
+      (sum: number, s: any) => sum + getSubdomainPrice(s.subdomainLength, true),
+      0
+    );
+    const sbtSubdomainSpending = sbtSubs.reduce(
+      (sum: number, s: any) => sum + getSubdomainPrice(s.subdomainLength, false),
+      0
+    );
+
+    return {
+      totalZones: getUserZones.length,
+      proxyZones: proxyZones.length,
+      sbtZones: sbtZones.length,
+      totalSubdomains: getUserSubdomainsFromBlockchain.length,
+      proxySubdomains: proxySubs.length,
+      sbtSubdomains: sbtSubs.length,
+      totalZoneSpending: proxyZoneSpending + sbtZoneSpending,
+      proxyZoneSpending,
+      sbtZoneSpending,
+      totalSubdomainSpending: proxySubdomainSpending + sbtSubdomainSpending,
+      proxySubdomainSpending,
+      sbtSubdomainSpending,
+    };
+  }, [getUserZones, getUserSubdomainsFromBlockchain]);
+
+  // ====== [NEW] INFO: "прибыль" — доход с чужих ставок на proxy-зонах юзера ======
+  // Не путать с profitStats.*Spending выше (это траты самого юзера на свои
+  // покупки/минты). Здесь наоборот: сумма последних (выигрышных) ставок по
+  // ВСЕМ proxy-субдоменам внутри коллекций, которыми юзер владеет как zone
+  // owner — их минтили и выигрывали на аукционах другие люди, юзер получает
+  // 90% с каждой продажи. Цену продажи после клейма из get_auction_info не
+  // достать (см. profitStats выше), но она есть в истории транзакций айтема
+  // (последнее входящее сообщение = выигравшая ставка) — тот же приём, что
+  // getAuctionBidHistory уже использует в ActiveAuctions.tsx.
+  // Считаем только когда реально открыта вкладка "info", чтобы не грузить
+  // сеть лишними запросами на старте — их может быть много (по одному на
+  // каждый субдомен в зоне).
+  const [zoneProfit, setZoneProfit] = useState<number | null>(null);
+  const [zoneProfitLoading, setZoneProfitLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== "info") return;
+
+    const proxyZoneAddresses = new Set(
+      getUserZones
+        .filter((z: any) => z.proxy === 1)
+        .map((z: any) => z.collectionAddress)
+    );
+
+    if (proxyZoneAddresses.size === 0) {
+      setZoneProfit(0);
+      return;
+    }
+
+    const itemsToCheck = allProxySubdomains.filter((item) =>
+      proxyZoneAddresses.has(item.collection_address)
+    );
+
+    if (itemsToCheck.length === 0) {
+      setZoneProfit(0);
+      return;
+    }
+
+    let cancelled = false;
+    setZoneProfitLoading(true);
+
+    (async () => {
+      const amounts = await mapWithConcurrency(
+        itemsToCheck,
+        PROFIT_CHECK_CONCURRENCY,
+        async (item) => {
+          try {
+            const bids = await getAuctionBidHistory(item.address, isTestnet);
+            const lastBid = bids[0]?.amount;
+            return lastBid ? Number(lastBid) / 1_000_000_000 : 0;
+          } catch {
+            return 0;
+          }
+        }
+      );
+
+      if (cancelled) return;
+      const gross = amounts.reduce((sum, a) => sum + a, 0);
+      setZoneProfit(gross * 0.9); // юзер как владелец зоны получает 90% с аукционов
+      setZoneProfitLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, getUserZones, allProxySubdomains, isTestnet]);
 
   useEffect(() => {
     if (getUserSubdomainsFromBlockchain.length > 0) {
@@ -4585,7 +4737,7 @@ const ProfileWidget: React.FC = () => {
                             color: colors.cyberpunk,
                           }}
                         >
-                          {user?.zones || 0}
+                          {profitStats.totalZones}
                         </span>
                       </div>
 
@@ -4602,7 +4754,7 @@ const ProfileWidget: React.FC = () => {
                             color: "#4caf50",
                           }}
                         >
-                          {user?.proxyZones || 0}
+                          {profitStats.proxyZones}
                         </span>
                       </div>
 
@@ -4619,7 +4771,7 @@ const ProfileWidget: React.FC = () => {
                             color: "#3b82f6",
                           }}
                         >
-                          {user?.sbtZones || 0}
+                          {profitStats.sbtZones}
                         </span>
                       </div>
 
@@ -4636,7 +4788,7 @@ const ProfileWidget: React.FC = () => {
                             color: colors.cyberpunk,
                           }}
                         >
-                          {user?.subdomains || 0}
+                          {profitStats.totalSubdomains}
                         </span>
                       </div>
 
@@ -4653,7 +4805,7 @@ const ProfileWidget: React.FC = () => {
                             color: "#4caf50",
                           }}
                         >
-                          {user?.proxySubdomains || 0}
+                          {profitStats.proxySubdomains}
                         </span>
                       </div>
 
@@ -4670,7 +4822,7 @@ const ProfileWidget: React.FC = () => {
                             color: "#3b82f6",
                           }}
                         >
-                          {user?.sbtSubdomains || 0}
+                          {profitStats.sbtSubdomains}
                         </span>
                       </div>
 
@@ -4789,7 +4941,7 @@ const ProfileWidget: React.FC = () => {
                             color: colors.cyberpunk,
                           }}
                         >
-                          {user?.totalZoneSpending?.toFixed(2) || "0.00"}{" "}
+                          {profitStats.totalZoneSpending.toFixed(2)}{" "}
                           <img
                             src={TonLogo}
                             alt="TON"
@@ -4811,7 +4963,7 @@ const ProfileWidget: React.FC = () => {
                             color: "#4caf50",
                           }}
                         >
-                          {user?.totalProxyZoneSpending?.toFixed(2) || "0.00"}{" "}
+                          {profitStats.proxyZoneSpending.toFixed(2)}{" "}
                           <img
                             src={TonLogo}
                             alt="TON"
@@ -4833,7 +4985,7 @@ const ProfileWidget: React.FC = () => {
                             color: "#3b82f6",
                           }}
                         >
-                          {user?.totalSbtZoneSpending?.toFixed(2) || "0.00"}{" "}
+                          {profitStats.sbtZoneSpending.toFixed(2)}{" "}
                           <img
                             src={TonLogo}
                             alt="TON"
@@ -4855,7 +5007,7 @@ const ProfileWidget: React.FC = () => {
                             color: colors.cyberpunk,
                           }}
                         >
-                          {user?.totalSubdomainSpending?.toFixed(2) || "0.00"}{" "}
+                          {profitStats.totalSubdomainSpending.toFixed(2)}{" "}
                           <img
                             src={TonLogo}
                             alt="TON"
@@ -4877,8 +5029,7 @@ const ProfileWidget: React.FC = () => {
                             color: "#4caf50",
                           }}
                         >
-                          {user?.totalProxySubdomainSpending?.toFixed(2) ||
-                            "0.00"}{" "}
+                          {profitStats.proxySubdomainSpending.toFixed(2)}{" "}
                           <img
                             src={TonLogo}
                             alt="TON"
@@ -4900,8 +5051,7 @@ const ProfileWidget: React.FC = () => {
                             color: "#3b82f6",
                           }}
                         >
-                          {user?.totalSbtSubdomainSpending?.toFixed(2) ||
-                            "0.00"}{" "}
+                          {profitStats.sbtSubdomainSpending.toFixed(2)}{" "}
                           <img
                             src={TonLogo}
                             alt="TON"
@@ -4928,7 +5078,9 @@ const ProfileWidget: React.FC = () => {
                             color: "#10b981",
                           }}
                         >
-                          {user?.totalProfit?.toFixed(2) || "0.00"}{" "}
+                          {zoneProfitLoading
+                            ? "…"
+                            : (zoneProfit ?? 0).toFixed(2)}{" "}
                           <img
                             src={TonLogo}
                             alt="TON"

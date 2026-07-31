@@ -142,6 +142,7 @@ export const convertToSimpleCollection = (
   return {
     address: collection.address,
     name: tokenInfo.name || collectionDomain || 'Без названия',
+    domain: collectionDomain || undefined,
     description: tokenInfo.description,
     image: tokenInfo.image,
     type: collectionType,

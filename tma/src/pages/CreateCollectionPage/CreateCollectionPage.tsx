@@ -45,6 +45,7 @@ import { getAddressDomainByIndex } from './getNftAddressByIndex';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getCollectionId } from './getCollectionId';
+import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-context.tsx';
 // import { Address } from 'ton-core';
 
 // Импортируем API service
@@ -150,6 +151,9 @@ const partnerAddress = isTestnet
     bundleDeployment,
     sbtCollectionDeployment
   } = useSelector((state: RootState) => state.blockchain);
+
+  // Ончейн-коллекции текущей сети (для проверки "уже есть SBT-зона на этом домене" без бэкенда)
+  const { sbtCollections } = useBlockchainItems();
 
   const { currentTheme } = useTheme();
   const isDark = currentTheme === 'dark';
@@ -464,7 +468,8 @@ const partnerAddress = isTestnet
     }
   }, [address]);
 
-  // Функция для создания зоны в базе данных
+  // Relay-only уведомление бота о создании зоны — в БД больше не пишем
+  // (не убрано совсем, апи ниже просто больше не вызывает createZone()).
   const createZoneInDatabase = useCallback(async (zoneData: {
     name: string;
     address: string;
@@ -477,14 +482,21 @@ const partnerAddress = isTestnet
     currentID: number;
   }) => {
     try {
-      const newZone = await apiService.createZone(zoneData);
-      console.log('✅ Зона создана в базе данных:', newZone);
-      return newZone;
+      await apiService.notifyZoneCreated({
+        name: zoneData.name,
+        address: zoneData.address,
+        collectionAddress: zoneData.collectionAddress,
+        proxy: !!zoneData.proxy,
+        owner: zoneData.owner || address,
+        zonePrice: zoneData.zonePrice,
+        currentID: zoneData.currentID,
+      });
+      console.log('✅ Уведомление о создании зоны отправлено боту');
     } catch (error) {
-      console.error('❌ Ошибка создания зоны в базе:', error);
+      console.error('❌ Ошибка отправки уведомления о создании зоны:', error);
       throw error;
     }
-  }, []);
+  }, [address]);
 
   // ========== УЛУЧШЕННАЯ ОПЛАТА ==========
 
@@ -610,32 +622,45 @@ const partnerAddress = isTestnet
     }
   }, [address, isTestnet]);
 
-  // Проверка существования домена в базе
+  // Проверка существования SBT-зоны на домене — ончейн, а не через бэкенд-БД
+  // (после миграции на ончейн-данные бэкенд может не знать о зоне вовсе).
+  // На домене может накопиться несколько исторических SBT-коллекций (id 0,1,2...) —
+  // берём ту, у которой максимальный on-chain id, это и есть текущая/актуальная.
   const checkDomainExists = useCallback(async (domain: string): Promise<boolean> => {
     try {
       const fullDomainName = `${domain}.ton`;
-      console.log(`🔍 Проверяем существование домена: ${fullDomainName}`);
+      console.log(`🔍 Проверяем существование SBT-зоны ончейн: ${fullDomainName}`);
 
-      const zone = await apiService.getZoneByName(fullDomainName);
+      const candidates = sbtCollections.filter((c) => c.domain === fullDomainName);
 
-      if (zone && zone.id) {
-        console.log(`⚠️ Домен уже существует в базе:`, zone);
-        setExistingZone(zone);
-        return true;
-      }
-
-      return false;
-    } catch (error: any) {
-      if (error.message?.includes('404') || error.message?.includes('not found')) {
-        console.log(`✅ Домен ${domain}.ton не найден в базе, можно создавать`);
+      if (candidates.length === 0) {
+        console.log(`✅ SBT-зона на ${fullDomainName} не найдена ончейн, можно создавать`);
         return false;
       }
 
-      console.error('❌ Ошибка при проверке домена:', error);
+      let latest: { collectionAddress: string; id: number } | null = null;
+      for (const candidate of candidates) {
+        const id = await getCollectionId(candidate.address, isTestnet);
+        if (!latest || id > latest.id) {
+          latest = { collectionAddress: candidate.address, id };
+        }
+      }
+
+      if (!latest) return false;
+
+      console.log(`⚠️ Найдена текущая SBT-зона на домене ончейн:`, latest);
+      setExistingZone({
+        collectionAddress: latest.collectionAddress,
+        name: fullDomainName,
+        currentId: latest.id,
+      });
+      return true;
+    } catch (error: any) {
+      console.error('❌ Ошибка при ончейн-проверке домена:', error);
       showSnackbar(t('zoneNotInDatabase'), "error");
       return false;
     }
-  }, [showSnackbar]);
+  }, [sbtCollections, isTestnet, showSnackbar, t]);
 
   // ========== ОСНОВНЫЕ ОБРАБОТЧИКИ ==========
 
@@ -768,12 +793,16 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
       console.log('✅ Результат транзакции:', txResult);
 
       if (txResult.success && txResult.hash) {
-        // 3. Обновляем статус зоны в базе данных (делаем неактивной)
+        // 3. Обновляем статус зоны в базе данных, если это старая зона с реальным
+        // DB-id (легаси-путь). Зоны, найденные через ончейн-проверку выше, не
+        // имеют DB-id — ончейн-транзакция деактивации (шаг 1) уже сделала
+        // главное, дальше обновлять нечего.
         try {
-          const res = await apiService.updateZoneStatusToInactive(zone.id);
+          if (zone.id != null) {
+            const res = await apiService.updateZoneStatusToInactive(zone.id);
+            console.log(`Ответ о смене статуса для зоны с таким же доменом: ${res}`);
+          }
 
-          console.log(`Ответ о смене статуса для зоны с таким же доменом: ${res}`);
-          
           if (txResult.confirmedInBlock) {
             showSnackbar(t('collectionUnlinkedSuccessConfirmed'), "success");
           } else {
@@ -934,8 +963,7 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
               currentID: 1
             };
 
-            const createdZone = await createZoneInDatabase(zoneData);
-            setCreatedZoneId(createdZone.id);
+            await createZoneInDatabase(zoneData);
 
             // СПИСЫВАЕМ оплаченную попытку ПОСЛЕ успешного деплоя
             const lengthKey = getZoneLengthKey(domainLength);
@@ -1004,26 +1032,12 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
         return;
       }
 
-      // Логика ID
-      let idValue = 0;
-      const domainExists = await checkDomainExists(domainName);
-
-      if (domainExists) {
-        const existingZoneFromName = await apiService.getZoneByName(domainName);
-        const existingCollectionAddress = existingZoneFromName?.collectionAddress;
-
-        if (existingCollectionAddress) {
-          const currentId = await getCollectionId(existingCollectionAddress, isTestnet);
-          idValue = currentId + 1;
-          console.log(`✅ Domain exists, current ID: ${currentId}, new ID: ${idValue}`);
-        } else {
-          console.log("ℹ️ Domain exists but no collection address found");
-          idValue = 0;
-        }
-      } else {
-        console.log("✅ Domain doesn't exist, starting with ID: 0");
-        idValue = 0;
-      }
+      // Логика ID: если на домене уже была SBT-зона, она уже обнаружена и
+      // деактивирована на шаге 0 (handleCheckDomain -> unlinkExistingCollection),
+      // её текущий id лежит в existingZone.currentId — просто инкрементируем.
+      // Повторный ончейн-запрос здесь не нужен.
+      const idValue = existingZone?.currentId != null ? existingZone.currentId + 1 : 0;
+      console.log(`📤 SBT ID для деплоя: ${idValue} (existingZone:`, existingZone, ')');
 
       // Формируем payload
       const sbtPayload: DeploySBTCollectionPayload = {
@@ -1117,10 +1131,10 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
       setTransactionStatus({});
     }
   }, [
-    wallet, address, dispatch, showSnackbar, tonConnectUI, 
-    TonDnsAddress, domainName, isTestnet, paymentCompleted, 
-    hasPaidAttempt, createZoneInDatabase, consumePaymentAttempt, 
-    checkDomainExists, domainLength, sendTransactionWithVerification, t
+    wallet, address, dispatch, showSnackbar, tonConnectUI,
+    TonDnsAddress, domainName, isTestnet, paymentCompleted,
+    hasPaidAttempt, createZoneInDatabase, consumePaymentAttempt,
+    existingZone, domainLength, sendTransactionWithVerification, t
   ]);
 
   // ========== ОСТАЛЬНЫЕ ОБРАБОТЧИКИ ==========
