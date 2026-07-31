@@ -2297,6 +2297,7 @@ import {
   ItemType,
 } from "@/services/blockchainItems/blockchain-items-types";
 import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInfo";
+import { mapWithConcurrency } from "@/utils/concurrency";
 
 // ====== [KEEP] БЭКЕНД ДЛЯ INFO-БЛОКА ======
 // import { useZones } from "@/hooks/useZones";
@@ -2406,39 +2407,47 @@ const enrichedItemToSubdomain = (item: SimpleEnrichedItem): Subdomain => {
 // ОНЧЕЙН-АУКЦИОНЫ
 // ====================================================================
 
+// См. AUCTION_CHECK_CONCURRENCY в ActiveAuctions.tsx — тот же принцип: get_auction_info
+// это 2 последовательных v2-запроса на айтем, держим пул под потолок ключа (~25 rps).
+// Раньше цикл был последовательным (await в for-of) — на ~80 субдоменах давало ~27 сек.
+const AUCTION_CHECK_CONCURRENCY = 10;
+
 const loadAuctionsFromBlockchain = async (
   subdomains: Subdomain[],
   isTestnet: boolean
 ): Promise<Auction[]> => {
-  const auctions: Auction[] = [];
+  const results = await mapWithConcurrency(
+    subdomains,
+    AUCTION_CHECK_CONCURRENCY,
+    async (sub): Promise<Auction | null> => {
+      try {
+        const collectionAddress = (sub as any).collectionAddress as
+          | string
+          | undefined;
+        if (!collectionAddress || !sub.name) return null;
 
-  for (const sub of subdomains) {
-    try {
-      // const collectionAddress = sub.collectionAddress;
-      const collectionAddress = (sub as any).collectionAddress as
-        | string
-        | undefined;
-      if (!collectionAddress || !sub.name) continue;
+        const subName = sub.name.split(".")[0];
+        const info = await getAuctionInfo(subName, collectionAddress, isTestnet);
 
-      const subName = sub.name.split(".")[0];
-      const info = await getAuctionInfo(subName, collectionAddress, isTestnet);
-
-      if (info && info.isActive) {
-        auctions.push({
-          name: sub.name,
-          bid: `${(Number(info.maxBid) / 1e9).toFixed(2)} TON`,
-          ends: new Date(info.timestamp * 1000).toISOString(),
-          lastBidder: info.maxBidderOwner || undefined,
-          lastBid: Number(info.maxBid),
-          subdomain: sub,
-        });
+        if (info && info.isActive) {
+          return {
+            name: sub.name,
+            bid: `${(Number(info.maxBid) / 1e9).toFixed(2)} TON`,
+            ends: new Date(info.timestamp * 1000).toISOString(),
+            lastBidder: info.maxBidderOwner || undefined,
+            lastBid: Number(info.maxBid),
+            subdomain: sub,
+          };
+        }
+        return null;
+      } catch {
+        // не на аукционе — пропускаем
+        return null;
       }
-    } catch {
-      // не на аукционе — пропускаем
     }
-  }
+  );
 
-  return auctions;
+  return results.filter((a): a is Auction => a !== null);
 };
 
 // ====================================================================

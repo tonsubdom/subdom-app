@@ -7,6 +7,13 @@ import TonLogo from '@/components/Header/ton.svg';
 import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-context.tsx';
 import { getAuctionInfo } from '@/pages/AddSubdomainPage/flipTimer/getAuctionInfo';
 import { getAuctionBidHistory } from '@/pages/AddSubdomainPage/flipTimer/getAuctionBidHistory';
+import { mapWithConcurrency } from '@/utils/concurrency';
+
+// Сколько запросов get_auction_info держим в полёте одновременно. get_auction_info
+// сам по себе — это 2 последовательных v2-запроса на айтем, поэтому берём с запасом
+// ниже, чем maxConcurrentRequests=5 в universal-blockchain-service.ts (тот бьёт по
+// более тяжёлому v3 listing) — под тот же потолок ключа (~25 rps, см. Group 4 perf).
+const AUCTION_CHECK_CONCURRENCY = 10;
 
 // Импорт SVG иконок
 import YourBidderLogo from './img/your_bidder_logo.svg';
@@ -822,56 +829,58 @@ const loadActiveAuctions = useCallback(async () => {
   setError(null);
 
   try {
-    console.log(`📡 Загружаем активные аукционы в ${isTestnet ? 'testnet' : 'mainnet'}`);
+    console.log(`📡 Загружаем активные аукционы в ${isTestnet ? 'testnet' : 'mainnet'}, кандидатов: ${proxySubdomains.length}`);
 
-    // Кандидаты на аукцион — все proxy-субдомены платформы, выставленные на продажу (ончейн-флаг on_sale).
-    const onSaleSubdomains = proxySubdomains.filter((item) => item.on_sale);
-    console.log(`✅ Кандидатов "on_sale": ${onSaleSubdomains.length}`);
+    // Дешёвого ончейн-флага "в аукционе" нет (on_sale — это флаг обычного NFT-маркетплейса,
+    // к нашему аукционному механизму отношения не имеет), поэтому опрашиваем get_auction_info
+    // по каждому proxy-итему платформы. Чтобы не растягивать это на десятки секунд
+    // последовательными запросами, гоняем пул из AUCTION_CHECK_CONCURRENCY воркеров —
+    // это максимум, который наш платный toncenter-ключ держит без 429 (см. Group 4, ~25 rps).
+    const results = await mapWithConcurrency(
+      proxySubdomains,
+      AUCTION_CHECK_CONCURRENCY,
+      async (item): Promise<ActiveAuction | null> => {
+        try {
+          const subName = item.domain.split('.')[0];
+          const info = await getAuctionInfo(subName, item.collection_address, isTestnet);
 
-    const auctions: ActiveAuction[] = [];
-    const biddersToFetch: string[] = [];
+          // Аукцион либо ещё не начат, либо уже завершён — пропускаем.
+          if (!info || !info.isActive) return null;
 
-    for (const item of onSaleSubdomains) {
-      try {
-        const subName = item.domain.split('.')[0];
-        const info = await getAuctionInfo(subName, item.collection_address, isTestnet);
+          const bids = await getAuctionBidHistory(info.nftAddress, isTestnet);
+          const lastBidAmount = Number(info.maxBid) / 1_000_000_000;
+          const { timeLeft, isEnded } = calculateTimeLeft(new Date(info.timestamp * 1000).toISOString());
 
-        // Аукцион либо ещё не начат, либо уже завершён — пропускаем.
-        if (!info || !info.isActive) continue;
+          const parts = item.domain.replace(/\.ton$/, '').split('.');
+          const subdomainName = parts[0] || subName;
+          const zoneName = item.zone;
 
-        const bids = await getAuctionBidHistory(info.nftAddress, isTestnet);
-        const lastBidAmount = Number(info.maxBid) / 1_000_000_000;
-        const { timeLeft, isEnded } = calculateTimeLeft(new Date(info.timestamp * 1000).toISOString());
-
-        const parts = item.domain.replace(/\.ton$/, '').split('.');
-        const subdomainName = parts[0] || subName;
-        const zoneName = item.zone;
-
-        auctions.push({
-          id: info.nftAddress,
-          name: item.domain.replace(/\.ton$/, ''),
-          address: info.nftAddress,
-          bidder: info.maxBidderOwner || undefined,
-          lastBid: lastBidAmount > 0 ? `${lastBidAmount.toFixed(1)}` : '0.0',
-          ends: new Date(info.timestamp * 1000).toISOString(),
-          timeLeft: timeLeft,
-          lastBidAmount: lastBidAmount,
-          zoneName: zoneName,
-          subdomainName: subdomainName,
-          isEnded: isEnded,
-          bids: bids,
-          auctionEndTime: new Date(info.timestamp * 1000).toISOString()
-        });
-
-        // Собираем bidder'ов для загрузки доменов
-        if (info.maxBidderOwner) {
-          biddersToFetch.push(info.maxBidderOwner);
+          return {
+            id: info.nftAddress,
+            name: item.domain.replace(/\.ton$/, ''),
+            address: info.nftAddress,
+            bidder: info.maxBidderOwner || undefined,
+            lastBid: lastBidAmount > 0 ? `${lastBidAmount.toFixed(1)}` : '0.0',
+            ends: new Date(info.timestamp * 1000).toISOString(),
+            timeLeft: timeLeft,
+            lastBidAmount: lastBidAmount,
+            zoneName: zoneName,
+            subdomainName: subdomainName,
+            isEnded: isEnded,
+            bids: bids,
+            auctionEndTime: new Date(info.timestamp * 1000).toISOString()
+          };
+        } catch (subError) {
+          console.error(`❌ Ошибка при обработке субдомена ${item.domain}:`, subError);
+          return null;
         }
-
-      } catch (subError) {
-        console.error(`❌ Ошибка при обработке субдомена ${item.domain}:`, subError);
       }
-    }
+    );
+
+    const auctions = results.filter((a): a is ActiveAuction => a !== null);
+    const biddersToFetch = auctions
+      .map((a) => a.bidder)
+      .filter((b): b is string => !!b);
 
     auctions.sort((a, b) => new Date(a.ends).getTime() - new Date(b.ends).getTime());
 
