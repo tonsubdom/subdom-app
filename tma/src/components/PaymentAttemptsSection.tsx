@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { apiService } from "@/services/api";
 import { ZoneLength } from "@/services/api";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useZonePayment, ZoneType } from "@/hooks/useZonePayment";
+import { ShowSnackbar } from "@/components/ShowSnackbar";
 
 // Импортируем логотип TON (предполагаем, что файл ton.svg находится в той же папке)
 import TonLogo from "./Header/ton.svg";
@@ -34,6 +36,14 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const [contentHeight, setContentHeight] = useState<number>(0);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const { payForZone } = useZonePayment();
+  const [payingKey, setPayingKey] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<JSX.Element | null>(null);
+
+  const showSnackbar = (message: string, type: "success" | "error" = "success") => {
+    setSnackbar(<ShowSnackbar message={message} type={type} onClose={() => setSnackbar(null)} />);
+  };
 
   // Цены для proxy зон
   const proxyPrices: Record<ZoneLength, number> = {
@@ -92,6 +102,41 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
+  };
+
+  // Клик по неоплаченной ячейке — сразу отправляет транзакцию покупки
+  // (переиспользует ту же логику, что и степпер CreateCollectionPage).
+  const handleCellClick = async (type: "proxy" | "sbt", length: ZoneLength) => {
+    const key = `${type}-${length}`;
+    if (payingKey || paymentData?.[type]?.[length]) return;
+
+    setPayingKey(key);
+    try {
+      const result = await payForZone(type as ZoneType, length);
+
+      if (result.success) {
+        setPaymentData((prev) =>
+          prev
+            ? { ...prev, [type]: { ...prev[type], [length]: true } }
+            : prev
+        );
+        showSnackbar(
+          result.confirmedInBlock
+            ? t("paymentSuccessfulConfirmed")
+            : t("paymentSentNotConfirmed"),
+          result.confirmedInBlock ? "success" : "error"
+        );
+      } else {
+        showSnackbar(
+          result.error === "walletNotConnected"
+            ? t("walletNotConnected")
+            : t("paymentFailed"),
+          "error"
+        );
+      }
+    } finally {
+      setPayingKey(null);
+    }
   };
 
   // Функция для отображения статуса попытки
@@ -205,41 +250,68 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
             border: `1px solid ${colors.border}`,
           }}
         >
-          {zoneLengths.map((length) => (
-            <div
-              key={`${type}-${length}`}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                padding: "6px 4px",
-                borderRadius: "4px",
-                backgroundColor: colors.background,
-                border: `1px solid ${colors.border}`,
-                minHeight: "70px",
-              }}
-            >
-              {/* Количество символов */}
+          {zoneLengths.map((length) => {
+            const isPaid = data[length];
+            const key = `${type}-${length}`;
+            const isPaying = payingKey === key;
+
+            return (
               <div
+                key={key}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!isPaid && !payingKey) handleCellClick(type, length);
+                }}
                 style={{
-                  fontSize: "10px",
-                  color: colors.text,
-                  opacity: 0.7,
-                  marginBottom: "4px",
-                  fontFamily: "monospace",
-                  textAlign: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  padding: "6px 4px",
+                  borderRadius: "4px",
+                  backgroundColor: colors.background,
+                  border: `1px solid ${isPaying ? colors.cyberpunk : colors.border}`,
+                  minHeight: "70px",
+                  cursor: isPaid ? "default" : payingKey ? "wait" : "pointer",
+                  opacity: payingKey && !isPaying ? 0.5 : 1,
+                  transition: "opacity 0.15s ease, border-color 0.15s ease",
                 }}
               >
-                {length} {t("paymentAttemptsChars")}
+                {/* Количество символов */}
+                <div
+                  style={{
+                    fontSize: "10px",
+                    color: colors.text,
+                    opacity: 0.7,
+                    marginBottom: "4px",
+                    fontFamily: "monospace",
+                    textAlign: "center",
+                  }}
+                >
+                  {length} {t("paymentAttemptsChars")}
+                </div>
+
+                {/* Статус (галочка/крест/спиннер) */}
+                {isPaying ? (
+                  <div
+                    style={{
+                      width: "24px",
+                      height: "24px",
+                      margin: "2px",
+                      borderRadius: "50%",
+                      border: `2px solid ${colors.border}`,
+                      borderTopColor: colors.cyberpunk,
+                      animation: "payment-attempt-spin 0.8s linear infinite",
+                    }}
+                  />
+                ) : (
+                  renderStatusBadge(isPaid)
+                )}
+
+                {/* Цена */}
+                {renderPrice(prices[length])}
               </div>
-
-              {/* Статус (галочка/крест) */}
-              {renderStatusBadge(data[length])}
-
-              {/* Цена */}
-              {renderPrice(prices[length])}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Статистика */}
@@ -394,6 +466,12 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
 
   return (
     <div style={{ marginTop: "10px" }}>
+      <style>{`
+        @keyframes payment-attempt-spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+      {snackbar}
       {/* Заголовок с кнопкой разворачивания */}
       <div
         style={{

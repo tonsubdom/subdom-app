@@ -1,9 +1,12 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { apiService, Subdomain } from '../../services/api';
+import { apiService } from '../../services/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTonAddress } from '@tonconnect/ui-react';
 import TonLogo from '@/components/Header/ton.svg';
+import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-context.tsx';
+import { getAuctionInfo } from '@/pages/AddSubdomainPage/flipTimer/getAuctionInfo';
+import { getAuctionBidHistory } from '@/pages/AddSubdomainPage/flipTimer/getAuctionBidHistory';
 
 // Импорт SVG иконок
 import YourBidderLogo from './img/your_bidder_logo.svg';
@@ -20,7 +23,7 @@ interface Bid {
 }
 
 interface ActiveAuction {
-  id: number;
+  id: string;
   name: string;
   address: string;
   bidder?: string;
@@ -427,8 +430,8 @@ const StatusWithButton: React.FC<{
 const SubdomainImage: React.FC<{ 
   auction: ActiveAuction; 
   colors: any;
-  imageCache: Map<number, { url: string; loaded: boolean; error: boolean }>;
-  updateImageCache: (id: number, state: { url: string; loaded: boolean; error: boolean }) => void;
+  imageCache: Map<string, { url: string; loaded: boolean; error: boolean }>;
+  updateImageCache: (id: string, state: { url: string; loaded: boolean; error: boolean }) => void;
 }> = ({ auction, colors, imageCache, updateImageCache }) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -449,7 +452,7 @@ const SubdomainImage: React.FC<{
   
   // Используем ref для отслеживания предыдущего состояния
   const prevStateRef = useRef<{
-    id: number;
+    id: string;
     url: string;
     loaded: boolean;
     error: boolean;
@@ -667,10 +670,11 @@ const ActiveAuctions: React.FC<ActiveAuctionsProps> = ({
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [onlyMyBids, setOnlyMyBids] = useState<boolean>(false);
   const [domainsCache, setDomainsCache] = useState<Map<string, DomainInfo>>(new Map());
-  const [imageCache, setImageCache] = useState<Map<number, { url: string; loaded: boolean; error: boolean }>>(new Map());
-  
+  const [imageCache, setImageCache] = useState<Map<string, { url: string; loaded: boolean; error: boolean }>>(new Map());
+
   const { t } = useLanguage();
   const userAddress = useTonAddress();
+  const { proxySubdomains } = useBlockchainItems();
   const baseUrlTonsenter = isTestnet ? 'https://testnet.tonviewer.com' : 'https://tonviewer.com';
 
   
@@ -740,59 +744,13 @@ const ActiveAuctions: React.FC<ActiveAuctionsProps> = ({
     return { timeLeft, isEnded: false };
   };
 
-  // Функция для парсинга bids
-  const parseBids = (bidsData: any): Bid[] => {
-    try {
-      if (Array.isArray(bidsData)) {
-        return bidsData;
-      }
-      
-      if (typeof bidsData === 'string') {
-        if (!bidsData || bidsData.trim() === '' || bidsData === '[]') {
-          return [];
-        }
-        
-        const parsed = JSON.parse(bidsData);
-        if (Array.isArray(parsed)) {
-          return parsed;
-        }
-      }
-      
-      if (!bidsData) {
-        return [];
-      }
-      
-      console.warn('⚠️ Неизвестный формат bids:', bidsData);
-      return [];
-    } catch (error) {
-      console.error('❌ Ошибка при парсинге bids:', error, 'Данные:', bidsData);
-      return [];
-    }
-  };
-
-  // Функция для получения последней ставки
-  const getLastBid = (bids: Bid[]): { bidder: string; amount: number } | null => {
-    if (!bids || bids.length === 0) {
-      return null;
-    }
-    
-    const sortedBids = [...bids].sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-    
-    return {
-      bidder: sortedBids[0].bidder,
-      amount: sortedBids[0].amount
-    };
-  };
-
   // Функция для обновления кэша изображений
   // const updateImageCache = useCallback((id: number, state: { url: string; loaded: boolean; error: boolean }) => {
   //   setImageCache(prev => new Map(prev).set(id, state));
   // }, []);
 
   // Функция для обновления кэша изображений - оптимизированная версия
-const updateImageCache = useCallback((id: number, state: { url: string; loaded: boolean; error: boolean }) => {
+const updateImageCache = useCallback((id: string, state: { url: string; loaded: boolean; error: boolean }) => {
   setImageCache(prev => {
     // Проверяем, нужно ли обновлять
     const current = prev.get(id);
@@ -859,96 +817,75 @@ const fetchDomainsForBidders = useCallback(async (bidders: string[]) => {
 
   // Оптимизированная загрузка активных аукционов
 const loadActiveAuctions = useCallback(async () => {
-  console.log(`🔄 Начинаем загрузку аукционов, текущий кэш изображений: ${imageCache.size}`);
+  console.log(`🔄 Начинаем загрузку аукционов (ончейн), текущий кэш изображений: ${imageCache.size}`);
   setLoading(true);
   setError(null);
-  
+
   try {
     console.log(`📡 Загружаем активные аукционы в ${isTestnet ? 'testnet' : 'mainnet'}`);
-    
-    const auctionSubdomains = await apiService.getSubdomainsByStatus('auction');
-    console.log(`✅ Найдено аукционных субдоменов: ${auctionSubdomains.length}`);
-    
-    const validAuctionSubdomains = auctionSubdomains.filter((sub: Subdomain) => 
-      sub.auctionEndTime
-    );
-    
-    console.log(`✅ Аукционов с временем окончания: ${validAuctionSubdomains.length}`);
-    
+
+    // Кандидаты на аукцион — все proxy-субдомены платформы, выставленные на продажу (ончейн-флаг on_sale).
+    const onSaleSubdomains = proxySubdomains.filter((item) => item.on_sale);
+    console.log(`✅ Кандидатов "on_sale": ${onSaleSubdomains.length}`);
+
     const auctions: ActiveAuction[] = [];
     const biddersToFetch: string[] = [];
-    
-    for (const sub of validAuctionSubdomains) {
+
+    for (const item of onSaleSubdomains) {
       try {
-        const bids = parseBids(sub.bids);
-        const lastBid = getLastBid(bids);
-        
-        const lastBidAmount = lastBid ? lastBid.amount / 1_000_000_000 : 0;
-        
-        const { timeLeft, isEnded } = calculateTimeLeft(sub.auctionEndTime!);
-        
-        const fullName = sub.name;
-        const addressSubdomain = sub.address;
-        const parts = fullName.split('.');
-        let subdomainName = '';
-        let zoneName = '';
-        
-        if (parts.length >= 2) {
-          subdomainName = parts[0];
-          zoneName = parts.slice(1).join('.');
-        } else {
-          subdomainName = fullName;
-          zoneName = 'unknown';
-        }
-        
+        const subName = item.domain.split('.')[0];
+        const info = await getAuctionInfo(subName, item.collection_address, isTestnet);
+
+        // Аукцион либо ещё не начат, либо уже завершён — пропускаем.
+        if (!info || !info.isActive) continue;
+
+        const bids = await getAuctionBidHistory(info.nftAddress, isTestnet);
+        const lastBidAmount = Number(info.maxBid) / 1_000_000_000;
+        const { timeLeft, isEnded } = calculateTimeLeft(new Date(info.timestamp * 1000).toISOString());
+
+        const parts = item.domain.replace(/\.ton$/, '').split('.');
+        const subdomainName = parts[0] || subName;
+        const zoneName = item.zone;
+
         auctions.push({
-          id: sub.id,
-          name: sub.name.slice(0, -4),
-          address: addressSubdomain,
-          bidder: lastBid?.bidder,
+          id: info.nftAddress,
+          name: item.domain.replace(/\.ton$/, ''),
+          address: info.nftAddress,
+          bidder: info.maxBidderOwner || undefined,
           lastBid: lastBidAmount > 0 ? `${lastBidAmount.toFixed(1)}` : '0.0',
-          ends: sub.auctionEndTime!,
+          ends: new Date(info.timestamp * 1000).toISOString(),
           timeLeft: timeLeft,
           lastBidAmount: lastBidAmount,
           zoneName: zoneName,
           subdomainName: subdomainName,
-          zoneId: sub.zoneId,
           isEnded: isEnded,
           bids: bids,
-          auctionEndTime: sub.auctionEndTime!
+          auctionEndTime: new Date(info.timestamp * 1000).toISOString()
         });
-        
+
         // Собираем bidder'ов для загрузки доменов
-        if (lastBid?.bidder) {
-          biddersToFetch.push(lastBid.bidder);
+        if (info.maxBidderOwner) {
+          biddersToFetch.push(info.maxBidderOwner);
         }
-        
+
       } catch (subError) {
-        console.error(`❌ Ошибка при обработке субдомена ${sub.name}:`, subError);
+        console.error(`❌ Ошибка при обработке субдомена ${item.domain}:`, subError);
       }
     }
-    
+
     auctions.sort((a, b) => new Date(a.ends).getTime() - new Date(b.ends).getTime());
-    
-    console.log(`✅ Найдено аукционов (включая завершенные): ${auctions.length}`);
+
+    console.log(`✅ Найдено активных ончейн-аукционов: ${auctions.length}`);
     console.log(`📊 Кэш изображений до обновления: ${imageCache.size}`);
-    
-    // Сохраняем старые аукционы для сравнения
-    const oldAuctionIds = new Set(activeAuctions.map(a => a.id));
-    //const newAuctionIds = new Set(auctions.map(a => a.id));
-    
-    // Находим аукционы, которые остались
-    const remainingAuctions = auctions.filter(a => oldAuctionIds.has(a.id));
-    console.log(`🔄 Аукционов осталось прежними: ${remainingAuctions.length}`);
-    
+
     setActiveAuctions(auctions);
     setLastUpdate(new Date());
-    
+
     // Загружаем домены для bidder'ов (в фоне)
     if (biddersToFetch.length > 0) {
       fetchDomainsForBidders(biddersToFetch);
     }
-    
+
   } catch (error: any) {
     console.error('❌ Ошибка при загрузке активных аукционов:', error);
     setError(error.message || 'Ошибка загрузки активных аукционов');
@@ -956,7 +893,7 @@ const loadActiveAuctions = useCallback(async () => {
     setLoading(false);
     console.log(`✅ Загрузка завершена, кэш изображений: ${imageCache.size}`);
   }
-}, [isTestnet, fetchDomainsForBidders, imageCache]);
+}, [isTestnet, fetchDomainsForBidders, imageCache, proxySubdomains]);
 
   // Фильтрация и сортировка
   useEffect(() => {

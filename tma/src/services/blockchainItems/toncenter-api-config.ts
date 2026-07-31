@@ -378,6 +378,24 @@ async getFirstTransaction(
     sort: 'asc',
   });
 }
+
+  /**
+   * Получить полную хронологию транзакций для адреса (от старых к новым).
+   * Используется для восстановления истории ставок аукциона: контракт
+   * при перебитии ставки возвращает старую ставку прежнему биддеру, поэтому
+   * все входящие сообщения на адрес айтема (in_msg.source задан) — это ставки.
+   */
+async getAscendingTransactions(
+  account: string,
+  limit: number = 100
+): Promise<{ transactions: TonCenterTransaction[]; address_book?: Record<string, any> }> {
+  return this.request('/transactions', {
+    account: account,
+    limit,
+    offset: 0,
+    sort: 'asc',
+  });
+}
 }
 
 
