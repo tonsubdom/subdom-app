@@ -52,7 +52,17 @@ export class TransactionService {
   };
 
   /**
-   * Отправка транзакции с проверкой статуса и retry логикой
+   * Отправка транзакции с проверкой статуса.
+   *
+   * tonConnectUI.sendTransaction() вызывается СТРОГО ОДИН РАЗ — раньше при
+   * обрыве проверки подтверждения (таймаут/сетевая ошибка ПОСЛЕ того, как
+   * платёж уже ушёл в кошелёк) внешний цикл повторно звал sendTransaction,
+   * то есть заново слал юзеру запрос на подпись той же самой платёжной
+   * транзакции. Юзер, не заметив, что это дубликат, мог по случайности
+   * оплатить одно и то же 2-3 раза. Ожидание подтверждения (waitForConfirmation)
+   * само по себе уже поллит статус нужное время — этого достаточно. Если
+   * транзакция реально не дошла (юзер отменил в кошельке) — юзер увидит
+   * ошибку и отправит заново сам, осознанно.
    */
   static async sendTransaction(
     tonConnectUI: TonConnectUI,
@@ -61,94 +71,68 @@ export class TransactionService {
   ): Promise<TransactionResult> {
     const {
       timeout = 60000, // 60 секунд
-      maxRetries = 3,
-      baseDelay = 2000,
       verifyBlockchain = true,
       network = 'mainnet'
     } = options;
 
-    let lastError: string = '';
-    let retryCount = 0;
+    try {
+      // 1. Отправка транзакции через TonConnect — один раз
+      const sendResult = await tonConnectUI.sendTransaction(transaction);
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      retryCount = attempt;
-      console.log(`🔄 Попытка отправки транзакции ${attempt}/${maxRetries}`);
+      if (!sendResult?.boc) {
+        return { success: false, error: 'Транзакция не вернула BOC' };
+      }
 
-      try {
-        // 1. Отправка транзакции через TonConnect
-        const sendResult = await tonConnectUI.sendTransaction(transaction);
-        
-        if (!sendResult?.boc) {
-          lastError = 'Транзакция не вернула BOC';
-          continue;
-        }
+      console.log('✅ Транзакция подписана, BOC получен');
 
-        console.log('✅ Транзакция подписана, BOC получен');
+      // 2. Извлекаем hash из BOC
+      const txHash = this.extractHashFromBoc(sendResult.boc);
+      if (!txHash) {
+        return { success: false, error: 'Не удалось извлечь hash из BOC' };
+      }
 
-        // 2. Извлекаем hash из BOC
-        const txHash = this.extractHashFromBoc(sendResult.boc);
-        if (!txHash) {
-          lastError = 'Не удалось извлечь hash из BOC';
-          continue;
-        }
+      console.log(`📝 Hash транзакции: ${txHash}`);
 
-        console.log(`📝 Hash транзакции: ${txHash}`);
+      // 3. Если требуется проверка в блокчейне — ждём (с внутренним поллингом,
+      // без повторной отправки транзакции)
+      if (verifyBlockchain) {
+        const confirmed = await this.waitForConfirmation(txHash, network, timeout);
 
-        // 3. Если требуется проверка в блокчейне
-        if (verifyBlockchain) {
-          const confirmed = await this.waitForConfirmation(
-            txHash,
-            network,
-            timeout
-          );
-
-          if (confirmed.success) {
-            console.log('✅ Транзакция подтверждена в блокчейне');
-            return {
-              success: true,
-              boc: sendResult.boc,
-              hash: txHash,
-              retries: attempt,
-              confirmedInBlock: true
-            };
-          } else {
-            lastError = confirmed.error || 'Транзакция не подтверждена в блокчейне';
-            console.log(`❌ ${lastError}`);
-          }
-        } else {
-          // Если проверка не требуется, считаем успешной
+        if (confirmed.success) {
+          console.log('✅ Транзакция подтверждена в блокчейне');
           return {
             success: true,
             boc: sendResult.boc,
             hash: txHash,
-            retries: attempt,
-            confirmedInBlock: false
+            confirmedInBlock: true
           };
         }
 
-        // 4. Экспоненциальная задержка перед следующей попыткой
-        if (attempt < maxRetries) {
-          const delay = baseDelay * Math.pow(2, attempt - 1);
-          console.log(`⏳ Ожидание ${delay}мс перед следующей попыткой...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
-
-      } catch (error: any) {
-        lastError = this.normalizeError(error);
-        console.error(`❌ Ошибка при отправке (попытка ${attempt}):`, lastError);
-
-        if (attempt < maxRetries) {
-          const delay = baseDelay * Math.pow(2, attempt - 1);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
+        // Транзакция ушла (hash есть), но подтверждение не поймали за
+        // timeout — это не "не отправилось", это "неизвестно". Отдаём hash
+        // вызывающему коду, чтобы UI мог показать "отправлено, не подтверждено"
+        // вместо повторной отправки.
+        return {
+          success: false,
+          boc: sendResult.boc,
+          hash: txHash,
+          error: confirmed.error || 'Транзакция не подтверждена в блокчейне',
+          confirmedInBlock: false
+        };
       }
-    }
 
-    return {
-      success: false,
-      error: lastError || `Не удалось отправить транзакцию после ${maxRetries} попыток`,
-      retries: retryCount
-    };
+      // Если проверка не требуется, считаем успешной
+      return {
+        success: true,
+        boc: sendResult.boc,
+        hash: txHash,
+        confirmedInBlock: false
+      };
+    } catch (error: any) {
+      const message = this.normalizeError(error);
+      console.error('❌ Ошибка при отправке транзакции:', message);
+      return { success: false, error: message };
+    }
   }
 
   /**
@@ -372,7 +356,7 @@ export class TransactionService {
   }
 
   /**
-   * Упрощенная отправка с базовой проверкой
+   * Упрощенная отправка с базовой проверкой (короткий таймаут подтверждения)
    */
   static async sendSimple(
     tonConnectUI: TonConnectUI,
@@ -380,14 +364,14 @@ export class TransactionService {
     network: 'mainnet' | 'testnet' = 'mainnet'
   ): Promise<{ success: boolean; hash?: string; error?: string }> {
     return this.sendTransaction(tonConnectUI, transaction, {
-      maxRetries: 2,
       timeout: 30000,
       network
     });
   }
 
   /**
-   * Отправка с агрессивными retry (для критичных операций)
+   * Отправка с увеличенным таймаутом ожидания подтверждения (для критичных
+   * операций) — сама транзакция всё равно отправляется в кошелёк один раз.
    */
   static async sendWithAggressiveRetry(
     tonConnectUI: TonConnectUI,
@@ -395,9 +379,7 @@ export class TransactionService {
     network: 'mainnet' | 'testnet' = 'mainnet'
   ): Promise<TransactionResult> {
     return this.sendTransaction(tonConnectUI, transaction, {
-      maxRetries: 5,
       timeout: 120000, // 2 минуты
-      baseDelay: 3000,
       network
     });
   }

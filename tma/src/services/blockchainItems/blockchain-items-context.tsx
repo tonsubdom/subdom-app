@@ -41,6 +41,7 @@ import {
   selectError,
   selectNetwork,
   selectLastUpdated,
+  selectHasFetchedThisSession,
   selectCurrentUserAddress,
   selectStats,
   selectCollectionsByType,
@@ -155,6 +156,7 @@ export const BlockchainItemsProvider: React.FC<BlockchainItemsProviderProps> = (
   const error = useSelector(selectError);
   const network = useSelector(selectNetwork);
   const lastUpdated = useSelector(selectLastUpdated);
+  const hasFetchedThisSession = useSelector(selectHasFetchedThisSession);
   const currentUserAddress = useSelector(selectCurrentUserAddress);
   const isServiceInitialized = useSelector(selectIsServiceInitialized);
   const serviceConfig = useSelector(selectServiceConfig);
@@ -181,14 +183,20 @@ export const BlockchainItemsProvider: React.FC<BlockchainItemsProviderProps> = (
 
   /**
    * Вызывать вместо loadAllData() в эффектах монтирования страниц/виджетов.
-   * Данные в сторе (свежие из этой же сессии или гидрированные из
-   * localStorage) уже есть — не дёргаем сеть и не мигаем лоадером заново
-   * на каждом переходе между страницами, пока TTL не истёк и адрес
-   * кошелька не сменился.
+   * Пропускаем сетевой запрос только если данные уже реально загружались по
+   * сети В ЭТОЙ ЖЕ сессии вкладки (hasFetchedThisSession) — гидрация из
+   * localStorage сама по себе НЕ считается "свежей" для этой проверки: она
+   * лишь даёт что показать мгновенно при холодном старте, но может быть
+   * неполной/устаревшей относительно того, что изменилось на чейне только
+   * что (например, юзер только что задеплоил новую зону) — если полагаться
+   * только на TTL снимка, стор может молча простоять на этих неполных данных
+   * до 20 минут, и всё, что ищет "есть ли уже такой-то итем/коллекция"
+   * (аукционы, проверка существующей зоны) не найдёт то, что реально есть.
    */
   const ensureData = useCallback(async () => {
     const walletAddress = wallet?.account?.address || null;
     const isFresh =
+      hasFetchedThisSession &&
       !!appData &&
       !!lastUpdated &&
       Date.now() - new Date(lastUpdated).getTime() < CACHE_TTL_MS &&
@@ -198,7 +206,7 @@ export const BlockchainItemsProvider: React.FC<BlockchainItemsProviderProps> = (
     if (isFresh) return;
 
     await loadAllData();
-  }, [appData, lastUpdated, network, resolvedNetwork, currentUserAddress, wallet, loadAllData]);
+  }, [appData, lastUpdated, hasFetchedThisSession, network, resolvedNetwork, currentUserAddress, wallet, loadAllData]);
 
   const loadCollections = useCallback(async (forceRefresh = false) => {
     await dispatch(loadCollectionsData({ forceRefresh })).unwrap();

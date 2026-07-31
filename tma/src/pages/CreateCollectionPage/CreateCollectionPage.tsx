@@ -153,7 +153,7 @@ const partnerAddress = isTestnet
   } = useSelector((state: RootState) => state.blockchain);
 
   // Ончейн-коллекции текущей сети (для проверки "уже есть SBT-зона на этом домене" без бэкенда)
-  const { sbtCollections } = useBlockchainItems();
+  const { sbtCollections, ensureData } = useBlockchainItems();
 
   const { currentTheme } = useTheme();
   const isDark = currentTheme === 'dark';
@@ -203,6 +203,15 @@ const partnerAddress = isTestnet
   useEffect(() => {
     apiService.setNetwork(isTestnet);
   }, [isTestnet]);
+
+  // checkDomainExists ниже читает sbtCollections напрямую из стора — эта
+  // страница раньше сама никогда не инициировала загрузку блокчейн-данных
+  // и полагалась на то, что их загрузит какая-то другая страница до неё.
+  // Если юзер открывал создание зоны первым за сессию, sbtCollections был
+  // пуст, и проверка существующей зоны молча не находила ничего.
+  useEffect(() => {
+    ensureData();
+  }, [ensureData]);
 
   // Загружаем оплаченные попытки при изменении адреса
   useEffect(() => {

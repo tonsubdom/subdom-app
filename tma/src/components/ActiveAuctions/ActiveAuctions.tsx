@@ -685,7 +685,7 @@ const ActiveAuctions: React.FC<ActiveAuctionsProps> = ({
 
   const { t } = useLanguage();
   const userAddress = useTonAddress();
-  const { proxySubdomains, isLoading: blockchainLoading } = useBlockchainItems();
+  const { proxySubdomains, ensureData, isLoading: blockchainLoading } = useBlockchainItems();
   const baseUrlTonsenter = isTestnet ? 'https://testnet.tonviewer.com' : 'https://tonviewer.com';
 
   
@@ -1022,6 +1022,16 @@ const handleAuctionClick = (auction: ActiveAuction) => {
   useEffect(() => {
     apiService.setNetwork(isTestnet);
   }, [isTestnet]);
+
+  // Раньше этот компонент никогда сам не инициировал загрузку блокчейн-данных —
+  // просто ждал, пока proxySubdomains заполнит кто-то другой (ProfileWidget/
+  // MarketPage). Если юзер открывал страницу с аукционами первой за сессию,
+  // isLoading оставался false (никто ничего не грузил), скан стартовал сразу
+  // на пустом proxySubdomains и находил 0 кандидатов. Вызываем ensureData()
+  // сами — не задваивает сетевой запрос, если данные уже свежие.
+  useEffect(() => {
+    ensureData();
+  }, [ensureData]);
 
   // Загрузка данных и интервал - оптимизированная версия
   

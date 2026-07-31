@@ -38,7 +38,15 @@ interface BlockchainItemsState {
   // Настройки
   network: NetworkType;
   lastUpdated: string | null;
-  
+
+  // true только после реального сетевого fetch в ТЕКУЩЕЙ сессии вкладки
+  // (loadAllAppData.fulfilled). Гидрация из localStorage lastUpdated тоже
+  // выставляет (снимок может быть свежим по TTL, но неполным/устаревшим
+  // относительно того, что изменилось на чейне только что) — ensureData()
+  // должен ориентироваться на этот флаг, а не только на TTL, иначе стор может
+  // молча простоять до 20 минут на неполных гидрированных данных.
+  hasFetchedThisSession: boolean;
+
   // Пользователь
   currentUserAddress: string | null;
   
@@ -79,7 +87,8 @@ const initialState: BlockchainItemsState = {
   // Настройки
   network: 'testnet',
   lastUpdated: null,
-  
+  hasFetchedThisSession: false,
+
   // Пользователь
   currentUserAddress: null,
   
@@ -516,7 +525,8 @@ const blockchainItemsSlice = createSlice({
       // Метаданные
       state.lastUpdated = data.lastUpdated;
       state.currentUserAddress = userAddress || null;
-      
+      state.hasFetchedThisSession = true;
+
       state.isLoading = false;
       state.isRefreshing = false;
     });
@@ -699,10 +709,13 @@ export const selectError = (state: { blockchainItems: BlockchainItemsState }) =>
 export const selectNetwork = (state: { blockchainItems: BlockchainItemsState }) => 
   state.blockchainItems.network;
 
-export const selectLastUpdated = (state: { blockchainItems: BlockchainItemsState }) => 
+export const selectLastUpdated = (state: { blockchainItems: BlockchainItemsState }) =>
   state.blockchainItems.lastUpdated;
 
-export const selectCurrentUserAddress = (state: { blockchainItems: BlockchainItemsState }) => 
+export const selectHasFetchedThisSession = (state: { blockchainItems: BlockchainItemsState }) =>
+  state.blockchainItems.hasFetchedThisSession;
+
+export const selectCurrentUserAddress = (state: { blockchainItems: BlockchainItemsState }) =>
   state.blockchainItems.currentUserAddress;
 
 // Селекторы конфигурации сервиса
