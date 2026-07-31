@@ -404,50 +404,6 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
         {renderPaymentTable("proxy", paymentData.proxy)}
         {renderPaymentTable("sbt", paymentData.sbt)}
 
-        {/* Общая статистика */}
-        <div
-          style={{
-            marginTop: "16px",
-            paddingTop: "12px",
-            borderTop: `1px dashed ${colors.border}`,
-            fontSize: "12px",
-            color: colors.text,
-            fontFamily: "monospace",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "4px",
-            }}
-          >
-            <span>{t("paymentAttemptsTotalPaid")}</span>
-            <strong style={{ color: colors.cyberpunk }}>
-              {Object.values(paymentData.proxy).filter((v) => v).length +
-                Object.values(paymentData.sbt).filter((v) => v).length}
-            </strong>
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginBottom: "4px",
-            }}
-          >
-            <span>{t("paymentAttemptsProxyAttempts")}</span>
-            <strong style={{ color: "#10B981" }}>
-              {Object.values(paymentData.proxy).filter((v) => v).length}
-            </strong>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span>{t("paymentAttemptsSbtAttempts")}</span>
-            <strong style={{ color: "#3B82F6" }}>
-              {Object.values(paymentData.sbt).filter((v) => v).length}
-            </strong>
-          </div>
-        </div>
-
         <div
           style={{
             marginTop: "12px",

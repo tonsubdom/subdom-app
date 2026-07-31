@@ -12437,7 +12437,6 @@ import FlipTimer from "./flipTimer/FlipTimer";
 import { getAuctionInfo, ParsedAuctionInfo } from "./flipTimer/getAuctionInfo";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useUser } from "@/contexts/UserContext";
 import { apiService, Zone } from "@/services/api";
 
 import { checkSBTSubdomain, SBTSubdomainInfo } from "./checkSBTSubdomain";
@@ -12558,7 +12557,6 @@ export const AuctionPage: React.FC<{}> = () => {
   const wallet = useTonWallet();
   const userAddress = useTonAddress();
   const [tonConnectUI] = useTonConnectUI();
-  const { refreshSubdomains } = useUser();
 
   const [sbtSubdomainInfo, setSbtSubdomainInfo] =
     useState<SBTSubdomainInfo | null>(null);
@@ -12804,14 +12802,20 @@ export const AuctionPage: React.FC<{}> = () => {
       const sp = launchParams.startParam!;
       try {
         const { route, params } = MiniAppLinks.parseStartapp(sp);
-        if (route === "/add-subdomain" && params.zone && params.subdomain)
-          loadAuctionFromParams(params.zone, params.subdomain);
+        if (route === "/add-subdomain") {
+          if (params.zone && params.subdomain) {
+            loadAuctionFromParams(params.zone, params.subdomain);
+          } else if (params.zone) {
+            selectZoneFromParams(params.zone);
+          }
+        }
       } catch (e) {
         console.error("deeplink parse error:", e);
       }
     } else if (hasUrlParams) {
       const p = getAuctionParamsFromUrl();
       if (p.zone && p.subdomain) loadAuctionFromParams(p.zone, p.subdomain);
+      else if (p.zone) selectZoneFromParams(p.zone);
     }
     // eslint-disable-next-line
   }, [allZones, launchParams.startParam]);
@@ -12906,6 +12910,19 @@ export const AuctionPage: React.FC<{}> = () => {
       setTimeout(() => handleCheckItem(), 500);
     },
     [allZones, handleCheckItem, updateUrlWithCurrentAuction]
+  );
+
+  // Для перехода "Создать субдомен" с карточки зоны в профиле — известна
+  // только зона, конкретное имя субдомена юзер ещё не ввёл, поэтому просто
+  // предвыбираем зону (и таб proxy/sbt по типу зоны), без запуска проверки.
+  const selectZoneFromParams = useCallback(
+    (zoneName: string) => {
+      const zone = allZones.find((z) => z.name === zoneName);
+      setActiveTab(zone?.proxy === 0 ? "sbt" : "proxy");
+      setSelectedDomainZone(zoneName);
+      if (zone?.collectionAddress) setCollectionAddress(zone.collectionAddress);
+    },
+    [allZones]
   );
 
   const handleTabChange = (
@@ -13172,7 +13189,6 @@ export const AuctionPage: React.FC<{}> = () => {
           amount: calculateBidPrice / 1_000_000_000,
           previousBidder: auctionInfo.maxBidderOwner || undefined,
         });
-        refreshSubdomains();
         loadAllData(true);
       } catch (dbError: any) {
         console.error("Notify error:", dbError);
@@ -13382,10 +13398,6 @@ export const AuctionPage: React.FC<{}> = () => {
     if (canClaim) return isClaimLoading ? "#888" : "#4ade80";
     return "transparent";
   };
-
-  useEffect(() => {
-    if (userAddress) refreshSubdomains();
-  }, [userAddress, refreshSubdomains]);
 
   // ===================================================================
   // RENDER

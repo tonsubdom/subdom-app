@@ -2128,8 +2128,15 @@ class DeeplinkUtils {
     return `https://t.me/${this.BOT_USERNAME}?startapp=${encodedParam}`;
   }
 
+  // Telegram startapp допускает только [A-Za-z0-9_-], точка из ".ton" его ломает
+  // (ссылка вообще не открывает мини-апп) — отрезаем TLD тут, обратно
+  // добавляем в parseStartappParam на фронте (см. miniAppLinks.ts).
+  private static stripTonTld(zoneName: string): string {
+    return zoneName.replace(/\.ton$/i, '');
+  }
+
   static generateAddSubdomainLink(zoneName: string, subdomainName?: string): string {
-    const params: Record<string, string> = { zone: zoneName };
+    const params: Record<string, string> = { zone: this.stripTonTld(zoneName) };
     if (subdomainName) {
       params.subdomain = subdomainName;
     }
@@ -2142,7 +2149,7 @@ class DeeplinkUtils {
 
   static generateAuctionLink(zoneName: string, subdomainName: string): string {
     return this.generateTelegramDeeplink('/add-subdomain', {
-      zone: zoneName,
+      zone: this.stripTonTld(zoneName),
       subdomain: subdomainName
     });
   }

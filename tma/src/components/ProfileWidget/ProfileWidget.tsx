@@ -2670,16 +2670,26 @@ const ProfileWidget: React.FC = () => {
     }
   };
 
-  const handleAddSubdomain = () => {
+  // zoneName передаём с карточки конкретной зоны — сразу открывает
+  // add-subdomain с этой зоной предвыбранной (см. selectZoneFromParams в
+  // AddSubdomainPage.tsx), а не пустую форму без параметров.
+  const handleAddSubdomain = (zoneName?: string) => {
     setIsExpanded(false);
     setTimeout(() => {
-      window.location.href = `/#/add-subdomain`;
+      window.location.href = zoneName
+        ? createAuctionUrl({ zone: zoneName })
+        : `/#/add-subdomain`;
     }, 300);
   };
-  const handleManage = () => {
+  // address передаём с карточки конкретного домена/субдомена — сразу
+  // открывает ManageDomainPage с этим адресом подставленным в поле "Other"
+  // и автопроверкой (см. ЭФФЕКТ 3 в ManageDomainPage.tsx), а не пустую форму.
+  const handleManage = (address?: string) => {
     setIsExpanded(false);
     setTimeout(() => {
-      window.location.href = `/manage#/manage`;
+      window.location.href = address
+        ? `/manage#/manage?address=${encodeURIComponent(address)}`
+        : `/manage#/manage`;
     }, 300);
   };
   const handleMarket = () => {
@@ -2820,6 +2830,17 @@ const ProfileWidget: React.FC = () => {
     return [...proxySubs, ...sbtSubs];
   }, [userProxySubdomains, userSBTSubdomains]);
 
+  // ====== [NEW] КАНДИДАТЫ ДЛЯ СКАНА АУКЦИОНОВ — ВСЕ PROXY-СУБДОМЕНЫ ПЛАТФОРМЫ ======
+  // Вкладка "Аукционы" должна показывать все активные аукционы платформы (как
+  // ActiveAuctions.tsx), а не только собственные субдомены юзера — теми, кто уже
+  // владеет субдоменом, аукцион по определению уже выигран и isActive=false.
+  // SBT-субдомены не участвуют в аукционах (минтятся напрямую), поэтому не берём
+  // userSBTSubdomains/sbtSubdomains сюда.
+  const allProxySubdomainsAsSubdomains = useMemo(
+    (): Subdomain[] => allProxySubdomains.map((item) => enrichedItemToSubdomain(item)),
+    [allProxySubdomains]
+  );
+
   // ====== [NEW] INFO: траты post-factum по уже загруженным ончейн-данным ======
   // Считается из тех же getUserZones/getUserSubdomainsFromBlockchain, что уже
   // используются для вкладок "Зоны"/"Субдомены" — никаких дополнительных
@@ -2947,13 +2968,13 @@ const ProfileWidget: React.FC = () => {
   // ====== [NEW] АУКЦИОНЫ — ОНЧЕЙН ======
 
   useEffect(() => {
-    if (subdomains.length === 0) return;
+    if (allProxySubdomainsAsSubdomains.length === 0) return;
     const load = async () => {
       setAuctionsLoading(true);
-      setAuctionsScanProgress({ done: 0, total: subdomains.length, found: 0 });
+      setAuctionsScanProgress({ done: 0, total: allProxySubdomainsAsSubdomains.length, found: 0 });
       try {
         const auctions = await loadAuctionsFromBlockchain(
-          subdomains,
+          allProxySubdomainsAsSubdomains,
           isTestnet,
           (done, total, found) => setAuctionsScanProgress({ done, total, found })
         );
@@ -2965,7 +2986,7 @@ const ProfileWidget: React.FC = () => {
       }
     };
     load();
-  }, [subdomains, isTestnet]);
+  }, [allProxySubdomainsAsSubdomains, isTestnet]);
 
   // ====== [NEW] ОСНОВНОЙ ЭФФЕКТ ЗАГРУЗКИ ======
 

@@ -111,12 +111,20 @@ export class MiniAppLinkGenerator {
    * @param subdomainName - опциональное имя субдомена
    * @returns Ссылка для мини-апп
    */
+  // Telegram startapp допускает только [A-Za-z0-9_-] — точка из ".ton" ломает
+  // ссылку (мини-апп вообще не открывается). Отрезаем TLD тут, обратно
+  // добавляем в parseStartappParam ниже, чтобы zone всегда приходил с ".ton"
+  // туда, где он матчится с zone.name (allZones, sbtCollections и т.д.).
+  private static stripTonTld(zoneName: string): string {
+    return zoneName.replace(/\.ton$/i, '');
+  }
+
   static generateAddSubdomainLink(zoneName: string, subdomainName?: string): string {
-    const params: Record<string, string> = { zone: zoneName };
+    const params: Record<string, string> = { zone: this.stripTonTld(zoneName) };
     if (subdomainName) {
       params.subdomain = subdomainName;
     }
-    
+
     return this.generateTelegramDeeplink('/add-subdomain', params);
   }
 
@@ -138,7 +146,7 @@ export class MiniAppLinkGenerator {
    */
   static generateAuctionLink(zoneName: string, subdomainName: string): string {
     return this.generateTelegramDeeplink('/add-subdomain', {
-      zone: zoneName,
+      zone: this.stripTonTld(zoneName),
       subdomain: subdomainName
     });
   }
@@ -216,7 +224,14 @@ export class MiniAppLinkGenerator {
         }
       }
     }
-    
+
+    // Симметрично stripTonTld() в generateAddSubdomainLink/generateAuctionLink —
+    // zone пришёл без ".ton" (иначе Telegram отклоняет startapp), возвращаем
+    // TLD обратно, чтобы дальше zone матчился с zone.name (allZones и т.д.).
+    if (params.zone && !/\.ton$/i.test(params.zone)) {
+      params.zone = `${params.zone}.ton`;
+    }
+
     return { route, params };
   }
 
