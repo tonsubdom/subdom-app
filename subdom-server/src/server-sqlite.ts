@@ -3489,4 +3489,29 @@ app.listen(PORT, () => {
   console.log(`🤖  POST /api/telegram/notification - Уведомление в Telegram`);
 });
 
+// Graceful shutdown: обе базы в WAL-режиме держат недавние записи в отдельном
+// .db-wal файле, который НЕ примонтирован как volume в docker-compose.yml
+// (там смонтированы только сами .db-файлы) — без явного чекпоинта здесь
+// `docker stop` (SIGTERM) может убить контейнер раньше, чем WAL сольётся в
+// основной файл сам по себе, и все записи с последнего автоматического
+// чекпоинта теряются при пересборке/передеплое. wal_checkpoint(TRUNCATE)
+// сливает WAL в основной .db-файл принудительно перед закрытием — тогда
+// даже без монтирования .db-wal/.db-shm данные переживают передеплой.
+const shutdown = (signal: string) => {
+  console.log(`\n🛑 Получен ${signal}, чекпоиню WAL и закрываю базы...`);
+  try {
+    testnetDb.pragma('wal_checkpoint(TRUNCATE)');
+    mainnetDb.pragma('wal_checkpoint(TRUNCATE)');
+    testnetDb.close();
+    mainnetDb.close();
+    console.log('✅ Базы данных закрыты корректно (WAL сброшен в основной файл)');
+  } catch (error) {
+    console.error('❌ Ошибка при закрытии баз данных:', error);
+  }
+  process.exit(0);
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
 export default app;
