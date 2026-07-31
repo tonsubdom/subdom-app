@@ -12816,7 +12816,7 @@ export const AuctionPage: React.FC<{}> = () => {
     // eslint-disable-next-line
   }, [allZones, launchParams.startParam]);
 
-  // ====== ПРОВЕРКА ИТЕМА ======
+  // ====== ПРОВЕРКА ИТЕМА =======
   const handleCheckItem = useCallback(async () => {
     if (!selectedDomainZone || !subDomainName || !collectionAddress) {
       showSnackbar(t("pleaseEnterDomainName"), "error");
