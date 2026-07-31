@@ -3504,6 +3504,8 @@ const shutdown = (signal: string) => {
     mainnetDb.pragma('wal_checkpoint(TRUNCATE)');
     testnetDb.close();
     mainnetDb.close();
+    // telegramBot держит свои независимые коннекшны к тем же файлам
+    telegramBot.checkpointAndClose();
     console.log('✅ Базы данных закрыты корректно (WAL сброшен в основной файл)');
   } catch (error) {
     console.error('❌ Ошибка при закрытии баз данных:', error);

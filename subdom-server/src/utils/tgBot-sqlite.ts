@@ -3707,6 +3707,21 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       return { totalChats: 0, activeChats: 0, closedChats: 0, totalMessages: 0, userMessages: 0, operatorMessages: 0 };
     }
   }
+
+  // Этот класс держит СВОИ независимые коннекшны к тем же .db-файлам
+  // (this.testnetDb/this.mainnetDb, отдельно от тех, что открывает
+  // server-sqlite.ts) — их WAL тоже нужно сливать в основной файл на
+  // остановке контейнера, иначе теряются записи чатов/подписок.
+  checkpointAndClose(): void {
+    try {
+      this.testnetDb.pragma('wal_checkpoint(TRUNCATE)');
+      this.mainnetDb.pragma('wal_checkpoint(TRUNCATE)');
+      this.testnetDb.close();
+      this.mainnetDb.close();
+    } catch (error) {
+      console.error('❌ Ошибка при чекпоинте/закрытии баз бота:', error);
+    }
+  }
 }
 
 // Создаем и экспортируем экземпляр бота

@@ -41,16 +41,13 @@ services:
       # состояние с последнего образа при каждом деплое.
       - ./subdom-server/nft-domains-mainnet.db:/app/nft-domains-mainnet.db
       - ./subdom-server/nft-domains.db:/app/nft-domains.db
-      # Обе базы в WAL-режиме — недавние записи до чекпоинта живут в этих
-      # файлах, а не в основном .db. Приложение теперь чекпоинтит WAL на
-      # SIGTERM (см. shutdown-хендлер в server-sqlite.ts), но эти volume —
-      # защита на случай если чекпоинт не успеет (SIGKILL/OOM/таймаут).
-      # ВАЖНО: файлы должны существовать на хосте до `docker-compose up` —
-      # иначе Docker может создать на их месте директорию вместо файла.
-      - ./subdom-server/nft-domains-mainnet.db-wal:/app/nft-domains-mainnet.db-wal
-      - ./subdom-server/nft-domains-mainnet.db-shm:/app/nft-domains-mainnet.db-shm
-      - ./subdom-server/nft-domains.db-wal:/app/nft-domains.db-wal
-      - ./subdom-server/nft-domains.db-shm:/app/nft-domains.db-shm
+      # NB: сознательно НЕ монтируем .db-wal/.db-shm (обе базы в WAL-режиме,
+      # см. tgBot-sqlite.ts `pragma('journal_mode = WAL')`) — эти host-пути
+      # никогда не существовали как файлы на сервере, и bind-mount несуществующего
+      # пути создаёт на его месте директорию, из-за которой SQLite не может
+      # открыть/создать WAL-файл (SQLITE_CANTOPEN, ловили в проде 2026-08-01).
+      # Защита от потери WAL при передеплое — chekpoint на SIGTERM в
+      # server-sqlite.ts, ему для этого volume не нужны.
 networks:
   app-network:
     driver: bridge
