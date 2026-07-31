@@ -1187,7 +1187,7 @@
 //         }}>
 //           {checkAuctionTimerEnd(new Date(auction.ends)) ?
 //             <button
-//               onClick={() => handleGoToAuction(auction.name)}
+//               onClick={() => handleGoToAuction(String(auction.subdomain?.zoneId ?? ""), auction.name.split(".")[0])}
 //               style={cardButtonStyle}
 //               onMouseOver={(e) => {
 //                 e.currentTarget.style.transform = "translateY(-1px)";
@@ -1202,7 +1202,7 @@
 //             </button>
 //             :
 //             <button
-//               onClick={() => handleGoToAuction(auction.name)}
+//               onClick={() => handleGoToAuction(String(auction.subdomain?.zoneId ?? ""), auction.name.split(".")[0])}
 //               style={cardButtonStyle}
 //               onMouseOver={(e) => {
 //                 e.currentTarget.style.transform = "translateY(-1px)";
@@ -2298,6 +2298,7 @@ import {
 } from "@/services/blockchainItems/blockchain-items-types";
 import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInfo";
 import { mapWithConcurrency } from "@/utils/concurrency";
+import { createAuctionUrl } from "@/utils/urlParams";
 
 // ====== [KEEP] БЭКЕНД ДЛЯ INFO-БЛОКА ======
 // import { useZones } from "@/hooks/useZones";
@@ -2305,6 +2306,7 @@ import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
 import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 import searchDog from "@/pages/ManageDomainPage/img/searchDog.gif";
+import { ScanProgressLoader } from "@/components/ScanProgressLoader";
 
 // ====================================================================
 // КОНСТАНТЫ
@@ -2414,8 +2416,11 @@ const AUCTION_CHECK_CONCURRENCY = 10;
 
 const loadAuctionsFromBlockchain = async (
   subdomains: Subdomain[],
-  isTestnet: boolean
+  isTestnet: boolean,
+  onProgress?: (done: number, total: number, found: number) => void
 ): Promise<Auction[]> => {
+  let foundSoFar = 0;
+
   const results = await mapWithConcurrency(
     subdomains,
     AUCTION_CHECK_CONCURRENCY,
@@ -2430,6 +2435,7 @@ const loadAuctionsFromBlockchain = async (
         const info = await getAuctionInfo(subName, collectionAddress, isTestnet);
 
         if (info && info.isActive) {
+          foundSoFar += 1;
           return {
             name: sub.name,
             bid: `${(Number(info.maxBid) / 1e9).toFixed(2)} TON`,
@@ -2444,7 +2450,8 @@ const loadAuctionsFromBlockchain = async (
         // не на аукционе — пропускаем
         return null;
       }
-    }
+    },
+    (done, total) => onProgress?.(done, total, foundSoFar)
   );
 
   return results.filter((a): a is Auction => a !== null);
@@ -2513,6 +2520,7 @@ const ProfileWidget: React.FC = () => {
   >("zones");
   const [activeAuctions, setActiveAuctions] = useState<Auction[]>([]);
   const [auctionsLoading, setAuctionsLoading] = useState<boolean>(false);
+  const [auctionsScanProgress, setAuctionsScanProgress] = useState<{ done: number; total: number; found: number }>({ done: 0, total: 0, found: 0 });
   const [subdomains, setSubdomains] = useState<Subdomain[]>([]);
   const [_subdomainsLoading, setSubdomainsLoading] = useState<boolean>(false);
   const [_subdomainsError, setSubdomainsError] = useState<string | null>(null);
@@ -2625,9 +2633,12 @@ const ProfileWidget: React.FC = () => {
       window.location.href = `/#/market`;
     }, 300);
   };
-  const handleGoToAuction = (_name: string) => {
-    if (typeof window !== "undefined")
-      window.location.href = `/#/add-subdomain`;
+  const handleGoToAuction = (zoneName: string, subdomainName: string) => {
+    if (typeof window === "undefined") return;
+    // Та же схема, что и переход "Перейти" из ActiveAuctions в AddSubdomainPage:
+    // зона/субдомен уходят в URL, страница сама подхватывает их на маунте
+    // (см. getAuctionParamsFromUrl в AddSubdomainPage.tsx) и сразу проверяет итем.
+    window.location.href = createAuctionUrl({ zone: zoneName, subdomain: subdomainName });
   };
 
   const fetchDomain = async () => {
@@ -2768,10 +2779,12 @@ const ProfileWidget: React.FC = () => {
     if (subdomains.length === 0) return;
     const load = async () => {
       setAuctionsLoading(true);
+      setAuctionsScanProgress({ done: 0, total: subdomains.length, found: 0 });
       try {
         const auctions = await loadAuctionsFromBlockchain(
           subdomains,
-          isTestnet
+          isTestnet,
+          (done, total, found) => setAuctionsScanProgress({ done, total, found })
         );
         setActiveAuctions(auctions);
       } catch (err) {
@@ -3376,7 +3389,7 @@ const ProfileWidget: React.FC = () => {
             >
               <div />
               <button
-                onClick={() => handleGoToAuction(subdomain.name)}
+                onClick={() => handleGoToAuction(String(subdomain.zoneId ?? ""), subdomain.name.split(".")[0])}
                 style={responsiveButtonStyle(t("goTo") || "Перейти")}
               >
                 {t("goTo")}
@@ -3592,14 +3605,14 @@ const ProfileWidget: React.FC = () => {
         <div style={{ display: "flex", gap: "8px" }}>
           {checkAuctionTimerEnd(new Date(auction.ends)) ? (
             <button
-              onClick={() => handleGoToAuction(auction.name)}
+              onClick={() => handleGoToAuction(String(auction.subdomain?.zoneId ?? ""), auction.name.split(".")[0])}
               style={responsiveButtonStyle(t("take") || "Забрать")}
             >
               {t("take")}
             </button>
           ) : (
             <button
-              onClick={() => handleGoToAuction(auction.name)}
+              onClick={() => handleGoToAuction(String(auction.subdomain?.zoneId ?? ""), auction.name.split(".")[0])}
               style={responsiveButtonStyle(t("goTo") || "Перейти")}
             >
               {t("goTo")}
@@ -4344,32 +4357,20 @@ const ProfileWidget: React.FC = () => {
                       }}
                     >
                       {auctionsLoading ? (
-                        <div
-                          style={{
-                            flex: 1,
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            padding: "20px",
-                            color: colors.text,
-                            fontFamily: "monospace",
-                          }}
-                        >
-                          <img
-                            src={searchDog}
-                            alt="Loading"
-                            style={{ width: 100, height: 100 }}
-                          />
-                          <div style={{ fontSize: 16, marginTop: 12 }}>
-                            {t("loadingAuctions") || "Загрузка данных..."}
-                          </div>
-                          <div
-                            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
-                          >
-                            {t("pleaseWait") || "Пожалуйста, подождите"}
-                          </div>
-                        </div>
+                        <ScanProgressLoader
+                          label={t("loadingAuctions") || "Загрузка данных..."}
+                          percent={
+                            auctionsScanProgress.total > 0
+                              ? Math.round((auctionsScanProgress.done / auctionsScanProgress.total) * 100)
+                              : 0
+                          }
+                          statusText={
+                            auctionsScanProgress.total > 0
+                              ? `Проверено ${auctionsScanProgress.done} из ${auctionsScanProgress.total} субдоменов, найдено активных аукционов: ${auctionsScanProgress.found}`
+                              : undefined
+                          }
+                          textColor={colors.text}
+                        />
                       ) : getFilteredAuctions().length === 0 ? (
                         <div
                           style={{

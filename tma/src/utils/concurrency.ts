@@ -7,15 +7,19 @@
 export async function mapWithConcurrency<T, R>(
   items: T[],
   concurrency: number,
-  fn: (item: T, index: number) => Promise<R>
+  fn: (item: T, index: number) => Promise<R>,
+  onProgress?: (done: number, total: number) => void
 ): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let cursor = 0;
+  let done = 0;
 
   const worker = async () => {
     while (cursor < items.length) {
       const index = cursor++;
       results[index] = await fn(items[index], index);
+      done++;
+      onProgress?.(done, items.length);
     }
   };
 

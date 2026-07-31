@@ -8,6 +8,7 @@ import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-
 import { getAuctionInfo } from '@/pages/AddSubdomainPage/flipTimer/getAuctionInfo';
 import { getAuctionBidHistory } from '@/pages/AddSubdomainPage/flipTimer/getAuctionBidHistory';
 import { mapWithConcurrency } from '@/utils/concurrency';
+import { ScanProgressLoader } from '@/components/ScanProgressLoader';
 
 // Сколько запросов get_auction_info держим в полёте одновременно. get_auction_info
 // сам по себе — это 2 последовательных v2-запроса на айтем, поэтому берём с запасом
@@ -679,9 +680,12 @@ const ActiveAuctions: React.FC<ActiveAuctionsProps> = ({
   const [domainsCache, setDomainsCache] = useState<Map<string, DomainInfo>>(new Map());
   const [imageCache, setImageCache] = useState<Map<string, { url: string; loaded: boolean; error: boolean }>>(new Map());
 
+  const [scanProgress, setScanProgress] = useState<{ done: number; total: number; found: number }>({ done: 0, total: 0, found: 0 });
+  const foundSoFarRef = useRef(0);
+
   const { t } = useLanguage();
   const userAddress = useTonAddress();
-  const { proxySubdomains } = useBlockchainItems();
+  const { proxySubdomains, isLoading: blockchainLoading } = useBlockchainItems();
   const baseUrlTonsenter = isTestnet ? 'https://testnet.tonviewer.com' : 'https://tonviewer.com';
 
   
@@ -827,6 +831,8 @@ const loadActiveAuctions = useCallback(async () => {
   console.log(`🔄 Начинаем загрузку аукционов (ончейн), текущий кэш изображений: ${imageCache.size}`);
   setLoading(true);
   setError(null);
+  foundSoFarRef.current = 0;
+  setScanProgress({ done: 0, total: proxySubdomains.length, found: 0 });
 
   try {
     console.log(`📡 Загружаем активные аукционы в ${isTestnet ? 'testnet' : 'mainnet'}, кандидатов: ${proxySubdomains.length}`);
@@ -855,6 +861,8 @@ const loadActiveAuctions = useCallback(async () => {
           const subdomainName = parts[0] || subName;
           const zoneName = item.zone;
 
+          foundSoFarRef.current += 1;
+
           return {
             id: info.nftAddress,
             name: item.domain.replace(/\.ton$/, ''),
@@ -874,7 +882,8 @@ const loadActiveAuctions = useCallback(async () => {
           console.error(`❌ Ошибка при обработке субдомена ${item.domain}:`, subError);
           return null;
         }
-      }
+      },
+      (done, total) => setScanProgress({ done, total, found: foundSoFarRef.current })
     );
 
     const auctions = results.filter((a): a is ActiveAuction => a !== null);
@@ -1018,6 +1027,11 @@ const handleAuctionClick = (auction: ActiveAuction) => {
   
 
 useEffect(() => {
+  // proxySubdomains ещё пуст, пока блокчейн-контекст не подгрузил данные — раньше
+  // первый прогон стартовал сразу на маунте, находил 0 кандидатов и висел так
+  // до следующего тика интервала (30 сек). Ждём готовности списка итемов.
+  if (blockchainLoading) return;
+
   loadActiveAuctions();
   const interval = setInterval(() => {
     if (loadActiveAuctionsRef.current) {
@@ -1025,7 +1039,7 @@ useEffect(() => {
     }
   }, 30000);
   return () => clearInterval(interval);
-}, [isTestnet]);
+}, [isTestnet, blockchainLoading]);
 
   return (
     <div style={{ width, maxWidth, margin: '0 auto', padding: '8px' }}>
@@ -1300,19 +1314,23 @@ useEffect(() => {
 
         {/* Контент */}
         <div style={{ background: colors.cardBg, overflowX: 'auto' }}>
-          {loading ? (
-            <div style={{ padding: '20px', textAlign: 'center', color: colors.textSecondary }}>
-              <div style={{
-                border: `2px solid ${colors.primary}`,
-                borderTopColor: 'transparent',
-                borderRadius: '50%',
-                width: '20px',
-                height: '20px',
-                animation: 'spin 1s linear infinite',
-                margin: '0 auto 8px'
-              }}></div>
-              <div style={{ fontSize: '12px' }}>{t('loadingText')}</div>
-            </div>
+          {blockchainLoading ? (
+            <ScanProgressLoader
+              label={t('loadingAuctions') || 'Загрузка аукционов'}
+              statusText={t('loadingItemsList') || 'Загружаем список итемов...'}
+              textColor={colors.textSecondary}
+            />
+          ) : loading ? (
+            <ScanProgressLoader
+              label={t('loadingAuctions') || 'Загрузка аукционов'}
+              percent={scanProgress.total > 0 ? Math.round((scanProgress.done / scanProgress.total) * 100) : 0}
+              statusText={
+                scanProgress.total > 0
+                  ? `Проверено ${scanProgress.done} из ${scanProgress.total} итемов, найдено активных аукционов: ${scanProgress.found}`
+                  : undefined
+              }
+              textColor={colors.textSecondary}
+            />
           ) : error ? (
             <div style={{ padding: '16px', textAlign: 'center' }}>
               <div style={{ color: colors.error, marginBottom: '8px' }}>❌</div>
