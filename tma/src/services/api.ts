@@ -814,6 +814,20 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
+  // Relay-only: сообщает боту о деактивации SBT-зоны при пересоздании — не
+  // зависит от наличия DB-строки зоны (в отличие от updateZoneStatusToInactive).
+  async notifyZoneDeactivated(data: { name: string; address: string }): Promise<void> {
+    try {
+      await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/zone-deactivated`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    } catch (error) {
+      console.error('Error notifying about zone deactivation:', error);
+    }
+  }
+
   // ========== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ==========
   async checkDomainAvailability(domain: string): Promise<boolean> {
     try {

@@ -3283,6 +3283,33 @@ app.post('/api/notifications/auction-ended', (req, res) => {
   }
 });
 
+// SBT-зона деактивирована при пересоздании (change_content-транзакция уже
+// прошла ончейн). Зоны, найденные через ончейн-проверку в CreateCollectionPage,
+// не имеют DB-id — старый PUT /api/zones/:id/status тут не подходит.
+app.post('/api/notifications/zone-deactivated', (req, res) => {
+  try {
+    const { name, address } = req.body;
+    const isTestnet = req.isTestnet;
+
+    if (!name || !address) {
+      return res.status(400).json({
+        success: false,
+        message: 'name и address обязательны'
+      });
+    }
+
+    telegramBot.sendZoneStatusChangedNotification(name, address, 'inactive', isTestnet);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при отправке уведомления о деактивации зоны:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
 // ========== СТАТИСТИКА ==========
 
 // Получить статистику

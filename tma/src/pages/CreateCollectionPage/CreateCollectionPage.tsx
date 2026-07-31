@@ -635,7 +635,15 @@ const partnerAddress = isTestnet
   // (после миграции на ончейн-данные бэкенд может не знать о зоне вовсе).
   // На домене может накопиться несколько исторических SBT-коллекций (id 0,1,2...) —
   // берём ту, у которой максимальный on-chain id, это и есть текущая/актуальная.
-  const checkDomainExists = useCallback(async (domain: string): Promise<boolean> => {
+  // Возвращает найденную зону напрямую (не только через setExistingZone) —
+  // вызывающий код не может полагаться на state сразу после await: React не
+  // гарантирует, что setExistingZone успеет примениться до следующей строки
+  // в той же функции, из-за чего проверка "domainExists && existingZone" в
+  // handleCheckDomain работала со сдвигом на один рендер (срабатывала только
+  // на следующей попытке, когда state уже был из прошлого вызова).
+  const checkDomainExists = useCallback(async (
+    domain: string
+  ): Promise<{ collectionAddress: string; name: string; currentId: number } | null> => {
     try {
       const fullDomainName = `${domain}.ton`;
       console.log(`🔍 Проверяем существование SBT-зоны ончейн: ${fullDomainName}`);
@@ -644,7 +652,7 @@ const partnerAddress = isTestnet
 
       if (candidates.length === 0) {
         console.log(`✅ SBT-зона на ${fullDomainName} не найдена ончейн, можно создавать`);
-        return false;
+        return null;
       }
 
       let latest: { collectionAddress: string; id: number } | null = null;
@@ -655,19 +663,20 @@ const partnerAddress = isTestnet
         }
       }
 
-      if (!latest) return false;
+      if (!latest) return null;
 
       console.log(`⚠️ Найдена текущая SBT-зона на домене ончейн:`, latest);
-      setExistingZone({
+      const zoneInfo = {
         collectionAddress: latest.collectionAddress,
         name: fullDomainName,
         currentId: latest.id,
-      });
-      return true;
+      };
+      setExistingZone(zoneInfo);
+      return zoneInfo;
     } catch (error: any) {
       console.error('❌ Ошибка при ончейн-проверке домена:', error);
       showSnackbar(t('zoneNotInDatabase'), "error");
-      return false;
+      return null;
     }
   }, [sbtCollections, isTestnet, showSnackbar, t]);
 
@@ -697,15 +706,15 @@ const partnerAddress = isTestnet
     return;
     }
 
-    const domainExists = await checkDomainExists(domainName);
+    const existing = await checkDomainExists(domainName);
 
-    if (domainExists && existingZone) {
+    if (existing) {
       setUnlinkModalOpen(true);
       return;
     }
 
     setActiveStep(1);
-  }, [domainName, checkDomainExists, existingZone, showSnackbar, t]);
+  }, [domainName, checkDomainExists, showSnackbar, t]);
 
   const handleConfirmPayment = useCallback(async () => {
     if (!domainName.trim()) {
@@ -802,11 +811,15 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
       console.log('✅ Результат транзакции:', txResult);
 
       if (txResult.success && txResult.hash) {
-        // 3. Обновляем статус зоны в базе данных, если это старая зона с реальным
-        // DB-id (легаси-путь). Зоны, найденные через ончейн-проверку выше, не
-        // имеют DB-id — ончейн-транзакция деактивации (шаг 1) уже сделала
-        // главное, дальше обновлять нечего.
+        // 3. Уведомляем бота о деактивации — relay-only, не требует DB-id.
+        // Плюс легаси-путь: если это старая зона с реальным DB-id, заодно
+        // обновляем её статус в базе (для админ-панели и т.п. читателей).
         try {
+          await apiService.notifyZoneDeactivated({
+            name: zone.name,
+            address: zone.collectionAddress,
+          });
+
           if (zone.id != null) {
             const res = await apiService.updateZoneStatusToInactive(zone.id);
             console.log(`Ответ о смене статуса для зоны с таким же доменом: ${res}`);
