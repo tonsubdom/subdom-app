@@ -94,17 +94,30 @@ const initialState: BlockchainItemsState = {
 // ==================== УТИЛИТЫ ====================
 
 /**
- * Создает новый экземпляр сервиса
+ * Синглтон сервиса на network+apiKey — раньше здесь создавался НОВЫЙ экземпляр
+ * (с пустым in-memory кэшем) на каждый вызов thunk'а, из-за чего кэш внутри
+ * UniversalBlockchainService физически не мог пережить даже соседний диспатч,
+ * не то что переход между страницами: любой заход заново гонял полный
+ * ончейн-скан. Держим по одному инстансу на комбинацию сеть+ключ на время
+ * жизни вкладки — TTL самого кэша (см. cacheTTL) сам решает, когда обновлять.
  */
+const serviceInstances = new Map<string, UniversalBlockchainService>();
+
 const createService = (network: NetworkType, apiKey?: string): UniversalBlockchainService => {
-  console.log('🔧 Создаем сервис:', {
+  const instanceKey = `${network}_${apiKey || 'no-key'}`;
+  const existing = serviceInstances.get(instanceKey);
+  if (existing) return existing;
+
+  console.log('🔧 Создаем сервис (новый инстанс на сессию):', {
     network,
     hasApiKey: !!apiKey,
     apiKeyLength: apiKey?.length,
     apiKeyPreview: apiKey ? `${apiKey.substring(0, 10)}...` : 'none'
   });
-  
-  return new UniversalBlockchainService(network === 'testnet', apiKey);
+
+  const service = new UniversalBlockchainService(network === 'testnet', apiKey);
+  serviceInstances.set(instanceKey, service);
+  return service;
 };
 
 // ==================== ASYNC THUNKS ====================
@@ -258,7 +271,7 @@ export const loadUserSBTCollections = createAsyncThunk(
   async (params: { userAddress: string; forceRefresh?: boolean }, thunkAPI) => {
     const state = thunkAPI.getState() as { blockchainItems: BlockchainItemsState };
     const { network, apiKey } = state.blockchainItems.serviceConfig;
-    const service = new UniversalBlockchainService(network === 'testnet', apiKey);
+    const service = createService(network, apiKey);
 
     const { userAddress, forceRefresh = false } = params;
     const collections = await service.getUserSBTCollections(userAddress, forceRefresh);

@@ -30,11 +30,17 @@ services:
       - TELEGRAM_OWNER_ID=${TELEGRAM_OWNER_ID:-}
       - TELEGRAM_GROUP_ID=${TELEGRAM_GROUP_ID:-}
       - DB_PATH=/app
-    # ❌ УБИРАЕМ volumes — всё уже внутри контейнера
     networks:
       - app-network
     volumes:
+      # Обе SQLite-базы (testnet и mainnet) должны жить на хосте, а не только
+      # внутри слоя контейнера — иначе каждый `docker-compose build && down && up`
+      # пересоздаёт контейнер с чистого образа и все записи, сделанные приложением
+      # между деплоями, теряются. Раньше был смонтирован только mainnet-файл —
+      # testnet-база (nft-domains.db, см. server-sqlite.ts) откатывалась на
+      # состояние с последнего образа при каждом деплое.
       - ./subdom-server/nft-domains-mainnet.db:/app/nft-domains-mainnet.db
+      - ./subdom-server/nft-domains.db:/app/nft-domains.db
 networks:
   app-network:
     driver: bridge

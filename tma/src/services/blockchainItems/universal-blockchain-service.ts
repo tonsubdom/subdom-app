@@ -61,7 +61,7 @@ const DEFAULT_CONFIG: ServiceConfig = {
   delayBetweenCollections: 100,
   
   // Кэширование
-  cacheTTL: 5 * 60 * 1000, // 5 минут
+  cacheTTL: 20 * 60 * 1000, // 20 минут
   
   // Параллельные запросы
   maxConcurrentRequests: 5,
