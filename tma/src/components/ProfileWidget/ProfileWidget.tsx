@@ -2299,13 +2299,13 @@ import {
 import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInfo";
 import { mapWithConcurrency } from "@/utils/concurrency";
 import { createAuctionUrl } from "@/utils/urlParams";
+import { useBlockchainLoadProgress } from "@/hooks/useBlockchainLoadProgress";
 
 // ====== [KEEP] БЭКЕНД ДЛЯ INFO-БЛОКА ======
 // import { useZones } from "@/hooks/useZones";
 import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
 import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
-import searchDog from "@/pages/ManageDomainPage/img/searchDog.gif";
 import { ScanProgressLoader } from "@/components/ScanProgressLoader";
 
 // ====================================================================
@@ -2512,6 +2512,24 @@ const ProfileWidget: React.FC = () => {
     isLoading: blockchainLoading,
     error: blockchainError,
   } = useBlockchainItems();
+
+  // Живой прогресс первичной загрузки (коллекции -> итемы), см. loading-progress-bus.ts.
+  const blockchainScanProgress = useBlockchainLoadProgress();
+  const blockchainScanUi = useMemo(() => {
+    if (blockchainScanProgress.stage === "items" && blockchainScanProgress.total > 0) {
+      return {
+        percent: Math.round((blockchainScanProgress.done / blockchainScanProgress.total) * 100),
+        statusText: `Обработано ${blockchainScanProgress.done} из ${blockchainScanProgress.total} коллекций`,
+      };
+    }
+    if (blockchainScanProgress.stage === "collections") {
+      return {
+        percent: undefined,
+        statusText: `Найдено коллекций: ${blockchainScanProgress.done}`,
+      };
+    }
+    return { percent: undefined, statusText: undefined };
+  }, [blockchainScanProgress]);
 
   // UI state
   const [domain, setDomain] = useState<string | null>(null);
@@ -4159,32 +4177,12 @@ const ProfileWidget: React.FC = () => {
                       }}
                     >
                       {blockchainLoading ? (
-                        <div
-                          style={{
-                            flex: 1,
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            padding: "20px",
-                            color: colors.text,
-                            fontFamily: "monospace",
-                          }}
-                        >
-                          <img
-                            src={searchDog}
-                            alt="Loading"
-                            style={{ width: 100, height: 100 }}
-                          />
-                          <div style={{ fontSize: 16, marginTop: 12 }}>
-                            {t("loadingZones") || "Загрузка данных..."}
-                          </div>
-                          <div
-                            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
-                          >
-                            {t("pleaseWait") || "Пожалуйста, подождите"}
-                          </div>
-                        </div>
+                        <ScanProgressLoader
+                          label={t("loadingZones") || "Загрузка данных..."}
+                          percent={blockchainScanUi.percent}
+                          statusText={blockchainScanUi.statusText}
+                          textColor={colors.text}
+                        />
                       ) : blockchainError ? (
                         <div
                           style={{
@@ -4256,32 +4254,12 @@ const ProfileWidget: React.FC = () => {
                       }}
                     >
                       {blockchainLoading ? (
-                        <div
-                          style={{
-                            flex: 1,
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            padding: "20px",
-                            color: colors.text,
-                            fontFamily: "monospace",
-                          }}
-                        >
-                          <img
-                            src={searchDog}
-                            alt="Loading"
-                            style={{ width: 100, height: 100 }}
-                          />
-                          <div style={{ fontSize: 16, marginTop: 12 }}>
-                            {t("loadingSubdomains") || "Загрузка данных..."}
-                          </div>
-                          <div
-                            style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}
-                          >
-                            {t("pleaseWait") || "Пожалуйста, подождите"}
-                          </div>
-                        </div>
+                        <ScanProgressLoader
+                          label={t("loadingSubdomains") || "Загрузка данных..."}
+                          percent={blockchainScanUi.percent}
+                          statusText={blockchainScanUi.statusText}
+                          textColor={colors.text}
+                        />
                       ) : blockchainError ? (
                         <div
                           style={{
@@ -4356,7 +4334,14 @@ const ProfileWidget: React.FC = () => {
                         paddingRight: "6px",
                       }}
                     >
-                      {auctionsLoading ? (
+                      {blockchainLoading ? (
+                        <ScanProgressLoader
+                          label={t("loadingAuctions") || "Загрузка данных..."}
+                          percent={blockchainScanUi.percent}
+                          statusText={blockchainScanUi.statusText}
+                          textColor={colors.text}
+                        />
+                      ) : auctionsLoading ? (
                         <ScanProgressLoader
                           label={t("loadingAuctions") || "Загрузка данных..."}
                           percent={

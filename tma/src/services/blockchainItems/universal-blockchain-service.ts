@@ -23,6 +23,7 @@ import {
   filterCollectionsByType
 } from './blockchain-items-utils';
 import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
+import { reportBlockchainLoadProgress } from './loading-progress-bus';
 
 // ==================== КОНФИГУРАЦИЯ ====================
 
@@ -950,6 +951,9 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
 
       allCollections.push(...collections);
       Object.assign(allMetadata, batchMetadata);
+      // total=0 — заранее неизвестно, сколько всего коллекций (пагинация),
+      // лоадер в этом случае просто показывает бегущий счётчик "найдено N".
+      reportBlockchainLoadProgress('collections', allCollections.length, 0);
 
       if (collections.length < this.config.collectionsBatchSize) {
         hasMore = false;
@@ -1009,14 +1013,15 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
     console.log(`📦 Загрузка всех итемов из ${collections.length} коллекций...`);
     
     const allItems: TonCenterNFTItem[] = [];
-    
+
     // Обрабатываем коллекции параллельно, но с ограничением
     const chunks = this.chunkArray(collections, this.config.maxConcurrentRequests);
-    
+    let processedCollections = 0;
+
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       console.log(`📄 Пакет коллекций ${i + 1}/${chunks.length}`);
-      
+
       const chunkPromises = chunk.map(async (collection) => {
         try {
           const items = await this.getItemsFromCollection(collection.address);
@@ -1026,17 +1031,19 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
           return [];
         }
       });
-      
+
       const chunkResults = await Promise.all(chunkPromises);
       const flatResults = chunkResults.flat();
       allItems.push(...flatResults);
-      
+      processedCollections += chunk.length;
+      reportBlockchainLoadProgress('items', processedCollections, collections.length);
+
       // Задержка между пакетами
       if (i < chunks.length - 1) {
         await this.delay(this.config.delayBetweenCollections);
       }
     }
-    
+
     console.log(`✅ Загружено ${allItems.length} итемов из ${collections.length} коллекций`);
     return allItems;
   }
