@@ -6553,14 +6553,7 @@ export const ManageDomainPage: FC = () => {
               style={{ display: "flex", flexDirection: "column", gap: "15px" }}
             >
               <div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "8px",
-                  }}
-                >
+                <div style={{ marginBottom: "8px" }}>
                   <span
                     style={{
                       fontSize: "14px",
@@ -6570,19 +6563,6 @@ export const ManageDomainPage: FC = () => {
                   >
                     {t("walletAddress")}
                   </span>
-                  <Button
-                    size="s"
-                    onClick={handleSaveWalletAddress}
-                    loading={dnsOperationLoading}
-                    style={{
-                      padding: "6px 12px",
-                      fontSize: "12px",
-                      background: "#4CAF50",
-                      color: "white",
-                    }}
-                  >
-                    {t("save")}
-                  </Button>
                 </div>
                 <Input
                   placeholder={
@@ -6597,17 +6577,31 @@ export const ManageDomainPage: FC = () => {
                     color: isDark ? "white" : "black",
                   }}
                 />
-              </div>
-
-              <div>
                 <div
                   style={{
                     display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "8px",
+                    justifyContent: "flex-end",
+                    marginTop: "8px",
                   }}
                 >
+                  <Button
+                    size="s"
+                    onClick={handleSaveWalletAddress}
+                    loading={dnsOperationLoading}
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: "12px",
+                      background: "#4CAF50",
+                      color: "white",
+                    }}
+                  >
+                    {t("save")}
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ marginBottom: "8px" }}>
                   <span
                     style={{
                       fontSize: "14px",
@@ -6617,6 +6611,23 @@ export const ManageDomainPage: FC = () => {
                   >
                     {t("tonSites")}
                   </span>
+                </div>
+                <Input
+                  placeholder={t("adnlAddressHex") || "Введите ADNL адрес..."}
+                  value={formData.tonSite}
+                  onChange={(e) => handleInputChange("tonSite", e.target.value)}
+                  style={{
+                    background: isDark ? "#3d3d3d" : "white",
+                    color: isDark ? "white" : "black",
+                  }}
+                />
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginTop: "8px",
+                  }}
+                >
                   <Button
                     size="s"
                     onClick={handleSaveTonSite}
@@ -6631,26 +6642,10 @@ export const ManageDomainPage: FC = () => {
                     {t("save")}
                   </Button>
                 </div>
-                <Input
-                  placeholder={t("adnlAddressHex") || "Введите ADNL адрес..."}
-                  value={formData.tonSite}
-                  onChange={(e) => handleInputChange("tonSite", e.target.value)}
-                  style={{
-                    background: isDark ? "#3d3d3d" : "white",
-                    color: isDark ? "white" : "black",
-                  }}
-                />
               </div>
 
               <div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "8px",
-                  }}
-                >
+                <div style={{ marginBottom: "8px" }}>
                   <span
                     style={{
                       fontSize: "14px",
@@ -6660,6 +6655,25 @@ export const ManageDomainPage: FC = () => {
                   >
                     {t("tonStorage")}
                   </span>
+                </div>
+                <Input
+                  placeholder={t("hex") || "Введите Bag ID..."}
+                  value={formData.tonStorage}
+                  onChange={(e) =>
+                    handleInputChange("tonStorage", e.target.value)
+                  }
+                  style={{
+                    background: isDark ? "#3d3d3d" : "white",
+                    color: isDark ? "white" : "black",
+                  }}
+                />
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginTop: "8px",
+                  }}
+                >
                   <Button
                     size="s"
                     onClick={handleSaveTonStorage}
@@ -6674,28 +6688,10 @@ export const ManageDomainPage: FC = () => {
                     {t("save")}
                   </Button>
                 </div>
-                <Input
-                  placeholder={t("hex") || "Введите Bag ID..."}
-                  value={formData.tonStorage}
-                  onChange={(e) =>
-                    handleInputChange("tonStorage", e.target.value)
-                  }
-                  style={{
-                    background: isDark ? "#3d3d3d" : "white",
-                    color: isDark ? "white" : "black",
-                  }}
-                />
               </div>
 
               <div>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "8px",
-                  }}
-                >
+                <div style={{ marginBottom: "8px" }}>
                   <span
                     style={{
                       fontSize: "14px",
@@ -6705,19 +6701,6 @@ export const ManageDomainPage: FC = () => {
                   >
                     {t("subdomainsNextResolver")}
                   </span>
-                  <Button
-                    size="s"
-                    onClick={handleSaveSubdomains}
-                    loading={dnsOperationLoading}
-                    style={{
-                      padding: "6px 12px",
-                      fontSize: "12px",
-                      background: "#4CAF50",
-                      color: "white",
-                    }}
-                  >
-                    {t("save")}
-                  </Button>
                 </div>
                 <Input
                   placeholder={
@@ -6732,6 +6715,27 @@ export const ManageDomainPage: FC = () => {
                     color: isDark ? "white" : "black",
                   }}
                 />
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginTop: "8px",
+                  }}
+                >
+                  <Button
+                    size="s"
+                    onClick={handleSaveSubdomains}
+                    loading={dnsOperationLoading}
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: "12px",
+                      background: "#4CAF50",
+                      color: "white",
+                    }}
+                  >
+                    {t("save")}
+                  </Button>
+                </div>
               </div>
             </div>
 
