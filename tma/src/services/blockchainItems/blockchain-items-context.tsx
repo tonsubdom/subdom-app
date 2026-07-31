@@ -47,7 +47,8 @@ import {
   selectItemsByType,
   selectUserItemsByType,
   selectIsServiceInitialized,
-  selectServiceConfig
+  selectServiceConfig,
+  CACHE_TTL_MS
 } from './blockchain-items-slice';
 import { AppDispatch } from '@/store/store';
 import { NetworkType, ItemType, CollectionType, SimpleCollection, SimpleEnrichedItem } from './blockchain-items-types';
@@ -89,6 +90,7 @@ interface BlockchainItemsContextType {
   // Действия
   initialize: (network?: NetworkType, apiKey?: string) => Promise<void>;
   loadAllData: (forceRefresh?: boolean) => Promise<void>;
+  ensureData: () => Promise<void>;
   loadCollections: (forceRefresh?: boolean) => Promise<void>;
   loadItems: (forceRefresh?: boolean) => Promise<void>;
   loadUserProxyItems: () => Promise<void>;
@@ -176,7 +178,28 @@ export const BlockchainItemsProvider: React.FC<BlockchainItemsProviderProps> = (
       forceRefresh
     })).unwrap();
   }, [dispatch, wallet]);
-  
+
+  /**
+   * Вызывать вместо loadAllData() в эффектах монтирования страниц/виджетов.
+   * Данные в сторе (свежие из этой же сессии или гидрированные из
+   * localStorage) уже есть — не дёргаем сеть и не мигаем лоадером заново
+   * на каждом переходе между страницами, пока TTL не истёк и адрес
+   * кошелька не сменился.
+   */
+  const ensureData = useCallback(async () => {
+    const walletAddress = wallet?.account?.address || null;
+    const isFresh =
+      !!appData &&
+      !!lastUpdated &&
+      Date.now() - new Date(lastUpdated).getTime() < CACHE_TTL_MS &&
+      network === resolvedNetwork &&
+      currentUserAddress === walletAddress;
+
+    if (isFresh) return;
+
+    await loadAllData();
+  }, [appData, lastUpdated, network, resolvedNetwork, currentUserAddress, wallet, loadAllData]);
+
   const loadCollections = useCallback(async (forceRefresh = false) => {
     await dispatch(loadCollectionsData({ forceRefresh })).unwrap();
   }, [dispatch]);
@@ -323,6 +346,7 @@ useEffect(() => {
     // Действия
     initialize,
     loadAllData,
+    ensureData,
     loadCollections,
     loadItems,
     loadUserProxyItems,

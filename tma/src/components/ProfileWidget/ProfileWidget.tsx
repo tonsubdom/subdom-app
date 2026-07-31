@@ -2509,6 +2509,7 @@ const ProfileWidget: React.FC = () => {
     userProxySubdomains,
     userSBTSubdomains,
     loadAllData,
+    ensureData,
     isLoading: blockchainLoading,
     error: blockchainError,
   } = useBlockchainItems();
@@ -2827,7 +2828,7 @@ const ProfileWidget: React.FC = () => {
         await new Promise((r) => setTimeout(r, 500));
         await fetchBalanceSimple();
         await new Promise((r) => setTimeout(r, 500));
-        await loadAllData();
+        await ensureData();
         console.log("✅ Все данные профиля загружены");
       } catch (error) {
         console.error("❌ Ошибка загрузки:", error);

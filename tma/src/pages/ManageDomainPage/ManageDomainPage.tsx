@@ -4504,7 +4504,7 @@
 // Версия с пагинацией точками, Site/Tonviewer-ссылками в карточках, паддингами,
 // лоадером для blockchain + Redux, интернационализацией.
 
-import { FC, useState, useEffect, useCallback, useRef } from "react";
+import { FC, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation } from "react-router-dom";
 import { Address } from "ton-core";
@@ -4534,7 +4534,9 @@ import {
 
 import { Page } from "@/components/Page";
 import { ShowSnackbar } from "@/components/ShowSnackbar";
+import { ScanProgressLoader } from "@/components/ScanProgressLoader";
 import { useTonAPI } from "@/hooks/useTonAPI";
+import { useBlockchainLoadProgress } from "@/hooks/useBlockchainLoadProgress";
 import { shortenAddress } from "@/utils/address";
 import { AppDispatch } from "@/store/store";
 
@@ -4649,6 +4651,24 @@ export const ManageDomainPage: FC = () => {
     userNFTWrappers,
     isLoading: blockchainLoading,
   } = useBlockchainItems();
+
+  // Живой прогресс первичной загрузки (коллекции -> итемы), см. loading-progress-bus.ts.
+  const blockchainScanProgress = useBlockchainLoadProgress();
+  const blockchainScanUi = useMemo(() => {
+    if (blockchainScanProgress.stage === "items" && blockchainScanProgress.total > 0) {
+      return {
+        percent: Math.round((blockchainScanProgress.done / blockchainScanProgress.total) * 100),
+        statusText: `Обработано ${blockchainScanProgress.done} из ${blockchainScanProgress.total} коллекций`,
+      };
+    }
+    if (blockchainScanProgress.stage === "collections") {
+      return {
+        percent: undefined,
+        statusText: `Найдено коллекций: ${blockchainScanProgress.done}`,
+      };
+    }
+    return { percent: undefined, statusText: undefined };
+  }, [blockchainScanProgress]);
 
   // ====== LOCAL STATE ======
   const [snackbar, setSnackbar] = useState<JSX.Element | null>(null);
@@ -5747,24 +5767,12 @@ export const ManageDomainPage: FC = () => {
 
         {/* ====== ЛОАДЕР (объединённый) ====== */}
         {isLoading && (
-          <div
-            style={{
-              textAlign: "center",
-              padding: "40px 20px",
-              color: isDark ? "white" : "#666",
-            }}
-          >
-            <Image
-              src={searchDog}
-              style={{ width: "100px", height: "100px", margin: "0 auto" }}
-            />
-            <div style={{ fontSize: "16px", marginBottom: "10px" }}>
-              {loadingText || t("loadingSubdomains")}
-            </div>
-            <div style={{ fontSize: "12px" }}>
-              {t("pleaseWait") || "Пожалуйста, подождите"}
-            </div>
-          </div>
+          <ScanProgressLoader
+            label={loadingText || t("loadingSubdomains")}
+            percent={blockchainScanUi.percent}
+            statusText={blockchainScanUi.statusText}
+            textColor={isDark ? "white" : "#666"}
+          />
         )}
 
         {/* ====== СПИСОК ====== */}

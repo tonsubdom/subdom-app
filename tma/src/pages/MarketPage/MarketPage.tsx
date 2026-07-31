@@ -300,10 +300,11 @@ const MarketPage: React.FC = () => {
   const isTestnet = wallet?.account?.chain === "-3";
   
   // Используем наш новый механизм
-  const { 
-    proxySubdomains, 
+  const {
+    proxySubdomains,
     nftWrappers,
     loadAllData,
+    ensureData,
     // isLoading,
     // isRefreshing,
     // error: blockchainError
@@ -406,9 +407,9 @@ const MarketPage: React.FC = () => {
         console.log('🔄 Загружаем данные из blockchain...');
         console.log(`🌐 Сеть: ${isTestnet ? 'Testnet' : 'Mainnet'}`);
         
-        // Загружаем все данные
-        await loadAllData();
-        
+        // Загружаем данные, только если в сторе их ещё нет/протухли
+        await ensureData();
+
         console.log(`✅ Данные загружены: ${proxySubdomains.length} proxy субдоменов, ${nftWrappers.length} NFT оберток`);
         
       } catch (error: any) {
@@ -420,7 +421,7 @@ const MarketPage: React.FC = () => {
     };
     
     loadBlockchainData();
-  }, [loadAllData]);
+  }, [ensureData]);
 
   // Обновление marketItems при изменении данных или таба
   useEffect(() => {

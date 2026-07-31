@@ -103,6 +103,51 @@ const initialState: BlockchainItemsState = {
  */
 const serviceInstances = new Map<string, UniversalBlockchainService>();
 
+/**
+ * Держим TTL синхронным с UniversalBlockchainService.DEFAULT_CONFIG.cacheTTL —
+ * это то же окно, в течение которого сервис отдаёт данные из своего
+ * in-memory кэша без похода в сеть. localStorage-снимок ниже — тот же TTL,
+ * но переживающий полную перезагрузку страницы/вкладки.
+ */
+export const CACHE_TTL_MS = 20 * 60 * 1000;
+
+const STORAGE_PREFIX = 'subdom:blockchainAppData:';
+
+interface PersistedAppDataEnvelope {
+  data: AppData;
+  userAddress: string | null;
+  savedAt: number;
+}
+
+const persistAppData = (network: NetworkType, data: AppData, userAddress?: string | null): void => {
+  try {
+    const envelope: PersistedAppDataEnvelope = {
+      data,
+      userAddress: userAddress ?? null,
+      savedAt: Date.now(),
+    };
+    localStorage.setItem(`${STORAGE_PREFIX}${network}`, JSON.stringify(envelope));
+  } catch (e) {
+    console.warn('⚠️ Не удалось сохранить blockchain-кэш в localStorage:', e);
+  }
+};
+
+const loadPersistedAppData = (network: NetworkType): PersistedAppDataEnvelope | null => {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_PREFIX}${network}`);
+    if (!raw) return null;
+
+    const envelope = JSON.parse(raw) as PersistedAppDataEnvelope;
+    if (!envelope?.data || !envelope?.savedAt) return null;
+    if (Date.now() - envelope.savedAt > CACHE_TTL_MS) return null;
+
+    return envelope;
+  } catch (e) {
+    console.warn('⚠️ Не удалось прочитать blockchain-кэш из localStorage:', e);
+    return null;
+  }
+};
+
 const createService = (network: NetworkType, apiKey?: string): UniversalBlockchainService => {
   const instanceKey = `${network}_${apiKey || 'no-key'}`;
   const existing = serviceInstances.get(instanceKey);
@@ -166,7 +211,8 @@ export const loadAllAppData = createAsyncThunk(
       
       const { userAddress, forceRefresh = false } = params;
       const data = await service.getAllAppData(userAddress, forceRefresh);
-      
+      persistAppData(network, data, userAddress ?? null);
+
       return { data, userAddress };
     } catch (error: any) {
       return thunkAPI.rejectWithValue(error.message || 'Ошибка загрузки данных');
@@ -397,11 +443,38 @@ const blockchainItemsSlice = createSlice({
       state.network = network;
       state.isLoading = false;
       state.error = null;
-      
+
+      // Гидрация из localStorage: пока сеть ещё не ответила на текущий
+      // loadAllAppData, компоненты уже видят последний известный снимок
+      // через селекторы — без этого при каждой жёсткой перезагрузке
+      // страницы приходилось заново гонять полный ончейн-скан.
+      if (!state.appData) {
+        const persisted = loadPersistedAppData(network);
+        if (persisted) {
+          const { data, userAddress, savedAt } = persisted;
+
+          state.appData = data;
+          state.allCollections = data.allCollections;
+          state.proxyCollections = data.proxyCollections;
+          state.sbtCollections = data.sbtCollections;
+          state.nftWrapperCollections = data.nftWrapperCollections;
+          state.allItems = data.allItems;
+          state.proxySubdomains = data.proxySubdomains;
+          state.sbtSubdomains = data.sbtSubdomains;
+          state.nftWrappers = data.nftWrappers;
+          state.userProxySubdomains = data.userProxySubdomains;
+          state.userSBTSubdomains = data.userSBTSubdomains;
+          state.userNFTWrappers = data.userNFTWrappers;
+          state.lastUpdated = new Date(savedAt).toISOString();
+          state.currentUserAddress = userAddress;
+        }
+      }
+
       console.log('✅ Сервис инициализирован в Redux:', {
         network,
         hasApiKey: !!apiKey,
-        isInitialized
+        isInitialized,
+        hydratedFromStorage: !!state.appData
       });
     });
     
