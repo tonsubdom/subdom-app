@@ -716,6 +716,25 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     return data.data;
   }
 
+  // Relay-only: сообщает боту факт привязки/отвязки DNS-записи, ничего не
+  // пишет в БД. Значение записи (адрес/ADNL/bagID) намеренно не передаётся —
+  // это то же самое, что уже скрыто за самим доменом.
+  async notifyDnsRecordUpdated(
+    domain: string,
+    recordFormat: 'address' | 'adnl' | 'bagId',
+    action: 'set' | 'delete'
+  ): Promise<void> {
+    try {
+      await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/dns-record`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain, recordFormat, action }),
+      });
+    } catch (error) {
+      console.error('Error notifying about DNS record update:', error);
+    }
+  }
+
   // ========== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ==========
   async checkDomainAvailability(domain: string): Promise<boolean> {
     try {

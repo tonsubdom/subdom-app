@@ -5131,6 +5131,9 @@ export const ManageDomainPage: FC = () => {
             "success"
           );
           setOriginalFormData({ ...formData });
+          if (editingItem?.title) {
+            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "set");
+          }
         }
       } else if (!formData.walletAddress && originalFormData.walletAddress) {
         const result = await dispatch(
@@ -5142,6 +5145,9 @@ export const ManageDomainPage: FC = () => {
             "success"
           );
           setOriginalFormData({ ...formData });
+          if (editingItem?.title) {
+            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "delete");
+          }
         }
       }
     } catch (error: any) {
@@ -5168,6 +5174,9 @@ export const ManageDomainPage: FC = () => {
             "success"
           );
           setOriginalFormData({ ...formData });
+          if (editingItem?.title) {
+            apiService.notifyDnsRecordUpdated(editingItem.title, "adnl", "set");
+          }
         }
       } else if (!formData.tonSite && originalFormData.tonSite) {
         const result = await dispatch(
@@ -5179,6 +5188,9 @@ export const ManageDomainPage: FC = () => {
             "success"
           );
           setOriginalFormData({ ...formData });
+          if (editingItem?.title) {
+            apiService.notifyDnsRecordUpdated(editingItem.title, "adnl", "delete");
+          }
         }
       }
     } catch (error: any) {
@@ -5208,6 +5220,9 @@ export const ManageDomainPage: FC = () => {
             "success"
           );
           setOriginalFormData({ ...formData });
+          if (editingItem?.title) {
+            apiService.notifyDnsRecordUpdated(editingItem.title, "bagId", "set");
+          }
         }
       } else if (!formData.tonStorage && originalFormData.tonStorage) {
         const result = await dispatch(
@@ -5219,6 +5234,9 @@ export const ManageDomainPage: FC = () => {
             "success"
           );
           setOriginalFormData({ ...formData });
+          if (editingItem?.title) {
+            apiService.notifyDnsRecordUpdated(editingItem.title, "bagId", "delete");
+          }
         }
       }
     } catch (error: any) {
@@ -5248,6 +5266,9 @@ export const ManageDomainPage: FC = () => {
             "success"
           );
           setOriginalFormData({ ...formData });
+          if (editingItem?.title) {
+            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "set");
+          }
         }
       } else if (!formData.subdomains && originalFormData.subdomains) {
         const result = await dispatch(
@@ -5262,6 +5283,9 @@ export const ManageDomainPage: FC = () => {
             "success"
           );
           setOriginalFormData({ ...formData });
+          if (editingItem?.title) {
+            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "delete");
+          }
         }
       }
     } catch (error: any) {

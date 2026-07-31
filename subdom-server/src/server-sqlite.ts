@@ -3139,6 +3139,35 @@ app.get('/api/chats/domain/:domain', (req, res) => {
   }
 });
 
+// ========== УВЕДОМЛЕНИЯ (relay-only, без записи в БД) ==========
+
+// Уведомление о привязке/отвязке DNS-записи. Значение записи (адрес, ADNL,
+// bagID) сюда сознательно не передаётся и в БД не пишется — сообщение
+// в бота просто пролетает насквозь, как и договорено для decentralization-миграции.
+app.post('/api/notifications/dns-record', (req, res) => {
+  try {
+    const { domain, recordFormat, action } = req.body;
+    const isTestnet = req.isTestnet;
+
+    if (!domain || !['address', 'adnl', 'bagId'].includes(recordFormat) || !['set', 'delete'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Некорректные параметры уведомления'
+      });
+    }
+
+    telegramBot.sendDnsRecordUpdatedNotification(domain, recordFormat, action, isTestnet);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при отправке уведомления о DNS-записи:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
 // ========== СТАТИСТИКА ==========
 
 // Получить статистику

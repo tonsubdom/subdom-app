@@ -1875,10 +1875,17 @@ const LANG = {
     paymentRecorded: '💰 <b>ОПЛАЧЕННАЯ ПОПЫТКА ДОБАВЛЕНА!</b>',
     paymentConsumed: '💸 <b>ОПЛАЧЕННАЯ ПОПЫТКА ИСПОЛЬЗОВАНА!</b>',
     paymentError: '❌ <b>ОШИБКА ПРИ ОПЛАТЕ ПОПЫТКИ!</b>',
+    dnsRecordSet: '🔗 <b>DNS-ЗАПИСЬ ПРИВЯЗАНА!</b>',
+    dnsRecordDeleted: '🔓 <b>DNS-ЗАПИСЬ ОТВЯЗАНА!</b>',
 
     // Поля уведомлений
     fieldName: '🏷️ Название',
     fieldDomain: '🌐 Домен',
+    fieldRecordType: '📋 Тип записи',
+    recordFormatAddress: 'Address',
+    recordFormatAdnl: 'ADNL',
+    recordFormatBagId: 'BagID',
+    btnViewCatalog: '👀 Посмотреть',
     fieldCollectionAddress: '📦 Адрес коллекции',
     fieldDomainAddress: '📍 Адрес домена',
     fieldAddress: '📍 Адрес',
@@ -2018,10 +2025,17 @@ const LANG = {
     paymentRecorded: '💰 <b>PAYMENT ATTEMPT ADDED!</b>',
     paymentConsumed: '💸 <b>PAYMENT ATTEMPT USED!</b>',
     paymentError: '❌ <b>PAYMENT ATTEMPT ERROR!</b>',
+    dnsRecordSet: '🔗 <b>DNS RECORD LINKED!</b>',
+    dnsRecordDeleted: '🔓 <b>DNS RECORD UNLINKED!</b>',
 
     // Поля уведомлений
     fieldName: '🏷️ Name',
     fieldDomain: '🌐 Domain',
+    fieldRecordType: '📋 Record Type',
+    recordFormatAddress: 'Address',
+    recordFormatAdnl: 'ADNL',
+    recordFormatBagId: 'BagID',
+    btnViewCatalog: '👀 View',
     fieldCollectionAddress: '📦 Collection Address',
     fieldDomainAddress: '📍 Domain Address',
     fieldAddress: '📍 Address',
@@ -3053,6 +3067,43 @@ ${$.fieldDeactivatedAt}: ${new Date().toLocaleString('ru-RU')}
       await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления о SBT зоне:', error);
+    }
+  }
+
+  // --- ПРИВЯЗКА DNS-ЗАПИСИ ---
+  // Значение записи (адрес кошелька, ADNL, bagID) сознательно не публикуется —
+  // это то же самое, что скрывается за самим доменом; уведомление сообщает
+  // только сам факт привязки/отвязки и формат записи.
+  async sendDnsRecordUpdatedNotification(domain: string, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean = true): Promise<void> {
+    if (!this.isBotAvailable()) return;
+
+    try {
+      const $ = LANG.ru;
+      const network = this.formatNetwork(isTestnet);
+      const formatLabel = recordFormat === 'adnl'
+        ? $.recordFormatAdnl
+        : recordFormat === 'bagId'
+          ? $.recordFormatBagId
+          : $.recordFormatAddress;
+
+      const message = `
+${action === 'set' ? $.dnsRecordSet : $.dnsRecordDeleted}
+
+${network}
+${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
+${$.fieldRecordType}: ${formatLabel}
+
+${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
+      `.trim();
+
+      const inlineKeyboard = [[{ text: $.btnViewCatalog, url: 'https://tonsitecatalog.ton' }]];
+
+      await this.bot!.sendMessage(this.ownerId, message, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: inlineKeyboard }
+      });
+    } catch (error) {
+      console.error('❌ Ошибка при отправке уведомления о DNS-записи:', error);
     }
   }
 
