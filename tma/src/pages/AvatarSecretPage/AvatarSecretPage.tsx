@@ -300,15 +300,24 @@ export const AvatarSecretPage: React.FC = () => {
     setDropNotice(t('avatarDropNotUrl') || 'Это не похоже на ссылку на картинку.');
   };
 
-  // Приход с карточки зоны/субдомена в ProfileWidget — /#/avatar-secret?domain=X:
-  // подставляем домен и сразу ищем, без ручного ввода (см. handleOpenAvatarSecret
-  // в ProfileWidget.tsx).
+  // Приход с карточки зоны/субдомена в ProfileWidget —
+  // /#/avatar-secret?address=X&domain=Y (см. handleOpenAvatarSecret в
+  // ProfileWidget.tsx). address в приоритете: resolveDomain() по имени бьёт в
+  // tonapi.io/v2/dns/, который знает только корневые .ton-домены — для
+  // субдоменов платформы (отдельные NFT-итемы, не в индексе tonapi) это
+  // всегда падало в "домен не найден". Когда адрес уже известен с карточки,
+  // резолвим им напрямую (resolveByAddressValue, в обход tonapi); domain
+  // используется только для отображения имени в поле поиска.
   useEffect(() => {
     const hash = window.location.hash;
     const queryString = hash.includes('?') ? hash.split('?')[1] : '';
-    const domainFromUrl = new URLSearchParams(queryString).get('domain');
-    if (domainFromUrl) {
-      setDomainName(domainFromUrl);
+    const params = new URLSearchParams(queryString);
+    const addressFromUrl = params.get('address');
+    const domainFromUrl = params.get('domain');
+    if (domainFromUrl) setDomainName(domainFromUrl);
+    if (addressFromUrl) {
+      resolveByAddressValue(addressFromUrl);
+    } else if (domainFromUrl) {
       resolveDomain(domainFromUrl);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

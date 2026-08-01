@@ -626,6 +626,8 @@ failedToCalculateNFTAddress: 'NFTアドレスの計算に失敗しました',
 
   // AvatarSecretPage
   avatarSecretTitle: 'アバター / シークレット',
+  createSiteButton: 'サイトを作成',
+  tonsiteCatalogSubtitle: 'すべてのTONサイトが一箇所に — カテゴリー別、プレビュー付き',
   avatarSecretSubtitle: 'Txtレコード：タイトル、説明、ドメイン画像 — オンチェーンに直接',
   avatarSecretDescription: 'Avatar、title、description、category — tonsitecatalog.ton によるインデックス用のタグです。(対応サービス: @ton_site_builder_bot, tonsitecatalog.ton, TONresistor, webdom.market)',
   avatarFileTooBig: 'ファイルがオンチェーンレコードには大きすぎます — 画像を圧縮するか、すでにホストされているファイルへの直接URLを使用してください。',

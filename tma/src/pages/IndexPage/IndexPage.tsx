@@ -1,11 +1,39 @@
 
 
 import React from "react";
+import Lottie from "lottie-react";
 import { Link } from "@/components/Link/Link.tsx";
 import { Page } from "@/components/Page";
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import {FormattedHeaderDescription} from "../IndexPage/acentHeaderFrases"
+
+// Анимированная иконка карточки TonSite Catalog вместо плоской лупы —
+// подгружаем JSON лениво (не блокируем первую отрисовку IndexPage чем-то,
+// что нужно только одной карточке из шести).
+const TONSITE_CATALOG_LOTTIE_URL = "https://nft.fragment.com/gift/bigyear-7470.lottie.json";
+
+const CatalogLottieIcon: React.FC = () => {
+  const [animationData, setAnimationData] = React.useState<object | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch(TONSITE_CATALOG_LOTTIE_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setAnimationData(data);
+      })
+      .catch(() => {
+        /* тихо — фолбэк ниже просто не подгрузится, IconWrapper останется пустым */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!animationData) return null;
+  return <Lottie animationData={animationData} loop style={{ width: 64, height: 64 }} />;
+};
 
 
 
@@ -318,20 +346,12 @@ export const IndexPage: React.FC = () => {
     },
     {
       title: "TonSite Catalog",
-      description: "tonsitecatalog.ton",
+      description: t('tonsiteCatalogSubtitle') || "Все TON-сайты в одном месте — по категориям и с превью",
       icon: (
         <IconWrapper bgColor={isDark ? "#374151" : "#DBEAFE"} isDark={isDark}>
-          <p style={{
-            color: isDark ? '#FFD700' : '#3B82F6',
-            fontFamily: 'monospace',
-            fontSize: '28px',
-            fontWeight: '600'
-          }}>
-            🔍
-          </p>
+          <CatalogLottieIcon />
         </IconWrapper>
       ),
-      cornerIcon: "search",
       actionText: t('open'),
       to: "/tonsite-catalog",
     },

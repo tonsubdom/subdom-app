@@ -2747,14 +2747,21 @@ const ProfileWidget: React.FC = () => {
       window.location.href = `/#/market`;
     }, 300);
   };
-  // domainName передаём с карточки конкретной зоны/субдомена — открывает
-  // AvatarSecretPage сразу с этим доменом, без ручного ввода/поиска.
-  const handleOpenAvatarSecret = (domainName?: string) => {
+  // domainName/address передаём с карточки конкретной зоны/субдомена —
+  // открывает AvatarSecretPage сразу с этим доменом, без ручного ввода/поиска.
+  // address в приоритете: resolveDomainNftAddress бьёт в tonapi.io/v2/dns/,
+  // который знает только корневые .ton-домены — субдомены там не резолвятся
+  // вообще, поэтому для них резолв по имени всегда падал в "домен не найден".
+  // Когда адрес уже известен (с карточки), резолвим напрямую по нему, в обход
+  // tonapi.
+  const handleOpenAvatarSecret = (domainName?: string, address?: string) => {
     setIsExpanded(false);
     setTimeout(() => {
-      window.location.href = domainName
-        ? `/#/avatar-secret?domain=${encodeURIComponent(domainName)}`
-        : `/#/avatar-secret`;
+      const params = new URLSearchParams();
+      if (address) params.set('address', address);
+      if (domainName) params.set('domain', domainName);
+      const query = params.toString();
+      window.location.href = query ? `/#/avatar-secret?${query}` : `/#/avatar-secret`;
     }, 300);
   };
   const handleGoToAuction = (zoneName: string, subdomainName: string) => {
@@ -3629,7 +3636,7 @@ const ProfileWidget: React.FC = () => {
                   cursor: "pointer",
                 }}
               >
-                Деактивировать
+                {t("deactivate") || "Деактивировать"}
               </button>
             )}
 
@@ -3736,18 +3743,18 @@ const ProfileWidget: React.FC = () => {
                     window.open(MiniAppLinks.siteBuilder(zone.name), "_blank");
                   }, 300);
                 }}
-                style={responsiveButtonStyle("Создать сайт")}
+                style={responsiveButtonStyle(t("createSiteButton") || "Создать сайт")}
               >
-                Создать сайт
+                {t("createSiteButton") || "Создать сайт"}
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleOpenAvatarSecret(zone.name);
+                  handleOpenAvatarSecret(zone.name, zone.address);
                 }}
-                style={responsiveButtonStyle("Аватар / Секрет")}
+                style={responsiveButtonStyle(t("avatarSecretTitle") || "Аватар / Секрет")}
               >
-                Аватар / Секрет
+                {t("avatarSecretTitle") || "Аватар / Секрет"}
               </button>
             </div>
           </div>
@@ -3988,18 +3995,18 @@ const ProfileWidget: React.FC = () => {
                     );
                   }, 300);
                 }}
-                style={responsiveButtonStyle("Создать сайт")}
+                style={responsiveButtonStyle(t("createSiteButton") || "Создать сайт")}
               >
-                Создать сайт
+                {t("createSiteButton") || "Создать сайт"}
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleOpenAvatarSecret(subdomain.name);
+                  handleOpenAvatarSecret(subdomain.name, subdomain.address);
                 }}
-                style={responsiveButtonStyle("Аватар / Секрет")}
+                style={responsiveButtonStyle(t("avatarSecretTitle") || "Аватар / Секрет")}
               >
-                Аватар / Секрет
+                {t("avatarSecretTitle") || "Аватар / Секрет"}
               </button>
             </div>
           </div>

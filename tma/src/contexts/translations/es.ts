@@ -623,6 +623,8 @@ failedToCalculateNFTAddress: 'Error al calcular dirección NFT',
 
   // AvatarSecretPage
   avatarSecretTitle: 'Avatar / Secreto',
+  createSiteButton: 'Crear sitio',
+  tonsiteCatalogSubtitle: 'Todos los sitios TON en un solo lugar — por categoría, con vistas previas',
   avatarSecretSubtitle: 'Registros Txt: título, descripción, imagen del dominio — directamente on-chain',
   avatarSecretDescription: 'Avatar, title, description, category — etiquetas para la indexación por tonsitecatalog.ton. (Compatible con: @ton_site_builder_bot, tonsitecatalog.ton, TONresistor, webdom.market)',
   avatarFileTooBig: 'El archivo es demasiado grande para un registro onchain — comprime la imagen o usa una URL directa a un archivo ya alojado.',

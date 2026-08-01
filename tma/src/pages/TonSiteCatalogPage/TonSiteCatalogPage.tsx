@@ -2,14 +2,19 @@
 //
 // Встроенный каталог tonsitecatalog.ton (продукт вадвека) прямо внутри
 // subdom — тот же адрес, что уже используется как обычная ссылка в кнопке
-// "Посмотреть" бота (см. sendDnsRecordUpdatedNotification, tgBot-sqlite.ts).
-// .ton не резолвится обычным браузерным DNS без TON-расширения/гейтвея —
-// у части юзеров фрейм может не загрузиться, это ограничение самого адреса,
-// не этой страницы.
+// "Посмотреть" бота (см. sendDnsRecordUpdatedNotification, tgBot-sqlite.ts,
+// там та же схема tonsite://).
+//
+// tonsite:// — кастомная схема, обычные браузеры не грузят её как iframe src
+// вообще (не пытаются резолвить, фрейм остаётся пустым) — работает только
+// как настоящая навигация в TON-осознанных клиентах. Кнопка-ссылка ниже —
+// подстраховка на случай, если фрейм у юзера не отрисуется.
 
 import React from 'react';
 import { Page } from '@/components/Page';
 import { useTheme } from '@/contexts/ThemeContext';
+
+const TONSITE_URL = 'tonsite://tonsitecatalog.ton';
 
 const TonSiteCatalogPage: React.FC = () => {
   const { currentTheme } = useTheme();
@@ -34,8 +39,25 @@ const TonSiteCatalogPage: React.FC = () => {
         >
           TonSite Catalog
         </h1>
+        <a
+          href={TONSITE_URL}
+          style={{
+            display: 'block',
+            textAlign: 'center',
+            padding: '12px 16px',
+            marginBottom: '16px',
+            borderRadius: '10px',
+            background: isDark ? '#374151' : '#DBEAFE',
+            color: isDark ? '#FFD700' : '#3B82F6',
+            fontWeight: 600,
+            fontSize: '14px',
+            textDecoration: 'none',
+          }}
+        >
+          Открыть {TONSITE_URL}
+        </a>
         <iframe
-          src="https://tonsitecatalog.ton"
+          src={TONSITE_URL}
           title="TonSite Catalog"
           style={{
             width: '100%',

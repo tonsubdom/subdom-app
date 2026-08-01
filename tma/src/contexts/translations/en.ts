@@ -678,6 +678,8 @@ itemFoundSuccessfully: 'Item found successfully',
 
   // AvatarSecretPage
   avatarSecretTitle: 'Avatar / Secret',
+  createSiteButton: 'Create site',
+  tonsiteCatalogSubtitle: 'All TON sites in one place — by category, with previews',
   avatarSecretSubtitle: 'Txt records: title, description, domain picture — right on-chain',
   avatarSecretDescription: 'Avatar, title, description, category — tags for indexing by tonsitecatalog.ton. (Supported by: @ton_site_builder_bot, tonsitecatalog.ton, TONresistor, webdom.market)',
   avatarFileTooBig: 'File is too big for an onchain record — compress the image or use a direct URL to an already-hosted file instead.',

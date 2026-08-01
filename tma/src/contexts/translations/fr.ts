@@ -624,6 +624,8 @@ failedToCalculateNFTAddress: 'Échec du calcul de l\'adresse NFT',
 
   // AvatarSecretPage
   avatarSecretTitle: 'Avatar / Secret',
+  createSiteButton: 'Créer un site',
+  tonsiteCatalogSubtitle: 'Tous les sites TON au même endroit — par catégorie, avec aperçus',
   avatarSecretSubtitle: 'Enregistrements Txt : titre, description, image du domaine — directement on-chain',
   avatarSecretDescription: "Avatar, title, description, category — tags pour l'indexation par tonsitecatalog.ton. (Pris en charge par : @ton_site_builder_bot, tonsitecatalog.ton, TONresistor, webdom.market)",
   avatarFileTooBig: "Le fichier est trop volumineux pour un enregistrement onchain — compressez l'image ou utilisez une URL directe vers un fichier déjà hébergé.",
