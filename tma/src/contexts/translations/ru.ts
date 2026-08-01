@@ -287,7 +287,7 @@ export const ruTranslations = {
 
 
   // MarketPage translations
-    marketTitle: '🏠 Маркет',
+    marketTitle: 'Рынок',
     marketSearchPlaceholder: 'Поиск по имени, владельцу или цене...',
     marketZoneFilter: '🌐 Зона',
     marketSubdomainFilter: '🔤 Субдомен',
