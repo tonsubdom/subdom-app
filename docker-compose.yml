@@ -38,9 +38,19 @@ services:
       - PLATFORM_OWNER_TESTNET=${PLATFORM_OWNER_TESTNET:-}
       - PLATFORM_OWNER_MAINNET=${PLATFORM_OWNER_MAINNET:-}
       - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET:-}
+      # tonutils-storage (см. storage-daemon/) — POST /api/v1/create читает
+      # файлы с диска по пути, не по телу запроса, поэтому backend и storage
+      # должны видеть один и тот же volume storage_uploads.
+      - STORAGE_API_URL=http://storage:8192
+      - STORAGE_API_LOGIN=${STORAGE_API_LOGIN:-}
+      - STORAGE_API_PASSWORD=${STORAGE_API_PASSWORD:-}
+      - STORAGE_UPLOADS_PATH=/app/storage-uploads
+    depends_on:
+      - storage
     networks:
       - app-network
     volumes:
+      - storage_uploads:/app/storage-uploads
       # Обе SQLite-базы (testnet и mainnet) должны жить на хосте, а не только
       # внутри слоя контейнера — иначе каждый `docker-compose build && down && up`
       # пересоздаёт контейнер с чистого образа и все записи, сделанные приложением
@@ -56,6 +66,34 @@ services:
       # открыть/создать WAL-файл (SQLITE_CANTOPEN, ловили в проде 2026-08-01).
       # Защита от потери WAL при передеплое — chekpoint на SIGTERM в
       # server-sqlite.ts, ему для этого volume не нужны.
+
+  storage:
+    build:
+      context: ./storage-daemon
+      dockerfile: Dockerfile
+    environment:
+      - STORAGE_API_LOGIN=${STORAGE_API_LOGIN:-}
+      - STORAGE_API_PASSWORD=${STORAGE_API_PASSWORD:-}
+    networks:
+      - app-network
+    volumes:
+      # Общий с backend volume — DetectFileRefs в tonutils-storage читает
+      # файлы по пути на диске, не по телу HTTP-запроса, так что backend
+      # должен сохранить загруженный файл сюда ДО вызова /api/v1/create.
+      - storage_uploads:/app/storage-uploads
+      # Отдельный volume под собственное состояние демона (bags, config.json,
+      # ключи ноды) — обязателен, иначе всё это создаётся заново на каждом
+      # docker-compose build && down && up (тот же класс бага, что был у
+      # SQLite-баз, см. выше).
+      - storage_db:/data/db
+    restart: always
+    # NB: порт API (8192) сознательно не пробрасывается в hosts ports —
+    # доступен только backend'у внутри app-network по имени "storage".
+
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  storage_uploads:
+  storage_db:

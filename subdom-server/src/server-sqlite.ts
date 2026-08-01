@@ -5,6 +5,10 @@ import express from 'express';
 import cors from 'cors';
 import Database from 'better-sqlite3';
 import dotenv from 'dotenv';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import crypto from 'crypto';
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -14,8 +18,10 @@ dotenv.config();
 import telegramBot from './utils/tgBot-sqlite';
 import { generatePayload, verifyAdminProof, CheckProofRequest } from './utils/tonProof';
 import { createAdminToken, requireAdminAuth } from './utils/adminAuth';
+import { createBag } from './utils/storageDaemon';
 
 const APP_DOMAIN = 'subdom.zone';
+const STORAGE_UPLOADS_PATH = process.env.STORAGE_UPLOADS_PATH || '/app/storage-uploads';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -504,6 +510,56 @@ app.post('/api/admin/auth/check-proof', async (req, res) => {
     res.status(500).json({ error: 'Internal error' });
   }
 });
+
+// ==================== TON STORAGE (создание bag'а) ====================
+// tonutils-storage (см. storage-daemon/, utils/storageDaemon.ts) читает
+// файлы по пути на диске — сохраняем загруженные файлы во временную
+// поддиректорию общего volume, зовём /api/v1/create, затем чистим за собой
+// вне зависимости от результата (неудачные загрузки не должны копиться).
+
+const storageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, _file, cb) => {
+      const dir = path.join(STORAGE_UPLOADS_PATH, (req as any).uploadId);
+      fs.mkdirSync(dir, { recursive: true });
+      cb(null, dir);
+    },
+    filename: (_req, file, cb) => cb(null, file.originalname),
+  }),
+  limits: { fileSize: 200 * 1024 * 1024, files: 50 }, // 200MB/файл, до 50 файлов — разумный потолок для сайта
+});
+
+app.post(
+  '/api/storage/create',
+  (req, res, next) => {
+    (req as any).uploadId = crypto.randomUUID();
+    next();
+  },
+  storageUpload.array('files'),
+  async (req, res) => {
+    const uploadId = (req as any).uploadId as string;
+    const uploadDir = path.join(STORAGE_UPLOADS_PATH, uploadId);
+    try {
+      const files = req.files as Express.Multer.File[] | undefined;
+      if (!files || files.length === 0) {
+        res.status(400).json({ error: 'No files uploaded' });
+        return;
+      }
+      const description = typeof req.body?.description === 'string' ? req.body.description : '';
+      // ВАЖНО: файлы НЕ удаляются после create — tonutils-storage продолжает
+      // раздавать bag пирам/провайдеру с этого же пути постоянно, это не
+      // одноразовое хеширование. Место на диске растёт с каждым созданным
+      // bag'ом — квоты/чистки старых bag'ов пока не реализованы (TODO,
+      // нужно решение о лимитах на юзера).
+      const bagId = await createBag(uploadDir, description);
+      res.json({ bagId });
+    } catch (error: any) {
+      console.error('❌ Ошибка создания bag через tonutils-storage:', error);
+      fs.rm(uploadDir, { recursive: true, force: true }, () => {}); // при ошибке — не копим мусор
+      res.status(500).json({ error: error?.message || 'Failed to create bag' });
+    }
+  }
+);
 
 // 1. Проверить наличие оплаченной попытки
 app.get('/api/users/:address/payments/check', (req, res) => {
