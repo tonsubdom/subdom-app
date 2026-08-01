@@ -5,11 +5,12 @@ import {
   LaunchParams, retrieveLaunchParams
 } from '@telegram-apps/sdk-react';
 
-// It is important, to mock the environment only for development purposes.
-// When building the application the import.meta.env.DEV will value become
-// `false` and the code inside will be tree-shaken (removed), so you will not
-// see it in your final bundle.
-if (import.meta.env.DEV) {
+// Раньше это работало только в dev (import.meta.env.DEV) — вне Telegram прод-сборка
+// падала на EnvUnsupported ("too old client"). Юзер хочет, чтобы сайт открывался и в
+// обычном браузере тоже — мокаем окружение всегда, не только в dev. Авторизация в
+// проекте идёт по адресу кошелька (TonConnect), а не по Telegram-identity, так что
+// фейковый Telegram-юзер ниже не даёт доступа ни к чему чувствительному сам по себе.
+{
   await (async () => {
     if (await isTMA()) {
       return;
@@ -65,7 +66,7 @@ if (import.meta.env.DEV) {
 
     mockTelegramEnv(lp);
     console.warn(
-      '⚠️ As long as the current environment was not considered as the Telegram-based one, it was mocked. Take a note, that you should not do it in production and current behavior is only specific to the development process. Environment mocking is also applied only in development mode. So, after building the application, you will not see this behavior and related warning, leading to crashing the application outside Telegram.',
+      '⚠️ Environment is not Telegram-based — mocked launch params applied so the app can run in a regular browser too (SEO/marketing access outside Telegram).',
     );
   })();
 }

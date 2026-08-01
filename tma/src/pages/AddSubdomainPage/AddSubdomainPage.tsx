@@ -12578,6 +12578,7 @@ export const AuctionPage: React.FC<{}> = () => {
   const [nftAddress, setNftAddress] = useState("");
   const [hasChecked, setHasChecked] = useState(false);
   const [isClaimLoading, setIsClaimLoading] = useState(false);
+  const subdomainNameInputRef = useRef<HTMLInputElement>(null);
   const [customBidAmount, setCustomBidAmount] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [manualBidValue, setManualBidValue] = useState("");
@@ -12915,13 +12916,15 @@ export const AuctionPage: React.FC<{}> = () => {
 
   // Для перехода "Создать субдомен" с карточки зоны в профиле — известна
   // только зона, конкретное имя субдомена юзер ещё не ввёл, поэтому просто
-  // предвыбираем зону (и таб proxy/sbt по типу зоны), без запуска проверки.
+  // предвыбираем зону (и таб proxy/sbt по типу зоны), без запуска проверки —
+  // и сразу фокусируем поле имени субдомена, чтобы можно было сразу печатать.
   const selectZoneFromParams = useCallback(
     (zoneName: string) => {
       const zone = allZones.find((z) => z.name === zoneName);
       setActiveTab(zone?.proxy === 0 ? "sbt" : "proxy");
       setSelectedDomainZone(zoneName);
       if (zone?.collectionAddress) setCollectionAddress(zone.collectionAddress);
+      setTimeout(() => subdomainNameInputRef.current?.focus(), 300);
     },
     [allZones]
   );
@@ -13687,6 +13690,7 @@ export const AuctionPage: React.FC<{}> = () => {
             2
           </div>
           <Input
+            ref={subdomainNameInputRef}
             placeholder={t("enterSubdomainName")}
             value={subDomainName}
             onChange={(e) => {

@@ -3405,7 +3405,7 @@ const ProfileWidget: React.FC = () => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleAddSubdomain();
+                  handleAddSubdomain(zone.name);
                 }}
                 style={responsiveButtonStyle(
                   t("createSubdomain") || "Сделать субдомен"
