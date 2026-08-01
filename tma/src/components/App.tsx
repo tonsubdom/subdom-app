@@ -57,18 +57,22 @@ export const App: React.FC = () => {
                   position: "relative"
                 }}
               >
-                {/* Основной контент */}
-                <div style={{ 
-                  position: "relative", 
-                  zIndex: 10, 
-                  flex: 1,
-                  backgroundColor: 'transparent'
-                }}>
-                  <Header/>
-                  <HashRouter>
+                {/* HashRouter оборачивает весь контент AppRoot — Header использует роутерный
+                    Link (react-router-dom), которому нужен Router-контекст, а раньше был
+                    просто <a>. Заодно ChatWidget/ProfileWidget/Footer получают доступ к
+                    router-хукам, если он им когда-нибудь понадобится. */}
+                <HashRouter>
+                  {/* Основной контент */}
+                  <div style={{
+                    position: "relative",
+                    zIndex: 10,
+                    flex: 1,
+                    backgroundColor: 'transparent'
+                  }}>
+                    <Header/>
                     {/* Добавляем DeeplinkHandler для обработки deeplink */}
                     <DeeplinkHandler />
-                    
+
                     {/* <TgRedirector /> */}
                     <Routes>
                       {routes.map(({ path, Component }) => (
@@ -76,21 +80,21 @@ export const App: React.FC = () => {
                       ))}
                       <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
-                  </HashRouter>
-                  <Footer/>
-                </div>
+                    <Footer/>
+                  </div>
 
-                {/* Виджеты в углах экрана */}
-                <ChatWidget />
-                <ProfileWidget />
+                  {/* Виджеты в углах экрана */}
+                  <ChatWidget />
+                  <ProfileWidget />
 
-                {/* Модальное окно для альфа-тестирования */}
-                <AlphaTestModal
-                  isOpen={modalOpen}
-                  onClose={hideModal}
-                  type={modalType}
-                  testnetAddress={testnetAddress}
-                />
+                  {/* Модальное окно для альфа-тестирования */}
+                  <AlphaTestModal
+                    isOpen={modalOpen}
+                    onClose={hideModal}
+                    type={modalType}
+                    testnetAddress={testnetAddress}
+                  />
+                </HashRouter>
               </AppRoot>
             </BlockchainItemsProvider>
           </UserProvider>
