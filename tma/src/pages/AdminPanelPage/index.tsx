@@ -40,6 +40,13 @@ const ProtectedAdminPanel: React.FC = () => {
   const [token, setToken] = useState<string | null>(() => sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY));
   const [loginState, setLoginState] = useState<LoginState>('idle');
   const [loginError, setLoginError] = useState<string | null>(null);
+  // Пока идёт логин, handleLogin сам disconnect()-ит кошелёк перед
+  // переподключением (обязательно для ton_proof) — на это мгновение
+  // address становится пустым, и без этого флага looksLikeOwner-гейт ниже
+  // тут же посчитал бы юзера "не владельцем" и выкинул на главную ДО того,
+  // как успевала открыться модалка переподключения. Баг был найден и
+  // воспроизведён вживую 2026-08-02.
+  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
 
   useEffect(() => {
     apiService.setAdminToken(token);
@@ -58,13 +65,15 @@ const ProtectedAdminPanel: React.FC = () => {
 
   // Редирект на главную для чужих — тот же хук должен вызываться всегда
   // (Rules of Hooks), условие — внутри эффекта, не вокруг вызова хука.
+  // isLoggingIn гейт см. комментарий у объявления состояния выше.
   useEffect(() => {
-    if (isChecking || looksLikeOwner) return;
+    if (isChecking || looksLikeOwner || isLoggingIn) return;
     const t = setTimeout(() => { window.location.href = '/'; }, 2000);
     return () => clearTimeout(t);
-  }, [isChecking, looksLikeOwner]);
+  }, [isChecking, looksLikeOwner, isLoggingIn]);
 
   const handleLogin = useCallback(async () => {
+    setIsLoggingIn(true);
     setLoginState('connecting');
     setLoginError(null);
     try {
@@ -79,12 +88,14 @@ const ProtectedAdminPanel: React.FC = () => {
         if (!connectedWallet) {
           setLoginState('error');
           setLoginError('Кошелёк не подключился');
+          setIsLoggingIn(false);
           return;
         }
         const proofReply = connectedWallet.connectItems?.tonProof;
         if (!proofReply || !('proof' in proofReply)) {
           setLoginState('error');
           setLoginError('Кошелёк не вернул ton_proof (не поддерживается или отклонено)');
+          setIsLoggingIn(false);
           return;
         }
 
@@ -108,9 +119,14 @@ const ProtectedAdminPanel: React.FC = () => {
           sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, newToken);
           setToken(newToken);
           setLoginState('idle');
+          // isLoggingIn остаётся true — не сбрасываем специально, чтобы
+          // случайная задержка обновления address/looksLikeOwner на этот
+          // самый момент не выкинула только что залогиненного юзера обратно
+          // на Access Denied той же гонкой, что и была изначальным багом.
         } catch (e: any) {
           setLoginState('error');
           setLoginError(e?.message || 'Ошибка проверки ton_proof');
+          setIsLoggingIn(false);
         }
       });
 
@@ -120,6 +136,7 @@ const ProtectedAdminPanel: React.FC = () => {
     } catch (e: any) {
       setLoginState('error');
       setLoginError(e?.message || 'Ошибка входа');
+      setIsLoggingIn(false);
     }
   }, [tonConnectUI]);
 
@@ -150,7 +167,9 @@ const ProtectedAdminPanel: React.FC = () => {
     );
   }
 
-  if (!looksLikeOwner) {
+  // isLoggingIn: во время disconnect->reconnect адрес временно пуст — это не
+  // "чужой", а середина логина, см. комментарий у объявления isLoggingIn выше.
+  if (!looksLikeOwner && !isLoggingIn) {
     return (
       <div style={wrapperStyle}>
         <div style={{ textAlign: 'center' }}>
