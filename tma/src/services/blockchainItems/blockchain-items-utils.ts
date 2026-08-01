@@ -225,6 +225,40 @@ export const getUniqueZones = (items: SimpleEnrichedItem[]): string[] => {
 };
 
 /**
+ * Детект дублей зон (пересозданная зона с тем же именем оставляет старую NFT-обёртку
+ * висеть в кошельке владельца). Группируем по имени (domain), в каждой группе с >1
+ * элементом самая свежая по last_transaction_lt (ончейн logical time, а не backend-статус)
+ * считается активной, остальные — адреса возвращаются как inactive.
+ */
+export const getInactiveZoneAddresses = (zones: SimpleEnrichedItem[]): Set<string> => {
+  const byName = new Map<string, SimpleEnrichedItem[]>();
+
+  for (const zone of zones) {
+    const name = (zone.domain || '').trim().toLowerCase();
+    if (!name) continue;
+    const group = byName.get(name);
+    if (group) group.push(zone);
+    else byName.set(name, [zone]);
+  }
+
+  const inactive = new Set<string>();
+
+  for (const group of byName.values()) {
+    if (group.length < 2) continue;
+    const sorted = [...group].sort((a, b) => {
+      const aLt = BigInt(a.last_transaction_lt || '0');
+      const bLt = BigInt(b.last_transaction_lt || '0');
+      return aLt > bLt ? -1 : aLt < bLt ? 1 : 0;
+    });
+    for (const stale of sorted.slice(1)) {
+      inactive.add(stale.address);
+    }
+  }
+
+  return inactive;
+};
+
+/**
  * Получение итемов по коллекции
  */
 export const getItemsByCollection = (

@@ -15,80 +15,36 @@ interface ServiceTabsProps {
   onTabChange?: (collectionKey: string) => void;
   initialSortKey?: string;
   onSortChange?: (key: string) => void;
+  zonesCount?: number;
+  subdomainsCount?: number;
 }
 
-export default function ServiceTabs({ 
-  onTabChange, 
-  initialSortKey = 'AmountOfHolders'
+export default function ServiceTabs({
+  onTabChange,
+  zonesCount = 0,
+  subdomainsCount = 0,
 }: ServiceTabsProps) {
   const [selectedTab, setSelectedTab] = useState<string>('zones');
-  const [selectedSortKey] = useState<string>(initialSortKey);
   const { t } = useLanguage();
 
-  // Фиксированный порядок сервисных коллекций
-  const serviceKeys: string[] = ['zones', 'subdomains', 'any'];
-
-  // Конфигурация табов в фиксированном порядке
+  // Конфигурация табов. "Any" — форма ручного ввода адреса, реальных элементов не хранит, счётчик всегда 0.
   const tabConfigs = [
-    { 
-      icon: subdomLogo, 
-      label: t('service.zones') || 'Zones', 
-      key: 'zones' as string,
-      details: {
-        AmountOfHolders: 100,
-        AmountNFTinCollection: 50,
-        ValueCap: 1000000,
-        Prices: 100
-      }
-    },
-    { 
-      icon: subdomLogo, 
-      label: t('service.subdomains') || 'Subdomains', 
-      key: 'subdomains' as string,
-      details: {
-        AmountOfHolders: 200,
-        AmountNFTinCollection: 100,
-        ValueCap: 2000000,
-        Prices: 50
-      }
-    },
-    { 
-      icon: anyMode, 
-      label: t('service.any') || 'Any', 
-      key: 'any' as string,
-      details: {
-        AmountOfHolders: 0,
-        AmountNFTinCollection: 0,
-        ValueCap: 0,
-        Prices: 0
-      }
-    }
+    { icon: anyMode, label: t('service.any') || 'Any', key: 'any' as string, count: 0 },
+    { icon: subdomLogo, label: t('service.zones') || 'Zones', key: 'zones' as string, count: zonesCount },
+    { icon: subdomLogo, label: t('service.subdomains') || 'Subdomains', key: 'subdomains' as string, count: subdomainsCount },
   ];
 
-  // Вычисляем проценты и сортируем ДЛЯ ОТОБРАЖЕНИЯ
+  // Проценты — от реальных счётчиков элементов, с пересортировкой по убыванию (анимация переплывания)
   const sortedPercentages = useMemo(() => {
-    const totalValue = serviceKeys.reduce((sum, key) => {
-      const config = tabConfigs.find(c => c.key === key);
-      const value = config?.details?.[selectedSortKey as keyof typeof config.details];
-      return sum + (typeof value === 'number' ? value : 0);
-    }, 0);
+    const totalCount = tabConfigs.reduce((sum, config) => sum + config.count, 0);
 
-    const withPercentages = tabConfigs.map(config => {
-      const value = config.details?.[selectedSortKey as keyof typeof config.details];
-      const percentage = typeof value === 'number' && totalValue > 0
-        ? ((value / totalValue) * 100)
-        : 0;
-      
-      return {
-        ...config,
-        percentage: parseFloat(percentage.toFixed(2)),
-        value
-      };
-    });
+    const withPercentages = tabConfigs.map(config => ({
+      ...config,
+      percentage: totalCount > 0 ? parseFloat(((config.count / totalCount) * 100).toFixed(2)) : 0,
+    }));
 
-    // Сортируем ТОЛЬКО для визуального отображения (анимация переплывания)
     return withPercentages.sort((a, b) => b.percentage - a.percentage);
-  }, [selectedSortKey]);
+  }, [zonesCount, subdomainsCount]);
 
   const handleTabClick = (key: string) => {
     setSelectedTab(key);

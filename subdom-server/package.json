@@ -4,11 +4,8 @@
   "description": "Сервер для создания и управлениями субдоменами",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "NODE_ENV=development ts-node-dev --respawn --transpile-only src/start.ts",
     "dev:sqlite": "NODE_ENV=development ts-node-dev --respawn --transpile-only src/server-sqlite.ts",
     "dev:telegram": "NODE_ENV=development ts-node-dev --respawn --transpile-only --ignore src/utils/telegramBot-sqlite.ts src/server-sqlite.ts",
-    "dev:simple": "ts-node-dev --respawn --transpile-only src/simple-server.ts",
-    "dev:mongodb": "NODE_ENV=development MONGODB_URI=mongodb://localhost:27017/nft-domains ts-node-dev --respawn --transpile-only src/start.ts",
     "build": "tsc",
     "start": "NODE_ENV=production node dist/start.js",
     "start:dev": "NODE_ENV=development node dist/start.js",
@@ -31,7 +28,6 @@
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.22.1",
-    "mongoose": "^7.5.0",
     "node-telegram-bot-api": "^0.66.0",
     "sqlite3": "^5.1.7"
   },

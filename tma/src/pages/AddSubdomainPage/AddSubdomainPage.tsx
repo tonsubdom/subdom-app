@@ -12432,6 +12432,7 @@ import Tab from "@mui/material/Tab";
 import { useTypedDispatch } from "../../hooks/useTypeDispatch";
 import { Page } from "@/components/Page";
 import { ShowSnackbar } from "@/components/ShowSnackbar";
+import { ScanProgressLoader } from "@/components/ScanProgressLoader";
 import { claimSubdomain } from "@/store/nft/actions";
 import FlipTimer from "./flipTimer/FlipTimer";
 import { getAuctionInfo, ParsedAuctionInfo } from "./flipTimer/getAuctionInfo";
@@ -14248,6 +14249,12 @@ export const AuctionPage: React.FC<{}> = () => {
             >
               {getActionButtonText()}
             </Button>
+            {(activeTab === "sbt" ? sbtLoading : isClaimLoading) && (
+              <ScanProgressLoader
+                label={t("deploying") || "Деплой"}
+                textColor={isDark ? "white" : "#666"}
+              />
+            )}
           </div>
         )}
 

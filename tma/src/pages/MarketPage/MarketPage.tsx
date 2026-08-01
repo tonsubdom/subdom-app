@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Page } from "@/components/Page";
+import { ScanProgressLoader } from '@/components/ScanProgressLoader';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTonWallet } from '@tonconnect/ui-react';
@@ -1142,18 +1143,7 @@ const MarketPage: React.FC = () => {
         {/* Контент */}
         <div style={{ background: colors.cardBg, borderRadius: '8px', border: `1px solid ${colors.border}` }}>
           {loading ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: colors.textSecondary }}>
-              <div style={{
-                border: `2px solid ${colors.primary}`,
-                borderTopColor: 'transparent',
-                borderRadius: '50%',
-                width: '30px',
-                height: '30px',
-                animation: 'spin 1s linear infinite',
-                margin: '0 auto 12px'
-              }}></div>
-              <div style={{ fontSize: '14px' }}>{t('marketLoading')}</div>
-            </div>
+            <ScanProgressLoader label={t('marketLoading') || 'Загрузка рынка'} textColor={colors.textSecondary} />
           ) : error ? (
             <div style={{ padding: '24px', textAlign: 'center' }}>
               <div style={{ color: colors.error, marginBottom: '12px', fontSize: '24px' }}>❌</div>
@@ -1488,14 +1478,6 @@ const MarketPage: React.FC = () => {
           </div> */}
         </div>
       </div>
-      
-      {/* CSS для анимации спиннера */}
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </Page>
   );
 };

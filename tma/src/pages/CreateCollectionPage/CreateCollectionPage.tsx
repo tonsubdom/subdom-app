@@ -2,6 +2,7 @@
 // Обновленная версия с интегрированным сервисом проверки транзакций
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { ScanProgressLoader } from '@/components/ScanProgressLoader';
 import {
   Banner,
   Card,
@@ -1469,13 +1470,17 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
                 
                 {/* Статус транзакции деплоя */}
                 {transactionStatus.message && (
-                  <Alert 
-                    severity={transactionStatus.status === 'confirmed' ? 'success' : 
+                  <Alert
+                    severity={transactionStatus.status === 'confirmed' ? 'success' :
                              transactionStatus.status === 'failed' ? 'error' : 'info'}
                     sx={{ mt: 1, mb: 2, fontSize: '12px' }}
                   >
                     {transactionStatus.message}
                   </Alert>
+                )}
+
+                {(loading || bundleDeployment.loading) && (
+                  <ScanProgressLoader label={t('deploying') || 'Деплой'} textColor="#666" />
                 )}
 
                 <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -1513,13 +1518,17 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
 
                 {/* Статус транзакции деплоя */}
                 {transactionStatus.message && (
-                  <Alert 
-                    severity={transactionStatus.status === 'confirmed' ? 'success' : 
+                  <Alert
+                    severity={transactionStatus.status === 'confirmed' ? 'success' :
                              transactionStatus.status === 'failed' ? 'error' : 'info'}
                     sx={{ mt: 1, mb: 2, fontSize: '12px' }}
                   >
                     {transactionStatus.message}
                   </Alert>
+                )}
+
+                {(sbtCollectionDeployment.loading || loading) && (
+                  <ScanProgressLoader label={t('deploying') || 'Деплой'} textColor="#666" />
                 )}
               </div>
             </Card>

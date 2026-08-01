@@ -4565,6 +4565,7 @@ import { DomainExpirationInfo } from "@/utils/domainExpiredAtFetchConvert";
 
 import { useBlockchainItems } from "@/services/blockchainItems/blockchain-items-context";
 import { SimpleEnrichedItem } from "@/services/blockchainItems/blockchain-items-types";
+import { getInactiveZoneAddresses } from "@/services/blockchainItems/blockchain-items-utils";
 
 // ====================================================================
 // ИНТЕРФЕЙСЫ
@@ -4602,9 +4603,33 @@ interface DisplayItem {
   links?: any[];
   wrapperAddress?: string;
   type?: string;
+  isInactiveDuplicate?: boolean;
 }
 
 const ITEMS_PER_PAGE = 10;
+
+// Оконный список номеров страниц: первая/последняя + соседи текущей, остальное — "ellipsis".
+// Нужен, чтобы при десятках/сотнях страниц (много NFT в кошельке) пейджер не уезжал за экран сплошным рядом точек.
+const getVisiblePageNumbers = (
+  totalPages: number,
+  currentPage: number
+): (number | "ellipsis")[] => {
+  const maxVisible = 7;
+  if (totalPages <= maxVisible) {
+    return Array.from({ length: totalPages }, (_, i) => i);
+  }
+
+  const pages: (number | "ellipsis")[] = [0];
+  const start = Math.max(1, currentPage - 1);
+  const end = Math.min(totalPages - 2, currentPage + 1);
+
+  if (start > 1) pages.push("ellipsis");
+  for (let i = start; i <= end; i++) pages.push(i);
+  if (end < totalPages - 2) pages.push("ellipsis");
+
+  pages.push(totalPages - 1);
+  return pages;
+};
 
 export const ManageDomainPage: FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -4651,6 +4676,13 @@ export const ManageDomainPage: FC = () => {
     userNFTWrappers,
     isLoading: blockchainLoading,
   } = useBlockchainItems();
+
+  // Дубли зон (пересозданные onchain с тем же именем) — по last_transaction_lt,
+  // не по backend-статусу. См. A5' в плане релиза.
+  const inactiveZoneAddresses = useMemo(
+    () => getInactiveZoneAddresses(userNFTWrappers),
+    [userNFTWrappers]
+  );
 
   // Живой прогресс первичной загрузки (коллекции -> итемы), см. loading-progress-bus.ts.
   const blockchainScanProgress = useBlockchainLoadProgress();
@@ -4754,9 +4786,10 @@ export const ManageDomainPage: FC = () => {
         image: image || "",
         metadata: item.metadata,
         type: item.type,
+        isInactiveDuplicate: isZone && inactiveZoneAddresses.has(item.address),
       };
     },
-    []
+    [inactiveZoneAddresses]
   );
 
   // ====== КАРТИНКИ ======
@@ -4791,6 +4824,17 @@ export const ManageDomainPage: FC = () => {
     }
 
     if (item.metadata?.image) return item.metadata.image;
+
+    const previews = (item as any).previews as
+      | Array<{ resolution?: string; url: string }>
+      | undefined;
+    if (previews && previews.length > 0) {
+      const preferred =
+        previews.find((p) => p.resolution === "500x500") ||
+        previews[previews.length - 1];
+      if (preferred?.url) return preferred.url;
+    }
+
     return searchDog;
   };
 
@@ -5960,6 +6004,7 @@ export const ManageDomainPage: FC = () => {
                 {/* Колонка 1: картинка 140×140 */}
                 <div
                   style={{
+                    position: "relative",
                     width: "140px",
                     height: "140px",
                     flexShrink: 0,
@@ -5975,11 +6020,30 @@ export const ManageDomainPage: FC = () => {
                       width: "100%",
                       height: "100%",
                       objectFit: "contain",
+                      opacity: item.isInactiveDuplicate ? 0.5 : 1,
                     }}
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).src = searchDog;
                     }}
                   />
+                  {item.isInactiveDuplicate && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "6px",
+                        left: "6px",
+                        background: "#e53935",
+                        color: "white",
+                        fontSize: "10px",
+                        fontWeight: "700",
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                        letterSpacing: "0.5px",
+                      }}
+                    >
+                      INACTIVE
+                    </div>
+                  )}
                 </div>
                 {/* Колонка 2: текст + кнопка */}
                 <div
@@ -6113,6 +6177,7 @@ export const ManageDomainPage: FC = () => {
               <div
                 style={{
                   display: "flex",
+                  flexWrap: "wrap",
                   justifyContent: "center",
                   alignItems: "center",
                   gap: "8px",
@@ -6152,28 +6217,43 @@ export const ManageDomainPage: FC = () => {
                   ‹
                 </button>
 
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrentPage(i)}
-                    style={{
-                      width: i === currentPage ? "14px" : "10px",
-                      height: i === currentPage ? "14px" : "10px",
-                      borderRadius: "50%",
-                      border: "none",
-                      background:
-                        i === currentPage
-                          ? "#4CAF50"
-                          : isDark
-                          ? "#555"
-                          : "#ccc",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                      padding: 0,
-                    }}
-                    aria-label={`Страница ${i + 1}`}
-                  />
-                ))}
+                {getVisiblePageNumbers(totalPages, currentPage).map((page, idx) =>
+                  page === "ellipsis" ? (
+                    <span
+                      key={`ellipsis-${idx}`}
+                      style={{
+                        color: isDark ? "#777" : "#aaa",
+                        fontSize: "12px",
+                        width: "10px",
+                        textAlign: "center",
+                      }}
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      style={{
+                        width: page === currentPage ? "14px" : "10px",
+                        height: page === currentPage ? "14px" : "10px",
+                        borderRadius: "50%",
+                        border: "none",
+                        background:
+                          page === currentPage
+                            ? "#4CAF50"
+                            : isDark
+                            ? "#555"
+                            : "#ccc",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                        padding: 0,
+                        flexShrink: 0,
+                      }}
+                      aria-label={`Страница ${page + 1}`}
+                    />
+                  )
+                )}
 
                 <button
                   onClick={() =>

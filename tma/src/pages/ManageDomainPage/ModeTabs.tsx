@@ -132,8 +132,8 @@ export const ModeTabs: React.FC<ModeTabsProps> = ({
         ) : (
           <ServiceTabs
             onTabChange={onTabChange}
-            onSortChange={onSortChange}
-            initialSortKey={initialSortKey}
+            zonesCount={zonesCount}
+            subdomainsCount={subdomainsCount}
           />
         )}
 

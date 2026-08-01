@@ -2703,7 +2703,10 @@ const ProfileWidget: React.FC = () => {
     // Та же схема, что и переход "Перейти" из ActiveAuctions в AddSubdomainPage:
     // зона/субдомен уходят в URL, страница сама подхватывает их на маунте
     // (см. getAuctionParamsFromUrl в AddSubdomainPage.tsx) и сразу проверяет итем.
-    window.location.href = createAuctionUrl({ zone: zoneName, subdomain: subdomainName });
+    setIsExpanded(false);
+    setTimeout(() => {
+      window.location.href = createAuctionUrl({ zone: zoneName, subdomain: subdomainName });
+    }, 300);
   };
 
   const fetchDomain = async () => {
@@ -4384,9 +4387,12 @@ const ProfileWidget: React.FC = () => {
                               : t("noZones")}
                           </p>
                           <button
-                            onClick={() =>
-                              (window.location.href = "#/create-collection")
-                            }
+                            onClick={() => {
+                              setIsExpanded(false);
+                              setTimeout(() => {
+                                window.location.href = "#/create-collection";
+                              }, 300);
+                            }}
                             style={{
                               background: colors.primary,
                               color: isDark ? "#000" : "#fff",
@@ -4463,9 +4469,12 @@ const ProfileWidget: React.FC = () => {
                               : t("noSubdomains")}
                           </p>
                           <button
-                            onClick={() =>
-                              (window.location.href = "#/add-subdomain")
-                            }
+                            onClick={() => {
+                              setIsExpanded(false);
+                              setTimeout(() => {
+                                window.location.href = "#/add-subdomain";
+                              }, 300);
+                            }}
                             style={{
                               background: colors.primary,
                               color: isDark ? "#000" : "#fff",
@@ -4545,9 +4554,12 @@ const ProfileWidget: React.FC = () => {
                               : t("noAuctions")}
                           </p>
                           <button
-                            onClick={() =>
-                              (window.location.href = "/add-subdomain")
-                            }
+                            onClick={() => {
+                              setIsExpanded(false);
+                              setTimeout(() => {
+                                window.location.href = "/add-subdomain";
+                              }, 300);
+                            }}
                             style={{
                               background: colors.primary,
                               color: isDark ? "#000" : "#fff",
