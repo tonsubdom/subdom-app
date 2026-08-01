@@ -2414,8 +2414,20 @@ const enrichedItemToSubdomain = (item: SimpleEnrichedItem): Subdomain => {
 // PaymentAttemptsSection.tsx), общий модуль заводить не стали.
 // ====================================================================
 
-const ZONE_PRICE_PROXY: Record<number, number> = { 4: 100, 5: 50, 6: 40, 7: 30, 8: 20 };
-const ZONE_PRICE_SBT: Record<number, number> = { 4: 5, 5: 2.5, 6: 2, 7: 1.5, 8: 1 };
+const ZONE_PRICE_PROXY: Record<number, number> = {
+  4: 100,
+  5: 50,
+  6: 40,
+  7: 30,
+  8: 20,
+};
+const ZONE_PRICE_SBT: Record<number, number> = {
+  4: 5,
+  5: 2.5,
+  6: 2,
+  7: 1.5,
+  8: 1,
+};
 const getZonePrice = (length: number, isProxy: boolean): number => {
   const table = isProxy ? ZONE_PRICE_PROXY : ZONE_PRICE_SBT;
   return table[length] ?? (isProxy ? 10 : 0.5);
@@ -2427,7 +2439,14 @@ const getZonePrice = (length: number, isProxy: boolean): number => {
 // Раз "моими" субдомены становятся только после клейма, живой лукап почти
 // всегда провалится — считаем сразу по стартовой цене длины, без лишних
 // сетевых запросов (это ещё и то самое "не тормозить процессы на старте").
-const SUBDOMAIN_PRICE_PROXY: Record<number, number> = { 1: 30, 2: 20, 3: 10, 4: 5, 5: 2.5, 6: 1 };
+const SUBDOMAIN_PRICE_PROXY: Record<number, number> = {
+  1: 30,
+  2: 20,
+  3: 10,
+  4: 5,
+  5: 2.5,
+  6: 1,
+};
 const SBT_SUBDOMAIN_PRICE = 0.5;
 const getSubdomainPrice = (length: number, isProxy: boolean): number => {
   if (!isProxy) return SBT_SUBDOMAIN_PRICE;
@@ -2467,7 +2486,11 @@ const loadAuctionsFromBlockchain = async (
         if (!collectionAddress || !sub.name) return null;
 
         const subName = sub.name.split(".")[0];
-        const info = await getAuctionInfo(subName, collectionAddress, isTestnet);
+        const info = await getAuctionInfo(
+          subName,
+          collectionAddress,
+          isTestnet
+        );
 
         if (info && info.isActive) {
           foundSoFar += 1;
@@ -2553,9 +2576,14 @@ const ProfileWidget: React.FC = () => {
   // Живой прогресс первичной загрузки (коллекции -> итемы), см. loading-progress-bus.ts.
   const blockchainScanProgress = useBlockchainLoadProgress();
   const blockchainScanUi = useMemo(() => {
-    if (blockchainScanProgress.stage === "items" && blockchainScanProgress.total > 0) {
+    if (
+      blockchainScanProgress.stage === "items" &&
+      blockchainScanProgress.total > 0
+    ) {
       return {
-        percent: Math.round((blockchainScanProgress.done / blockchainScanProgress.total) * 100),
+        percent: Math.round(
+          (blockchainScanProgress.done / blockchainScanProgress.total) * 100
+        ),
         statusText: `Обработано ${blockchainScanProgress.done} из ${blockchainScanProgress.total} коллекций`,
       };
     }
@@ -2575,7 +2603,11 @@ const ProfileWidget: React.FC = () => {
   >("zones");
   const [activeAuctions, setActiveAuctions] = useState<Auction[]>([]);
   const [auctionsLoading, setAuctionsLoading] = useState<boolean>(false);
-  const [auctionsScanProgress, setAuctionsScanProgress] = useState<{ done: number; total: number; found: number }>({ done: 0, total: 0, found: 0 });
+  const [auctionsScanProgress, setAuctionsScanProgress] = useState<{
+    done: number;
+    total: number;
+    found: number;
+  }>({ done: 0, total: 0, found: 0 });
   const [subdomains, setSubdomains] = useState<Subdomain[]>([]);
   const [_subdomainsLoading, setSubdomainsLoading] = useState<boolean>(false);
   const [_subdomainsError, setSubdomainsError] = useState<string | null>(null);
@@ -2705,7 +2737,10 @@ const ProfileWidget: React.FC = () => {
     // (см. getAuctionParamsFromUrl в AddSubdomainPage.tsx) и сразу проверяет итем.
     setIsExpanded(false);
     setTimeout(() => {
-      window.location.href = createAuctionUrl({ zone: zoneName, subdomain: subdomainName });
+      window.location.href = createAuctionUrl({
+        zone: zoneName,
+        subdomain: subdomainName,
+      });
     }, 300);
   };
 
@@ -2840,7 +2875,8 @@ const ProfileWidget: React.FC = () => {
   // SBT-субдомены не участвуют в аукционах (минтятся напрямую), поэтому не берём
   // userSBTSubdomains/sbtSubdomains сюда.
   const allProxySubdomainsAsSubdomains = useMemo(
-    (): Subdomain[] => allProxySubdomains.map((item) => enrichedItemToSubdomain(item)),
+    (): Subdomain[] =>
+      allProxySubdomains.map((item) => enrichedItemToSubdomain(item)),
     [allProxySubdomains]
   );
 
@@ -2873,7 +2909,8 @@ const ProfileWidget: React.FC = () => {
       0
     );
     const sbtSubdomainSpending = sbtSubs.reduce(
-      (sum: number, s: any) => sum + getSubdomainPrice(s.subdomainLength, false),
+      (sum: number, s: any) =>
+        sum + getSubdomainPrice(s.subdomainLength, false),
       0
     );
 
@@ -2974,12 +3011,17 @@ const ProfileWidget: React.FC = () => {
     if (allProxySubdomainsAsSubdomains.length === 0) return;
     const load = async () => {
       setAuctionsLoading(true);
-      setAuctionsScanProgress({ done: 0, total: allProxySubdomainsAsSubdomains.length, found: 0 });
+      setAuctionsScanProgress({
+        done: 0,
+        total: allProxySubdomainsAsSubdomains.length,
+        found: 0,
+      });
       try {
         const auctions = await loadAuctionsFromBlockchain(
           allProxySubdomainsAsSubdomains,
           isTestnet,
-          (done, total, found) => setAuctionsScanProgress({ done, total, found })
+          (done, total, found) =>
+            setAuctionsScanProgress({ done, total, found })
         );
         setActiveAuctions(auctions);
       } catch (err) {
@@ -3584,7 +3626,12 @@ const ProfileWidget: React.FC = () => {
             >
               <div />
               <button
-                onClick={() => handleGoToAuction(String(subdomain.zoneId ?? ""), subdomain.name.split(".")[0])}
+                onClick={() =>
+                  handleGoToAuction(
+                    String(subdomain.zoneId ?? ""),
+                    subdomain.name.split(".")[0]
+                  )
+                }
                 style={responsiveButtonStyle(t("goTo") || "Перейти")}
               >
                 {t("goTo")}
@@ -3800,14 +3847,24 @@ const ProfileWidget: React.FC = () => {
         <div style={{ display: "flex", gap: "8px" }}>
           {checkAuctionTimerEnd(new Date(auction.ends)) ? (
             <button
-              onClick={() => handleGoToAuction(String(auction.subdomain?.zoneId ?? ""), auction.name.split(".")[0])}
+              onClick={() =>
+                handleGoToAuction(
+                  String(auction.subdomain?.zoneId ?? ""),
+                  auction.name.split(".")[0]
+                )
+              }
               style={responsiveButtonStyle(t("take") || "Забрать")}
             >
               {t("take")}
             </button>
           ) : (
             <button
-              onClick={() => handleGoToAuction(String(auction.subdomain?.zoneId ?? ""), auction.name.split(".")[0])}
+              onClick={() =>
+                handleGoToAuction(
+                  String(auction.subdomain?.zoneId ?? ""),
+                  auction.name.split(".")[0]
+                )
+              }
               style={responsiveButtonStyle(t("goTo") || "Перейти")}
             >
               {t("goTo")}
@@ -4420,7 +4477,7 @@ const ProfileWidget: React.FC = () => {
                     </div>
                   )}
 
-                  {/* СУБДОМЕНЫ */}
+                  {/* СУБ ДОМЕНЫ */}
                   {activeTab === "subdomains" && (
                     <div
                       style={{
@@ -4529,7 +4586,11 @@ const ProfileWidget: React.FC = () => {
                           label={t("loadingAuctions") || "Загрузка данных..."}
                           percent={
                             auctionsScanProgress.total > 0
-                              ? Math.round((auctionsScanProgress.done / auctionsScanProgress.total) * 100)
+                              ? Math.round(
+                                  (auctionsScanProgress.done /
+                                    auctionsScanProgress.total) *
+                                    100
+                                )
                               : 0
                           }
                           statusText={
