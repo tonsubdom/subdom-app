@@ -2310,7 +2310,10 @@ import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
 import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 import { ScanProgressLoader } from "@/components/ScanProgressLoader";
-import { resolveDomainNftAddress, fetchAllOwnerDnsText } from "@/services/ownerMetaService";
+import {
+  resolveDomainNftAddress,
+  fetchAllOwnerDnsText,
+} from "@/services/ownerMetaService";
 import { ShowSnackbar } from "@/components/ShowSnackbar";
 
 // ====================================================================
@@ -2359,11 +2362,11 @@ const collectionToZone = (col: SimpleCollection): Zone => {
   );
 
   const zoneName = rawName
-    .replace(/^proxy\s+/i, "")            // префикс "Proxy downloader ton Domain" -> "downloader ton Domain"
-    .replace(/\s+dns\s+domains?$/i, "")   // "... DNS Domains" / "... DNS Domain"
+    .replace(/^proxy\s+/i, "") // префикс "Proxy downloader ton Domain" -> "downloader ton Domain"
+    .replace(/\s+dns\s+domains?$/i, "") // "... DNS Domains" / "... DNS Domain"
     .replace(/\s+proxy\s+domains?$/i, "") // "... Proxy Domains" / "... Proxy Domain" (суффиксом)
-    .replace(/\s+domains?$/i, "")         // остаточное "... Domain"/"... Domains" (единственное число — старый баг)
-    .replace(/\s+ton$/i, ".ton")          // "downloader ton" -> "downloader.ton" (точка потерялась в метаданных)
+    .replace(/\s+domains?$/i, "") // остаточное "... Domain"/"... Domains" (единственное число — старый баг)
+    .replace(/\s+ton$/i, ".ton") // "downloader ton" -> "downloader.ton" (точка потерялась в метаданных)
     .trim()
     .toLowerCase();
 
@@ -2557,9 +2560,16 @@ const ProfileWidget: React.FC = () => {
   const isTestnet = wallet?.account?.chain === "-3";
 
   const [snackbar, setSnackbar] = useState<React.ReactElement | null>(null);
-  const showSnackbar = (message: string, type: "success" | "error" = "success") => {
+  const showSnackbar = (
+    message: string,
+    type: "success" | "error" = "success"
+  ) => {
     setSnackbar(
-      <ShowSnackbar message={message} type={type} onClose={() => setSnackbar(null)} />
+      <ShowSnackbar
+        message={message}
+        type={type}
+        onClose={() => setSnackbar(null)}
+      />
     );
   };
 
@@ -2758,10 +2768,12 @@ const ProfileWidget: React.FC = () => {
     setIsExpanded(false);
     setTimeout(() => {
       const params = new URLSearchParams();
-      if (address) params.set('address', address);
-      if (domainName) params.set('domain', domainName);
+      if (address) params.set("address", address);
+      if (domainName) params.set("domain", domainName);
       const query = params.toString();
-      window.location.href = query ? `/#/avatar-secret?${query}` : `/#/avatar-secret`;
+      window.location.href = query
+        ? `/#/avatar-secret?${query}`
+        : `/#/avatar-secret`;
     }, 300);
   };
   const handleGoToAuction = (zoneName: string, subdomainName: string) => {
@@ -2911,7 +2923,8 @@ const ProfileWidget: React.FC = () => {
     for (const group of byName.values()) {
       if (group.length < 2) continue;
       const sorted = [...group].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       for (const stale of sorted.slice(1)) inactive.add(stale.address);
     }
@@ -2933,9 +2946,9 @@ const ProfileWidget: React.FC = () => {
       return new Set();
     }
   };
-  const [manuallyInactiveSbtZones, setManuallyInactiveSbtZones] = useState<Set<string>>(
-    () => loadAddrSet(SBT_MANUAL_INACTIVE_KEY)
-  );
+  const [manuallyInactiveSbtZones, setManuallyInactiveSbtZones] = useState<
+    Set<string>
+  >(() => loadAddrSet(SBT_MANUAL_INACTIVE_KEY));
 
   // Только локальный UI-оверрайд (бейдж) — сам по себе НЕ трогает ончейн.
   // Вызывается ПОСЛЕ успешной транзакции change_content в
@@ -2944,7 +2957,12 @@ const ProfileWidget: React.FC = () => {
     setManuallyInactiveSbtZones((prev) => {
       const next = new Set(prev);
       next.add(address);
-      try { localStorage.setItem(SBT_MANUAL_INACTIVE_KEY, JSON.stringify(Array.from(next))); } catch {}
+      try {
+        localStorage.setItem(
+          SBT_MANUAL_INACTIVE_KEY,
+          JSON.stringify(Array.from(next))
+        );
+      } catch {}
       return next;
     });
   };
@@ -2954,7 +2972,9 @@ const ProfileWidget: React.FC = () => {
   // уходит только по подтверждению, см. confirmSbtZoneToggle. Кнопка
   // показывается только для ещё активных зон — реактивации не существует
   // (см. комментарий выше про однократный change_content).
-  const [sbtToggleConfirm, setSbtToggleConfirm] = useState<{ zone: Zone } | null>(null);
+  const [sbtToggleConfirm, setSbtToggleConfirm] = useState<{
+    zone: Zone;
+  } | null>(null);
   const [sbtToggleInProgress, setSbtToggleInProgress] = useState(false);
 
   // Реальная ончейн-транзакция: change_content на SBT-коллекции — тот же
@@ -2966,19 +2986,27 @@ const ProfileWidget: React.FC = () => {
     if (!sbtToggleConfirm || !wallet) return;
     const { zone } = sbtToggleConfirm;
     if (!zone.collectionAddress) {
-      showSnackbar(t("zoneToggleNoCollectionAddress") || "У зоны нет адреса коллекции", "error");
+      showSnackbar(
+        t("zoneToggleNoCollectionAddress") || "У зоны нет адреса коллекции",
+        "error"
+      );
       return;
     }
 
     setSbtToggleInProgress(true);
     try {
-      const zoneNameWithoutTld = zone.name.endsWith(".ton") ? zone.name.slice(0, -4) : zone.name;
+      const zoneNameWithoutTld = zone.name.endsWith(".ton")
+        ? zone.name.slice(0, -4)
+        : zone.name;
       const metadataBase = `${API_PAYLOAD_URL}/api/v1/inactive-subdomain/metadata/ton/${zoneNameWithoutTld}`;
 
       const changeContentUrl = `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/${zone.collectionAddress}/change_content?query_id=0`;
       const response = await fetch(changeContentUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
         body: JSON.stringify({
           new_content: {
             content: { uri: metadataBase },
@@ -2998,17 +3026,26 @@ const ProfileWidget: React.FC = () => {
       });
 
       try {
-        await apiService.notifyZoneDeactivated({ name: zone.name, address: zone.collectionAddress });
+        await apiService.notifyZoneDeactivated({
+          name: zone.name,
+          address: zone.collectionAddress,
+        });
       } catch {
         /* relay-only, не блокирует успех транзакции */
       }
 
       applySbtZoneToggleLocalState(zone.address);
-      showSnackbar(t("zoneDeactivatedSuccess") || "Зона деактивирована", "success");
+      showSnackbar(
+        t("zoneDeactivatedSuccess") || "Зона деактивирована",
+        "success"
+      );
       setSbtToggleConfirm(null);
     } catch (error: any) {
       console.error("❌ Ошибка смены статуса SBT-зоны:", error);
-      showSnackbar(error?.message || t("zoneToggleError") || "Ошибка транзакции", "error");
+      showSnackbar(
+        error?.message || t("zoneToggleError") || "Ошибка транзакции",
+        "error"
+      );
     } finally {
       setSbtToggleInProgress(false);
     }
@@ -3367,7 +3404,10 @@ const ProfileWidget: React.FC = () => {
   }, [activeTab, searchQuery, filters, sortBy]);
 
   const paginateList = <T,>(items: T[]): T[] =>
-    items.slice(listPage * PROFILE_PAGE_SIZE, listPage * PROFILE_PAGE_SIZE + PROFILE_PAGE_SIZE);
+    items.slice(
+      listPage * PROFILE_PAGE_SIZE,
+      listPage * PROFILE_PAGE_SIZE + PROFILE_PAGE_SIZE
+    );
 
   const renderListPager = (totalItems: number) => {
     const totalPages = Math.ceil(totalItems / PROFILE_PAGE_SIZE);
@@ -3513,7 +3553,8 @@ const ProfileWidget: React.FC = () => {
     const zoneType = getZoneTypeInfo(zone);
     const zoneStatus = getZoneStatusInfo(zone);
     const isSbtZone = Number(zone.proxy) === 0;
-    const isInactiveDuplicate = isSbtZone && inactiveSbtZoneAddresses.has(zone.address);
+    const isInactiveDuplicate =
+      isSbtZone && inactiveSbtZoneAddresses.has(zone.address);
 
     return (
       <div
@@ -3743,7 +3784,9 @@ const ProfileWidget: React.FC = () => {
                     window.open(MiniAppLinks.siteBuilder(zone.name), "_blank");
                   }, 300);
                 }}
-                style={responsiveButtonStyle(t("createSiteButton") || "Создать сайт")}
+                style={responsiveButtonStyle(
+                  t("createSiteButton") || "Создать сайт"
+                )}
               >
                 {t("createSiteButton") || "Создать сайт"}
               </button>
@@ -3752,7 +3795,9 @@ const ProfileWidget: React.FC = () => {
                   e.stopPropagation();
                   handleOpenAvatarSecret(zone.name, zone.address);
                 }}
-                style={responsiveButtonStyle(t("avatarSecretTitle") || "Аватар / Секрет")}
+                style={responsiveButtonStyle(
+                  t("avatarSecretTitle") || "Аватар / Секрет"
+                )}
               >
                 {t("avatarSecretTitle") || "Аватар / Секрет"}
               </button>
@@ -3995,7 +4040,9 @@ const ProfileWidget: React.FC = () => {
                     );
                   }, 300);
                 }}
-                style={responsiveButtonStyle(t("createSiteButton") || "Создать сайт")}
+                style={responsiveButtonStyle(
+                  t("createSiteButton") || "Создать сайт"
+                )}
               >
                 {t("createSiteButton") || "Создать сайт"}
               </button>
@@ -4004,7 +4051,9 @@ const ProfileWidget: React.FC = () => {
                   e.stopPropagation();
                   handleOpenAvatarSecret(subdomain.name, subdomain.address);
                 }}
-                style={responsiveButtonStyle(t("avatarSecretTitle") || "Аватар / Секрет")}
+                style={responsiveButtonStyle(
+                  t("avatarSecretTitle") || "Аватар / Секрет"
+                )}
               >
                 {t("avatarSecretTitle") || "Аватар / Секрет"}
               </button>
@@ -4220,7 +4269,9 @@ const ProfileWidget: React.FC = () => {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)",
+            backgroundColor: isDark
+              ? "rgba(0, 0, 0, 0.7)"
+              : "rgba(0, 0, 0, 0.5)",
             zIndex: 10000,
             display: "flex",
             alignItems: "center",
@@ -4243,7 +4294,13 @@ const ProfileWidget: React.FC = () => {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ fontSize: "40px", textAlign: "center", marginBottom: "12px" }}>
+            <div
+              style={{
+                fontSize: "40px",
+                textAlign: "center",
+                marginBottom: "12px",
+              }}
+            >
               ⚠️
             </div>
             <h3
@@ -4492,7 +4549,7 @@ const ProfileWidget: React.FC = () => {
             overflow: "hidden",
           }}
         >
-          {/* user info */}
+          {/* user inf */}
           <div
             style={{
               display: "flex",
@@ -4527,7 +4584,11 @@ const ProfileWidget: React.FC = () => {
                   <img
                     src={avatarPictureUrl}
                     alt="avatar"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
                     onError={() => setAvatarPictureUrl(null)}
                   />
                 ) : (
@@ -4903,7 +4964,9 @@ const ProfileWidget: React.FC = () => {
                         </div>
                       ) : (
                         <>
-                          {paginateList(getFilteredZones()).map((zone) => renderZoneCard(zone))}
+                          {paginateList(getFilteredZones()).map((zone) =>
+                            renderZoneCard(zone)
+                          )}
                           {renderListPager(getFilteredZones().length)}
                         </>
                       )}
@@ -4988,8 +5051,8 @@ const ProfileWidget: React.FC = () => {
                         </div>
                       ) : (
                         <>
-                          {paginateList(getFilteredSubdomains()).map((subdomain) =>
-                            renderSubdomainCard(subdomain)
+                          {paginateList(getFilteredSubdomains()).map(
+                            (subdomain) => renderSubdomainCard(subdomain)
                           )}
                           {renderListPager(getFilteredSubdomains().length)}
                         </>
@@ -5080,8 +5143,8 @@ const ProfileWidget: React.FC = () => {
                         </div>
                       ) : (
                         <>
-                          {paginateList(getFilteredAuctions()).map((auction, idx) =>
-                            renderAuctionCard(auction, idx)
+                          {paginateList(getFilteredAuctions()).map(
+                            (auction, idx) => renderAuctionCard(auction, idx)
                           )}
                           {renderListPager(getFilteredAuctions().length)}
                         </>
