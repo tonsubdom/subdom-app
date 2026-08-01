@@ -10,21 +10,24 @@ import '@telegram-apps/telegram-ui/dist/styles.css';
 import './index.css';
 
 // Mock the environment in case, we are outside Telegram.
-import './mockEnv.ts';
+import { mockEnvReady } from './mockEnv.ts';
 
 const root = ReactDOM.createRoot(document.getElementById('root')!);
 
+(async () => {
+  try {
+    // Дожидаемся мока окружения (если мы вне Telegram), только потом инициализируем SDK.
+    await mockEnvReady;
 
+    // Configure all application dependencies.
+    init(retrieveLaunchParams().startParam === 'debug' || import.meta.env.DEV);
 
-try {
-  // Configure all application dependencies.
-  init(retrieveLaunchParams().startParam === 'debug' || import.meta.env.DEV);
-
-  root.render(
-    <StrictMode>
-      <Root/>
-    </StrictMode>,
-  );
-} catch (e) {
-  root.render(<EnvUnsupported/>);
-}
+    root.render(
+      <StrictMode>
+        <Root/>
+      </StrictMode>,
+    );
+  } catch (e) {
+    root.render(<EnvUnsupported/>);
+  }
+})();

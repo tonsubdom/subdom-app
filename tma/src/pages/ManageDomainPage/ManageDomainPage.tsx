@@ -6076,7 +6076,7 @@ export const ManageDomainPage: FC = () => {
                         Site:{" "}
                       </span>
                       <a
-                        href={`/manage#/manage?address=${item.address}`}
+                        href={`/#/manage?address=${item.address}`}
                         style={{
                           color: isDark ? "#4CAF50" : "#4CAF50",
                           textDecoration: "none",

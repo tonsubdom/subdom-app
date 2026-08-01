@@ -2618,7 +2618,6 @@ const ProfileWidget: React.FC = () => {
   const [_subdomainsError, setSubdomainsError] = useState<string | null>(null);
   const [balance, setBalance] = useState<string>("0");
 
-  const [_soonModalOpen, setSoonModalOpen] = useState<boolean>(false);
   // Фильтры
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [filters, setFilters] = useState<FilterState>({
@@ -2727,14 +2726,24 @@ const ProfileWidget: React.FC = () => {
     setIsExpanded(false);
     setTimeout(() => {
       window.location.href = address
-        ? `/manage#/manage?address=${encodeURIComponent(address)}`
-        : `/manage#/manage`;
+        ? `/#/manage?address=${encodeURIComponent(address)}`
+        : `/#/manage`;
     }, 300);
   };
   const handleMarket = () => {
     setIsExpanded(false);
     setTimeout(() => {
       window.location.href = `/#/market`;
+    }, 300);
+  };
+  // domainName передаём с карточки конкретной зоны/субдомена — открывает
+  // AvatarSecretPage сразу с этим доменом, без ручного ввода/поиска.
+  const handleOpenAvatarSecret = (domainName?: string) => {
+    setIsExpanded(false);
+    setTimeout(() => {
+      window.location.href = domainName
+        ? `/#/avatar-secret?domain=${encodeURIComponent(domainName)}`
+        : `/#/avatar-secret`;
     }, 300);
   };
   const handleGoToAuction = (zoneName: string, subdomainName: string) => {
@@ -3505,7 +3514,7 @@ const ProfileWidget: React.FC = () => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleManage();
+                  handleManage(zone.address);
                 }}
                 style={responsiveButtonStyle(
                   t("manageDomain") || "Управлять доменом"
@@ -3541,7 +3550,7 @@ const ProfileWidget: React.FC = () => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSoonModalOpen(true);
+                  handleOpenAvatarSecret(zone.name);
                 }}
                 style={responsiveButtonStyle("Аватар / Секрет")}
               >
@@ -3759,7 +3768,7 @@ const ProfileWidget: React.FC = () => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleManage();
+                  handleManage(subdomain.address);
                 }}
                 style={responsiveButtonStyle(t("manage") || "Управлять")}
               >
@@ -3793,7 +3802,7 @@ const ProfileWidget: React.FC = () => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSoonModalOpen(true);
+                  handleOpenAvatarSecret(subdomain.name);
                 }}
                 style={responsiveButtonStyle("Аватар / Секрет")}
               >

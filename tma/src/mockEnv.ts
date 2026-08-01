@@ -10,8 +10,12 @@ import {
 // обычном браузере тоже — мокаем окружение всегда, не только в dev. Авторизация в
 // проекте идёт по адресу кошелька (TonConnect), а не по Telegram-identity, так что
 // фейковый Telegram-юзер ниже не даёт доступа ни к чему чувствительному сам по себе.
-{
-  await (async () => {
+//
+// Экспортируем promise вместо голого top-level await — билд-таргет проекта
+// (chrome87/es2020/safari14 и т.д. в vite.config.ts) top-level await не
+// поддерживает. index.tsx дожидается этого промиса внутри своей собственной
+// async-обёртки перед init(), await там не на верхнем уровне модуля.
+export const mockEnvReady: Promise<void> = (async () => {
     if (await isTMA()) {
       return;
     }
@@ -68,5 +72,4 @@ import {
     console.warn(
       '⚠️ Environment is not Telegram-based — mocked launch params applied so the app can run in a regular browser too (SEO/marketing access outside Telegram).',
     );
-  })();
-}
+})();

@@ -5,7 +5,7 @@
 // из референса вадвека). Читает это TONresistor/webdom.market — тот же
 // формат, без похода на свой бэкенд.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@telegram-apps/telegram-ui';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import Button from '@mui/material/Button';
@@ -80,8 +80,8 @@ export const AvatarSecretPage: React.FC = () => {
     );
   };
 
-  const handleResolve = async () => {
-    const trimmed = domainName.trim().toLowerCase();
+  const resolveDomain = async (rawDomain: string) => {
+    const trimmed = rawDomain.trim().toLowerCase();
     if (!trimmed) return;
     const fullDomain = trimmed.endsWith('.ton') ? trimmed : `${trimmed}.ton`;
 
@@ -101,6 +101,22 @@ export const AvatarSecretPage: React.FC = () => {
       setResolving(false);
     }
   };
+
+  const handleResolve = () => resolveDomain(domainName);
+
+  // Приход с карточки зоны/субдомена в ProfileWidget — /#/avatar-secret?domain=X:
+  // подставляем домен и сразу ищем, без ручного ввода (см. handleOpenAvatarSecret
+  // в ProfileWidget.tsx).
+  useEffect(() => {
+    const hash = window.location.hash;
+    const queryString = hash.includes('?') ? hash.split('?')[1] : '';
+    const domainFromUrl = new URLSearchParams(queryString).get('domain');
+    if (domainFromUrl) {
+      setDomainName(domainFromUrl);
+      resolveDomain(domainFromUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSave = async () => {
     if (!wallet) {
