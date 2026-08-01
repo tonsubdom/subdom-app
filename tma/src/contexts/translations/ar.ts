@@ -625,7 +625,7 @@ failedToCalculateNFTAddress: 'فشل في حساب عنوان NFT',
 
   // AvatarSecretPage
   avatarSecretTitle: 'الصورة الرمزية / السر',
-  avatarSecretSubtitle: 'العنوان والوصف وصورة النطاق — مباشرة في DNS',
+  avatarSecretSubtitle: 'سجلات Txt: العنوان والوصف وصورة النطاق — مباشرة على السلسلة (on-chain)',
   avatarSecretDescription: 'Avatar, title, description, category — وسوم للفهرسة عبر tonsitecatalog.ton. (مدعوم من: @ton_site_builder_bot، tonsitecatalog.ton، TONresistor، webdom.market)',
   avatarFileTooBig: 'الملف كبير جدًا بالنسبة لسجل على السلسلة — اضغط الصورة أو استخدم رابطًا مباشرًا (URL) لملف مستضاف بالفعل.',
   avatarFileReadError: 'تعذّرت قراءة الملف.',

@@ -9,10 +9,13 @@ import {FormattedHeaderDescription} from "../IndexPage/acentHeaderFrases"
 
 
 
+type CornerIconKind = 'plus' | 'gear' | 'search';
+
 interface CardProps {
   title: string;
   description: string;
   icon: React.ReactNode;
+  cornerIcon?: CornerIconKind;
   actionText: string;
   to: string;
 }
@@ -43,7 +46,69 @@ const IconWrapper: React.FC<{ children: React.ReactNode; bgColor: string; isDark
   </div>
 );
 
-const Card: React.FC<CardProps & { isDark: boolean }> = ({ title, description, icon, actionText, to, isDark }) => {
+// Line-art SVG (в духе Feather Icons) вместо плоских эмодзи для угловой
+// "говорящей" иконки карточки: plus — создание зоны/субдомена, gear —
+// управление (Менеджер/Аватар), search — обзор/поиск (Каталог/Маркет).
+const CORNER_ICON_PATHS: Record<CornerIconKind, React.ReactNode> = {
+  plus: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <line x1="12" y1="8" x2="12" y2="16" />
+      <line x1="8" y1="12" x2="16" y2="12" />
+    </>
+  ),
+  gear: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </>
+  ),
+  search: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </>
+  ),
+};
+
+const CornerIconBadge: React.FC<{ kind: CornerIconKind; isDark: boolean }> = ({ kind, isDark }) => (
+  <div
+    style={{
+      position: "absolute",
+      top: "12px",
+      right: "12px",
+      width: "40px",
+      height: "40px",
+      borderRadius: "12px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: isDark
+        ? "linear-gradient(135deg, rgba(255, 215, 0, 0.18) 0%, rgba(255, 165, 0, 0.10) 100%)"
+        : "linear-gradient(135deg, rgba(59, 130, 246, 0.14) 0%, rgba(96, 165, 250, 0.08) 100%)",
+      border: `1px solid ${isDark ? "rgba(255, 215, 0, 0.25)" : "rgba(59, 130, 246, 0.2)"}`,
+      backdropFilter: "blur(6px)",
+      boxShadow: isDark
+        ? "0 2px 10px rgba(255, 165, 0, 0.15)"
+        : "0 2px 10px rgba(59, 130, 246, 0.12)",
+    }}
+  >
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={isDark ? "#FFD700" : "#3B82F6"}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {CORNER_ICON_PATHS[kind]}
+    </svg>
+  </div>
+);
+
+const Card: React.FC<CardProps & { isDark: boolean }> = ({ title, description, icon, cornerIcon, actionText, to, isDark }) => {
   
   const colors = {
     light: {
@@ -89,20 +154,8 @@ const Card: React.FC<CardProps & { isDark: boolean }> = ({ title, description, i
         e.currentTarget.style.boxShadow = theme.shadow;
       }}
     >
-      {/* Декоративный элемент */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          right: 0,
-          width: "60px",
-          height: "60px",
-          background: isDark 
-            ? "linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 165, 0, 0.1) 100%)"
-            : "linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(96, 165, 250, 0.1) 100%)",
-          borderRadius: "0 16px 0 60px",
-        }}
-      />
+      {/* Большая говорящая иконка в углу (создать / управление / поиск) */}
+      {cornerIcon && <CornerIconBadge kind={cornerIcon} isDark={isDark} />}
 
       <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "16px" }}>
         {icon}
@@ -187,6 +240,7 @@ export const IndexPage: React.FC = () => {
           </p>
         </IconWrapper>
       ),
+      cornerIcon: "plus",
       actionText: t('add'),
       to: "/create-collection",
     },
@@ -205,6 +259,7 @@ export const IndexPage: React.FC = () => {
           </p>
         </IconWrapper>
       ),
+      cornerIcon: "plus",
       actionText: t('create'),
       to: "/add-subdomain",
     },
@@ -223,6 +278,7 @@ export const IndexPage: React.FC = () => {
           </p>
         </IconWrapper>
       ),
+      cornerIcon: "gear",
       actionText: t('open'),
       to: "/avatar-secret",
     },
@@ -256,8 +312,28 @@ export const IndexPage: React.FC = () => {
           </div>
         </IconWrapper>
       ),
+      cornerIcon: "gear",
       actionText: t('manage'),
       to: "/manage",
+    },
+    {
+      title: "TonSite Catalog",
+      description: "tonsitecatalog.ton",
+      icon: (
+        <IconWrapper bgColor={isDark ? "#374151" : "#DBEAFE"} isDark={isDark}>
+          <p style={{
+            color: isDark ? '#FFD700' : '#3B82F6',
+            fontFamily: 'monospace',
+            fontSize: '28px',
+            fontWeight: '600'
+          }}>
+            🔍
+          </p>
+        </IconWrapper>
+      ),
+      cornerIcon: "search",
+      actionText: t('open'),
+      to: "/tonsite-catalog",
     },
     {
       title: t('marketTitle'),
@@ -321,6 +397,7 @@ export const IndexPage: React.FC = () => {
           </div>
         </IconWrapper>
       ),
+      cornerIcon: "search",
       actionText: t('open'),
       to: "/market",
     }
@@ -371,6 +448,7 @@ export const IndexPage: React.FC = () => {
               title={card.title}
               description={card.description}
               icon={card.icon}
+              cornerIcon={card.cornerIcon}
               actionText={card.actionText}
               to={card.to}
               isDark={isDark}

@@ -2911,10 +2911,13 @@ const ProfileWidget: React.FC = () => {
     return inactive;
   }, [getUserZones]);
 
-  // Ручной оверрайд — двусторонний, персистится в localStorage. Та же схема,
-  // что была (и убрана) в ManageDomainPage, но здесь осознанно только для SBT.
+  // Локальный UI-оверрайд для ручной пометки зоны неактивной (когда
+  // авто-детект дублей её не поймал) — персистится в localStorage. Только
+  // ОДНОСТОРОННИЙ: контракт SBT-коллекции допускает change_content ровно
+  // один раз (факт про сам контракт, не баг), реактивации через ту же
+  // ручку не существует — поэтому обратного "активировать" оверрайда
+  // больше нет, см. AskUserQuestion-решение 2026-08-01.
   const SBT_MANUAL_INACTIVE_KEY = "subdom_manually_inactive_sbt_zones";
-  const SBT_MANUAL_ACTIVE_KEY = "subdom_manually_active_sbt_zones";
   const loadAddrSet = (key: string): Set<string> => {
     try {
       const raw = localStorage.getItem(key);
@@ -2926,61 +2929,35 @@ const ProfileWidget: React.FC = () => {
   const [manuallyInactiveSbtZones, setManuallyInactiveSbtZones] = useState<Set<string>>(
     () => loadAddrSet(SBT_MANUAL_INACTIVE_KEY)
   );
-  const [manuallyActiveSbtZones, setManuallyActiveSbtZones] = useState<Set<string>>(
-    () => loadAddrSet(SBT_MANUAL_ACTIVE_KEY)
-  );
 
-  // Только локальный UI-оверрайд (какой бейдж/подпись показывать) — сам по
-  // себе НЕ трогает ончейн. Вызывается ПОСЛЕ успешной транзакции
-  // change_content в confirmSbtZoneToggle ниже, не раньше.
-  const applySbtZoneToggleLocalState = (address: string, currentlyInactive: boolean) => {
-    if (currentlyInactive) {
-      setManuallyInactiveSbtZones((prev) => {
-        const next = new Set(prev);
-        next.delete(address);
-        try { localStorage.setItem(SBT_MANUAL_INACTIVE_KEY, JSON.stringify(Array.from(next))); } catch {}
-        return next;
-      });
-      setManuallyActiveSbtZones((prev) => {
-        const next = new Set(prev);
-        next.add(address);
-        try { localStorage.setItem(SBT_MANUAL_ACTIVE_KEY, JSON.stringify(Array.from(next))); } catch {}
-        return next;
-      });
-    } else {
-      setManuallyActiveSbtZones((prev) => {
-        const next = new Set(prev);
-        next.delete(address);
-        try { localStorage.setItem(SBT_MANUAL_ACTIVE_KEY, JSON.stringify(Array.from(next))); } catch {}
-        return next;
-      });
-      setManuallyInactiveSbtZones((prev) => {
-        const next = new Set(prev);
-        next.add(address);
-        try { localStorage.setItem(SBT_MANUAL_INACTIVE_KEY, JSON.stringify(Array.from(next))); } catch {}
-        return next;
-      });
-    }
+  // Только локальный UI-оверрайд (бейдж) — сам по себе НЕ трогает ончейн.
+  // Вызывается ПОСЛЕ успешной транзакции change_content в
+  // confirmSbtZoneToggle ниже, не раньше.
+  const applySbtZoneToggleLocalState = (address: string) => {
+    setManuallyInactiveSbtZones((prev) => {
+      const next = new Set(prev);
+      next.add(address);
+      try { localStorage.setItem(SBT_MANUAL_INACTIVE_KEY, JSON.stringify(Array.from(next))); } catch {}
+      return next;
+    });
   };
 
-  // Клик по "Деактивировать"/"Активировать" открывает модалку подтверждения
-  // (та же идея, что UnlinkConfirmationModal в CreateCollectionPage.tsx) —
-  // сама транзакция уходит только по подтверждению, см. confirmSbtZoneToggle.
-  const [sbtToggleConfirm, setSbtToggleConfirm] = useState<{
-    zone: Zone;
-    currentlyInactive: boolean;
-  } | null>(null);
+  // Клик по "Деактивировать" открывает модалку подтверждения (та же идея,
+  // что UnlinkConfirmationModal в CreateCollectionPage.tsx) — сама транзакция
+  // уходит только по подтверждению, см. confirmSbtZoneToggle. Кнопка
+  // показывается только для ещё активных зон — реактивации не существует
+  // (см. комментарий выше про однократный change_content).
+  const [sbtToggleConfirm, setSbtToggleConfirm] = useState<{ zone: Zone } | null>(null);
   const [sbtToggleInProgress, setSbtToggleInProgress] = useState(false);
 
   // Реальная ончейн-транзакция: change_content на SBT-коллекции — тот же
   // payload-эндпоинт и та же схема (content/common_content uri), что уже
   // использует unlinkExistingCollection в CreateCollectionPage.tsx при
-  // пересоздании зоны. currentlyInactive=true → реактивация (контент назад
-  // на обычный sbt-subdomain/metadata), false → деактивация (контент на
-  // inactive-subdomain/metadata).
+  // пересоздании зоны. Контракт допускает этот вызов ровно один раз —
+  // действие необратимо, назад коллекцию отсюда не вернуть.
   const confirmSbtZoneToggle = async () => {
     if (!sbtToggleConfirm || !wallet) return;
-    const { zone, currentlyInactive } = sbtToggleConfirm;
+    const { zone } = sbtToggleConfirm;
     if (!zone.collectionAddress) {
       showSnackbar(t("zoneToggleNoCollectionAddress") || "У зоны нет адреса коллекции", "error");
       return;
@@ -2989,9 +2966,7 @@ const ProfileWidget: React.FC = () => {
     setSbtToggleInProgress(true);
     try {
       const zoneNameWithoutTld = zone.name.endsWith(".ton") ? zone.name.slice(0, -4) : zone.name;
-      const metadataBase = currentlyInactive
-        ? `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${zoneNameWithoutTld}`
-        : `${API_PAYLOAD_URL}/api/v1/inactive-subdomain/metadata/ton/${zoneNameWithoutTld}`;
+      const metadataBase = `${API_PAYLOAD_URL}/api/v1/inactive-subdomain/metadata/ton/${zoneNameWithoutTld}`;
 
       const changeContentUrl = `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/${zone.collectionAddress}/change_content?query_id=0`;
       const response = await fetch(changeContentUrl, {
@@ -3015,21 +2990,14 @@ const ProfileWidget: React.FC = () => {
         messages: result.messages,
       });
 
-      if (!currentlyInactive) {
-        try {
-          await apiService.notifyZoneDeactivated({ name: zone.name, address: zone.collectionAddress });
-        } catch {
-          /* relay-only, не блокирует успех транзакции */
-        }
+      try {
+        await apiService.notifyZoneDeactivated({ name: zone.name, address: zone.collectionAddress });
+      } catch {
+        /* relay-only, не блокирует успех транзакции */
       }
 
-      applySbtZoneToggleLocalState(zone.address, currentlyInactive);
-      showSnackbar(
-        currentlyInactive
-          ? t("zoneActivatedSuccess") || "Зона активирована"
-          : t("zoneDeactivatedSuccess") || "Зона деактивирована",
-        "success"
-      );
+      applySbtZoneToggleLocalState(zone.address);
+      showSnackbar(t("zoneDeactivatedSuccess") || "Зона деактивирована", "success");
       setSbtToggleConfirm(null);
     } catch (error: any) {
       console.error("❌ Ошибка смены статуса SBT-зоны:", error);
@@ -3042,9 +3010,8 @@ const ProfileWidget: React.FC = () => {
   const inactiveSbtZoneAddresses = useMemo(() => {
     const merged = new Set(autoInactiveSbtZoneAddresses);
     manuallyInactiveSbtZones.forEach((a) => merged.add(a));
-    manuallyActiveSbtZones.forEach((a) => merged.delete(a));
     return merged;
-  }, [autoInactiveSbtZoneAddresses, manuallyInactiveSbtZones, manuallyActiveSbtZones]);
+  }, [autoInactiveSbtZoneAddresses, manuallyInactiveSbtZones]);
 
   // ====== [NEW] СУБДОМЕНЫ ПОЛЬЗОВАТЕЛЯ — ИЗ БЛОКЧЕЙНА ======
 
@@ -3644,11 +3611,11 @@ const ProfileWidget: React.FC = () => {
                 </div>
               )}
             </div>
-            {isSbtZone && (
+            {isSbtZone && !isInactiveDuplicate && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSbtToggleConfirm({ zone, currentlyInactive: isInactiveDuplicate });
+                  setSbtToggleConfirm({ zone });
                 }}
                 style={{
                   alignSelf: "flex-start",
@@ -3656,13 +3623,13 @@ const ProfileWidget: React.FC = () => {
                   fontWeight: "700",
                   padding: "2px 8px",
                   borderRadius: "10px",
-                  border: `1px solid ${isInactiveDuplicate ? "#4CAF50" : "#e53935"}`,
+                  border: "1px solid #e53935",
                   background: "transparent",
-                  color: isInactiveDuplicate ? "#4CAF50" : "#e53935",
+                  color: "#e53935",
                   cursor: "pointer",
                 }}
               >
-                {isInactiveDuplicate ? "Активировать" : "Деактивировать"}
+                Деактивировать
               </button>
             )}
 
@@ -4270,7 +4237,7 @@ const ProfileWidget: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ fontSize: "40px", textAlign: "center", marginBottom: "12px" }}>
-              {sbtToggleConfirm.currentlyInactive ? "✅" : "⚠️"}
+              ⚠️
             </div>
             <h3
               style={{
@@ -4282,9 +4249,7 @@ const ProfileWidget: React.FC = () => {
                 fontFamily: "monospace",
               }}
             >
-              {sbtToggleConfirm.currentlyInactive
-                ? t("activateZoneConfirmTitle") || "Активировать зону?"
-                : t("deactivateZoneConfirmTitle") || "Деактивировать зону?"}
+              {t("deactivateZoneConfirmTitle") || "Деактивировать зону?"}
             </h3>
             <p
               style={{
@@ -4307,11 +4272,8 @@ const ProfileWidget: React.FC = () => {
                 textAlign: "center",
               }}
             >
-              {sbtToggleConfirm.currentlyInactive
-                ? t("activateZoneConfirmText") ||
-                  "Это отправит ончейн-транзакцию, которая вернёт коллекцию в активное состояние."
-                : t("deactivateZoneConfirmText") ||
-                  "Это отправит ончейн-транзакцию, которая пометит коллекцию как неактивную (INACTIVE). Действие обратимо через ту же кнопку."}
+              {t("deactivateZoneConfirmText") ||
+                "Это отправит ончейн-транзакцию, которая пометит коллекцию как неактивную (INACTIVE). Это необратимо — контракт допускает такую смену контента только один раз, вернуть зону в активное состояние отсюда будет нельзя."}
             </p>
             <div style={{ display: "flex", gap: "10px" }}>
               <button
@@ -4340,11 +4302,7 @@ const ProfileWidget: React.FC = () => {
                   padding: "12px",
                   borderRadius: "10px",
                   border: "none",
-                  background: sbtToggleInProgress
-                    ? colors.border
-                    : sbtToggleConfirm.currentlyInactive
-                      ? "#4CAF50"
-                      : "#e53935",
+                  background: sbtToggleInProgress ? colors.border : "#e53935",
                   color: "#FFFFFF",
                   fontSize: "14px",
                   fontWeight: 700,
@@ -4353,9 +4311,7 @@ const ProfileWidget: React.FC = () => {
               >
                 {sbtToggleInProgress
                   ? t("processing") || "Отправка..."
-                  : sbtToggleConfirm.currentlyInactive
-                    ? t("activate") || "Активировать"
-                    : t("deactivate") || "Деактивировать"}
+                  : t("deactivate") || "Деактивировать"}
               </button>
             </div>
           </div>

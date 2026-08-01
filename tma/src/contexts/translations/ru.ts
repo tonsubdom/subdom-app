@@ -809,7 +809,7 @@ itemFoundSuccessfully: 'Элемент успешно найден',
 
   // AvatarSecretPage
   avatarSecretTitle: 'Аватар / Секрет',
-  avatarSecretSubtitle: 'Заголовок, описание, картинка домена — прямо в DNS',
+  avatarSecretSubtitle: 'Txt-записи: заголовок, описание, картинка домена — прямо on-chain',
   avatarSecretDescription: 'Avatar, title, description, category — теги для индексации в tonsitecatalog.ton. (Поддерживается: @ton_site_builder_bot, tonsitecatalog.ton, TONresistor, webdom.market)',
   avatarFileTooBig: 'Файл слишком большой для ончейн-записи — сожми картинку или используй прямую ссылку (URL) на уже захостенный файл.',
   avatarFileReadError: 'Не удалось прочитать файл.',
@@ -832,13 +832,9 @@ itemFoundSuccessfully: 'Элемент успешно найден',
   avatarSaveError: 'Ошибка сохранения',
 
   // SBT-зона: деактивация/активация (ProfileWidget)
-  activate: 'Активировать',
   deactivate: 'Деактивировать',
-  activateZoneConfirmTitle: 'Активировать зону?',
   deactivateZoneConfirmTitle: 'Деактивировать зону?',
-  activateZoneConfirmText: 'Это отправит ончейн-транзакцию, которая вернёт коллекцию в активное состояние.',
-  deactivateZoneConfirmText: 'Это отправит ончейн-транзакцию, которая пометит коллекцию как неактивную (INACTIVE). Действие обратимо через ту же кнопку.',
-  zoneActivatedSuccess: 'Зона активирована',
+  deactivateZoneConfirmText: 'Это отправит ончейн-транзакцию, которая пометит коллекцию как неактивную (INACTIVE). Это необратимо — контракт допускает такую смену контента только один раз, вернуть зону в активное состояние отсюда будет нельзя.',
   zoneDeactivatedSuccess: 'Зона деактивирована',
   zoneToggleError: 'Ошибка транзакции',
   zoneToggleNoCollectionAddress: 'У зоны нет адреса коллекции',
