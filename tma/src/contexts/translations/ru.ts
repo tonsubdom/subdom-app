@@ -831,4 +831,16 @@ itemFoundSuccessfully: 'Элемент успешно найден',
   avatarSaved: 'Сохранено онchain',
   avatarSaveError: 'Ошибка сохранения',
 
+  // SBT-зона: деактивация/активация (ProfileWidget)
+  activate: 'Активировать',
+  deactivate: 'Деактивировать',
+  activateZoneConfirmTitle: 'Активировать зону?',
+  deactivateZoneConfirmTitle: 'Деактивировать зону?',
+  activateZoneConfirmText: 'Это отправит ончейн-транзакцию, которая вернёт коллекцию в активное состояние.',
+  deactivateZoneConfirmText: 'Это отправит ончейн-транзакцию, которая пометит коллекцию как неактивную (INACTIVE). Действие обратимо через ту же кнопку.',
+  zoneActivatedSuccess: 'Зона активирована',
+  zoneDeactivatedSuccess: 'Зона деактивирована',
+  zoneToggleError: 'Ошибка транзакции',
+  zoneToggleNoCollectionAddress: 'У зоны нет адреса коллекции',
+
   }

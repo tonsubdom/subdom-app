@@ -21,6 +21,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import {
   buildOwnerDnsTextPayloads,
   buildOwnerPicturePayload,
+  buildOwnerIconPayload,
   resolveDomainNftAddress,
   fetchAllOwnerDnsText,
   ResolvedDomain,
@@ -31,11 +32,11 @@ import {
 // (см. renewal-транзакцию в AddSubdomainPage).
 const MESSAGE_AMOUNT_NANO = '20000000'; // 0.02 TON
 
-// dns_text#1eda хранит chunk_count в 8 битах (max 255 чанков по
-// TEXT_CHUNK_MAX_BYTES=120 байт каждый, см. ownerMetaService.ts) — то есть
-// максимум ~30 600 байт данных в записи. Берём с запасом, картинка как
-// base64 data URI должна физически влезать в одну ончейн-запись.
-const MAX_PICTURE_DATA_URI_BYTES = 25 * 1024; // 25 КБ запас под 30.6 КБ лимит
+// tsi_icon (сырые байты, см. ownerMetaService.ts) хранит их той же
+// ref-цепочкой ячеек, что и dns_text — практический потолок ~30 КБ. Берём
+// с запасом; бюджет теперь считается по реальным байтам файла, а не по
+// раздутой base64-строке (как было, пока картинка кодировалась в "picture").
+const MAX_ICON_BYTES = 25 * 1024; // 25 КБ
 
 // Те же категории, что в форме вадвека (Ton Site Index) — общий словарь для
 // совместимости, а не свой список с нуля.
@@ -101,7 +102,12 @@ export const AvatarSecretPage: React.FC = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  // "picture" (URL, читаемо всей экосистемой как ссылка) и локальный файл
+  // (пишется отдельно в tsi_icon, сырыми байтами) — взаимоисключающие: выбор
+  // одного очищает другое, шлётся ровно одно сообщение из двух на save.
   const [pictureUrl, setPictureUrl] = useState('');
+  const [iconBytes, setIconBytes] = useState<Uint8Array | null>(null);
+  const [iconPreview, setIconPreview] = useState<string | null>(null);
   // Что из этого реально уже прописано ончейн (для значка "уже есть запись" —
   // не проверено вживую, см. ownerMetaService.ts).
   const [hasExisting, setHasExisting] = useState({
@@ -109,12 +115,25 @@ export const AvatarSecretPage: React.FC = () => {
     description: false,
     category: false,
     picture: false,
+    icon: false,
   });
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState<React.ReactElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [dropNotice, setDropNotice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Превью локального файла — либо сам файл (свежий выбор, object URL,
+  // отзывается при замене/размонтировании), либо уже существующая ончейн
+  // tsi_icon-запись (data:-URI из fetchAllOwnerDnsText, отзывать не нужно).
+  const iconObjectUrlRef = useRef<string | null>(null);
+  const displayImage = pictureUrl.trim() || iconPreview;
+
+  useEffect(() => {
+    return () => {
+      if (iconObjectUrlRef.current) URL.revokeObjectURL(iconObjectUrlRef.current);
+    };
+  }, []);
 
   const showSnackbar = (message: string, type: 'success' | 'error' = 'success') => {
     setSnackbar(
@@ -129,7 +148,13 @@ export const AvatarSecretPage: React.FC = () => {
     setDescription('');
     setCategory('');
     setPictureUrl('');
-    setHasExisting({ title: false, description: false, category: false, picture: false });
+    if (iconObjectUrlRef.current) {
+      URL.revokeObjectURL(iconObjectUrlRef.current);
+      iconObjectUrlRef.current = null;
+    }
+    setIconBytes(null);
+    setIconPreview(null);
+    setHasExisting({ title: false, description: false, category: false, picture: false, icon: false });
   };
 
   const resolveDomain = async (rawDomain: string) => {
@@ -188,16 +213,25 @@ export const AvatarSecretPage: React.FC = () => {
         description: existingDescription,
         category: existingCategory,
         picture: existingPicture,
+        icon: existingIcon,
       } = await fetchAllOwnerDnsText(nftAddress, isTestnet);
       if (existingTitle) setTitle(existingTitle);
       if (existingDescription) setDescription(existingDescription);
       if (existingCategory) setCategory(existingCategory);
-      if (existingPicture) setPictureUrl(existingPicture);
+      if (existingPicture) {
+        setPictureUrl(existingPicture);
+      } else if (existingIcon) {
+        // picture (URL) в приоритете; tsi_icon — только фолбэк для превью,
+        // не переносим его в iconBytes — пересылать нечего, пока юзер сам
+        // не выберет новый файл.
+        setIconPreview(existingIcon);
+      }
       setHasExisting({
         title: !!existingTitle,
         description: !!existingDescription,
         category: !!existingCategory,
         picture: !!existingPicture,
+        icon: !!existingIcon,
       });
     } catch {
       // Тихо игнорируем — форма просто останется пустой, юзер заполнит с нуля.
@@ -209,35 +243,37 @@ export const AvatarSecretPage: React.FC = () => {
   const handleResolve = () =>
     resolveByAddress ? resolveByAddressValue(nftAddressInput) : resolveDomain(domainName);
 
-  // dns_text "picture" по конвенции — URL картинки (см. ownerMetaService.ts,
-  // совместимость с TONresistor/webdom.market). Своего хостинга картинок в
-  // проекте нет — поэтому для реального URL (перетащенного из браузера или
-  // вставленного руками) используем его как есть, а для локального файла с
-  // диска кодируем как data:-URI прямо в запись (это тоже валидный src для
-  // <img>, просто не "ссылка" в привычном смысле) — работает, только пока
-  // картинка достаточно маленькая, чтобы влезть в лимит записи.
-  const handleFile = (file: File) => {
+  // dns_text "picture" по общему стандарту (см. ownerMetaService.ts) — ЧИСТЫЙ
+  // URL картинки, ничего кроме ссылки (так его читают TONresistor/
+  // webdom.market/Ton Site Index). Своего хостинга у subdom нет — для
+  // локального файла с диска шлём сырые байты отдельно, в легаси-категорию
+  // tsi_icon (buildOwnerIconPayload), а не data:-URI внутрь "picture" (это
+  // ломало бы конвенцию для внешних читателей). Выбор файла и ввод URL
+  // взаимоисключающие — см. onChange инпута URL ниже.
+  const handleFile = async (file: File) => {
     if (!file.type.startsWith('image/')) {
-      setDropNotice(t('avatarDropNotUrl') || 'Это не похоже на ссылку на картинку.');
+      setDropNotice(t('avatarDropNotUrl') || 'Это не похоже на картинку.');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUri = reader.result as string;
-      if (dataUri.length > MAX_PICTURE_DATA_URI_BYTES) {
-        setDropNotice(
-          t('avatarFileTooBig') ||
-            `Файл слишком большой для ончейн-записи (лимит ~${Math.floor(MAX_PICTURE_DATA_URI_BYTES / 1024)} КБ) — сожми картинку или используй прямую ссылку (URL) на уже захостенный файл.`
-        );
-        return;
-      }
-      setPictureUrl(dataUri);
+    if (file.size > MAX_ICON_BYTES) {
+      setDropNotice(
+        t('avatarFileTooBig') ||
+          `Файл слишком большой для ончейн-записи (лимит ~${Math.floor(MAX_ICON_BYTES / 1024)} КБ) — сожми картинку или используй прямую ссылку (URL) на уже захостенный файл.`
+      );
+      return;
+    }
+    try {
+      const buffer = await file.arrayBuffer();
+      setIconBytes(new Uint8Array(buffer));
+      setPictureUrl('');
+      if (iconObjectUrlRef.current) URL.revokeObjectURL(iconObjectUrlRef.current);
+      const objectUrl = URL.createObjectURL(file);
+      iconObjectUrlRef.current = objectUrl;
+      setIconPreview(objectUrl);
       setDropNotice(null);
-    };
-    reader.onerror = () => {
+    } catch {
       setDropNotice(t('avatarFileReadError') || 'Не удалось прочитать файл.');
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handlePictureDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -248,6 +284,12 @@ export const AvatarSecretPage: React.FC = () => {
     ).trim();
     if (/^https?:\/\//i.test(uri)) {
       setPictureUrl(uri);
+      if (iconObjectUrlRef.current) {
+        URL.revokeObjectURL(iconObjectUrlRef.current);
+        iconObjectUrlRef.current = null;
+      }
+      setIconBytes(null);
+      setIconPreview(null);
       setDropNotice(null);
       return;
     }
@@ -286,8 +328,12 @@ export const AvatarSecretPage: React.FC = () => {
     try {
       const textPayloads = await buildOwnerDnsTextPayloads({ title, description, category });
       const payloads = [...textPayloads];
+      // Максимум одно из двух — иначе выйдет за лимит 4 сообщений на
+      // транзакцию для v3/v4-кошельков (см. ownerMetaService.ts).
       if (pictureUrl.trim()) {
         payloads.push(await buildOwnerPicturePayload(pictureUrl.trim()));
+      } else if (iconBytes) {
+        payloads.push(await buildOwnerIconPayload(iconBytes));
       }
 
       await tonConnectUI.sendTransaction({
@@ -442,8 +488,8 @@ export const AvatarSecretPage: React.FC = () => {
                   height: 84,
                   borderRadius: '50%',
                   overflow: 'hidden',
-                  border: `2px solid ${pictureUrl.trim() ? colors.accent : colors.border}`,
-                  boxShadow: pictureUrl.trim() ? `0 0 12px ${colors.shadow}` : 'none',
+                  border: `2px solid ${displayImage ? colors.accent : colors.border}`,
+                  boxShadow: displayImage ? `0 0 12px ${colors.shadow}` : 'none',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -451,9 +497,9 @@ export const AvatarSecretPage: React.FC = () => {
                   fontSize: 32,
                 }}
               >
-                {pictureUrl.trim() ? (
+                {displayImage ? (
                   <img
-                    src={pictureUrl.trim()}
+                    src={displayImage}
                     alt="avatar"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
@@ -539,10 +585,10 @@ export const AvatarSecretPage: React.FC = () => {
                   e.target.value = '';
                 }}
               />
-              {pictureUrl.trim() ? (
+              {displayImage ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
                   <img
-                    src={pictureUrl.trim()}
+                    src={displayImage}
                     alt="preview"
                     style={{
                       maxWidth: 120,
@@ -563,7 +609,16 @@ export const AvatarSecretPage: React.FC = () => {
               <Input
                 placeholder={t('avatarPicturePlaceholder') || 'Ссылка на картинку (URL)'}
                 value={pictureUrl}
-                onChange={(e) => { setPictureUrl(e.target.value); setDropNotice(null); }}
+                onChange={(e) => {
+                  setPictureUrl(e.target.value);
+                  setDropNotice(null);
+                  if (iconObjectUrlRef.current) {
+                    URL.revokeObjectURL(iconObjectUrlRef.current);
+                    iconObjectUrlRef.current = null;
+                  }
+                  setIconBytes(null);
+                  setIconPreview(null);
+                }}
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 style={{ ...inputStyle, marginBottom: 0 }}
               />

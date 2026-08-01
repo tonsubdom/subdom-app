@@ -24,6 +24,16 @@ const CATEGORY_PICTURE = 'picture';
 const DNS_TEXT_TAG = 0x1eda;
 const TEXT_CHUNK_MAX_BYTES = 120;
 
+// tsi_icon — легаси-категория Ton Site Index/Builder (sha256("tsi_icon"), не
+// часть TEP-81), сырые байты картинки вместо URL. У subdom нет своего
+// хостинга картинок — раньше локальный файл кодировался как data:-URI и
+// писался в "picture", что нарушает конвенцию "picture = чистый URL"
+// (совпадает byte-for-byte с webdom.market только пока там реальная ссылка).
+// tsi_icon — официально предусмотренный вадвеком путь для этого случая:
+// версионный байт + бинарный snake, без base64-раздувания.
+const CATEGORY_ICON = 'tsi_icon';
+const OWNER_META_VERSION = 1;
+
 function encodeDnsText(str: string): Cell {
   const data = Buffer.from(str, 'utf8');
   const chunks: Buffer[] = [];
@@ -92,6 +102,36 @@ export async function buildOwnerPicturePayload(url: string): Promise<string> {
   return buildChangeRecordMessage(key, encodeDnsText(url)).toBoc().toString('base64');
 }
 
+// Цепочка сырых байт по ячейкам как @ton/core's Builder.storeStringTail —
+// "сколько влезло в эту ячейку, потом ref на новую для остатка" snake-формат,
+// но без UTF-8-кодирования (испортило бы бинарные данные картинки).
+function storeBinarySnake(builder: Builder, data: Buffer): Builder {
+  if (data.length === 0) return builder;
+  const bytesAvailable = Math.floor(builder.availableBits / 8);
+  if (data.length <= bytesAvailable) {
+    return builder.storeBuffer(data);
+  }
+  builder.storeBuffer(data.subarray(0, bytesAvailable));
+  const rest = beginCell();
+  storeBinarySnake(rest, data.subarray(bytesAvailable));
+  return builder.storeRef(rest.endCell());
+}
+
+/**
+ * Альтернатива buildOwnerPicturePayload для локального файла без хостинга —
+ * категория "tsi_icon" (версионный байт + сырые байты). Форма шлёт ровно
+ * одно из двух сообщений (picture ИЛИ tsi_icon), никогда оба — иначе выйдет
+ * за лимит 4 сообщений на транзакцию для v3/v4-кошельков.
+ */
+export async function buildOwnerIconPayload(iconBytes: Uint8Array): Promise<string> {
+  const key = await categoryKey(CATEGORY_ICON);
+  const valueCell = storeBinarySnake(
+    beginCell().storeUint(OWNER_META_VERSION, 8),
+    Buffer.from(iconBytes)
+  ).endCell();
+  return buildChangeRecordMessage(key, valueCell).toBoc().toString('base64');
+}
+
 export function toUserFriendly(raw: string): string {
   return Address.parse(raw).toString({ bounceable: true });
 }
@@ -151,6 +191,38 @@ function decodeDnsText(cell: Cell): string | null {
   } catch {
     return null;
   }
+}
+
+/** Обратная операция storeBinarySnake — читает сырые байты, идя по ref-цепочке ячеек. */
+function loadBinarySnake(cell: Cell): Buffer {
+  let slice = cell.beginParse();
+  const parts: Buffer[] = [];
+  while (true) {
+    const bytesAvailable = Math.floor(slice.remainingBits / 8);
+    parts.push(Buffer.from(slice.loadBuffer(bytesAvailable)));
+    if (slice.remainingRefs > 0) {
+      slice = slice.loadRef().beginParse();
+    } else {
+      break;
+    }
+  }
+  return Buffer.concat(parts);
+}
+
+function sniffImageMime(bytes: Buffer): string {
+  if (bytes.length >= 4 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+    return 'image/png';
+  }
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  if (bytes.length >= 3 && bytes.toString('ascii', 0, 3) === 'GIF') {
+    return 'image/gif';
+  }
+  if (bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP') {
+    return 'image/webp';
+  }
+  return 'image/png';
 }
 
 /**
@@ -218,24 +290,33 @@ export async function fetchOwnerDnsTextCategory(
 }
 
 /**
- * Читает все 4 наших dns_text-категории ОДНИМ вызовом dnsresolve (вместо 4
- * отдельных сетевых запросов через fetchOwnerDnsTextCategory по кругу) —
- * используется формой AvatarSecretPage для подтяжки уже существующей записи.
+ * Читает все 4 наших dns_text-категории + легаси tsi_icon ОДНИМ вызовом
+ * dnsresolve (вместо N отдельных сетевых запросов по кругу) — используется
+ * формой AvatarSecretPage для подтяжки уже существующей записи. icon
+ * возвращается уже готовым data:-URI (mime определяется по magic bytes) —
+ * используется как фолбэк для превью, если "picture" (URL) не задан.
  */
 export async function fetchAllOwnerDnsText(
   nftAddress: string,
   isTestnet: boolean
-): Promise<{ title: string | null; description: string | null; category: string | null; picture: string | null }> {
-  const empty = { title: null, description: null, category: null, picture: null };
+): Promise<{
+  title: string | null;
+  description: string | null;
+  category: string | null;
+  picture: string | null;
+  icon: string | null;
+}> {
+  const empty = { title: null, description: null, category: null, picture: null, icon: null };
   try {
     const dict = await fetchSelfDnsRecordsDict(nftAddress, isTestnet);
     if (!dict) return empty;
 
-    const [titleKey, descriptionKey, categoryKeyHash, pictureKey] = await Promise.all([
+    const [titleKey, descriptionKey, categoryKeyHash, pictureKey, iconKey] = await Promise.all([
       categoryKey(CATEGORY_TITLE),
       categoryKey(CATEGORY_DESCRIPTION),
       categoryKey(CATEGORY_CATEGORY),
       categoryKey(CATEGORY_PICTURE),
+      categoryKey(CATEGORY_ICON),
     ]);
 
     const readCell = (key: bigint) => {
@@ -243,11 +324,22 @@ export async function fetchAllOwnerDnsText(
       return cell ? decodeDnsText(cell) : null;
     };
 
+    const iconCell = dict.get(iconKey);
+    let icon: string | null = null;
+    if (iconCell) {
+      const raw = loadBinarySnake(iconCell);
+      if (raw.length > 1 && raw[0] === OWNER_META_VERSION) {
+        const bytes = raw.subarray(1);
+        icon = `data:${sniffImageMime(bytes)};base64,${bytes.toString('base64')}`;
+      }
+    }
+
     return {
       title: readCell(titleKey),
       description: readCell(descriptionKey),
       category: readCell(categoryKeyHash),
       picture: readCell(pictureKey),
+      icon,
     };
   } catch {
     return empty;

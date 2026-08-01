@@ -2301,6 +2301,7 @@ import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInf
 import { getAuctionBidHistory } from "@/pages/AddSubdomainPage/flipTimer/getAuctionBidHistory";
 import { mapWithConcurrency } from "@/utils/concurrency";
 import { createAuctionUrl } from "@/utils/urlParams";
+import { MiniAppLinks } from "@/utils/miniAppLinks";
 import { useBlockchainLoadProgress } from "@/hooks/useBlockchainLoadProgress";
 
 // ====== [KEEP] БЭКЕНД ДЛЯ INFO-БЛОКА ======
@@ -2309,7 +2310,7 @@ import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
 import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 import { ScanProgressLoader } from "@/components/ScanProgressLoader";
-import { resolveDomainNftAddress, fetchOwnerPicture } from "@/services/ownerMetaService";
+import { resolveDomainNftAddress, fetchAllOwnerDnsText } from "@/services/ownerMetaService";
 import { ShowSnackbar } from "@/components/ShowSnackbar";
 
 // ====================================================================
@@ -3222,7 +3223,7 @@ const ProfileWidget: React.FC = () => {
     load();
   }, [allProxySubdomainsAsSubdomains, isTestnet]);
 
-  // ====== АВАТАР: dns_text "picture" СВОЕГО ДОМЕНА, С ФОЛБЭКОМ НА КАРТИНКУ NFT-ЗОНЫ ======
+  // ====== АВАТАР: dns_text "picture"/"tsi_icon" СВОЕГО ДОМЕНА, С ФОЛБЭКОМ НА КАРТИНКУ NFT-ЗОНЫ ======
   // Та же идея, что уже есть для domain-вместо-адреса (fetchDomain): вместо
   // адреса/дефолтной иконки показываем то, что реально прописано в DNS. Чтение
   // dns_text (ownerMetaService.ts) не проверено вживую и может молча не найти
@@ -3230,6 +3231,8 @@ const ProfileWidget: React.FC = () => {
   // либо записи просто ещё нет) — поэтому не полагаемся только на неё:
   // fallback на уже рабочий источник, картинку самой NFT-обёртки зоны
   // (тот же (zone as any).image, что уже показывается на карточках зон).
+  // "picture" (URL) в приоритете, "tsi_icon" (локальный файл без хостинга,
+  // см. AvatarSecretPage) — второй по очереди, зона — последний фолбэк.
   const [avatarPictureUrl, setAvatarPictureUrl] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -3246,8 +3249,10 @@ const ProfileWidget: React.FC = () => {
       try {
         const resolved = await resolveDomainNftAddress(domain);
         if (cancelled) return;
-        const picture = resolved ? await fetchOwnerPicture(resolved.nftAddress, isTestnet) : null;
-        if (!cancelled) setAvatarPictureUrl(picture || zoneFallback);
+        const { picture, icon } = resolved
+          ? await fetchAllOwnerDnsText(resolved.nftAddress, isTestnet)
+          : { picture: null, icon: null };
+        if (!cancelled) setAvatarPictureUrl(picture || icon || zoneFallback);
       } catch {
         if (!cancelled) setAvatarPictureUrl(zoneFallback);
       }
@@ -3761,10 +3766,7 @@ const ProfileWidget: React.FC = () => {
                   e.stopPropagation();
                   setIsExpanded(false);
                   setTimeout(() => {
-                    window.open(
-                      "https://t.me/Ton_site_builder_bot?startapp",
-                      "_blank"
-                    );
+                    window.open(MiniAppLinks.siteBuilder(zone.name), "_blank");
                   }, 300);
                 }}
                 style={responsiveButtonStyle("Создать сайт")}
@@ -4014,7 +4016,7 @@ const ProfileWidget: React.FC = () => {
                   setIsExpanded(false);
                   setTimeout(() => {
                     window.open(
-                      "https://t.me/Ton_site_builder_bot?startapp",
+                      MiniAppLinks.siteBuilder(subdomain.name),
                       "_blank"
                     );
                   }, 300);
@@ -4286,6 +4288,17 @@ const ProfileWidget: React.FC = () => {
             </h3>
             <p
               style={{
+                margin: "0 0 8px 0",
+                fontSize: "13px",
+                color: colors.text,
+                textAlign: "center",
+                fontWeight: 700,
+              }}
+            >
+              {sbtToggleConfirm.zone.name}
+            </p>
+            <p
+              style={{
                 margin: "0 0 20px 0",
                 fontSize: "13px",
                 color: colors.text,
@@ -4296,9 +4309,9 @@ const ProfileWidget: React.FC = () => {
             >
               {sbtToggleConfirm.currentlyInactive
                 ? t("activateZoneConfirmText") ||
-                  `Это отправит ончейн-транзакцию, которая вернёт коллекцию "${sbtToggleConfirm.zone.name}" в активное состояние.`
+                  "Это отправит ончейн-транзакцию, которая вернёт коллекцию в активное состояние."
                 : t("deactivateZoneConfirmText") ||
-                  `Это отправит ончейн-транзакцию, которая пометит коллекцию "${sbtToggleConfirm.zone.name}" как неактивную (INACTIVE). Действие обратимо через ту же кнопку.`}
+                  "Это отправит ончейн-транзакцию, которая пометит коллекцию как неактивную (INACTIVE). Действие обратимо через ту же кнопку."}
             </p>
             <div style={{ display: "flex", gap: "10px" }}>
               <button

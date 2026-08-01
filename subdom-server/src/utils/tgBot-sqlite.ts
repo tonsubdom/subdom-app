@@ -3372,7 +3372,8 @@ ${currentID + 1} ${$.hintZoneNumber}
 ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      const inlineKeyboard = [[{ text: $.btnCreateSubdomain, url: 'https://subdom.zone/#/add-subdomain' }]];
+      const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
+      const inlineKeyboard = [[{ text: $.btnCreateSubdomain, url: miniAppLink }]];
 
       await this.sendPhotoWithCaption(
         this.ownerId,

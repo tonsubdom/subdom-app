@@ -119,6 +119,18 @@ export class MiniAppLinkGenerator {
     return zoneName.replace(/\.ton$/i, '');
   }
 
+  /**
+   * Генерирует ссылку на бот Ton Site Builder (@Ton_site_builder_bot, вадвек)
+   * с именем домена в startapp — принимающая сторона матчит домен по этому
+   * параметру и сразу открывает страницу редактирования сайта, минуя
+   * ручной поиск. Тот же TLD-стрип, что и для внутренних startapp-ссылок
+   * (Telegram startapp разрешает только [A-Za-z0-9_-]).
+   */
+  static generateSiteBuilderLink(domainName: string): string {
+    const encoded = encodeURIComponent(this.stripTonTld(domainName));
+    return `https://t.me/Ton_site_builder_bot?startapp=${encoded}`;
+  }
+
   static generateAddSubdomainLink(zoneName: string, subdomainName?: string): string {
     const params: Record<string, string> = { zone: this.stripTonTld(zoneName) };
     if (subdomainName) {
@@ -275,9 +287,11 @@ export class MiniAppLinkGenerator {
 // Экспортируем хелперы для удобства
 export const MiniAppLinks = {
   // Генерация ссылок
-  addSubdomain: (zone: string, subdomain?: string) => 
+  addSubdomain: (zone: string, subdomain?: string) =>
     MiniAppLinkGenerator.generateAddSubdomainLink(zone, subdomain),
-  
+
+  siteBuilder: (domain: string) => MiniAppLinkGenerator.generateSiteBuilderLink(domain),
+
   market: () => MiniAppLinkGenerator.generateMarketLink(),
   
   auction: (zone: string, subdomain: string) => 

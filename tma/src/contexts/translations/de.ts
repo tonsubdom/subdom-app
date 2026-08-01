@@ -649,4 +649,15 @@ failedToCalculateNFTAddress: 'NFT-Adresse konnte nicht berechnet werden',
   avatarSaved: 'Onchain gespeichert',
   avatarSaveError: 'Fehler beim Speichern',
 
+  activate: 'Aktivieren',
+  deactivate: 'Deaktivieren',
+  activateZoneConfirmTitle: 'Zone aktivieren?',
+  deactivateZoneConfirmTitle: 'Zone deaktivieren?',
+  activateZoneConfirmText: 'Dies sendet eine On-Chain-Transaktion, die die Collection wieder aktiviert.',
+  deactivateZoneConfirmText: 'Dies sendet eine On-Chain-Transaktion, die die Collection als inaktiv (INACTIVE) markiert. Über denselben Button rückgängig zu machen.',
+  zoneActivatedSuccess: 'Zone aktiviert',
+  zoneDeactivatedSuccess: 'Zone deaktiviert',
+  zoneToggleError: 'Transaktionsfehler',
+  zoneToggleNoCollectionAddress: 'Diese Zone hat keine Collection-Adresse',
+
 };
