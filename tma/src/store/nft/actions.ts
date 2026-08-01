@@ -668,6 +668,40 @@ export const deploySBTCollection = createAsyncThunk<
   }
 );
 
+// Аналог deployBundle для SBT — деплой коллекции и привязка домена
+// (next_resolver → адрес коллекции) ОДНОЙ транзакцией (2 сообщения), а не
+// раздельно. Раньше SBT-зона деплоилась через голый deploySBTCollection
+// (deploy_collection) и next_resolver не проставлялся вообще — в отличие
+// от Proxy, где это уже входит в deploy_bundle. Бэкенд-эндпоинт
+// deploy_collection_and_set_dns уже существует и делает ровно это (см.
+// builder-api-master/app/api/v1/routers/sbt_subdomain.py).
+export const deploySBTCollectionWithDns = createAsyncThunk<
+  DeploySBTCollectionResponse,
+  DeploySBTCollectionPayload & { dns_item_address: string },
+  { state: RootState }
+>(
+  'blockchain/deploySBTCollectionWithDns',
+  async ({ dns_item_address, ...payload }, { rejectWithValue }) => {
+    try {
+      const queryParams = new URLSearchParams({
+        dns_item_address,
+        query_id: (payload.query_id ?? 0).toString(),
+      });
+      const response = await axios.post<DeploySBTCollectionResponse>(
+        `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/deploy_collection_and_set_dns?${queryParams.toString()}`,
+        payload
+      );
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('SBT deployment (with DNS) error:', error.response?.data);
+        return rejectWithValue(error.response?.data || 'SBT collection deployment failed');
+      }
+      return rejectWithValue('An unknown error occurred');
+    }
+  }
+);
+
 export const getAuctionInfo = createAsyncThunk<
   AuctionInfoResponse, 
   { address: string, isTestnet: boolean }, 

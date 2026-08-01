@@ -109,7 +109,14 @@ export async function resolveDomainNftAddress(domain: string): Promise<ResolvedD
   const addr = data?.item?.address;
   const owner = data?.item?.owner?.address;
   if (!addr || !owner) return null;
-  return { nftAddress: addr, ownerAddress: owner };
+  // tonapi.io отдаёт адреса в raw-формате (0:hex...) — TonConnect SDK валидирует
+  // messages[].address строго как user-friendly (isValidUserFriendlyAddress),
+  // raw-адрес там отклоняется ("Wrong 'address' format"). Нормализуем сразу
+  // здесь, чтобы результат этой функции всегда был безопасен для sendTransaction.
+  return {
+    nftAddress: Address.parse(addr).toString({ bounceable: true }),
+    ownerAddress: Address.parse(owner).toString({ bounceable: true }),
+  };
 }
 
 // ==================== ЧТЕНИЕ dns_text (зеркало энкодера выше) ====================

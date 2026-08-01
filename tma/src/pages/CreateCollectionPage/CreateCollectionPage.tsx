@@ -33,7 +33,7 @@ import { useTypedDispatch } from '../../hooks/useTypeDispatch';
 import {
   deployBundle,
   DeployBundlePayload,
-  deploySBTCollection,
+  deploySBTCollectionWithDns,
   DeploySBTCollectionPayload
 } from '@/store/nft/actions';
 import {
@@ -1091,7 +1091,13 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
 
       console.log('📤 Sending SBT payload with ID:', idValue);
 
-      const result = await dispatch(deploySBTCollection(sbtPayload)).unwrap();
+      // deploySBTCollectionWithDns деплоит коллекцию И проставляет next_resolver
+      // домена на неё одной транзакцией (2 сообщения) — раньше SBT-зона
+      // деплоилась без привязки резолвера вообще (в отличие от Proxy, где это
+      // уже часть deployBundle).
+      const result = await dispatch(
+        deploySBTCollectionWithDns({ ...sbtPayload, dns_item_address: domainAddress })
+      ).unwrap();
 
       if (result.messages && result.messages.length > 0) {
         console.log('🔄 Отправляю транзакцию SBT в TonConnect...');
