@@ -12,6 +12,10 @@ dotenv.config();
 // Импортируем telegramBot после загрузки env
 // import telegramBot from './utils/telegramBot-sqlite';
 import telegramBot from './utils/tgBot-sqlite';
+import { generatePayload, verifyAdminProof, CheckProofRequest } from './utils/tonProof';
+import { createAdminToken, requireAdminAuth } from './utils/adminAuth';
+
+const APP_DOMAIN = 'subdom.zone';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -462,6 +466,44 @@ const networkMiddleware = (req: express.Request, res: express.Response, next: ex
 
 // Применяем middleware ко всем API роутам
 app.use('/api/*', networkMiddleware);
+
+// ==================== ADMIN AUTH (TonProof) ====================
+// Единственный способ получить доступ к чувствительным CRUD-ручкам ниже —
+// подписать ton_proof кошельком platformOwner. См. заметку
+// "Admin-авторизация (TonProof)" в Obsidian-графе проекта за 2026-08-01.
+
+app.get('/api/admin/auth/payload', (req, res) => {
+  res.json({ payload: generatePayload() });
+});
+
+app.post('/api/admin/auth/check-proof', async (req, res) => {
+  try {
+    const body = req.body as CheckProofRequest;
+    if (!body?.address || !body?.network || !body?.proof) {
+      res.status(400).json({ error: 'Invalid request body' });
+      return;
+    }
+
+    const expectedOwner =
+      body.network === 'testnet' ? process.env.PLATFORM_OWNER_TESTNET : process.env.PLATFORM_OWNER_MAINNET;
+    if (!expectedOwner) {
+      res.status(500).json({ error: 'Platform owner address not configured on backend' });
+      return;
+    }
+
+    const isValid = await verifyAdminProof(body, expectedOwner, APP_DOMAIN);
+    if (!isValid) {
+      res.status(401).json({ error: 'Invalid proof' });
+      return;
+    }
+
+    const token = createAdminToken({ address: body.address, network: body.network });
+    res.json({ token });
+  } catch (error) {
+    console.error('❌ Ошибка проверки admin ton_proof:', error);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
 
 // 1. Проверить наличие оплаченной попытки
 app.get('/api/users/:address/payments/check', (req, res) => {
@@ -1038,7 +1080,7 @@ app.post('/api/users', (req, res) => {
 
 // ========== УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ ПО ID ==========
 
-app.delete('/api/users/:id', (req, res) => {
+app.delete('/api/users/:id', requireAdminAuth, (req, res) => {
   try {
     const { id } = req.params;
     const db = req.db;
@@ -1275,7 +1317,7 @@ app.post('/api/zones', (req, res) => {
 });
 
 // Удалить зону по ID
-app.delete('/api/zones/:id', (req, res) => {
+app.delete('/api/zones/:id', requireAdminAuth, (req, res) => {
   try {
     const { id } = req.params;
     const db = req.db;
@@ -1347,7 +1389,7 @@ app.delete('/api/zones/:id', (req, res) => {
   }
 });
 
-app.put('/api/zones/:id/status', (req, res) => {
+app.put('/api/zones/:id/status', requireAdminAuth, (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -1487,7 +1529,7 @@ app.get('/api/zones/name/:name/active', (req, res) => {
 });
 
 // Обновить collectionAddress зоны
-app.put('/api/zones/:name/collection', (req, res) => {
+app.put('/api/zones/:name/collection', requireAdminAuth, (req, res) => {
   try {
     const { name } = req.params;
     const { collectionAddress } = req.body;
@@ -1541,7 +1583,7 @@ app.put('/api/zones/:name/collection', (req, res) => {
 });
 
 // Обновить wrapperAddress зоны
-app.put('/api/zones/:name/wrapper', (req, res) => {
+app.put('/api/zones/:name/wrapper', requireAdminAuth, (req, res) => {
   try {
     const { name } = req.params;
     const { wrapperAddress } = req.body;
@@ -1762,7 +1804,7 @@ app.get('/api/zones/owner/:owner', (req, res) => {
 
 // ========== ОБНОВЛЕНИЕ АДРЕСА ЗОНЫ ПО ID ==========
 
-app.put('/api/zones/:id/address', (req, res) => {
+app.put('/api/zones/:id/address', requireAdminAuth, (req, res) => {
   try {
     const { id } = req.params;
     const { address } = req.body;
@@ -1970,7 +2012,7 @@ app.post('/api/subdomains', (req, res) => {
 });
 
 // Удалить субдомен по ID
-app.delete('/api/subdomains/:id' , (req, res) => {
+app.delete('/api/subdomains/:id' , requireAdminAuth, (req, res) => {
   try {
     const { id } = req.params;
     const db = req.db;
@@ -2080,7 +2122,7 @@ app.get('/api/subdomains/collection/:collectionAddress', (req, res) => {
 });
 
 // НОВЫЙ ЭНДПОИНТ: Обновить статус субдоменов по collectionAddress
-app.put('/api/subdomains/collection/:collectionAddress/status', (req, res) => {
+app.put('/api/subdomains/collection/:collectionAddress/status', requireAdminAuth, (req, res) => {
   try {
     const { collectionAddress } = req.params;
     const { status } = req.body;
@@ -2463,7 +2505,7 @@ app.post('/api/subdomains/:id/bid', (req, res) => {
 });
 
 // Обновляем статус субдомена
-app.put('/api/subdomains/:id/status', (req, res) => {
+app.put('/api/subdomains/:id/status', requireAdminAuth, (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -2733,7 +2775,7 @@ app.get('/api/subdomains/search/:query', (req, res) => {
 
 // ========== ОБНОВЛЕНИЕ АДРЕСА СУБДОМЕНА ПО ID ==========
 
-app.put('/api/subdomains/:id/address', (req, res) => {
+app.put('/api/subdomains/:id/address', requireAdminAuth, (req, res) => {
   try {
     const { id } = req.params;
     const { address } = req.body;
@@ -2798,7 +2840,7 @@ app.put('/api/subdomains/:id/address', (req, res) => {
 
 // ========== ОБНОВЛЕНИЕ OWNER ADDRESS СУБДОМЕНА ПО ID ==========
 
-app.put('/api/subdomains/:id/owner', (req, res) => {
+app.put('/api/subdomains/:id/owner', requireAdminAuth, (req, res) => {
   try {
     const { id } = req.params;
     const { ownerAddress } = req.body;
@@ -2909,7 +2951,7 @@ app.post('/api/chats', (req, res) => {
   }
 });
 
-app.delete('/api/chats/:id', (req, res) => {
+app.delete('/api/chats/:id', requireAdminAuth, (req, res) => {
   try {
     const { id } = req.params;
     const db = req.db;
@@ -2974,7 +3016,7 @@ app.delete('/api/chats/:id', (req, res) => {
 
 // ========== УДАЛЕНИЕ СООБЩЕНИЯ ПО ID ==========
 // (опционально, если нужно)
-app.delete('/api/messages/:id', (req, res) => {
+app.delete('/api/messages/:id', requireAdminAuth, (req, res) => {
   try {
     const { id } = req.params;
     const db = req.db;

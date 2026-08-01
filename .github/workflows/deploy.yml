@@ -81,6 +81,9 @@ jobs:
              export TELEGRAM_BOT_TOKEN='${{ secrets.TELEGRAM_BOT_TOKEN }}' && \
              export TELEGRAM_OWNER_ID='${{ secrets.TELEGRAM_OWNER_ID }}' && \
              export TELEGRAM_GROUP_ID='${{ secrets.TELEGRAM_GROUP_ID }}' && \
+             export PLATFORM_OWNER_TESTNET='${{ vars.PLATFORM_OWNER_TESTNET }}' && \
+             export PLATFORM_OWNER_MAINNET='${{ vars.PLATFORM_OWNER_MAINNET }}' && \
+             export ADMIN_JWT_SECRET='${{ secrets.ADMIN_JWT_SECRET }}' && \
              docker-compose build backend && \
              docker-compose down && \
              docker-compose up -d && \

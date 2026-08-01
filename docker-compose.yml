@@ -30,6 +30,14 @@ services:
       - TELEGRAM_OWNER_ID=${TELEGRAM_OWNER_ID:-}
       - TELEGRAM_GROUP_ID=${TELEGRAM_GROUP_ID:-}
       - DB_PATH=/app
+      # Admin-авторизация (TonProof, см. tonProof.ts/adminAuth.ts) — те же
+      # публичные адреса, что уже зашиты во фронт как VITE_PLATFORM_OWNER_*
+      # (не секрет), но бэкенду они тоже нужны отдельно для собственной
+      # проверки владельца. ADMIN_JWT_SECRET — единственный реальный секрет
+      # здесь, генерировать отдельно, не переиспользовать TELEGRAM_BOT_TOKEN.
+      - PLATFORM_OWNER_TESTNET=${PLATFORM_OWNER_TESTNET:-}
+      - PLATFORM_OWNER_MAINNET=${PLATFORM_OWNER_MAINNET:-}
+      - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET:-}
     networks:
       - app-network
     volumes:
