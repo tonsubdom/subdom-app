@@ -2221,6 +2221,8 @@ class DeeplinkUtils {
 
 // ==================== TELEGRAM BOT SERVICE ====================
 
+const API_PAYLOAD_URL = process.env.VITE_API_SC_PAYLOAD_URL || 'https://api.subdom.zone';
+
 class TelegramBotService {
   private bot: TelegramBot | null = null;
   private ownerId: string = process.env.TELEGRAM_OWNER_ID || '';
@@ -2473,6 +2475,51 @@ class TelegramBotService {
   private formatTonviewerLink(address: string, isTestnet: boolean): string {
     const base = this.getTonviewerUrl(isTestnet);
     return `<a href="${base}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
+  }
+
+  /** URL сгенерированной картинки зоны/субдомена (builder-api generator.py), либо null если имя не распознано. */
+  private getNotificationImageUrl(name: string, isProxy: boolean): string | null {
+    if (!name) return null;
+    const parts = name.replace(/\.ton$/i, '').split('.');
+
+    if (parts.length === 1) {
+      // Зона: "pension" из "pension.ton"
+      return isProxy
+        ? `${API_PAYLOAD_URL}/api/v1/proxy/metadata/ton/${parts[0]}.png`
+        : `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${parts[0]}.png`;
+    }
+
+    // Субдомен: sub.zone(.ton) — первая часть сабдомен, остальное — зона
+    const subName = parts[0];
+    const effectiveZone = parts.slice(1).join('.') || parts[0]!;
+
+    return isProxy
+      ? `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${effectiveZone}/${subName}.png`
+      : `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${effectiveZone}/${subName}.png`;
+  }
+
+  /** Отправляет фото с подписью одному чату. Если фото не отправилось (или его нет) — fallback на текст. */
+  private async sendPhotoWithCaption(
+    chatId: string,
+    photoUrl: string | null,
+    caption: string,
+    inlineKeyboard?: any
+  ): Promise<void> {
+    const options: any = {
+      parse_mode: 'HTML',
+      ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {}),
+    };
+
+    if (photoUrl) {
+      try {
+        await (this.bot! as any).sendPhoto(chatId, photoUrl, { caption, ...options });
+        return;
+      } catch (e) {
+        console.warn(`⚠️ Не удалось отправить фото (${photoUrl}) в чат ${chatId}, fallback на текст`);
+      }
+    }
+
+    await this.bot!.sendMessage(chatId, caption, options);
   }
 
   // ==================== ИНИЦИАЛИЗАЦИЯ БОТА ====================
@@ -2941,7 +2988,11 @@ ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
 
   // ==================== ОТПРАВКА В ГРУППУ (ВСЕМ PUBLIC-ПОДПИСЧИКАМ) ====================
 
-  private async sendGroupNotification(getMessage: (lang: string) => string, inlineKeyboard?: any): Promise<boolean> {
+  private async sendGroupNotification(
+    getMessage: (lang: string) => string,
+    inlineKeyboard?: any,
+    photoUrl?: string | null
+  ): Promise<boolean> {
     const publicSubs = this.subscriptions.filter(s => s.subscriptionType === 'public' && s.isActive);
 
     if (publicSubs.length === 0) {
@@ -2954,9 +3005,13 @@ ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
       try {
         const lang = sub.lang || 'ru';
         const message = getMessage(lang);
-        const options: any = { parse_mode: 'HTML' };
-        if (inlineKeyboard) options.reply_markup = { inline_keyboard: inlineKeyboard };
-        await this.bot!.sendMessage(sub.chatId, message, options);
+        if (photoUrl) {
+          await this.sendPhotoWithCaption(sub.chatId, photoUrl, message, inlineKeyboard);
+        } else {
+          const options: any = { parse_mode: 'HTML' };
+          if (inlineKeyboard) options.reply_markup = { inline_keyboard: inlineKeyboard };
+          await this.bot!.sendMessage(sub.chatId, message, options);
+        }
         sent = true;
       } catch (e) {
         console.error(`❌ Не удалось отправить в чат ${sub.chatId}`);
@@ -2989,7 +3044,7 @@ ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
 
 ${$.hintProxyZone}
         `.trim();
-      }, inlineKeyboard);
+      }, inlineKeyboard, this.getNotificationImageUrl(name, true));
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления о Proxy зоне:', error);
       return false;
@@ -3046,7 +3101,7 @@ ${$.fieldType}: ${$.fieldTypeSBT}
 
 ${currentID + 1} ${$.hintZoneNumber}
         `.trim();
-      }, inlineKeyboard);
+      }, inlineKeyboard, this.getNotificationImageUrl(name, false));
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления о SBT зоне:', error);
       return false;
@@ -3138,7 +3193,7 @@ ${$.fieldEndTime}: ${$.hintAuctionEnds}
 
 ${$.hintHurryUp}
         `.trim();
-      }, inlineKeyboard);
+      }, inlineKeyboard, this.getNotificationImageUrl(domain, true));
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления об аукционе:', error);
       return false;
@@ -3170,7 +3225,7 @@ ${$.fieldAuctionType}: ${$.fieldAuctionTypeProxy}
 
 ${$.fieldBidTime}: ${new Date().toLocaleString('ru-RU')}
         `.trim();
-      }, inlineKeyboard);
+      }, inlineKeyboard, this.getNotificationImageUrl(domain, true));
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления о ставке:', error);
       return false;
@@ -3197,7 +3252,7 @@ ${$.fieldMintTime}: ${new Date().toLocaleString('ru-RU')}
 
 ${$.hintCongrats}
         `.trim();
-      });
+      }, undefined, this.getNotificationImageUrl(domain, false));
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления о SBT субдомене:', error);
       return false;
@@ -3225,7 +3280,7 @@ ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
 
 ${$.hintCongratsWinner}
         `.trim();
-      }, inlineKeyboard);
+      }, inlineKeyboard, this.getNotificationImageUrl(domain, true));
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления о завершении аукциона:', error);
       return false;
@@ -3280,10 +3335,12 @@ ${$.hintProxyZone}
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(name, '');
       const inlineKeyboard = [[{ text: $.btnCreateSubdomain, url: miniAppLink }]];
 
-      await this.bot!.sendMessage(this.ownerId, message, {
-        parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
+      await this.sendPhotoWithCaption(
+        this.ownerId,
+        this.getNotificationImageUrl(name, true),
+        message,
+        inlineKeyboard
+      );
 
       await this.sendPublicProxyZoneCreatedNotification(name, address, owner, price, isTestnet);
     } catch (error) {
@@ -3317,10 +3374,12 @@ ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
 
       const inlineKeyboard = [[{ text: $.btnCreateSubdomain, url: 'https://subdom.zone/#/add-subdomain' }]];
 
-      await this.bot!.sendMessage(this.ownerId, message, {
-        parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
+      await this.sendPhotoWithCaption(
+        this.ownerId,
+        this.getNotificationImageUrl(name, false),
+        message,
+        inlineKeyboard
+      );
 
       await this.sendPublicSBTZoneCreatedNotification(name, address, owner, price, bundleAddress, currentID, isTestnet);
     } catch (error) {
@@ -3354,10 +3413,12 @@ ${$.hintHurryUp}
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
       const inlineKeyboard = [[{ text: $.btnPlaceBid, url: miniAppLink }]];
 
-      await this.bot!.sendMessage(this.ownerId, message, {
-        parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
+      await this.sendPhotoWithCaption(
+        this.ownerId,
+        this.getNotificationImageUrl(domain, true),
+        message,
+        inlineKeyboard
+      );
 
       await this.sendPublicAuctionStartedNotification(domain, address, price, isTestnet);
     } catch (error) {
@@ -3390,10 +3451,12 @@ ${$.fieldBidTime}: ${new Date().toLocaleString('ru-RU')}
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
       const inlineKeyboard = [[{ text: $.btnPlaceBid, url: miniAppLink }]];
 
-      await this.bot!.sendMessage(this.ownerId, message, {
-        parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
+      await this.sendPhotoWithCaption(
+        this.ownerId,
+        this.getNotificationImageUrl(domain, true),
+        message,
+        inlineKeyboard
+      );
 
       await this.sendPublicNewBidNotification(domain, bidder, amount, previousBidder, isTestnet);
     } catch (error) {
@@ -3420,7 +3483,11 @@ ${$.fieldPrice}: ${price} TON
 ${$.fieldMintTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
+      await this.sendPhotoWithCaption(
+        this.ownerId,
+        this.getNotificationImageUrl(domain, false),
+        message
+      );
 
       await this.sendPublicSBTSubdomainMintedNotification(domain, address, owner, price, isTestnet);
     } catch (error) {
@@ -3449,10 +3516,12 @@ ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
       const miniAppLink = DeeplinkUtils.generateMarketLink();
       const inlineKeyboard = [[{ text: $.btnViewMarket, url: miniAppLink }]];
 
-      await this.bot!.sendMessage(this.ownerId, message, {
-        parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
+      await this.sendPhotoWithCaption(
+        this.ownerId,
+        this.getNotificationImageUrl(domain, true),
+        message,
+        inlineKeyboard
+      );
 
       await this.sendPublicAuctionEndedNotification(domain, winner, finalPrice, isTestnet);
     } catch (error) {
