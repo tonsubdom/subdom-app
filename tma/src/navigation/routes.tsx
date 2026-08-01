@@ -34,7 +34,6 @@ import { AuctionPage } from '@/pages/AddSubdomainPage/AddSubdomainPage';
 import { CreateCollectionPage } from '@/pages/CreateCollectionPage/CreateCollectionPage';
 import MarketPage from '@/pages/MarketPage/MarketPage';
 import AvatarSecretPage from '@/pages/AvatarSecretPage/AvatarSecretPage';
-import TonSiteCatalogPage from '@/pages/TonSiteCatalogPage/TonSiteCatalogPage';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ProtectedAdminPanel from '@/pages/AdminPanelPage';
 
@@ -81,12 +80,6 @@ const ProtectedAvatarSecretPage = () => (
   </ProtectedRoute>
 );
 
-const ProtectedTonSiteCatalogPage = () => (
-  <ProtectedRoute>
-    <TonSiteCatalogPage />
-  </ProtectedRoute>
-);
-
 export const routes: RouteType[] = [
   { 
     path: '/', 
@@ -121,12 +114,6 @@ export const routes: RouteType[] = [
     path: '/avatar-secret',
     Component: ProtectedAvatarSecretPage,
     title: 'Аватар / Секрет',
-    protected: true
-  },
-  {
-    path: '/tonsite-catalog',
-    Component: ProtectedTonSiteCatalogPage,
-    title: 'TonSite Catalog',
     protected: true
   },
   {

@@ -49,7 +49,7 @@ const GiftLottieIcon: React.FC = () => {
   }, [animationData]);
 
   if (!animationData) return null;
-  return <Lottie animationData={animationData} loop style={{ width: 64, height: 64 }} />;
+  return <Lottie animationData={animationData} loop style={{ width: 80, height: 80 }} />;
 };
 
 
@@ -79,10 +79,11 @@ const IconWrapper: React.FC<{ children: React.ReactNode; bgColor: string; isDark
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      boxShadow: isDark 
+      overflow: "hidden",
+      boxShadow: isDark
         ? "0 4px 12px rgba(255, 215, 0, 0.3)"
         : "0 4px 12px rgba(59, 130, 246, 0.3)",
-      border: isDark 
+      border: isDark
         ? "1px solid rgba(255, 215, 0, 0.2)"
         : "1px solid rgba(59, 130, 246, 0.2)",
     }}
@@ -381,7 +382,7 @@ export const IndexPage: React.FC = () => {
         </IconWrapper>
       ),
       actionText: t('open'),
-      to: "/tonsite-catalog",
+      to: "tonsite://tonsitecatalog.ton",
     },
     {
       title: t('marketTitle'),
