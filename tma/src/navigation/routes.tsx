@@ -33,6 +33,7 @@ import { ManageDomainPage } from '@/pages/ManageDomainPage/ManageDomainPage.tsx'
 import { AuctionPage } from '@/pages/AddSubdomainPage/AddSubdomainPage';
 import { CreateCollectionPage } from '@/pages/CreateCollectionPage/CreateCollectionPage';
 import MarketPage from '@/pages/MarketPage/MarketPage';
+import AvatarSecretPage from '@/pages/AvatarSecretPage/AvatarSecretPage';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ProtectedAdminPanel from '@/pages/AdminPanelPage';
 
@@ -73,6 +74,12 @@ const ProtectedMarketPage = () => (
   </ProtectedRoute>
 );
 
+const ProtectedAvatarSecretPage = () => (
+  <ProtectedRoute>
+    <AvatarSecretPage />
+  </ProtectedRoute>
+);
+
 export const routes: RouteType[] = [
   { 
     path: '/', 
@@ -97,10 +104,16 @@ export const routes: RouteType[] = [
     title: 'Управление',
     protected: true
   },
-  { 
-    path: '/market', 
+  {
+    path: '/market',
     Component: ProtectedMarketPage,
     title: 'Маркет',
+    protected: true
+  },
+  {
+    path: '/avatar-secret',
+    Component: ProtectedAvatarSecretPage,
+    title: 'Аватар / Секрет',
     protected: true
   },
   {

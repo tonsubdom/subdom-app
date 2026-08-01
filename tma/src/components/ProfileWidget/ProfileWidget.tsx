@@ -2308,6 +2308,7 @@ import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
 import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 import { ScanProgressLoader } from "@/components/ScanProgressLoader";
+import { resolveDomainNftAddress, fetchOwnerPicture } from "@/services/ownerMetaService";
 
 // ====================================================================
 // КОНСТАНТЫ
@@ -2627,6 +2628,8 @@ const ProfileWidget: React.FC = () => {
     zoneTypes: [],
   });
   const [sortBy, setSortBy] = useState<SortOption>("name_asc");
+  const PROFILE_PAGE_SIZE = 10;
+  const [listPage, setListPage] = useState<number>(0);
   const [filtersOpen, setFiltersOpen] = useState<boolean>(false);
   const [cardView, setCardView] = useState<"list" | "swipe">("list");
   const [swipeIndex, setSwipeIndex] = useState<number>(0);
@@ -3037,6 +3040,34 @@ const ProfileWidget: React.FC = () => {
     load();
   }, [allProxySubdomainsAsSubdomains, isTestnet]);
 
+  // ====== АВАТАР ИЗ dns_text "picture" СВОЕГО ДОМЕНА ======
+  // Та же идея, что уже есть для domain-вместо-адреса (fetchDomain): вместо
+  // адреса/дефолтной иконки показываем то, что реально прописано в DNS.
+  // См. ownerMetaService.ts — писать/читать не проверено вживую, см. её
+  // комментарии перед тем как полагаться в проде.
+  const [avatarPictureUrl, setAvatarPictureUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const loadAvatarPicture = async () => {
+      if (!domain) {
+        setAvatarPictureUrl(null);
+        return;
+      }
+      try {
+        const resolved = await resolveDomainNftAddress(domain);
+        if (!resolved || cancelled) return;
+        const picture = await fetchOwnerPicture(resolved.nftAddress, isTestnet);
+        if (!cancelled) setAvatarPictureUrl(picture);
+      } catch {
+        if (!cancelled) setAvatarPictureUrl(null);
+      }
+    };
+    loadAvatarPicture();
+    return () => {
+      cancelled = true;
+    };
+  }, [domain, isTestnet]);
+
   // ====== [NEW] ОСНОВНОЙ ЭФФЕКТ ЗАГРУЗКИ ======
 
   useEffect(() => {
@@ -3160,6 +3191,64 @@ const ProfileWidget: React.FC = () => {
     getFilteredData("subdomains", subdomains, searchQuery, filters, sortBy);
   const getFilteredAuctions = () =>
     getFilteredData("auctions", activeAuctions, searchQuery, filters, sortBy);
+
+  // Сброс страницы при смене таба/фильтров — иначе можно застрять на несуществующей странице.
+  useEffect(() => {
+    setListPage(0);
+  }, [activeTab, searchQuery, filters, sortBy]);
+
+  const paginateList = <T,>(items: T[]): T[] =>
+    items.slice(listPage * PROFILE_PAGE_SIZE, listPage * PROFILE_PAGE_SIZE + PROFILE_PAGE_SIZE);
+
+  const renderListPager = (totalItems: number) => {
+    const totalPages = Math.ceil(totalItems / PROFILE_PAGE_SIZE);
+    if (totalPages <= 1) return null;
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "10px",
+          padding: "10px 0",
+        }}
+      >
+        <button
+          onClick={() => setListPage((p) => Math.max(0, p - 1))}
+          disabled={listPage === 0}
+          style={{
+            background: "none",
+            border: `1px solid ${colors.border}`,
+            borderRadius: "6px",
+            color: listPage === 0 ? colors.border : colors.text,
+            padding: "4px 10px",
+            cursor: listPage === 0 ? "default" : "pointer",
+            fontSize: "12px",
+          }}
+        >
+          ‹
+        </button>
+        <span style={{ fontSize: "12px", color: colors.text, opacity: 0.8 }}>
+          {listPage + 1} / {totalPages}
+        </span>
+        <button
+          onClick={() => setListPage((p) => Math.min(totalPages - 1, p + 1))}
+          disabled={listPage === totalPages - 1}
+          style={{
+            background: "none",
+            border: `1px solid ${colors.border}`,
+            borderRadius: "6px",
+            color: listPage === totalPages - 1 ? colors.border : colors.text,
+            padding: "4px 10px",
+            cursor: listPage === totalPages - 1 ? "default" : "pointer",
+            fontSize: "12px",
+          }}
+        >
+          ›
+        </button>
+      </div>
+    );
+  };
 
   const refreshAllData = async () => {
     if (!address) return;
@@ -4104,21 +4193,31 @@ const ProfileWidget: React.FC = () => {
                   alignItems: "center",
                   justifyContent: "center",
                   boxShadow: `0 4px 12px ${colors.shadow}`,
+                  overflow: "hidden",
                 }}
               >
-                <svg
-                  width="33"
-                  height="33"
-                  viewBox="0 0 24 24"
-                  fill={isDark ? "black" : "white"}
-                  stroke={isDark ? "black" : "white"}
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
+                {avatarPictureUrl ? (
+                  <img
+                    src={avatarPictureUrl}
+                    alt="avatar"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    onError={() => setAvatarPictureUrl(null)}
+                  />
+                ) : (
+                  <svg
+                    width="33"
+                    height="33"
+                    viewBox="0 0 24 24"
+                    fill={isDark ? "black" : "white"}
+                    stroke={isDark ? "black" : "white"}
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                )}
               </div>
               <div
                 className="domainAndBalance"
@@ -4476,7 +4575,10 @@ const ProfileWidget: React.FC = () => {
                           </button>
                         </div>
                       ) : (
-                        getFilteredZones().map((zone) => renderZoneCard(zone))
+                        <>
+                          {paginateList(getFilteredZones()).map((zone) => renderZoneCard(zone))}
+                          {renderListPager(getFilteredZones().length)}
+                        </>
                       )}
                     </div>
                   )}
@@ -4558,9 +4660,12 @@ const ProfileWidget: React.FC = () => {
                           </button>
                         </div>
                       ) : (
-                        getFilteredSubdomains().map((subdomain) =>
-                          renderSubdomainCard(subdomain)
-                        )
+                        <>
+                          {paginateList(getFilteredSubdomains()).map((subdomain) =>
+                            renderSubdomainCard(subdomain)
+                          )}
+                          {renderListPager(getFilteredSubdomains().length)}
+                        </>
                       )}
                     </div>
                   )}
@@ -4647,9 +4752,12 @@ const ProfileWidget: React.FC = () => {
                           </button>
                         </div>
                       ) : (
-                        getFilteredAuctions().map((auction, idx) =>
-                          renderAuctionCard(auction, idx)
-                        )
+                        <>
+                          {paginateList(getFilteredAuctions()).map((auction, idx) =>
+                            renderAuctionCard(auction, idx)
+                          )}
+                          {renderListPager(getFilteredAuctions().length)}
+                        </>
                       )}
                     </div>
                   )}
