@@ -4744,7 +4744,7 @@ const ProfileWidget: React.FC = () => {
                             onClick={() => {
                               setIsExpanded(false);
                               setTimeout(() => {
-                                window.location.href = "/add-subdomain";
+                                window.location.href = "/#/add-subdomain";
                               }, 300);
                             }}
                             style={{
