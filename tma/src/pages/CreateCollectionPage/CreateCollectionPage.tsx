@@ -20,11 +20,6 @@ import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContentText from '@mui/material/DialogContentText';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
 
@@ -70,7 +65,9 @@ interface UnlinkConfirmationModalProps {
   loading: boolean;
 }
 
-// Компонент модального окна подтверждения отвязки
+// Компонент модального окна подтверждения отвязки — кастомный оверлей вместо
+// голого MUI Dialog (визуально не сочетался с остальным приложением, где
+// модалки — свой overlay+card в стиле AlphaTestModal.tsx/ProfileWidget.tsx).
 const UnlinkConfirmationModal: React.FC<UnlinkConfirmationModalProps> = ({
   open,
   onClose,
@@ -82,51 +79,132 @@ const UnlinkConfirmationModal: React.FC<UnlinkConfirmationModalProps> = ({
   const isDark = currentTheme === 'dark';
   const { t } = useLanguage();
 
+  const colors = {
+    background: isDark ? '#121212' : '#FFFFFF',
+    text: isDark ? '#E5E5E5' : '#1F2937',
+    textSecondary: isDark ? '#9CA3AF' : '#6B7280',
+    border: isDark ? '#333333' : '#E5E7EB',
+    shadow: isDark ? 'rgba(255, 215, 0, 0.35)' : 'rgba(59, 130, 246, 0.35)',
+  };
+
+  if (!open) return null;
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      aria-labelledby="unlink-confirmation-title"
-      aria-describedby="unlink-confirmation-description"
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
+        zIndex: 10000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}
+      onClick={() => { if (!loading) onClose(); }}
     >
-      <DialogTitle id="unlink-confirmation-title" sx={{ color: isDark ? 'white' : 'black' }}>
-        {t('attention')}
-      </DialogTitle>
-      <DialogContent>
-        <DialogContentText id="unlink-confirmation-description" sx={{ color: isDark ? '#ccc' : '#666' }}>
-          <strong>{domainName}.ton</strong>
-          {t('collectionAlreadyAttached')}
-          <br /><br />
-          {t('unlinkConfirmationQuestion')}
-          <br /><br />
-          <small style={{ color: '#ff9800' }}>
-            ⚠️ {t('unlinkWarning')}
-          </small>
-        </DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button
-          onClick={onClose}
-          disabled={loading}
-          sx={{ color: isDark ? '#ccc' : '#666' }}
-        >
-          {t('cancel')}
-        </Button>
-        <Button
-          onClick={onConfirm}
-          disabled={loading}
-          variant="contained"
-          sx={{
-            background: loading ? '#888' : '#f44336',
-            '&:hover': {
-              background: loading ? '#888' : '#d32f2f'
-            }
+      <div
+        style={{
+          backgroundColor: colors.background,
+          borderRadius: '16px',
+          padding: '24px',
+          maxWidth: '400px',
+          width: '100%',
+          border: `1px solid ${colors.border}`,
+          boxShadow: `0 10px 40px ${colors.shadow}`,
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div style={{ fontSize: '40px', textAlign: 'center', marginBottom: '12px' }}>⚠️</div>
+        <h3
+          style={{
+            margin: '0 0 12px 0',
+            fontSize: '17px',
+            fontWeight: 700,
+            color: colors.text,
+            textAlign: 'center',
+            fontFamily: 'monospace',
           }}
         >
-          {loading ? t('processing') : t('unlinkAndCreateNew')}
-        </Button>
-      </DialogActions>
-    </Dialog>
+          {t('attention')}
+        </h3>
+        <p
+          style={{
+            margin: '0 0 8px 0',
+            fontSize: '13px',
+            color: colors.text,
+            lineHeight: 1.5,
+            textAlign: 'center',
+          }}
+        >
+          <strong>{domainName}.ton</strong>
+          {' '}{t('collectionAlreadyAttached')}
+        </p>
+        <p
+          style={{
+            margin: '0 0 12px 0',
+            fontSize: '13px',
+            color: colors.text,
+            opacity: 0.85,
+            lineHeight: 1.5,
+            textAlign: 'center',
+          }}
+        >
+          {t('unlinkConfirmationQuestion')}
+        </p>
+        <p
+          style={{
+            margin: '0 0 20px 0',
+            fontSize: '12px',
+            color: '#ff9800',
+            lineHeight: 1.4,
+            textAlign: 'center',
+          }}
+        >
+          ⚠️ {t('unlinkWarning')}
+        </p>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            style={{
+              flex: 1,
+              padding: '12px',
+              borderRadius: '10px',
+              border: `1px solid ${colors.border}`,
+              background: 'transparent',
+              color: colors.text,
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: loading ? 'default' : 'pointer',
+              opacity: loading ? 0.5 : 1,
+            }}
+          >
+            {t('cancel')}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            style={{
+              flex: 1,
+              padding: '12px',
+              borderRadius: '10px',
+              border: 'none',
+              background: loading ? colors.border : '#f44336',
+              color: '#FFFFFF',
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: loading ? 'default' : 'pointer',
+            }}
+          >
+            {loading ? t('processing') : t('unlinkAndCreateNew')}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

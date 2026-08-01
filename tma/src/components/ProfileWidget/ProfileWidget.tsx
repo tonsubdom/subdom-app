@@ -2267,6 +2267,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   useTonAddress,
   useTonWallet,
+  useTonConnectUI,
   TonConnectButton,
 } from "@tonconnect/ui-react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -2309,6 +2310,7 @@ import PaymentAttemptsSection from "../PaymentAttemptsSection";
 import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 import { ScanProgressLoader } from "@/components/ScanProgressLoader";
 import { resolveDomainNftAddress, fetchOwnerPicture } from "@/services/ownerMetaService";
+import { ShowSnackbar } from "@/components/ShowSnackbar";
 
 // ====================================================================
 // КОНСТАНТЫ
@@ -2549,8 +2551,16 @@ const getSubdomainImage = (subdomain: Subdomain): string | undefined => {
 const ProfileWidget: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
   const wallet = useTonWallet();
+  const [tonConnectUI] = useTonConnectUI();
   const address = useTonAddress();
   const isTestnet = wallet?.account?.chain === "-3";
+
+  const [snackbar, setSnackbar] = useState<React.ReactElement | null>(null);
+  const showSnackbar = (message: string, type: "success" | "error" = "success") => {
+    setSnackbar(
+      <ShowSnackbar message={message} type={type} onClose={() => setSnackbar(null)} />
+    );
+  };
 
   const { currentTheme } = useTheme();
   const isDark = currentTheme === "dark";
@@ -2919,7 +2929,10 @@ const ProfileWidget: React.FC = () => {
     () => loadAddrSet(SBT_MANUAL_ACTIVE_KEY)
   );
 
-  const toggleSbtZoneActive = (address: string, currentlyInactive: boolean) => {
+  // Только локальный UI-оверрайд (какой бейдж/подпись показывать) — сам по
+  // себе НЕ трогает ончейн. Вызывается ПОСЛЕ успешной транзакции
+  // change_content в confirmSbtZoneToggle ниже, не раньше.
+  const applySbtZoneToggleLocalState = (address: string, currentlyInactive: boolean) => {
     if (currentlyInactive) {
       setManuallyInactiveSbtZones((prev) => {
         const next = new Set(prev);
@@ -2946,6 +2959,82 @@ const ProfileWidget: React.FC = () => {
         try { localStorage.setItem(SBT_MANUAL_INACTIVE_KEY, JSON.stringify(Array.from(next))); } catch {}
         return next;
       });
+    }
+  };
+
+  // Клик по "Деактивировать"/"Активировать" открывает модалку подтверждения
+  // (та же идея, что UnlinkConfirmationModal в CreateCollectionPage.tsx) —
+  // сама транзакция уходит только по подтверждению, см. confirmSbtZoneToggle.
+  const [sbtToggleConfirm, setSbtToggleConfirm] = useState<{
+    zone: Zone;
+    currentlyInactive: boolean;
+  } | null>(null);
+  const [sbtToggleInProgress, setSbtToggleInProgress] = useState(false);
+
+  // Реальная ончейн-транзакция: change_content на SBT-коллекции — тот же
+  // payload-эндпоинт и та же схема (content/common_content uri), что уже
+  // использует unlinkExistingCollection в CreateCollectionPage.tsx при
+  // пересоздании зоны. currentlyInactive=true → реактивация (контент назад
+  // на обычный sbt-subdomain/metadata), false → деактивация (контент на
+  // inactive-subdomain/metadata).
+  const confirmSbtZoneToggle = async () => {
+    if (!sbtToggleConfirm || !wallet) return;
+    const { zone, currentlyInactive } = sbtToggleConfirm;
+    if (!zone.collectionAddress) {
+      showSnackbar(t("zoneToggleNoCollectionAddress") || "У зоны нет адреса коллекции", "error");
+      return;
+    }
+
+    setSbtToggleInProgress(true);
+    try {
+      const zoneNameWithoutTld = zone.name.endsWith(".ton") ? zone.name.slice(0, -4) : zone.name;
+      const metadataBase = currentlyInactive
+        ? `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${zoneNameWithoutTld}`
+        : `${API_PAYLOAD_URL}/api/v1/inactive-subdomain/metadata/ton/${zoneNameWithoutTld}`;
+
+      const changeContentUrl = `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/${zone.collectionAddress}/change_content?query_id=0`;
+      const response = await fetch(changeContentUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          new_content: {
+            content: { uri: metadataBase },
+            common_content: { suffix_uri: `${metadataBase}/` },
+          },
+        }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const result = await response.json();
+      if (!result.messages || result.messages.length === 0) {
+        throw new Error("empty messages from change_content");
+      }
+
+      await tonConnectUI.sendTransaction({
+        validUntil: result.validUntil || Math.floor(Date.now() / 1000) + 240,
+        messages: result.messages,
+      });
+
+      if (!currentlyInactive) {
+        try {
+          await apiService.notifyZoneDeactivated({ name: zone.name, address: zone.collectionAddress });
+        } catch {
+          /* relay-only, не блокирует успех транзакции */
+        }
+      }
+
+      applySbtZoneToggleLocalState(zone.address, currentlyInactive);
+      showSnackbar(
+        currentlyInactive
+          ? t("zoneActivatedSuccess") || "Зона активирована"
+          : t("zoneDeactivatedSuccess") || "Зона деактивирована",
+        "success"
+      );
+      setSbtToggleConfirm(null);
+    } catch (error: any) {
+      console.error("❌ Ошибка смены статуса SBT-зоны:", error);
+      showSnackbar(error?.message || t("zoneToggleError") || "Ошибка транзакции", "error");
+    } finally {
+      setSbtToggleInProgress(false);
     }
   };
 
@@ -3554,7 +3643,7 @@ const ProfileWidget: React.FC = () => {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  toggleSbtZoneActive(zone.address, isInactiveDuplicate);
+                  setSbtToggleConfirm({ zone, currentlyInactive: isInactiveDuplicate });
                 }}
                 style={{
                   alignSelf: "flex-start",
@@ -4142,6 +4231,124 @@ const ProfileWidget: React.FC = () => {
   // ====================================================================
   return (
     <>
+      {snackbar}
+
+      {/* Подтверждение деактивации/реактивации SBT-зоны — реальная ончейн-транзакция,
+          не просто локальный оверрайд, поэтому спрашиваем явно (как UnlinkConfirmationModal
+          в CreateCollectionPage.tsx). */}
+      {sbtToggleConfirm && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)",
+            zIndex: 10000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => {
+            if (!sbtToggleInProgress) setSbtToggleConfirm(null);
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: colors.background,
+              borderRadius: "16px",
+              padding: "24px",
+              maxWidth: "380px",
+              width: "100%",
+              border: `1px solid ${colors.border}`,
+              boxShadow: `0 10px 40px ${colors.shadow}`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: "40px", textAlign: "center", marginBottom: "12px" }}>
+              {sbtToggleConfirm.currentlyInactive ? "✅" : "⚠️"}
+            </div>
+            <h3
+              style={{
+                margin: "0 0 12px 0",
+                fontSize: "17px",
+                fontWeight: 700,
+                color: colors.text,
+                textAlign: "center",
+                fontFamily: "monospace",
+              }}
+            >
+              {sbtToggleConfirm.currentlyInactive
+                ? t("activateZoneConfirmTitle") || "Активировать зону?"
+                : t("deactivateZoneConfirmTitle") || "Деактивировать зону?"}
+            </h3>
+            <p
+              style={{
+                margin: "0 0 20px 0",
+                fontSize: "13px",
+                color: colors.text,
+                opacity: 0.85,
+                lineHeight: 1.5,
+                textAlign: "center",
+              }}
+            >
+              {sbtToggleConfirm.currentlyInactive
+                ? t("activateZoneConfirmText") ||
+                  `Это отправит ончейн-транзакцию, которая вернёт коллекцию "${sbtToggleConfirm.zone.name}" в активное состояние.`
+                : t("deactivateZoneConfirmText") ||
+                  `Это отправит ончейн-транзакцию, которая пометит коллекцию "${sbtToggleConfirm.zone.name}" как неактивную (INACTIVE). Действие обратимо через ту же кнопку.`}
+            </p>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => setSbtToggleConfirm(null)}
+                disabled={sbtToggleInProgress}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: `1px solid ${colors.border}`,
+                  background: "transparent",
+                  color: colors.text,
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  cursor: sbtToggleInProgress ? "default" : "pointer",
+                  opacity: sbtToggleInProgress ? 0.5 : 1,
+                }}
+              >
+                {t("cancel") || "Отмена"}
+              </button>
+              <button
+                onClick={confirmSbtZoneToggle}
+                disabled={sbtToggleInProgress}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: sbtToggleInProgress
+                    ? colors.border
+                    : sbtToggleConfirm.currentlyInactive
+                      ? "#4CAF50"
+                      : "#e53935",
+                  color: "#FFFFFF",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: sbtToggleInProgress ? "default" : "pointer",
+                }}
+              >
+                {sbtToggleInProgress
+                  ? t("processing") || "Отправка..."
+                  : sbtToggleConfirm.currentlyInactive
+                    ? t("activate") || "Активировать"
+                    : t("deactivate") || "Деактивировать"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Кнопка открытия */}
       {!isExpanded && (
         <div
