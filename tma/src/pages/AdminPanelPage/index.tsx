@@ -1,59 +1,147 @@
 // src/pages/AdminPanelPage/index.tsx
-import React, { useState, useEffect } from 'react';
-import { useTonAddress, useTonWallet } from "@tonconnect/ui-react";
-import AdminPanelPage from './AdminPanelPage';
-import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
+//
+// TonProof-логин перед показом админки. Быстрый клиентский чек адреса
+// остаётся как UX-фильтр (не показывать форму логина случайным юзерам),
+// но реальная защита — на бэкенде (requireAdminAuth, см.
+// subdom-server/src/utils/adminAuth.ts) через JWT, выданный после проверки
+// ton_proof (subdom-server/src/utils/tonProof.ts).
+//
+// TonConnect может запросить ton_proof только В МОМЕНТ подключения кошелька
+// — у уже подключённой сессии (обычный кейс, юзер уже коннектнут для
+// остального приложения) proof взять неоткуда. Единственный способ его
+// получить — disconnect + переподключение с setConnectRequestParameters
+// (tonProof). Это временно разрывает коннект кошелька для всего
+// приложения, не только для админки — ожидаемо, происходит только по
+// явному клику "Войти".
 
+import React, { useState, useEffect, useCallback } from 'react';
+import { useTonAddress, useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
+import AdminPanelPage from './AdminPanelPage';
+import { apiService } from '@/services/api';
+import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
 
 const OWNER_TESTNET_RAW = import.meta.env.VITE_PLATFORM_OWNER_TESTNET;
 const OWNER_MAINNET_RAW = import.meta.env.VITE_PLATFORM_OWNER_MAINNET;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
+const ADMIN_TOKEN_STORAGE_KEY = 'subdom_admin_jwt';
+
+type LoginState = 'idle' | 'connecting' | 'verifying' | 'error';
 
 const ProtectedAdminPanel: React.FC = () => {
   const address = useTonAddress();
   const wallet = useTonWallet();
+  const [tonConnectUI] = useTonConnectUI();
   const isTestnet = wallet?.account?.chain === '-3';
-  const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
+
   const [isChecking, setIsChecking] = useState<boolean>(true);
+  const [looksLikeOwner, setLooksLikeOwner] = useState<boolean>(false);
+
+  const [token, setToken] = useState<string | null>(() => sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY));
+  const [loginState, setLoginState] = useState<LoginState>('idle');
+  const [loginError, setLoginError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Проверяем авторизацию
-    const checkAuthorization = () => {
-      setIsChecking(true);
+    apiService.setAdminToken(token);
+  }, [token]);
 
-      const rawAddress = address ? convertUserFriendlyToRaw(address) : '';
-      const OWNER_ADDRESS = isTestnet ? OWNER_TESTNET_RAW : OWNER_MAINNET_RAW;
-      
+  // Быстрый UX-фильтр — не пропускает к форме логина случайных юзеров.
+  // Не является защитой сам по себе (адрес легко подделать в devtools),
+  // реальная проверка — на бэкенде при check-proof.
+  useEffect(() => {
+    setIsChecking(true);
+    const rawAddress = address ? convertUserFriendlyToRaw(address) : '';
+    const OWNER_ADDRESS = isTestnet ? OWNER_TESTNET_RAW : OWNER_MAINNET_RAW;
+    setLooksLikeOwner(!!address && rawAddress === OWNER_ADDRESS);
+    setIsChecking(false);
+  }, [address, isTestnet]);
 
-      // Если нет адреса или адрес не совпадает с владельцем
-      if (!address || rawAddress !== OWNER_ADDRESS) {
-        setIsAuthorized(false);
-        // Перенаправляем на главную страницу через 2 секунды
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 2000);
-      } else {
-        setIsAuthorized(true);
-      }
-      
-      setIsChecking(false);
-    };
+  // Редирект на главную для чужих — тот же хук должен вызываться всегда
+  // (Rules of Hooks), условие — внутри эффекта, не вокруг вызова хука.
+  useEffect(() => {
+    if (isChecking || looksLikeOwner) return;
+    const t = setTimeout(() => { window.location.href = '/'; }, 2000);
+    return () => clearTimeout(t);
+  }, [isChecking, looksLikeOwner]);
 
-    checkAuthorization();
-  }, [address]);
+  const handleLogin = useCallback(async () => {
+    setLoginState('connecting');
+    setLoginError(null);
+    try {
+      const payloadRes = await fetch(`${API_BASE_URL}/api/admin/auth/payload`);
+      if (!payloadRes.ok) throw new Error(`payload HTTP ${payloadRes.status}`);
+      const { payload } = await payloadRes.json();
 
-  // Показываем загрузку
+      // Одноразовый слушатель следующего успешного коннекта — именно он
+      // придёт с запрошенным tonProof в connectItems.
+      const unsubscribe = tonConnectUI.onStatusChange(async (connectedWallet) => {
+        unsubscribe();
+        if (!connectedWallet) {
+          setLoginState('error');
+          setLoginError('Кошелёк не подключился');
+          return;
+        }
+        const proofReply = connectedWallet.connectItems?.tonProof;
+        if (!proofReply || !('proof' in proofReply)) {
+          setLoginState('error');
+          setLoginError('Кошелёк не вернул ton_proof (не поддерживается или отклонено)');
+          return;
+        }
+
+        setLoginState('verifying');
+        try {
+          const network = connectedWallet.account.chain === '-3' ? 'testnet' : 'mainnet';
+          const checkRes = await fetch(`${API_BASE_URL}/api/admin/auth/check-proof`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              address: connectedWallet.account.address,
+              network,
+              proof: proofReply.proof,
+            }),
+          });
+          if (!checkRes.ok) {
+            const err = await checkRes.json().catch(() => ({}));
+            throw new Error(err?.error || `check-proof HTTP ${checkRes.status}`);
+          }
+          const { token: newToken } = await checkRes.json();
+          sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, newToken);
+          setToken(newToken);
+          setLoginState('idle');
+        } catch (e: any) {
+          setLoginState('error');
+          setLoginError(e?.message || 'Ошибка проверки ton_proof');
+        }
+      });
+
+      tonConnectUI.setConnectRequestParameters({ state: 'ready', value: { tonProof: payload } });
+      await tonConnectUI.disconnect();
+      await tonConnectUI.openModal();
+    } catch (e: any) {
+      setLoginState('error');
+      setLoginError(e?.message || 'Ошибка входа');
+    }
+  }, [tonConnectUI]);
+
+  const handleLogout = useCallback(() => {
+    sessionStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+    setToken(null);
+  }, []);
+
+  const wrapperStyle: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100vh',
+    backgroundColor: '#111827',
+    color: 'white',
+    fontFamily: 'monospace',
+    padding: '20px',
+  };
+
   if (isChecking) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        backgroundColor: '#111827',
-        color: 'white',
-        fontFamily: 'monospace'
-      }}>
+      <div style={wrapperStyle}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '24px', marginBottom: '20px' }}>🔐</div>
           <div>Checking authorization...</div>
@@ -62,34 +150,76 @@ const ProtectedAdminPanel: React.FC = () => {
     );
   }
 
-  // Если не авторизован, показываем сообщение
-  if (!isAuthorized) {
+  if (!looksLikeOwner) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        backgroundColor: '#111827',
-        color: 'white',
-        fontFamily: 'monospace'
-      }}>
+      <div style={wrapperStyle}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '48px', marginBottom: '20px' }}>🚫</div>
           <h1 style={{ marginBottom: '10px' }}>Access Denied</h1>
-          <p style={{ color: '#9CA3AF' }}>
-            This page is only accessible to the owner.
-          </p>
-          <p style={{ color: '#6B7280', fontSize: '14px', marginTop: '10px' }}>
-            Redirecting to home page...
-          </p>
+          <p style={{ color: '#9CA3AF' }}>This page is only accessible to the owner.</p>
+          <p style={{ color: '#6B7280', fontSize: '14px', marginTop: '10px' }}>Redirecting to home page...</p>
         </div>
       </div>
     );
   }
 
-  // Если авторизован, показываем админ-панель
-  return <AdminPanelPage />;
+  if (!token) {
+    return (
+      <div style={wrapperStyle}>
+        <div style={{ textAlign: 'center', maxWidth: '340px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔑</div>
+          <h1 style={{ marginBottom: '10px', fontSize: '18px' }}>Вход в админку (TonProof)</h1>
+          <p style={{ color: '#9CA3AF', fontSize: '13px', marginBottom: '20px' }}>
+            Кошелёк переподключится, чтобы подписать подтверждение владения адресом — это разорвёт текущую сессию
+            кошелька во всём приложении на несколько секунд.
+          </p>
+          <button
+            onClick={handleLogin}
+            disabled={loginState === 'connecting' || loginState === 'verifying'}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '10px',
+              border: 'none',
+              background: loginState === 'idle' || loginState === 'error' ? '#FFD700' : '#374151',
+              color: loginState === 'idle' || loginState === 'error' ? '#000' : '#9CA3AF',
+              fontWeight: 700,
+              fontSize: '14px',
+              cursor: loginState === 'connecting' || loginState === 'verifying' ? 'default' : 'pointer',
+            }}
+          >
+            {loginState === 'connecting' && 'Подключение кошелька...'}
+            {loginState === 'verifying' && 'Проверка подписи...'}
+            {(loginState === 'idle' || loginState === 'error') && 'Войти'}
+          </button>
+          {loginError && (
+            <p style={{ color: '#e53935', fontSize: '12px', marginTop: '16px' }}>{loginError}</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div style={{ position: 'fixed', top: 8, right: 8, zIndex: 10001 }}>
+        <button
+          onClick={handleLogout}
+          style={{
+            padding: '6px 12px',
+            borderRadius: '8px',
+            border: '1px solid #374151',
+            background: '#111827',
+            color: '#9CA3AF',
+            fontSize: '11px',
+            cursor: 'pointer',
+          }}
+        >
+          Выйти из админки
+        </button>
+      </div>
+      <AdminPanelPage />
+    </>
+  );
 };
 
 export default ProtectedAdminPanel;

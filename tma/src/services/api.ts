@@ -118,10 +118,18 @@ export interface Stats {
 class ApiService {
   private baseUrl: string;
   private isTestnet: boolean;
+  // JWT из TonProof-логина (см. AdminPanelPage/index.tsx) — прикладывается
+  // ко ВСЕМ запросам, но реально проверяется только requireAdminAuth-
+  // ручками на бэкенде (server-sqlite.ts), остальным всё равно.
+  private adminToken: string | null = null;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
     this.isTestnet = false;
+  }
+
+  setAdminToken(token: string | null) {
+    this.adminToken = token;
   }
 
   setNetwork(isTestnet: boolean) {
@@ -136,10 +144,14 @@ class ApiService {
   }
 
   private getHeaders(): HeadersInit {
-    return {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     };
+    if (this.adminToken) {
+      headers['Authorization'] = `Bearer ${this.adminToken}`;
+    }
+    return headers;
   }
 
   
