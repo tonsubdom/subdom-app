@@ -7,6 +7,7 @@ import { Page } from "@/components/Page";
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import {FormattedHeaderDescription} from "../IndexPage/acentHeaderFrases"
+import tsbLogo from "./img/tsb_logo.png";
 
 // Анимированная иконка карточек TonSite Catalog и "Создать сайт" вместо
 // плоских эмодзи — подгружаем JSON лениво. Временно одна и та же анимация на
@@ -333,7 +334,7 @@ export const IndexPage: React.FC = () => {
       description: t('createSiteCardSubtitle') || 'Конструктор сайтов для доменов — оформи свой tonsite за пару кликов',
       icon: (
         <IconWrapper bgColor={isDark ? "#374151" : "#DBEAFE"} isDark={isDark}>
-          <GiftLottieIcon />
+          <img src={tsbLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </IconWrapper>
       ),
       actionText: t('open'),
