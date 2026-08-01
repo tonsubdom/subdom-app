@@ -55,7 +55,7 @@ const GiftLottieIcon: React.FC = () => {
 
 
 
-type CornerIconKind = 'plus' | 'gear' | 'search';
+type CornerIconKind = 'plus' | 'gear' | 'search' | 'edit';
 
 interface CardProps {
   title: string;
@@ -95,7 +95,8 @@ const IconWrapper: React.FC<{ children: React.ReactNode; bgColor: string; isDark
 
 // Line-art SVG (в духе Feather Icons) вместо плоских эмодзи для угловой
 // "говорящей" иконки карточки: plus — создание зоны/субдомена, gear —
-// управление (Менеджер/Аватар), search — обзор/поиск (Каталог/Маркет).
+// управление (Менеджер/Аватар), search — обзор/поиск (Каталог/Маркет), edit —
+// конструктор/создание контента (Создать сайт/торрент).
 const CORNER_ICON_PATHS: Record<CornerIconKind, React.ReactNode> = {
   plus: (
     <>
@@ -103,6 +104,9 @@ const CORNER_ICON_PATHS: Record<CornerIconKind, React.ReactNode> = {
       <line x1="12" y1="8" x2="12" y2="16" />
       <line x1="8" y1="12" x2="16" y2="12" />
     </>
+  ),
+  edit: (
+    <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
   ),
   gear: (
     <>
@@ -330,58 +334,28 @@ export const IndexPage: React.FC = () => {
       to: "/avatar-secret",
     },
     {
-      title: t('createSiteButton') || 'Создать сайт',
-      description: t('createSiteCardSubtitle') || 'Конструктор сайтов для доменов — оформи свой tonsite за пару кликов',
-      icon: (
-        <IconWrapper bgColor={isDark ? "#374151" : "#DBEAFE"} isDark={isDark}>
-          <img src={tsbLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        </IconWrapper>
-      ),
-      actionText: t('open'),
-      to: "https://t.me/Ton_site_builder_bot",
-    },
-    {
-      title: t('createTorrentTitle') || 'Создать торрент',
-      description: t('createTorrentCardSubtitle') || 'Загрузи файлы, выбери провайдера TON Storage — получи bagID',
-      icon: (
-        <IconWrapper bgColor={isDark ? "#374151" : "#DBEAFE"} isDark={isDark}>
-          <p style={{
-            color: isDark ? '#FFD700' : '#3B82F6',
-            fontFamily: 'monospace',
-            fontSize: '28px',
-            fontWeight: '600'
-          }}>
-            🧲
-          </p>
-        </IconWrapper>
-      ),
-      cornerIcon: "plus",
-      actionText: t('open'),
-      to: "/create-torrent",
-    },
-    {
       title: t('manageDNSRecords'),
       description: t('linkWalletSiteStorage'),
       icon: (
         <IconWrapper bgColor={isDark ? "#374151" : "#FFFFFF"} isDark={isDark}>
-          <div 
+          <div
             style={{
-              display:'flex', 
-              flexDirection: 'column', 
-              alignItems:'center', 
-              width: '80px', 
-              height: '80px', 
-              border: `2px solid ${isDark ? '#FFD700' : 'black'}`, 
-              borderRadius: '25px', 
+              display:'flex',
+              flexDirection: 'column',
+              alignItems:'center',
+              width: '80px',
+              height: '80px',
+              border: `2px solid ${isDark ? '#FFD700' : 'black'}`,
+              borderRadius: '25px',
               justifyContent: 'center'
             }}
           >
             <p style={{
-              color: isDark ? '#FFD700' : 'black', 
-              fontFamily: 'monospace', 
-              fontSize: '14px', 
-              fontWeight: '600', 
-              margin: 0, 
+              color: isDark ? '#FFD700' : 'black',
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              fontWeight: '600',
+              margin: 0,
               height:'20px'
             }}>
               LINKS
@@ -394,6 +368,55 @@ export const IndexPage: React.FC = () => {
       to: "/manage",
     },
     {
+      title: t('createSiteButton') || 'Создать сайт',
+      description: t('createSiteCardSubtitle') || 'Конструктор сайтов для доменов — оформи свой tonsite за пару кликов',
+      icon: (
+        <IconWrapper bgColor={isDark ? "#374151" : "#DBEAFE"} isDark={isDark}>
+          <img src={tsbLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </IconWrapper>
+      ),
+      cornerIcon: "edit",
+      actionText: t('open'),
+      to: "https://t.me/Ton_site_builder_bot",
+    },
+    {
+      title: t('createTorrentTitle') || 'Создать торрент',
+      description: t('createTorrentCardSubtitle') || 'Загрузи файлы, выбери провайдера TON Storage — получи bagID',
+      icon: (
+        <IconWrapper bgColor={isDark ? "#374151" : "#DBEAFE"} isDark={isDark}>
+          {/* Стилизованная 3D-папка (намёк на директории), не плоский логотип */}
+          <div style={{ position: 'relative', width: '56px', height: '46px' }}>
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: '4px',
+              width: '24px',
+              height: '11px',
+              background: isDark ? '#FFA500' : '#60A5FA',
+              borderRadius: '4px 10px 0 0',
+            }} />
+            <div style={{
+              position: 'absolute',
+              top: '7px',
+              left: 0,
+              width: '56px',
+              height: '39px',
+              background: isDark
+                ? 'linear-gradient(145deg, #FFD700 0%, #FFA500 100%)'
+                : 'linear-gradient(145deg, #60A5FA 0%, #2563EB 100%)',
+              borderRadius: '8px',
+              boxShadow: isDark
+                ? '0 4px 10px rgba(255, 165, 0, 0.35)'
+                : '0 4px 10px rgba(37, 99, 235, 0.35)',
+            }} />
+          </div>
+        </IconWrapper>
+      ),
+      cornerIcon: "edit",
+      actionText: t('open'),
+      to: "/create-torrent",
+    },
+    {
       title: "TonSite Catalog",
       description: t('tonsiteCatalogSubtitle') || "Все TON-сайты в одном месте — по категориям и с превью",
       icon: (
@@ -401,6 +424,7 @@ export const IndexPage: React.FC = () => {
           <GiftLottieIcon />
         </IconWrapper>
       ),
+      cornerIcon: "search",
       actionText: t('open'),
       to: "tonsite://tonsitecatalog.ton",
     },
@@ -409,61 +433,12 @@ export const IndexPage: React.FC = () => {
       description: t('marketSubtitle'),
       icon: (
         <IconWrapper bgColor={isDark ? "#065F46" : "#DCFCE7"} isDark={isDark}>
-          {/* Логотип домик с долларом внутри */}
-          <div style={{
-            position: 'relative',
-            width: '50px',
-            height: '50px',
-          }}>
-            {/* Домик */}
-            <div style={{
-              position: 'absolute',
-              top: '15px',
-              left: '10px',
-              width: '30px',
-              height: '20px',
-              backgroundColor: isDark ? '#FFD700' : '#3B82F6',
-              borderRadius: '4px 4px 0 0',
-            }} />
-            {/* Крыша */}
-            <div style={{
-              position: 'absolute',
-              top: '5px',
-              left: '5px',
-              width: '40px',
-              height: '15px',
-              backgroundColor: isDark ? '#FFA500' : '#2563EB',
-              clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-            }} />
-            {/* Доллар */}
-            <div style={{
-              position: 'absolute',
-              top: '20px',
-              left: '22px',
-              width: '6px',
-              height: '20px',
-              backgroundColor: isDark ? '#000000' : '#FFFFFF',
-              borderRadius: '1px',
-            }} />
-            <div style={{
-              position: 'absolute',
-              top: '22px',
-              left: '18px',
-              width: '14px',
-              height: '6px',
-              backgroundColor: isDark ? '#000000' : '#FFFFFF',
-              borderRadius: '3px',
-            }} />
-            <div style={{
-              position: 'absolute',
-              top: '32px',
-              left: '18px',
-              width: '14px',
-              height: '6px',
-              backgroundColor: isDark ? '#000000' : '#FFFFFF',
-              borderRadius: '3px',
-            }} />
-          </div>
+          {/* Сумка-магазин (Feather "shopping-bag") вместо составного домика с долларом */}
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke={isDark ? "#FFD700" : "#059669"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <path d="M16 10a4 4 0 0 1-8 0" />
+          </svg>
         </IconWrapper>
       ),
       cornerIcon: "search",
