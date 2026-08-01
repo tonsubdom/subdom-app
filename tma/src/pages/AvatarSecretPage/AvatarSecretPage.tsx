@@ -29,6 +29,21 @@ import {
 // (см. renewal-транзакцию в AddSubdomainPage).
 const MESSAGE_AMOUNT_NANO = '20000000'; // 0.02 TON
 
+// Те же категории, что в форме вадвека (Ton Site Index) — общий словарь для
+// совместимости, а не свой список с нуля.
+const AVATAR_CATEGORIES = [
+  'DeFi',
+  'NFT',
+  'Mini App',
+  'Media/Blog',
+  'Community/Forum',
+  'Tools/Infrastructure',
+  'Commerce/Shop',
+  'Organization',
+  'Personal',
+  'Other',
+];
+
 // Палитра проекта (см. ProfileWidget.tsx themeColors): тёмная тема — золото
 // на чёрном, светлая — голубой на белом.
 const themeColors = {
@@ -73,6 +88,8 @@ export const AvatarSecretPage: React.FC = () => {
   const [pictureUrl, setPictureUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState<React.ReactElement | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [dropNotice, setDropNotice] = useState<string | null>(null);
 
   const showSnackbar = (message: string, type: 'success' | 'error' = 'success') => {
     setSnackbar(
@@ -103,6 +120,32 @@ export const AvatarSecretPage: React.FC = () => {
   };
 
   const handleResolve = () => resolveDomain(domainName);
+
+  // dns_text "picture" — просто URL картинки, не байты (см. ownerMetaService.ts).
+  // Своего хостинга картинок в проекте нет, поэтому реально принимаем ссылку —
+  // либо вставленную руками, либо перетащенную ИЗ БРАУЗЕРА (тогда браузер кладёт
+  // в drop event её URL, не байты файла). Перетаскивание локального файла с диска
+  // явно не поддерживаем (некуда его захостить) и говорим об этом прямо.
+  const handlePictureDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    const uri = (
+      e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
+    ).trim();
+    if (/^https?:\/\//i.test(uri)) {
+      setPictureUrl(uri);
+      setDropNotice(null);
+      return;
+    }
+    if (e.dataTransfer.files?.length) {
+      setDropNotice(
+        t('avatarFileUploadUnsupported') ||
+          'Загрузка локального файла пока не поддерживается — перетащи картинку прямо из браузера (как ссылку) или вставь URL вручную.'
+      );
+      return;
+    }
+    setDropNotice(t('avatarDropNotUrl') || 'Это не похоже на ссылку на картинку.');
+  };
 
   // Приход с карточки зоны/субдомена в ProfileWidget — /#/avatar-secret?domain=X:
   // подставляем домен и сразу ищем, без ручного ввода (см. handleOpenAvatarSecret
@@ -257,36 +300,67 @@ export const AvatarSecretPage: React.FC = () => {
               onChange={(e) => setDescription(e.target.value)}
               style={inputStyle}
             />
-            <Input
-              placeholder={t('avatarCategoryPlaceholder') || 'Категория'}
+            <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              style={inputStyle}
-            />
-            <Input
-              placeholder={t('avatarPicturePlaceholder') || 'Ссылка на картинку (URL)'}
-              value={pictureUrl}
-              onChange={(e) => setPictureUrl(e.target.value)}
-              style={inputStyle}
-            />
-
-            {pictureUrl.trim() && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1.5 }}>
-                <img
-                  src={pictureUrl.trim()}
-                  alt="preview"
-                  style={{
-                    maxWidth: 120,
-                    maxHeight: 120,
-                    borderRadius: 12,
-                    objectFit: 'contain',
-                    border: `1px solid ${colors.border}`,
-                    boxShadow: `0 0 10px ${colors.shadow}`,
-                  }}
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                />
-              </Box>
-            )}
+              style={{
+                ...inputStyle,
+                appearance: 'none' as const,
+                cursor: 'pointer',
+              }}
+            >
+              <option value="">{t('avatarCategoryPlaceholder') || 'Категория…'}</option>
+              {AVATAR_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <Box
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handlePictureDrop}
+              sx={{
+                border: `2px dashed ${dragOver ? colors.accent : colors.border}`,
+                borderRadius: '14px',
+                padding: '14px',
+                marginBottom: '12px',
+                textAlign: 'center',
+                transition: 'border-color 0.2s, background 0.2s',
+                background: dragOver ? `${colors.accent}14` : 'transparent',
+              }}
+            >
+              {pictureUrl.trim() ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
+                  <img
+                    src={pictureUrl.trim()}
+                    alt="preview"
+                    style={{
+                      maxWidth: 120,
+                      maxHeight: 120,
+                      borderRadius: 12,
+                      objectFit: 'contain',
+                      border: `1px solid ${colors.border}`,
+                      boxShadow: `0 0 10px ${colors.shadow}`,
+                    }}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </Box>
+              ) : (
+                <Typography sx={{ fontSize: '12px', color: colors.textSecondary, mb: 1 }}>
+                  {t('avatarDropHint') || '🖼️ Перетащи сюда картинку из браузера или вставь ссылку ниже'}
+                </Typography>
+              )}
+              <Input
+                placeholder={t('avatarPicturePlaceholder') || 'Ссылка на картинку (URL)'}
+                value={pictureUrl}
+                onChange={(e) => { setPictureUrl(e.target.value); setDropNotice(null); }}
+                style={{ ...inputStyle, marginBottom: 0 }}
+              />
+              {dropNotice && (
+                <Alert severity="warning" sx={{ mt: 1, fontSize: '11px', textAlign: 'left' }}>
+                  {dropNotice}
+                </Alert>
+              )}
+            </Box>
 
             <Button
               fullWidth

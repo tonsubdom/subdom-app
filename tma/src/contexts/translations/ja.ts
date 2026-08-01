@@ -624,4 +624,25 @@ bundleWillCreateSubdomainCollection: 'Bundleはサブドメインコレクショ
 subdomainAvailableForFirstBid: '最初の入札に利用可能なサブドメイン',
 failedToCalculateNFTAddress: 'NFTアドレスの計算に失敗しました',
 
+  // AvatarSecretPage
+  avatarSecretTitle: 'アバター / シークレット',
+  avatarSecretSubtitle: 'タイトル、説明、ドメイン画像 — DNSに直接',
+  avatarSecretDescription: 'title/description/category/picture — ドメインのDNSレコードに直接書き込まれ、TONresistor/webdom.marketで読み取られます。',
+  avatarEnterDomain: 'ドメイン',
+  avatarFind: '検索',
+  avatarDomainNotFound: 'ドメインが見つかりません',
+  avatarResolveError: 'ドメイン検索エラー',
+  avatarDomainFound: 'ドメインが見つかりました',
+  avatarTitlePlaceholder: 'タイトル',
+  avatarDescriptionPlaceholder: '説明',
+  avatarCategoryPlaceholder: 'カテゴリー…',
+  avatarPicturePlaceholder: '画像URL',
+  avatarDropHint: '🖼️ ブラウザから画像をここにドラッグするか、下にリンクを貼り付けてください',
+  avatarFileUploadUnsupported: 'ローカルファイルのアップロードはまだサポートされていません — ブラウザから画像を直接ドラッグする（リンクとして）か、URLを手動で貼り付けてください。',
+  avatarDropNotUrl: '画像のリンクではないようです。',
+  avatarSave: 'オンチェーンに保存',
+  avatarSaving: '保存中...',
+  avatarSaved: 'オンチェーンに保存しました',
+  avatarSaveError: '保存エラー',
+
 };

@@ -622,4 +622,25 @@ bundleWillCreateSubdomainCollection: 'Bundle créera une collection de sous-doma
 subdomainAvailableForFirstBid: 'Sous-domaine disponible pour première enchère',
 failedToCalculateNFTAddress: 'Échec du calcul de l\'adresse NFT',
 
+  // AvatarSecretPage
+  avatarSecretTitle: 'Avatar / Secret',
+  avatarSecretSubtitle: 'Titre, description, image du domaine — directement dans le DNS',
+  avatarSecretDescription: "title/description/category/picture — écrits directement dans les enregistrements DNS du domaine, lus par TONresistor/webdom.market.",
+  avatarEnterDomain: 'Domaine',
+  avatarFind: 'Rechercher',
+  avatarDomainNotFound: 'Domaine introuvable',
+  avatarResolveError: 'Erreur lors de la recherche du domaine',
+  avatarDomainFound: 'Domaine trouvé',
+  avatarTitlePlaceholder: 'Titre',
+  avatarDescriptionPlaceholder: 'Description',
+  avatarCategoryPlaceholder: 'Catégorie…',
+  avatarPicturePlaceholder: "URL de l'image",
+  avatarDropHint: '🖼️ Glissez une image ici depuis le navigateur ou collez un lien ci-dessous',
+  avatarFileUploadUnsupported: "Le téléchargement d'un fichier local n'est pas encore pris en charge — glissez une image directement depuis le navigateur (comme lien) ou collez une URL manuellement.",
+  avatarDropNotUrl: "Cela ne ressemble pas à un lien d'image.",
+  avatarSave: 'Enregistrer onchain',
+  avatarSaving: 'Enregistrement...',
+  avatarSaved: 'Enregistré onchain',
+  avatarSaveError: "Erreur d'enregistrement",
+
 };

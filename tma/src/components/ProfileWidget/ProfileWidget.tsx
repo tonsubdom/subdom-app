@@ -3049,11 +3049,14 @@ const ProfileWidget: React.FC = () => {
     load();
   }, [allProxySubdomainsAsSubdomains, isTestnet]);
 
-  // ====== АВАТАР ИЗ dns_text "picture" СВОЕГО ДОМЕНА ======
+  // ====== АВАТАР: dns_text "picture" СВОЕГО ДОМЕНА, С ФОЛБЭКОМ НА КАРТИНКУ NFT-ЗОНЫ ======
   // Та же идея, что уже есть для domain-вместо-адреса (fetchDomain): вместо
-  // адреса/дефолтной иконки показываем то, что реально прописано в DNS.
-  // См. ownerMetaService.ts — писать/читать не проверено вживую, см. её
-  // комментарии перед тем как полагаться в проде.
+  // адреса/дефолтной иконки показываем то, что реально прописано в DNS. Чтение
+  // dns_text (ownerMetaService.ts) не проверено вживую и может молча не найти
+  // запись (contract может не иметь стандартного dnsresolve(slice,int) TEP-81,
+  // либо записи просто ещё нет) — поэтому не полагаемся только на неё:
+  // fallback на уже рабочий источник, картинку самой NFT-обёртки зоны
+  // (тот же (zone as any).image, что уже показывается на карточках зон).
   const [avatarPictureUrl, setAvatarPictureUrl] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
@@ -3062,20 +3065,25 @@ const ProfileWidget: React.FC = () => {
         setAvatarPictureUrl(null);
         return;
       }
+      const zoneFallback =
+        (getUserZones.find((z) => z.name === domain) as any)?.image ||
+        (getUserZones[0] as any)?.image ||
+        null;
+
       try {
         const resolved = await resolveDomainNftAddress(domain);
-        if (!resolved || cancelled) return;
-        const picture = await fetchOwnerPicture(resolved.nftAddress, isTestnet);
-        if (!cancelled) setAvatarPictureUrl(picture);
+        if (cancelled) return;
+        const picture = resolved ? await fetchOwnerPicture(resolved.nftAddress, isTestnet) : null;
+        if (!cancelled) setAvatarPictureUrl(picture || zoneFallback);
       } catch {
-        if (!cancelled) setAvatarPictureUrl(null);
+        if (!cancelled) setAvatarPictureUrl(zoneFallback);
       }
     };
     loadAvatarPicture();
     return () => {
       cancelled = true;
     };
-  }, [domain, isTestnet]);
+  }, [domain, isTestnet, getUserZones]);
 
   // ====== [NEW] ОСНОВНОЙ ЭФФЕКТ ЗАГРУЗКИ ======
 

@@ -622,5 +622,26 @@ creatingBundleForDomain: 'डोमेन के लिए Bundle बनान�
 bundleWillCreateSubdomainCollection: 'Bundle उपडोमेन संग्रह बनाएगा',
 subdomainAvailableForFirstBid: 'पहली बोली के लिए उपलब्ध उपडोमेन',
 failedToCalculateNFTAddress: 'NFT पता गणना विफल',
-  
+
+  // AvatarSecretPage
+  avatarSecretTitle: 'अवतार / सीक्रेट',
+  avatarSecretSubtitle: 'शीर्षक, विवरण, डोमेन की तस्वीर — सीधे DNS में',
+  avatarSecretDescription: 'title/description/category/picture — सीधे डोमेन के DNS रिकॉर्ड में लिखे जाते हैं, TONresistor/webdom.market द्वारा पढ़े जाते हैं।',
+  avatarEnterDomain: 'डोमेन',
+  avatarFind: 'खोजें',
+  avatarDomainNotFound: 'डोमेन नहीं मिला',
+  avatarResolveError: 'डोमेन खोजने में त्रुटि',
+  avatarDomainFound: 'डोमेन मिल गया',
+  avatarTitlePlaceholder: 'शीर्षक',
+  avatarDescriptionPlaceholder: 'विवरण',
+  avatarCategoryPlaceholder: 'श्रेणी…',
+  avatarPicturePlaceholder: 'तस्वीर का URL',
+  avatarDropHint: '🖼️ ब्राउज़र से यहां एक तस्वीर खींचें या नीचे एक लिंक पेस्ट करें',
+  avatarFileUploadUnsupported: 'स्थानीय फ़ाइल अपलोड करना अभी समर्थित नहीं है — ब्राउज़र से सीधे तस्वीर खींचें (लिंक के रूप में) या मैन्युअल रूप से URL पेस्ट करें।',
+  avatarDropNotUrl: 'यह तस्वीर के लिंक जैसा नहीं लगता।',
+  avatarSave: 'ऑनचेन सेव करें',
+  avatarSaving: 'सेव हो रहा है...',
+  avatarSaved: 'ऑनचेन सेव हो गया',
+  avatarSaveError: 'सेव करने में त्रुटि',
+
 };

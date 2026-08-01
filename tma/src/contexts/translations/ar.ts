@@ -623,4 +623,25 @@ bundleWillCreateSubdomainCollection: 'سيقوم Bundle بإنشاء مجموع�
 subdomainAvailableForFirstBid: 'النطاق الفرعي متاح للمزايدة الأولى',
 failedToCalculateNFTAddress: 'فشل في حساب عنوان NFT',
 
+  // AvatarSecretPage
+  avatarSecretTitle: 'الصورة الرمزية / السر',
+  avatarSecretSubtitle: 'العنوان والوصف وصورة النطاق — مباشرة في DNS',
+  avatarSecretDescription: 'title/description/category/picture — تُكتب مباشرة في سجلات DNS للنطاق، وتقرأها TONresistor/webdom.market.',
+  avatarEnterDomain: 'النطاق',
+  avatarFind: 'بحث',
+  avatarDomainNotFound: 'النطاق غير موجود',
+  avatarResolveError: 'خطأ أثناء البحث عن النطاق',
+  avatarDomainFound: 'تم العثور على النطاق',
+  avatarTitlePlaceholder: 'العنوان',
+  avatarDescriptionPlaceholder: 'الوصف',
+  avatarCategoryPlaceholder: 'الفئة…',
+  avatarPicturePlaceholder: 'رابط الصورة (URL)',
+  avatarDropHint: '🖼️ اسحب صورة هنا من المتصفح أو الصق رابطًا أدناه',
+  avatarFileUploadUnsupported: 'رفع ملف محلي غير مدعوم بعد — اسحب صورة مباشرة من المتصفح (كرابط) أو الصق الرابط يدويًا.',
+  avatarDropNotUrl: 'هذا لا يبدو كرابط صورة.',
+  avatarSave: 'حفظ على السلسلة',
+  avatarSaving: 'جارٍ الحفظ...',
+  avatarSaved: 'تم الحفظ على السلسلة',
+  avatarSaveError: 'خطأ في الحفظ',
+
 };

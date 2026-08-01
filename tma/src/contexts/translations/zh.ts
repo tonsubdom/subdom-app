@@ -618,6 +618,27 @@ creatingBundleForDomain: '为域名创建Bundle',
 bundleWillCreateSubdomainCollection: 'Bundle将创建子域名集合',
 subdomainAvailableForFirstBid: '子域名可用于首次出价',
 failedToCalculateNFTAddress: '计算NFT地址失败',
-  
+
+  // AvatarSecretPage
+  avatarSecretTitle: '头像 / 秘密',
+  avatarSecretSubtitle: '标题、描述、域名图片 — 直接写入DNS',
+  avatarSecretDescription: 'title/description/category/picture — 直接写入域名的DNS记录，TONresistor/webdom.market可读取。',
+  avatarEnterDomain: '域名',
+  avatarFind: '查找',
+  avatarDomainNotFound: '未找到域名',
+  avatarResolveError: '查找域名时出错',
+  avatarDomainFound: '已找到域名',
+  avatarTitlePlaceholder: '标题',
+  avatarDescriptionPlaceholder: '描述',
+  avatarCategoryPlaceholder: '类别…',
+  avatarPicturePlaceholder: '图片链接 (URL)',
+  avatarDropHint: '🖼️ 从浏览器拖拽图片到这里，或在下方粘贴链接',
+  avatarFileUploadUnsupported: '暂不支持上传本地文件 — 请直接从浏览器拖拽图片（作为链接）或手动粘贴URL。',
+  avatarDropNotUrl: '这看起来不像图片链接。',
+  avatarSave: '保存到链上',
+  avatarSaving: '保存中...',
+  avatarSaved: '已保存到链上',
+  avatarSaveError: '保存出错',
+
   }
   
