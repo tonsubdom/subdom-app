@@ -5,7 +5,7 @@
 // из референса вадвека). Читает это TONresistor/webdom.market — тот же
 // формат, без похода на свой бэкенд.
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@telegram-apps/telegram-ui';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import Button from '@mui/material/Button';
@@ -28,6 +28,12 @@ import {
 // что используется в проекте для других одиночных внутренних сообщений
 // (см. renewal-транзакцию в AddSubdomainPage).
 const MESSAGE_AMOUNT_NANO = '20000000'; // 0.02 TON
+
+// dns_text#1eda хранит chunk_count в 8 битах (max 255 чанков по
+// TEXT_CHUNK_MAX_BYTES=120 байт каждый, см. ownerMetaService.ts) — то есть
+// максимум ~30 600 байт данных в записи. Берём с запасом, картинка как
+// base64 data URI должна физически влезать в одну ончейн-запись.
+const MAX_PICTURE_DATA_URI_BYTES = 25 * 1024; // 25 КБ запас под 30.6 КБ лимит
 
 // Те же категории, что в форме вадвека (Ton Site Index) — общий словарь для
 // совместимости, а не свой список с нуля.
@@ -90,6 +96,7 @@ export const AvatarSecretPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState<React.ReactElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [dropNotice, setDropNotice] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const showSnackbar = (message: string, type: 'success' | 'error' = 'success') => {
     setSnackbar(
@@ -121,11 +128,37 @@ export const AvatarSecretPage: React.FC = () => {
 
   const handleResolve = () => resolveDomain(domainName);
 
-  // dns_text "picture" — просто URL картинки, не байты (см. ownerMetaService.ts).
-  // Своего хостинга картинок в проекте нет, поэтому реально принимаем ссылку —
-  // либо вставленную руками, либо перетащенную ИЗ БРАУЗЕРА (тогда браузер кладёт
-  // в drop event её URL, не байты файла). Перетаскивание локального файла с диска
-  // явно не поддерживаем (некуда его захостить) и говорим об этом прямо.
+  // dns_text "picture" по конвенции — URL картинки (см. ownerMetaService.ts,
+  // совместимость с TONresistor/webdom.market). Своего хостинга картинок в
+  // проекте нет — поэтому для реального URL (перетащенного из браузера или
+  // вставленного руками) используем его как есть, а для локального файла с
+  // диска кодируем как data:-URI прямо в запись (это тоже валидный src для
+  // <img>, просто не "ссылка" в привычном смысле) — работает, только пока
+  // картинка достаточно маленькая, чтобы влезть в лимит записи.
+  const handleFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      setDropNotice(t('avatarDropNotUrl') || 'Это не похоже на ссылку на картинку.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUri = reader.result as string;
+      if (dataUri.length > MAX_PICTURE_DATA_URI_BYTES) {
+        setDropNotice(
+          t('avatarFileTooBig') ||
+            `Файл слишком большой для ончейн-записи (лимит ~${Math.floor(MAX_PICTURE_DATA_URI_BYTES / 1024)} КБ) — сожми картинку или используй прямую ссылку (URL) на уже захостенный файл.`
+        );
+        return;
+      }
+      setPictureUrl(dataUri);
+      setDropNotice(null);
+    };
+    reader.onerror = () => {
+      setDropNotice(t('avatarFileReadError') || 'Не удалось прочитать файл.');
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handlePictureDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragOver(false);
@@ -138,10 +171,7 @@ export const AvatarSecretPage: React.FC = () => {
       return;
     }
     if (e.dataTransfer.files?.length) {
-      setDropNotice(
-        t('avatarFileUploadUnsupported') ||
-          'Загрузка локального файла пока не поддерживается — перетащи картинку прямо из браузера (как ссылку) или вставь URL вручную.'
-      );
+      handleFile(e.dataTransfer.files[0]);
       return;
     }
     setDropNotice(t('avatarDropNotUrl') || 'Это не похоже на ссылку на картинку.');
@@ -253,11 +283,11 @@ export const AvatarSecretPage: React.FC = () => {
           🎭 {t('avatarSecretTitle') || 'Аватар / Секрет'}
         </Typography>
         <Typography sx={{ fontSize: '13px', color: colors.textSecondary, mt: 0.5 }}>
-          {t('avatarSecretDescription') || 'title/description/category/picture — прямо в DNS-записях домена, читается TONresistor/webdom.market.'}
+          {t('avatarSecretDescription') || 'Те же DNS-записи, что уже читают @ton_site_builder_bot и tonsitecatalog.ton, плюс совместимость с TONresistor/webdom.market.'}
         </Typography>
       </Box>
 
-      <Box sx={{ maxWidth: 425, mx: 'auto', px: 2, py: 1 }}>
+      <Box sx={{ maxWidth: 425, mx: 'auto', px: 2, pt: 1, pb: '180px' }}>
         <Box style={cardStyle}>
           <Typography variant="body2" sx={{ mb: 1, color: colors.textSecondary, fontFamily: 'monospace' }}>
             {t('avatarEnterDomain') || 'Домен'}
@@ -318,16 +348,29 @@ export const AvatarSecretPage: React.FC = () => {
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={() => setDragOver(false)}
               onDrop={handlePictureDrop}
+              onClick={() => fileInputRef.current?.click()}
               sx={{
                 border: `2px dashed ${dragOver ? colors.accent : colors.border}`,
                 borderRadius: '14px',
                 padding: '14px',
                 marginBottom: '12px',
                 textAlign: 'center',
+                cursor: 'pointer',
                 transition: 'border-color 0.2s, background 0.2s',
                 background: dragOver ? `${colors.accent}14` : 'transparent',
               }}
             >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFile(file);
+                  e.target.value = '';
+                }}
+              />
               {pictureUrl.trim() ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
                   <img
@@ -346,13 +389,14 @@ export const AvatarSecretPage: React.FC = () => {
                 </Box>
               ) : (
                 <Typography sx={{ fontSize: '12px', color: colors.textSecondary, mb: 1 }}>
-                  {t('avatarDropHint') || '🖼️ Перетащи сюда картинку из браузера или вставь ссылку ниже'}
+                  {t('avatarDropHint') || '🖼️ Нажми, чтобы выбрать файл, перетащи картинку из браузера или вставь ссылку ниже'}
                 </Typography>
               )}
               <Input
                 placeholder={t('avatarPicturePlaceholder') || 'Ссылка на картинку (URL)'}
                 value={pictureUrl}
                 onChange={(e) => { setPictureUrl(e.target.value); setDropNotice(null); }}
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 style={{ ...inputStyle, marginBottom: 0 }}
               />
               {dropNotice && (

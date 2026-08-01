@@ -209,6 +209,24 @@ export const IndexPage: React.FC = () => {
       to: "/add-subdomain",
     },
     {
+      title: t('avatarSecretTitle') || 'Аватар / Секрет',
+      description: t('avatarSecretSubtitle') || 'Заголовок, описание, картинка домена — прямо в DNS',
+      icon: (
+        <IconWrapper bgColor={isDark ? "#000000" : "#DBEAFE"} isDark={isDark}>
+          <p style={{
+            color: isDark ? '#FFD700' : '#3B82F6',
+            fontFamily: 'monospace',
+            fontSize: '28px',
+            fontWeight: '600'
+          }}>
+            🎭
+          </p>
+        </IconWrapper>
+      ),
+      actionText: t('open'),
+      to: "/avatar-secret",
+    },
+    {
       title: t('manageDNSRecords'),
       description: t('linkWalletSiteStorage'),
       icon: (
@@ -305,24 +323,6 @@ export const IndexPage: React.FC = () => {
       ),
       actionText: t('open'),
       to: "/market",
-    },
-    {
-      title: t('avatarSecretTitle') || 'Аватар / Секрет',
-      description: t('avatarSecretSubtitle') || 'Заголовок, описание, картинка домена — прямо в DNS',
-      icon: (
-        <IconWrapper bgColor={isDark ? "#000000" : "#DBEAFE"} isDark={isDark}>
-          <p style={{
-            color: isDark ? '#FFD700' : '#3B82F6',
-            fontFamily: 'monospace',
-            fontSize: '28px',
-            fontWeight: '600'
-          }}>
-            🎭
-          </p>
-        </IconWrapper>
-      ),
-      actionText: t('open'),
-      to: "/avatar-secret",
     }
   ];
 

@@ -4679,10 +4679,73 @@ export const ManageDomainPage: FC = () => {
 
   // Дубли зон (пересозданные onchain с тем же именем) — по last_transaction_lt,
   // не по backend-статусу. См. A5' в плане релиза.
-  const inactiveZoneAddresses = useMemo(
+  const autoInactiveZoneAddresses = useMemo(
     () => getInactiveZoneAddresses(userNFTWrappers),
     [userNFTWrappers]
   );
+
+  // Ручной оверрайд — на случай, когда автоопределение по last_transaction_lt
+  // не покрывает конкретный случай (юзер видит дубль сам и хочет скрыть карточку,
+  // или наоборот хочет вернуть авто-помеченную зону активной). Двусторонний:
+  // manuallyInactive добавляет в inactive поверх авто, manuallyActive убирает из
+  // inactive даже если авто-детект считает её дублем. Персистится в localStorage
+  // (не бэкенд-status, чисто локальный UI-оверрайд).
+  const MANUAL_INACTIVE_STORAGE_KEY = "subdom_manually_inactive_zones";
+  const MANUAL_ACTIVE_STORAGE_KEY = "subdom_manually_active_zones";
+  const loadAddressSet = (key: string): Set<string> => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  };
+  const [manuallyInactiveZoneAddresses, setManuallyInactiveZoneAddresses] = useState<Set<string>>(
+    () => loadAddressSet(MANUAL_INACTIVE_STORAGE_KEY)
+  );
+  const [manuallyActiveZoneAddresses, setManuallyActiveZoneAddresses] = useState<Set<string>>(
+    () => loadAddressSet(MANUAL_ACTIVE_STORAGE_KEY)
+  );
+
+  const toggleZoneActive = (address: string, currentlyInactive: boolean) => {
+    if (currentlyInactive) {
+      // Было inactive -> хотим сделать active: убрать из manuallyInactive (если было там),
+      // добавить в manuallyActive (перебивает авто-детект).
+      setManuallyInactiveZoneAddresses((prev) => {
+        const next = new Set(prev);
+        next.delete(address);
+        try { localStorage.setItem(MANUAL_INACTIVE_STORAGE_KEY, JSON.stringify(Array.from(next))); } catch {}
+        return next;
+      });
+      setManuallyActiveZoneAddresses((prev) => {
+        const next = new Set(prev);
+        next.add(address);
+        try { localStorage.setItem(MANUAL_ACTIVE_STORAGE_KEY, JSON.stringify(Array.from(next))); } catch {}
+        return next;
+      });
+    } else {
+      // Было active -> хотим сделать inactive.
+      setManuallyActiveZoneAddresses((prev) => {
+        const next = new Set(prev);
+        next.delete(address);
+        try { localStorage.setItem(MANUAL_ACTIVE_STORAGE_KEY, JSON.stringify(Array.from(next))); } catch {}
+        return next;
+      });
+      setManuallyInactiveZoneAddresses((prev) => {
+        const next = new Set(prev);
+        next.add(address);
+        try { localStorage.setItem(MANUAL_INACTIVE_STORAGE_KEY, JSON.stringify(Array.from(next))); } catch {}
+        return next;
+      });
+    }
+  };
+
+  const inactiveZoneAddresses = useMemo(() => {
+    const merged = new Set(autoInactiveZoneAddresses);
+    manuallyInactiveZoneAddresses.forEach((a) => merged.add(a));
+    manuallyActiveZoneAddresses.forEach((a) => merged.delete(a));
+    return merged;
+  }, [autoInactiveZoneAddresses, manuallyInactiveZoneAddresses, manuallyActiveZoneAddresses]);
 
   // Живой прогресс первичной загрузки (коллекции -> итемы), см. loading-progress-bus.ts.
   const blockchainScanProgress = useBlockchainLoadProgress();
@@ -5732,7 +5795,7 @@ export const ManageDomainPage: FC = () => {
   // ====================================================================
   return (
     <Page>
-      <div style={{ padding: "10px" }}>
+      <div style={{ padding: "10px 10px 180px 10px" }}>
         {/* Баннер */}
         <Banner
           header={isTestnet ? "Testnet" : "Mainnet"}
@@ -6121,10 +6184,34 @@ export const ManageDomainPage: FC = () => {
                           fontSize: "12px",
                           color: isDark ? "#aaaaaa" : "#666666",
                           marginBottom: "6px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                          flexWrap: "wrap",
                         }}
                       >
-                        {item.proxy === 0 ? t("sbtZone") : t("proxyZone")} ·{" "}
-                        {item.subdomainsAmount || 0} {t("subdomains")}
+                        <span>
+                          {item.proxy === 0 ? t("sbtZone") : t("proxyZone")} ·{" "}
+                          {item.subdomainsAmount || 0} {t("subdomains")}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleZoneActive(item.address, !!item.isInactiveDuplicate);
+                          }}
+                          style={{
+                            fontSize: "10px",
+                            fontWeight: "700",
+                            padding: "2px 8px",
+                            borderRadius: "10px",
+                            border: `1px solid ${item.isInactiveDuplicate ? "#4CAF50" : "#e53935"}`,
+                            background: "transparent",
+                            color: item.isInactiveDuplicate ? "#4CAF50" : "#e53935",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {item.isInactiveDuplicate ? "Активировать" : "Деактивировать"}
+                        </button>
                       </div>
                     )}
                     {item.isSubdomain && (
