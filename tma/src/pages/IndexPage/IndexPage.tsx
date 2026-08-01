@@ -340,6 +340,25 @@ export const IndexPage: React.FC = () => {
       to: "https://t.me/Ton_site_builder_bot",
     },
     {
+      title: t('createTorrentTitle') || 'Создать торрент',
+      description: t('createTorrentCardSubtitle') || 'Загрузи файлы, выбери провайдера TON Storage — получи bagID',
+      icon: (
+        <IconWrapper bgColor={isDark ? "#374151" : "#DBEAFE"} isDark={isDark}>
+          <p style={{
+            color: isDark ? '#FFD700' : '#3B82F6',
+            fontFamily: 'monospace',
+            fontSize: '28px',
+            fontWeight: '600'
+          }}>
+            🧲
+          </p>
+        </IconWrapper>
+      ),
+      cornerIcon: "plus",
+      actionText: t('open'),
+      to: "/create-torrent",
+    },
+    {
       title: t('manageDNSRecords'),
       description: t('linkWalletSiteStorage'),
       icon: (
