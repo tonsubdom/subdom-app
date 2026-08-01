@@ -321,6 +321,7 @@ const MarketPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [filteredItems, setFilteredItems] = useState<MarketItem[]>([]);
+  const [marketCurrentPage, setMarketCurrentPage] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<SortOption>('name_asc');
   const [filters, setFilters] = useState<FilterState>({
@@ -527,7 +528,15 @@ const MarketPage: React.FC = () => {
     });
     
     setFilteredItems(filtered);
+    setMarketCurrentPage(0);
   }, [searchQuery, filters, sortBy, marketItems]);
+
+  const MARKET_ITEMS_PER_PAGE = 10;
+  const marketTotalPages = Math.ceil(filteredItems.length / MARKET_ITEMS_PER_PAGE);
+  const pagedMarketItems = filteredItems.slice(
+    marketCurrentPage * MARKET_ITEMS_PER_PAGE,
+    marketCurrentPage * MARKET_ITEMS_PER_PAGE + MARKET_ITEMS_PER_PAGE
+  );
 
   // Обработчик кликов вне дропдаунов
   useEffect(() => {
@@ -1179,7 +1188,7 @@ const MarketPage: React.FC = () => {
           ) : (
             <div>
               {/* Строки таблицы */}
-              {filteredItems.map((item) => {
+              {pagedMarketItems.map((item) => {
                 return (
                   <div
                     key={item.id}
@@ -1424,6 +1433,51 @@ const MarketPage: React.FC = () => {
                   </div>
                 );
               })}
+              {marketTotalPages > 1 && (
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '16px 0',
+                  }}
+                >
+                  <button
+                    onClick={() => setMarketCurrentPage((p) => Math.max(0, p - 1))}
+                    disabled={marketCurrentPage === 0}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '8px',
+                      border: `1px solid ${colors.border}`,
+                      background: marketCurrentPage === 0 ? 'transparent' : colors.cardBg,
+                      color: marketCurrentPage === 0 ? colors.textSecondary : colors.text,
+                      cursor: marketCurrentPage === 0 ? 'default' : 'pointer',
+                      fontSize: '13px',
+                    }}
+                  >
+                    ‹ {t('marketPrev') || 'Назад'}
+                  </button>
+                  <span style={{ fontSize: '13px', color: colors.textSecondary }}>
+                    {marketCurrentPage + 1} / {marketTotalPages}
+                  </span>
+                  <button
+                    onClick={() => setMarketCurrentPage((p) => Math.min(marketTotalPages - 1, p + 1))}
+                    disabled={marketCurrentPage === marketTotalPages - 1}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '8px',
+                      border: `1px solid ${colors.border}`,
+                      background: marketCurrentPage === marketTotalPages - 1 ? 'transparent' : colors.cardBg,
+                      color: marketCurrentPage === marketTotalPages - 1 ? colors.textSecondary : colors.text,
+                      cursor: marketCurrentPage === marketTotalPages - 1 ? 'default' : 'pointer',
+                      fontSize: '13px',
+                    }}
+                  >
+                    {t('marketNext') || 'Вперёд'} ›
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

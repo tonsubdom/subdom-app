@@ -2355,8 +2355,12 @@ const collectionToZone = (col: SimpleCollection): Zone => {
   );
 
   const zoneName = rawName
-    .replace(" DNS Domains", "")
-    .replace(" Proxy Domains", "")
+    .replace(/^proxy\s+/i, "")            // префикс "Proxy downloader ton Domain" -> "downloader ton Domain"
+    .replace(/\s+dns\s+domains?$/i, "")   // "... DNS Domains" / "... DNS Domain"
+    .replace(/\s+proxy\s+domains?$/i, "") // "... Proxy Domains" / "... Proxy Domain" (суффиксом)
+    .replace(/\s+domains?$/i, "")         // остаточное "... Domain"/"... Domains" (единственное число — старый баг)
+    .replace(/\s+ton$/i, ".ton")          // "downloader ton" -> "downloader.ton" (точка потерялась в метаданных)
+    .trim()
     .toLowerCase();
 
   console.log(

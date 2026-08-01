@@ -16,6 +16,9 @@ export const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
   const clamped = Math.min(100, Math.max(0, percent));
   const filledBars = Math.floor(clamped / 12.5);
   const nextBarProgress = (clamped % 12.5) / 12.5;
+  // При 0% ещё нечего заполнять, но полоска не должна выглядеть мёртвой —
+  // мигает нулевой сегмент, пока не появится реальный процент.
+  const pulseIndex = clamped === 0 ? 0 : nextBarProgress > 0 ? filledBars : -1;
   const [blink, setBlink] = useState(false);
 
   useEffect(() => {
@@ -33,7 +36,7 @@ export const SegmentedProgressBar: React.FC<SegmentedProgressBarProps> = ({
 
         if (index < filledBars) {
           barColor = color;
-        } else if (index === filledBars && nextBarProgress > 0) {
+        } else if (index === pulseIndex) {
           barColor = color;
           opacity = blink ? 0.3 : 0.7;
         }
@@ -80,12 +83,12 @@ export const ScanProgressLoader: React.FC<ScanProgressLoaderProps> = ({
   >
     <img src={searchDog} alt="Loading" style={{ width: 100, height: 100 }} />
     <div style={{ fontSize: 16, marginTop: 12 }}>{label}</div>
-    {typeof percent === 'number' && (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginTop: 8, width: '100%' }}>
-        <SegmentedProgressBar percent={percent} color="#4CAF50" trackColor={textColor === '#666' ? '#e0e0e0' : '#444'} />
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginTop: 8, width: '100%' }}>
+      <SegmentedProgressBar percent={percent ?? 0} color="#4CAF50" trackColor={textColor === '#666' ? '#e0e0e0' : '#444'} />
+      {typeof percent === 'number' && (
         <span style={{ fontSize: 14, opacity: 0.8 }}>{percent}%</span>
-      </div>
-    )}
+      )}
+    </div>
     {statusText && (
       <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4, textAlign: 'center' }}>
         {statusText}
