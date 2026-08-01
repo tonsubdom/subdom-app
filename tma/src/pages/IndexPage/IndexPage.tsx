@@ -8,18 +8,35 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import {FormattedHeaderDescription} from "../IndexPage/acentHeaderFrases"
 
-// Анимированная иконка карточки TonSite Catalog вместо плоской лупы —
-// подгружаем JSON лениво (не блокируем первую отрисовку IndexPage чем-то,
-// что нужно только одной карточке из шести).
-const TONSITE_CATALOG_LOTTIE_URL = "https://nft.fragment.com/gift/bigyear-7470.lottie.json";
+// Анимированная иконка карточек TonSite Catalog и "Создать сайт" вместо
+// плоских эмодзи — подгружаем JSON лениво. Временно одна и та же анимация на
+// обеих карточках (юзер не нашёл отдельный подходящий гифт под "Создать
+// сайт" — заменить на что-то своё, когда найдётся). Кэш на модуле — чтобы
+// два инстанса на странице не тянули один и тот же JSON дважды.
+const SHARED_GIFT_LOTTIE_URL = "https://nft.fragment.com/gift/bigyear-7470.lottie.json";
+let sharedLottieCache: object | null = null;
+let sharedLottiePromise: Promise<object> | null = null;
 
-const CatalogLottieIcon: React.FC = () => {
-  const [animationData, setAnimationData] = React.useState<object | null>(null);
+function loadSharedLottie(): Promise<object> {
+  if (sharedLottieCache) return Promise.resolve(sharedLottieCache);
+  if (!sharedLottiePromise) {
+    sharedLottiePromise = fetch(SHARED_GIFT_LOTTIE_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        sharedLottieCache = data;
+        return data;
+      });
+  }
+  return sharedLottiePromise;
+}
+
+const GiftLottieIcon: React.FC = () => {
+  const [animationData, setAnimationData] = React.useState<object | null>(sharedLottieCache);
 
   React.useEffect(() => {
+    if (animationData) return;
     let cancelled = false;
-    fetch(TONSITE_CATALOG_LOTTIE_URL)
-      .then((res) => res.json())
+    loadSharedLottie()
       .then((data) => {
         if (!cancelled) setAnimationData(data);
       })
@@ -29,7 +46,7 @@ const CatalogLottieIcon: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [animationData]);
 
   if (!animationData) return null;
   return <Lottie animationData={animationData} loop style={{ width: 64, height: 64 }} />;
@@ -311,6 +328,17 @@ export const IndexPage: React.FC = () => {
       to: "/avatar-secret",
     },
     {
+      title: t('createSiteButton') || 'Создать сайт',
+      description: t('createSiteCardSubtitle') || 'Конструктор сайтов для доменов — оформи свой tonsite за пару кликов',
+      icon: (
+        <IconWrapper bgColor={isDark ? "#374151" : "#DBEAFE"} isDark={isDark}>
+          <GiftLottieIcon />
+        </IconWrapper>
+      ),
+      actionText: t('open'),
+      to: "https://t.me/Ton_site_builder_bot",
+    },
+    {
       title: t('manageDNSRecords'),
       description: t('linkWalletSiteStorage'),
       icon: (
@@ -349,7 +377,7 @@ export const IndexPage: React.FC = () => {
       description: t('tonsiteCatalogSubtitle') || "Все TON-сайты в одном месте — по категориям и с превью",
       icon: (
         <IconWrapper bgColor={isDark ? "#374151" : "#DBEAFE"} isDark={isDark}>
-          <CatalogLottieIcon />
+          <GiftLottieIcon />
         </IconWrapper>
       ),
       actionText: t('open'),
