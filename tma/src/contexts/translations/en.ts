@@ -679,7 +679,7 @@ itemFoundSuccessfully: 'Item found successfully',
   // AvatarSecretPage
   avatarSecretTitle: 'Avatar / Secret',
   avatarSecretSubtitle: 'Title, description, domain picture — right in DNS',
-  avatarSecretDescription: 'The same DNS records already read by @ton_site_builder_bot and tonsitecatalog.ton, plus compatible with TONresistor/webdom.market.',
+  avatarSecretDescription: 'Avatar, title, description, category — tags for indexing by tonsitecatalog.ton. (Supported by: @ton_site_builder_bot, tonsitecatalog.ton, TONresistor, webdom.market)',
   avatarFileTooBig: 'File is too big for an onchain record — compress the image or use a direct URL to an already-hosted file instead.',
   avatarFileReadError: 'Could not read the file.',
   avatarLoadingExisting: 'Checking what is already recorded onchain…',

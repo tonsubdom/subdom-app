@@ -626,7 +626,7 @@ failedToCalculateNFTAddress: 'NFT पता गणना विफल',
   // AvatarSecretPage
   avatarSecretTitle: 'अवतार / सीक्रेट',
   avatarSecretSubtitle: 'शीर्षक, विवरण, डोमेन की तस्वीर — सीधे DNS में',
-  avatarSecretDescription: 'वही DNS रिकॉर्ड जिन्हें @ton_site_builder_bot और tonsitecatalog.ton पहले से पढ़ते हैं, साथ ही TONresistor/webdom.market के साथ संगतता।',
+  avatarSecretDescription: 'Avatar, title, description, category — ये tonsitecatalog.ton द्वारा इंडेक्सिंग के लिए टैग हैं। (समर्थित: @ton_site_builder_bot, tonsitecatalog.ton, TONresistor, webdom.market)',
   avatarFileTooBig: 'फ़ाइल ऑनचेन रिकॉर्ड के लिए बहुत बड़ी है — तस्वीर को संपीड़ित करें या पहले से होस्ट की गई फ़ाइल का सीधा URL इस्तेमाल करें।',
   avatarFileReadError: 'फ़ाइल पढ़ी नहीं जा सकी।',
   avatarLoadingExisting: 'जांच रहे हैं कि ऑनचेन पहले से क्या दर्ज है…',

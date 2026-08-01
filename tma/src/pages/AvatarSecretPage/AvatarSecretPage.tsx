@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Input } from '@telegram-apps/telegram-ui';
+import { Address } from '@ton/core';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
@@ -21,7 +22,7 @@ import {
   buildOwnerDnsTextPayloads,
   buildOwnerPicturePayload,
   resolveDomainNftAddress,
-  fetchOwnerDnsTextCategory,
+  fetchAllOwnerDnsText,
   ResolvedDomain,
 } from '@/services/ownerMetaService';
 
@@ -86,6 +87,12 @@ export const AvatarSecretPage: React.FC = () => {
   const isTestnet = wallet?.account?.chain === '-3';
 
   const [domainName, setDomainName] = useState('');
+  // Домен через tonapi.io /v2/dns/ находит только корневые .ton-домены —
+  // кастомные субдомены платформы (и вообще любой сторонний NFT со
+  // стандартом dnsresolve) там не резолвятся. Переключатель даёт обойти
+  // резолв по имени и адресовать NFT-item напрямую по адресу.
+  const [resolveByAddress, setResolveByAddress] = useState(false);
+  const [nftAddressInput, setNftAddressInput] = useState('');
   const [resolving, setResolving] = useState(false);
   const [resolvedDomain, setResolvedDomain] = useState<ResolvedDomain | null>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
@@ -115,12 +122,7 @@ export const AvatarSecretPage: React.FC = () => {
     );
   };
 
-  const resolveDomain = async (rawDomain: string) => {
-    const trimmed = rawDomain.trim().toLowerCase();
-    if (!trimmed) return;
-    const fullDomain = trimmed.endsWith('.ton') ? trimmed : `${trimmed}.ton`;
-
-    setResolving(true);
+  const resetResolvedState = () => {
     setResolveError(null);
     setResolvedDomain(null);
     setTitle('');
@@ -128,6 +130,15 @@ export const AvatarSecretPage: React.FC = () => {
     setCategory('');
     setPictureUrl('');
     setHasExisting({ title: false, description: false, category: false, picture: false });
+  };
+
+  const resolveDomain = async (rawDomain: string) => {
+    const trimmed = rawDomain.trim().toLowerCase();
+    if (!trimmed) return;
+    const fullDomain = trimmed.endsWith('.ton') ? trimmed : `${trimmed}.ton`;
+
+    setResolving(true);
+    resetResolvedState();
     try {
       const resolved = await resolveDomainNftAddress(fullDomain);
       if (!resolved) {
@@ -143,19 +154,41 @@ export const AvatarSecretPage: React.FC = () => {
     }
   };
 
+  // Резолв напрямую по адресу NFT-item — в обход поиска по имени, поэтому
+  // работает для ЛЮБОГО NFT со стандартным get-методом dnsresolve (не только
+  // корневых .ton-доменов, которых достаёт resolveDomainNftAddress через
+  // tonapi.io): субдоменов платформы, чужих коллекций и т.д. Своего похода в
+  // сеть не требует — сам адрес уже и есть nftAddress, дальше читает то же
+  // loadExistingRecords, что и резолв по имени.
+  const resolveByAddressValue = async (rawAddress: string) => {
+    const trimmed = rawAddress.trim();
+    if (!trimmed) return;
+
+    setResolving(true);
+    resetResolvedState();
+    try {
+      const nftAddress = Address.parse(trimmed).toString({ bounceable: true });
+      setResolvedDomain({ nftAddress, ownerAddress: '' });
+      loadExistingRecords(nftAddress);
+    } catch (e) {
+      setResolveError(t('avatarInvalidAddress') || 'Некорректный адрес');
+    } finally {
+      setResolving(false);
+    }
+  };
+
   // Подтягиваем то, что уже прописано ончейн для этого домена, чтобы юзер видел
   // текущую запись до того, как начнёт её менять (а не гадал, есть там что-то
   // или нет). Не блокирует форму — если чтение упадёт, просто останется пусто.
   const loadExistingRecords = async (nftAddress: string) => {
     setLoadingExisting(true);
     try {
-      const [existingTitle, existingDescription, existingCategory, existingPicture] =
-        await Promise.all([
-          fetchOwnerDnsTextCategory(nftAddress, 'title', isTestnet),
-          fetchOwnerDnsTextCategory(nftAddress, 'description', isTestnet),
-          fetchOwnerDnsTextCategory(nftAddress, 'category', isTestnet),
-          fetchOwnerDnsTextCategory(nftAddress, 'picture', isTestnet),
-        ]);
+      const {
+        title: existingTitle,
+        description: existingDescription,
+        category: existingCategory,
+        picture: existingPicture,
+      } = await fetchAllOwnerDnsText(nftAddress, isTestnet);
       if (existingTitle) setTitle(existingTitle);
       if (existingDescription) setDescription(existingDescription);
       if (existingCategory) setCategory(existingCategory);
@@ -173,7 +206,8 @@ export const AvatarSecretPage: React.FC = () => {
     }
   };
 
-  const handleResolve = () => resolveDomain(domainName);
+  const handleResolve = () =>
+    resolveByAddress ? resolveByAddressValue(nftAddressInput) : resolveDomain(domainName);
 
   // dns_text "picture" по конвенции — URL картинки (см. ownerMetaService.ts,
   // совместимость с TONresistor/webdom.market). Своего хостинга картинок в
@@ -330,7 +364,7 @@ export const AvatarSecretPage: React.FC = () => {
           🎭 {t('avatarSecretTitle') || 'Аватар / Секрет'}
         </Typography>
         <Typography sx={{ fontSize: '13px', color: colors.textSecondary, mt: 0.5 }}>
-          {t('avatarSecretDescription') || 'Теги для индексации в tonsitecatalog.ton — те же DNS-записи, что уже читают @ton_site_builder_bot и tonsitecatalog.ton, плюс совместимость с TONresistor/webdom.market.'}
+          {t('avatarSecretDescription') || 'Avatar, title, description, category — теги для индексации в tonsitecatalog.ton. (Поддерживается: @ton_site_builder_bot, tonsitecatalog.ton, TONresistor, webdom.market)'}
         </Typography>
       </Box>
 
@@ -343,13 +377,42 @@ export const AvatarSecretPage: React.FC = () => {
             <Input
               placeholder="example.ton"
               value={domainName}
+              disabled={resolveByAddress}
               onChange={(e) => setDomainName(e.target.value)}
-              style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
+              style={{ ...inputStyle, marginBottom: 0, flex: 1, opacity: resolveByAddress ? 0.5 : 1 }}
             />
-            <Button sx={buttonSx} onClick={handleResolve} disabled={resolving || !domainName.trim()}>
+            <Button
+              sx={buttonSx}
+              onClick={handleResolve}
+              disabled={resolving || (resolveByAddress ? !nftAddressInput.trim() : !domainName.trim())}
+            >
               {resolving ? '...' : t('avatarFind') || 'Найти'}
             </Button>
           </Box>
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+            <input
+              type="checkbox"
+              id="avatarResolveByAddress"
+              checked={resolveByAddress}
+              onChange={(e) => setResolveByAddress(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            <label
+              htmlFor="avatarResolveByAddress"
+              style={{ fontSize: '12px', color: colors.textSecondary, cursor: 'pointer' }}
+            >
+              {t('avatarResolveByAddressLabel') || 'Искать по адресу NFT (любой dnsresolve-стандарт: субдомены, чужие коллекции)'}
+            </label>
+          </Box>
+          {resolveByAddress && (
+            <Input
+              placeholder={t('avatarNftAddressPlaceholder') || 'Адрес NFT (EQ.../UQ...)'}
+              value={nftAddressInput}
+              onChange={(e) => setNftAddressInput(e.target.value)}
+              style={{ ...inputStyle, marginTop: '8px', marginBottom: 0 }}
+            />
+          )}
 
           {resolveError && (
             <Alert severity="error" sx={{ mt: 1, fontSize: '12px' }}>
@@ -452,11 +515,24 @@ export const AvatarSecretPage: React.FC = () => {
                 background: dragOver ? `${colors.accent}14` : 'transparent',
               }}
             >
+              {/* display:none может тихо блокировать programmatic .click() в некоторых
+                  WebKit-окружениях (в т.ч. встроенный WebView Telegram) — визуально прячем
+                  через off-screen позиционирование вместо display:none, это надёжнее. */}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                style={{ display: 'none' }}
+                style={{
+                  position: 'absolute',
+                  width: 1,
+                  height: 1,
+                  padding: 0,
+                  margin: -1,
+                  overflow: 'hidden',
+                  clip: 'rect(0, 0, 0, 0)',
+                  whiteSpace: 'nowrap',
+                  border: 0,
+                }}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) handleFile(file);

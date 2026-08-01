@@ -628,7 +628,7 @@ failedToCalculateNFTAddress: 'NFT-Adresse konnte nicht berechnet werden',
   // AvatarSecretPage
   avatarSecretTitle: 'Avatar / Geheimnis',
   avatarSecretSubtitle: 'Titel, Beschreibung, Domain-Bild — direkt im DNS',
-  avatarSecretDescription: 'Dieselben DNS-Einträge, die bereits von @ton_site_builder_bot und tonsitecatalog.ton gelesen werden, plus Kompatibilität mit TONresistor/webdom.market.',
+  avatarSecretDescription: 'Avatar, title, description, category — Tags für die Indexierung durch tonsitecatalog.ton. (Unterstützt von: @ton_site_builder_bot, tonsitecatalog.ton, TONresistor, webdom.market)',
   avatarFileTooBig: 'Die Datei ist zu groß für einen Onchain-Eintrag — komprimiere das Bild oder verwende eine direkte URL zu einer bereits gehosteten Datei.',
   avatarFileReadError: 'Datei konnte nicht gelesen werden.',
   avatarLoadingExisting: 'Prüfe, was bereits onchain erfasst ist…',

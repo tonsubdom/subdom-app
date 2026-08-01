@@ -12,7 +12,7 @@
 // При изменении держать в синхроне с internal/resolver.go (decodeDnsText) —
 // см. комментарии в исходном файле про TL-B схему dns_text#1eda.
 
-import { Address, Builder, Cell, beginCell } from '@ton/core';
+import { Address, Builder, Cell, Dictionary, beginCell } from '@ton/core';
 
 const DNS_CHANGE_RECORD_OP = 0x4eb1f0f9;
 
@@ -114,11 +114,15 @@ export async function resolveDomainNftAddress(domain: string): Promise<ResolvedD
 
 // ==================== ЧТЕНИЕ dns_text (зеркало энкодера выше) ====================
 //
-// ВНИМАНИЕ: как и энкодер (см. комментарий encodeDnsText в референсе), это
-// НЕ проверено вживую на реальной ончейн-записи — писать/читать один и тот же
-// баг можно "успешно" протестировать друг на друге. Перед тем как полагаться
-// на это в проде, стоит явно проверить чтение записи, реально записанной через
-// AvatarSecretPage, а не только то, что код компилируется.
+// Протокол сверен с reference/resolver_excerpt.go.txt (вадвековский Ton Site
+// Index, живой код в проде) — прошлая версия звала dnsresolve(slice, category)
+// напрямую по TEP-81 буквально ("одна категория — один вызов"), но реальные
+// dns_item-контракты TEP-81 отдают через dnsresolve НЕ конкретную запись, а
+// self-маркером (subdomain = один байт 0x00, category = 0) — ЦЕЛЫЙ словарь
+// всех записей домена разом (второй элемент стека — TVM null, если записей
+// нет вообще, иначе Cell-корень HashmapE<256, ^Cell>). Нужную категорию потом
+// достаём из словаря по её sha256-ключу. Старая версия из-за этого не находила
+// вообще ничего, даже для доменов с заведомо существующими записями.
 
 /** Обратная операция encodeDnsText — реконструирует строку из dns_text#1eda cell. */
 function decodeDnsText(cell: Cell): string | null {
@@ -143,48 +147,103 @@ function decodeDnsText(cell: Cell): string | null {
 }
 
 /**
- * Читает одну dns_text-категорию (например "picture") с dns_item-контракта
- * домена через get-метод dnsresolve(subdomain, category) — тот же метод,
- * которым в проекте уже читается next_resolver (см. tonUtils.ts
- * checkDomainDNSRecord), но с конкретной category вместо "поля 4 подряд".
+ * Один вызов dnsresolve с TEP-81 self-маркером — возвращает словарь ВСЕХ
+ * dns_text (и любых других) записей домена разом, либо null (у домена вообще
+ * нет записей). Категории потом ищутся в этом словаре локально, без похода
+ * в сеть на каждую.
  */
+async function fetchSelfDnsRecordsDict(
+  nftAddress: string,
+  isTestnet: boolean
+): Promise<Dictionary<bigint, Cell> | null> {
+  const rawAddress = Address.parse(nftAddress).toRawString();
+  const apiUrl = isTestnet
+    ? 'https://testnet.toncenter.com/api/v3/runGetMethod'
+    : 'https://toncenter.com/api/v3/runGetMethod';
+
+  // self-маркер по TEP-81: subdomain — слайс из одного нулевого байта (НЕ
+  // пустой слайс), category = 0.
+  const selfMarkerBoc = beginCell().storeUint(0, 8).endCell().toBoc().toString('base64');
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      address: rawAddress,
+      method: 'dnsresolve',
+      stack: [
+        ['tvm.Slice', selfMarkerBoc],
+        ['num', '0'],
+      ],
+    }),
+  });
+  if (!response.ok) return null;
+
+  const data = await response.json();
+  // dnsresolve(slice, int) -> (int used_bits, cell|null records) — второй элемент стека.
+  // Пустой словарь TVM отдаёт как null, а не как Cell — это нормальное состояние
+  // "у домена ещё нет ни одной записи", не ошибка.
+  const dictEntry = data?.stack?.[1];
+  if (!dictEntry || dictEntry[0] !== 'tvm.Cell') return null;
+
+  const boc = dictEntry[1]?.bytes ?? dictEntry[1];
+  if (!boc) return null;
+  const dictRootCell = Cell.fromBoc(Buffer.from(boc, 'base64'))[0];
+
+  return Dictionary.loadDirect(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell(), dictRootCell);
+}
+
+/** Читает одну dns_text-категорию (например "picture") с dns_item-контракта домена. */
 export async function fetchOwnerDnsTextCategory(
   nftAddress: string,
   category: string,
   isTestnet: boolean
 ): Promise<string | null> {
   try {
+    const dict = await fetchSelfDnsRecordsDict(nftAddress, isTestnet);
+    if (!dict) return null;
     const key = await categoryKey(category);
-    const rawAddress = Address.parse(nftAddress).toRawString();
-    const apiUrl = isTestnet
-      ? 'https://testnet.toncenter.com/api/v3/runGetMethod'
-      : 'https://toncenter.com/api/v3/runGetMethod';
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: rawAddress,
-        method: 'dnsresolve',
-        stack: [
-          ['tvm.Slice', ''],
-          ['num', key.toString()],
-        ],
-      }),
-    });
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    // dnsresolve(slice, int) -> (int used_bits, cell value) — второй элемент стека.
-    const cellEntry = data?.stack?.[1];
-    if (!cellEntry || cellEntry[0] !== 'tvm.Cell') return null;
-
-    const boc = cellEntry[1]?.bytes ?? cellEntry[1];
-    if (!boc) return null;
-    const cell = Cell.fromBoc(Buffer.from(boc, 'base64'))[0];
-    return decodeDnsText(cell);
+    const valueCell = dict.get(key);
+    return valueCell ? decodeDnsText(valueCell) : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Читает все 4 наших dns_text-категории ОДНИМ вызовом dnsresolve (вместо 4
+ * отдельных сетевых запросов через fetchOwnerDnsTextCategory по кругу) —
+ * используется формой AvatarSecretPage для подтяжки уже существующей записи.
+ */
+export async function fetchAllOwnerDnsText(
+  nftAddress: string,
+  isTestnet: boolean
+): Promise<{ title: string | null; description: string | null; category: string | null; picture: string | null }> {
+  const empty = { title: null, description: null, category: null, picture: null };
+  try {
+    const dict = await fetchSelfDnsRecordsDict(nftAddress, isTestnet);
+    if (!dict) return empty;
+
+    const [titleKey, descriptionKey, categoryKeyHash, pictureKey] = await Promise.all([
+      categoryKey(CATEGORY_TITLE),
+      categoryKey(CATEGORY_DESCRIPTION),
+      categoryKey(CATEGORY_CATEGORY),
+      categoryKey(CATEGORY_PICTURE),
+    ]);
+
+    const readCell = (key: bigint) => {
+      const cell = dict.get(key);
+      return cell ? decodeDnsText(cell) : null;
+    };
+
+    return {
+      title: readCell(titleKey),
+      description: readCell(descriptionKey),
+      category: readCell(categoryKeyHash),
+      picture: readCell(pictureKey),
+    };
+  } catch {
+    return empty;
   }
 }
 

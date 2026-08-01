@@ -4713,6 +4713,11 @@ export const ManageDomainPage: FC = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [checkingResolver, setCheckingResolver] = useState(false);
   const [isAutoCheckTriggered, setIsAutoCheckTriggered] = useState(false);
+  // Триггер для deep-link'а из ProfileWidget (?address=...) — см. ЭФФЕКТ 3/3.1
+  // ниже: старый isAutoCheckTriggered гонит по ветке mode==="other" в
+  // handleCheckResolverAddress, которая просто ставит isVerified=true и не
+  // поднимает editingItem/showInfoBlock — итем реально не открывался.
+  const [autoAnyLookupTriggered, setAutoAnyLookupTriggered] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [mode, setMode] = useState<"other" | "service">("service");
   const [manualCollectionAddress, setManualCollectionAddress] = useState("");
@@ -4931,20 +4936,40 @@ export const ManageDomainPage: FC = () => {
   }, [dispatch, mode, selectedCollection, isTestnet, allNfts]);
 
   // ====== ЭФФЕКТ 3: URL-параметр ======
+  // Ведёт через тот же путь, что и ручной ввод в табе "Any" (handleAnyTabSubmit)
+  // — единственный, который реально поднимает editingItem/showInfoBlock и
+  // открывает итем в обход полного списка. Раньше сюда шёл mode==="other" +
+  // resolverAddress (handleCheckResolverAddress) — режим по умолчанию
+  // "service", а даже в "other" эта ветка просто ставила isVerified=true и
+  // ничего не открывала: deep-link из ProfileWidget'а (handleManage) не
+  // работал вообще, юзер видел общий список, а не конкретный итем.
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const address = params.get("address");
     if (address) {
       try {
-        setResolverAddress(Address.parse(address).toString());
-        setIsAutoCheckTriggered(true);
+        const normalized = Address.parse(address).toString();
+        handleModeChange("other");
+        handleTabChange("any");
+        setManualCollectionAddress(normalized);
+        setAutoAnyLookupTriggered(true);
       } catch {
         /* ignore */
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
-  // ====== ЭФФЕКТ 4: Авто-проверка ======
+  // ====== ЭФФЕКТ 3.1: Авто-запуск поиска по адресу из deep-link'а ======
+  useEffect(() => {
+    if (autoAnyLookupTriggered && manualCollectionAddress) {
+      handleAnyTabSubmit();
+      setAutoAnyLookupTriggered(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manualCollectionAddress, autoAnyLookupTriggered]);
+
+  // ====== ЭФФЕКТ 4: Авто-проверка (старый путь "Other"-режима, вне Any-таба) ======
   useEffect(() => {
     if (isAutoCheckTriggered && resolverAddress) {
       handleCheckResolverAddress();

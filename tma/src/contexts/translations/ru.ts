@@ -810,7 +810,7 @@ itemFoundSuccessfully: 'Элемент успешно найден',
   // AvatarSecretPage
   avatarSecretTitle: 'Аватар / Секрет',
   avatarSecretSubtitle: 'Заголовок, описание, картинка домена — прямо в DNS',
-  avatarSecretDescription: 'Те же DNS-записи, что уже читают @ton_site_builder_bot и tonsitecatalog.ton, плюс совместимость с TONresistor/webdom.market.',
+  avatarSecretDescription: 'Avatar, title, description, category — теги для индексации в tonsitecatalog.ton. (Поддерживается: @ton_site_builder_bot, tonsitecatalog.ton, TONresistor, webdom.market)',
   avatarFileTooBig: 'Файл слишком большой для ончейн-записи — сожми картинку или используй прямую ссылку (URL) на уже захостенный файл.',
   avatarFileReadError: 'Не удалось прочитать файл.',
   avatarLoadingExisting: 'Проверяю, что уже записано ончейн…',

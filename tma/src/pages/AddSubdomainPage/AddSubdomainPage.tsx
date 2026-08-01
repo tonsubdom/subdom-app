@@ -12566,7 +12566,9 @@ export const AuctionPage: React.FC<{}> = () => {
   const isDark = currentTheme === "dark";
   const { t } = useLanguage();
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>("proxy");
+  // По умолчанию SBT — обычный субдомен без аукционных рисков, чтобы юзер,
+  // тыкающий не глядя, не попал сразу на Proxy-аукцион.
+  const [activeTab, setActiveTab] = useState<ActiveTab>("sbt");
   const [selectedDomainZone, setSelectedDomainZone] = useState("");
   const [subDomainName, setSubDomainName] = useState("");
   const [collectionAddress, setCollectionAddress] = useState("");
@@ -13420,8 +13422,8 @@ export const AuctionPage: React.FC<{}> = () => {
             },
           }}
         >
-          <Tab label={t("proxyForSale")} value="proxy" />
           <Tab label={t("sbtNotForSale")} value="sbt" />
+          <Tab label={t("proxyForSale")} value="proxy" />
         </Tabs>
       </Box>
 

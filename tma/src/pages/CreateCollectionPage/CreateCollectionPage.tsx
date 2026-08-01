@@ -163,7 +163,9 @@ const partnerAddress = isTestnet
   const API_PAYLOAD_URL=import.meta.env.VITE_API_SC_PAYLOAD_URL;
 
   // Состояния
-  const [activeTab, setActiveTab] = useState<ActiveTab>('proxy');
+  // По умолчанию SBT — безопасный обратимый режим, чтобы юзер, тыкающий не глядя,
+  // не попал сразу на необратимый Proxy.
+  const [activeTab, setActiveTab] = useState<ActiveTab>('sbt');
   const [activeStep, setActiveStep] = useState(0);
   const [domainName, setDomainName] = useState('');
   const [snackbar, setSnackbar] = useState<JSX.Element | null>(null);
@@ -1575,8 +1577,8 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
             },
           }}
         >
-          <Tab label={t('proxyForSale')} value="proxy" />
           <Tab label={t('sbtNotForSale')} value="sbt" />
+          <Tab label={t('proxyForSale')} value="proxy" />
         </Tabs>
       </Box>
 
