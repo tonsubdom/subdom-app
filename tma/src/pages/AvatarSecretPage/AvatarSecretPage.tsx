@@ -21,6 +21,7 @@ import {
   buildOwnerDnsTextPayloads,
   buildOwnerPicturePayload,
   resolveDomainNftAddress,
+  fetchOwnerDnsTextCategory,
   ResolvedDomain,
 } from '@/services/ownerMetaService';
 
@@ -82,16 +83,26 @@ export const AvatarSecretPage: React.FC = () => {
   const colors = themeColors[isDark ? 'dark' : 'light'];
   const wallet = useTonWallet();
   const [tonConnectUI] = useTonConnectUI();
+  const isTestnet = wallet?.account?.chain === '-3';
 
   const [domainName, setDomainName] = useState('');
   const [resolving, setResolving] = useState(false);
   const [resolvedDomain, setResolvedDomain] = useState<ResolvedDomain | null>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
+  const [loadingExisting, setLoadingExisting] = useState(false);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [pictureUrl, setPictureUrl] = useState('');
+  // Что из этого реально уже прописано ончейн (для значка "уже есть запись" —
+  // не проверено вживую, см. ownerMetaService.ts).
+  const [hasExisting, setHasExisting] = useState({
+    title: false,
+    description: false,
+    category: false,
+    picture: false,
+  });
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState<React.ReactElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -112,6 +123,11 @@ export const AvatarSecretPage: React.FC = () => {
     setResolving(true);
     setResolveError(null);
     setResolvedDomain(null);
+    setTitle('');
+    setDescription('');
+    setCategory('');
+    setPictureUrl('');
+    setHasExisting({ title: false, description: false, category: false, picture: false });
     try {
       const resolved = await resolveDomainNftAddress(fullDomain);
       if (!resolved) {
@@ -119,10 +135,41 @@ export const AvatarSecretPage: React.FC = () => {
         return;
       }
       setResolvedDomain(resolved);
+      loadExistingRecords(resolved.nftAddress);
     } catch (e) {
       setResolveError(t('avatarResolveError') || 'Ошибка при поиске домена');
     } finally {
       setResolving(false);
+    }
+  };
+
+  // Подтягиваем то, что уже прописано ончейн для этого домена, чтобы юзер видел
+  // текущую запись до того, как начнёт её менять (а не гадал, есть там что-то
+  // или нет). Не блокирует форму — если чтение упадёт, просто останется пусто.
+  const loadExistingRecords = async (nftAddress: string) => {
+    setLoadingExisting(true);
+    try {
+      const [existingTitle, existingDescription, existingCategory, existingPicture] =
+        await Promise.all([
+          fetchOwnerDnsTextCategory(nftAddress, 'title', isTestnet),
+          fetchOwnerDnsTextCategory(nftAddress, 'description', isTestnet),
+          fetchOwnerDnsTextCategory(nftAddress, 'category', isTestnet),
+          fetchOwnerDnsTextCategory(nftAddress, 'picture', isTestnet),
+        ]);
+      if (existingTitle) setTitle(existingTitle);
+      if (existingDescription) setDescription(existingDescription);
+      if (existingCategory) setCategory(existingCategory);
+      if (existingPicture) setPictureUrl(existingPicture);
+      setHasExisting({
+        title: !!existingTitle,
+        description: !!existingDescription,
+        category: !!existingCategory,
+        picture: !!existingPicture,
+      });
+    } catch {
+      // Тихо игнорируем — форма просто останется пустой, юзер заполнит с нуля.
+    } finally {
+      setLoadingExisting(false);
     }
   };
 
@@ -283,7 +330,7 @@ export const AvatarSecretPage: React.FC = () => {
           🎭 {t('avatarSecretTitle') || 'Аватар / Секрет'}
         </Typography>
         <Typography sx={{ fontSize: '13px', color: colors.textSecondary, mt: 0.5 }}>
-          {t('avatarSecretDescription') || 'Те же DNS-записи, что уже читают @ton_site_builder_bot и tonsitecatalog.ton, плюс совместимость с TONresistor/webdom.market.'}
+          {t('avatarSecretDescription') || 'Теги для индексации в tonsitecatalog.ton — те же DNS-записи, что уже читают @ton_site_builder_bot и tonsitecatalog.ton, плюс совместимость с TONresistor/webdom.market.'}
         </Typography>
       </Box>
 
@@ -318,23 +365,68 @@ export const AvatarSecretPage: React.FC = () => {
 
         {resolvedDomain && (
           <Box style={cardStyle}>
-            <Input
-              placeholder={t('avatarTitlePlaceholder') || 'Заголовок'}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              style={inputStyle}
-            />
-            <Input
-              placeholder={t('avatarDescriptionPlaceholder') || 'Описание'}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              style={inputStyle}
-            />
+            {loadingExisting && (
+              <Typography sx={{ fontSize: '11px', color: colors.textSecondary, mb: 1, textAlign: 'center' }}>
+                {t('avatarLoadingExisting') || 'Проверяю, что уже записано ончейн…'}
+              </Typography>
+            )}
+
+            {/* Круглый аватар — видно с первого взгляда, что запись уже есть, до того как что-то менять */}
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+              <Box
+                sx={{
+                  width: 84,
+                  height: 84,
+                  borderRadius: '50%',
+                  overflow: 'hidden',
+                  border: `2px solid ${pictureUrl.trim() ? colors.accent : colors.border}`,
+                  boxShadow: pictureUrl.trim() ? `0 0 12px ${colors.shadow}` : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: isDark ? '#0D0D0D' : '#FFFFFF',
+                  fontSize: 32,
+                }}
+              >
+                {pictureUrl.trim() ? (
+                  <img
+                    src={pictureUrl.trim()}
+                    alt="avatar"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : '🎭'}
+              </Box>
+            </Box>
+
+            <Box sx={{ position: 'relative' }}>
+              <Input
+                placeholder={t('avatarTitlePlaceholder') || 'Заголовок'}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                style={inputStyle}
+              />
+              {hasExisting.title && (
+                <span style={{ position: 'absolute', right: 12, top: 10, fontSize: 14, pointerEvents: 'none' }}>✏️</span>
+              )}
+            </Box>
+            <Box sx={{ position: 'relative' }}>
+              <Input
+                placeholder={t('avatarDescriptionPlaceholder') || 'Описание'}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                style={inputStyle}
+              />
+              {hasExisting.description && (
+                <span style={{ position: 'absolute', right: 12, top: 10, fontSize: 14, pointerEvents: 'none' }}>✏️</span>
+              )}
+            </Box>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               style={{
                 ...inputStyle,
+                marginTop: '4px',
                 appearance: 'none' as const,
                 cursor: 'pointer',
               }}

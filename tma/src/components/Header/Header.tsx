@@ -6,6 +6,7 @@ import { Caption, Cell, Title } from "@telegram-apps/telegram-ui";
 
 import src from '/src/components/Header/subdom_logo.png';
 import "./style.css";
+import { Link } from '@/components/Link/Link';
 import { useLanguage, Language } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -171,7 +172,7 @@ const Header: React.FC = () => {
           }}
           before={
   <div className="logoContainer">
-    <a href="/"><img src={src} alt="TON Logo" className="logoImage" style={{background: 'white', borderRadius: '50%'}} /></a>
+    <Link to="/"><img src={src} alt="TON Logo" className="logoImage" style={{background: 'white', borderRadius: '50%'}} /></Link>
     <Title 
       weight="1" 
       style={{ 

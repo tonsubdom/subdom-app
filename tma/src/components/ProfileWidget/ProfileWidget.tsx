@@ -2872,6 +2872,90 @@ const ProfileWidget: React.FC = () => {
     return result;
   }, [address, proxyCollections, sbtCollections]);
 
+  // ====== ДУБЛИ SBT-ЗОН (только SBT — proxy деактивировать нельзя) ======
+  // Юзер подтвердил: кнопка деактивации нужна только для задваивающихся
+  // SBT-коллекций (proxy-зоны никогда не деактивируются вручную — это
+  // отдельная on-chain сущность без такого состояния). SimpleCollection не
+  // даёт last_transaction_lt (в отличие от SimpleEnrichedItem, см.
+  // getInactiveZoneAddresses в blockchain-items-utils.ts) — используем
+  // createdAt (col.lastUpdated) как ближайший доступный прокси-сигнал
+  // "какая свежее".
+  const autoInactiveSbtZoneAddresses = useMemo(() => {
+    const sbtOnly = getUserZones.filter((z) => Number(z.proxy) === 0);
+    const byName = new Map<string, Zone[]>();
+    for (const zone of sbtOnly) {
+      const name = zone.name.trim().toLowerCase();
+      const group = byName.get(name);
+      if (group) group.push(zone);
+      else byName.set(name, [zone]);
+    }
+    const inactive = new Set<string>();
+    for (const group of byName.values()) {
+      if (group.length < 2) continue;
+      const sorted = [...group].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      for (const stale of sorted.slice(1)) inactive.add(stale.address);
+    }
+    return inactive;
+  }, [getUserZones]);
+
+  // Ручной оверрайд — двусторонний, персистится в localStorage. Та же схема,
+  // что была (и убрана) в ManageDomainPage, но здесь осознанно только для SBT.
+  const SBT_MANUAL_INACTIVE_KEY = "subdom_manually_inactive_sbt_zones";
+  const SBT_MANUAL_ACTIVE_KEY = "subdom_manually_active_sbt_zones";
+  const loadAddrSet = (key: string): Set<string> => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch {
+      return new Set();
+    }
+  };
+  const [manuallyInactiveSbtZones, setManuallyInactiveSbtZones] = useState<Set<string>>(
+    () => loadAddrSet(SBT_MANUAL_INACTIVE_KEY)
+  );
+  const [manuallyActiveSbtZones, setManuallyActiveSbtZones] = useState<Set<string>>(
+    () => loadAddrSet(SBT_MANUAL_ACTIVE_KEY)
+  );
+
+  const toggleSbtZoneActive = (address: string, currentlyInactive: boolean) => {
+    if (currentlyInactive) {
+      setManuallyInactiveSbtZones((prev) => {
+        const next = new Set(prev);
+        next.delete(address);
+        try { localStorage.setItem(SBT_MANUAL_INACTIVE_KEY, JSON.stringify(Array.from(next))); } catch {}
+        return next;
+      });
+      setManuallyActiveSbtZones((prev) => {
+        const next = new Set(prev);
+        next.add(address);
+        try { localStorage.setItem(SBT_MANUAL_ACTIVE_KEY, JSON.stringify(Array.from(next))); } catch {}
+        return next;
+      });
+    } else {
+      setManuallyActiveSbtZones((prev) => {
+        const next = new Set(prev);
+        next.delete(address);
+        try { localStorage.setItem(SBT_MANUAL_ACTIVE_KEY, JSON.stringify(Array.from(next))); } catch {}
+        return next;
+      });
+      setManuallyInactiveSbtZones((prev) => {
+        const next = new Set(prev);
+        next.add(address);
+        try { localStorage.setItem(SBT_MANUAL_INACTIVE_KEY, JSON.stringify(Array.from(next))); } catch {}
+        return next;
+      });
+    }
+  };
+
+  const inactiveSbtZoneAddresses = useMemo(() => {
+    const merged = new Set(autoInactiveSbtZoneAddresses);
+    manuallyInactiveSbtZones.forEach((a) => merged.add(a));
+    manuallyActiveSbtZones.forEach((a) => merged.delete(a));
+    return merged;
+  }, [autoInactiveSbtZoneAddresses, manuallyInactiveSbtZones, manuallyActiveSbtZones]);
+
   // ====== [NEW] СУБДОМЕНЫ ПОЛЬЗОВАТЕЛЯ — ИЗ БЛОКЧЕЙНА ======
 
   const getUserSubdomainsFromBlockchain = useMemo((): Subdomain[] => {
@@ -3360,6 +3444,8 @@ const ProfileWidget: React.FC = () => {
   const renderZoneCard = (zone: Zone) => {
     const zoneType = getZoneTypeInfo(zone);
     const zoneStatus = getZoneStatusInfo(zone);
+    const isSbtZone = Number(zone.proxy) === 0;
+    const isInactiveDuplicate = isSbtZone && inactiveSbtZoneAddresses.has(zone.address);
 
     return (
       <div
@@ -3390,7 +3476,12 @@ const ProfileWidget: React.FC = () => {
               <img
                 src={(zone as any).image}
                 alt={zone.name}
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  opacity: isInactiveDuplicate ? 0.5 : 1,
+                }}
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
@@ -3443,7 +3534,43 @@ const ProfileWidget: React.FC = () => {
               >
                 {zoneStatus.status}
               </div>
+              {isInactiveDuplicate && (
+                <div
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    backgroundColor: "#e53935",
+                    color: "white",
+                    fontSize: "10px",
+                    fontWeight: "700",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  INACTIVE
+                </div>
+              )}
             </div>
+            {isSbtZone && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleSbtZoneActive(zone.address, isInactiveDuplicate);
+                }}
+                style={{
+                  alignSelf: "flex-start",
+                  fontSize: "10px",
+                  fontWeight: "700",
+                  padding: "2px 8px",
+                  borderRadius: "10px",
+                  border: `1px solid ${isInactiveDuplicate ? "#4CAF50" : "#e53935"}`,
+                  background: "transparent",
+                  color: isInactiveDuplicate ? "#4CAF50" : "#e53935",
+                  cursor: "pointer",
+                }}
+              >
+                {isInactiveDuplicate ? "Активировать" : "Деактивировать"}
+              </button>
+            )}
 
             <div>
               <p
