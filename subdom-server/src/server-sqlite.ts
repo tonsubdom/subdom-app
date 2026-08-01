@@ -975,15 +975,29 @@ app.post('/api/users', (req, res) => {
       });
     }
 
-    const defaultNftAccessAmount = JSON.stringify({
+    // Промо-акция "Зарегайся и получи SBT-зону бесплатно" — каждому новому
+    // юзеру сразу выдаём одну бесплатную попытку на SBT-зону случайной длины
+    // (4-9), тем же способом, которым обычно выдаётся платная попытка
+    // (см. recordPayment ниже: nftAccessAmount.sbt[length]=true +
+    // totalPaidAttempts.sbt[length]++ — checkPaymentAttempts/hasPaidAttempt
+    // на фронте её увидит как обычную доступную попытку).
+    const promoLength = String(4 + Math.floor(Math.random() * 6)); // '4'..'9'
+
+    const nftAccessAmountObj = {
       proxy: {4: false, 5: false, 6: false, 7: false, 8: false, 9: false},
       sbt: {4: false, 5: false, 6: false, 7: false, 8: false, 9: false}
-    });
-    
-    const defaultTotalPaidAttempts = JSON.stringify({
+    } as Record<'proxy' | 'sbt', Record<string, boolean>>;
+    nftAccessAmountObj.sbt[promoLength] = true;
+    const defaultNftAccessAmount = JSON.stringify(nftAccessAmountObj);
+
+    const totalPaidAttemptsObj = {
       proxy: {4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0},
       sbt: {4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0}
-    });
+    } as Record<'proxy' | 'sbt', Record<string, number>>;
+    totalPaidAttemptsObj.sbt[promoLength] = 1;
+    const defaultTotalPaidAttempts = JSON.stringify(totalPaidAttemptsObj);
+
+    console.log(`🎁 [PROMO] Новому юзеру ${address} выдана бесплатная SBT-попытка длины ${promoLength}`);
     
     const stmt = db.prepare(`
       INSERT INTO users (
