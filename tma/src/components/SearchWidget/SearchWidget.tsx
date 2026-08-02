@@ -8,14 +8,26 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { openLink } from '@telegram-apps/sdk-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+// Событие, которым SearchWidget просит ProfileWidget открыться — сам
+// ProfileWidget держит isExpanded как локальный стейт, лезть в его (и без
+// того гигантский) компонент ради шаринга стейта через контекст/redux не
+// стали, событие проще и ничего не ломает.
+export const OPEN_PROFILE_WIDGET_EVENT = 'subdom:open-profile-widget';
+
 interface SearchIndexEntry {
-  path: string;
   labelKey: string;
   labelFallback: string;
   keywords: string[];
+  // Либо внутренний роут (навигация через react-router), либо внешняя
+  // ссылка (открывается через openLink — как в components/Link/Link.tsx),
+  // либо служебное действие вроде открытия другого виджета.
+  kind: 'route' | 'external' | 'action';
+  to?: string;
+  action?: () => void;
   // id элемента на целевой странице, к которому проскроллить после перехода
   // (scrollIntoView). Пока ни у одной страницы такие якоря не расставлены —
   // просто переходим на верх страницы; добавить id на страницах и проставить
@@ -25,46 +37,76 @@ interface SearchIndexEntry {
 
 const SEARCH_INDEX: SearchIndexEntry[] = [
   {
-    path: '/',
+    kind: 'route',
+    to: '/',
     labelKey: 'searchIndexHome',
     labelFallback: 'Главная',
     keywords: ['главная', 'домой', 'home', 'старт'],
   },
   {
-    path: '/manage',
+    kind: 'action',
+    action: () => window.dispatchEvent(new Event(OPEN_PROFILE_WIDGET_EVENT)),
+    labelKey: 'searchIndexProfile',
+    labelFallback: 'Профиль',
+    keywords: ['профиль', 'кошелек', 'мои зоны', 'мои субдомены', 'profile'],
+  },
+  {
+    kind: 'route',
+    to: '/manage',
     labelKey: 'searchIndexManage',
     labelFallback: 'Управление доменами',
     keywords: ['управление', 'мои домены', 'зоны', 'субдомены', 'manage', 'домены'],
   },
   {
-    path: '/market',
+    kind: 'route',
+    to: '/market',
     labelKey: 'searchIndexMarket',
     labelFallback: 'Маркет',
     keywords: ['маркет', 'market', 'купить', 'продать', 'покупка', 'продажа'],
   },
   {
-    path: '/add-subdomain',
+    kind: 'route',
+    to: '/add-subdomain',
     labelKey: 'searchIndexAddSubdomain',
     labelFallback: 'Добавить субдомен',
     keywords: ['субдомен', 'добавить', 'аукцион', 'ставка', 'auction'],
   },
   {
-    path: '/avatar-secret',
+    kind: 'route',
+    to: '/avatar-secret',
     labelKey: 'searchIndexAvatarSecret',
     labelFallback: 'Аватар / Секрет',
-    keywords: ['аватар', 'секрет', 'профиль', 'dns', 'настройки домена'],
+    keywords: ['аватар', 'секрет', 'dns', 'настройки домена'],
   },
   {
-    path: '/create-torrent',
+    kind: 'route',
+    to: '/create-torrent',
     labelKey: 'searchIndexCreateTorrent',
     labelFallback: 'Создать торрент',
-    keywords: ['торрент', 'bagid', 'storage', 'хранение', 'файлы', 'сайт', 'сайт домена'],
+    keywords: ['торрент', 'bagid', 'storage', 'хранение', 'файлы'],
   },
   {
-    path: '/create-collection',
+    kind: 'route',
+    to: '/create-collection',
     labelKey: 'searchIndexCreateCollection',
     labelFallback: 'Создать коллекцию',
     keywords: ['коллекция', 'зона', 'создать зону', 'collection'],
+  },
+  {
+    // Внешний бот-конструктор сайтов, см. IndexPage.tsx (to: "https://t.me/Ton_site_builder_bot")
+    kind: 'external',
+    to: 'https://t.me/Ton_site_builder_bot',
+    labelKey: 'createSiteButton',
+    labelFallback: 'Создать сайт',
+    keywords: ['сайт', 'создать сайт', 'конструктор сайтов', 'tonsite', 'site builder'],
+  },
+  {
+    // tonsite://-ссылка на общий каталог сайтов, см. IndexPage.tsx (to: "tonsite://tonsitecatalog.ton")
+    kind: 'external',
+    to: 'tonsite://tonsitecatalog.ton',
+    labelKey: 'searchIndexTonsiteCatalog',
+    labelFallback: 'TonSite Catalog',
+    keywords: ['каталог', 'tonsite catalog', 'каталог тонсайтов', 'catalog'],
   },
 ];
 
@@ -122,9 +164,19 @@ export const SearchWidget: React.FC = () => {
   };
 
   const goTo = (entry: SearchIndexEntry) => {
-    navigate(entry.path);
     setOpen(false);
     setQuery('');
+
+    if (entry.kind === 'action') {
+      entry.action?.();
+      return;
+    }
+    if (entry.kind === 'external') {
+      openLink(entry.to!);
+      return;
+    }
+
+    navigate(entry.to!);
     if (entry.anchor) {
       // ждём кадр, чтобы страница по новому роуту успела смонтироваться
       window.setTimeout(() => {
@@ -225,7 +277,7 @@ export const SearchWidget: React.FC = () => {
           ) : (
             results.map((entry) => (
               <button
-                key={entry.path}
+                key={entry.labelKey}
                 onClick={() => goTo(entry)}
                 style={{
                   display: 'block',

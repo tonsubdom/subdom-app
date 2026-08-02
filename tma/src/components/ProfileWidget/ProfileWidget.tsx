@@ -2317,6 +2317,7 @@ import {
 } from "@/services/ownerMetaService";
 import { ShowSnackbar } from "@/components/ShowSnackbar";
 import { LupaButton } from "@/components/LupaButton/LupaButton";
+import { OPEN_PROFILE_WIDGET_EVENT } from "@/components/SearchWidget/SearchWidget";
 
 // ====================================================================
 // КОНСТАНТЫ
@@ -2571,6 +2572,15 @@ const getSubdomainImage = (subdomain: Subdomain): string | undefined => {
 
 const ProfileWidget: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
+
+  // SearchWidget не имеет прямого доступа к этому стейту (свой, локальный) —
+  // просит открыть виджет профиля через событие вместо контекста/redux.
+  useEffect(() => {
+    const handler = () => setIsExpanded(true);
+    window.addEventListener(OPEN_PROFILE_WIDGET_EVENT, handler);
+    return () => window.removeEventListener(OPEN_PROFILE_WIDGET_EVENT, handler);
+  }, []);
+
   const wallet = useTonWallet();
   const [tonConnectUI] = useTonConnectUI();
   const address = useTonAddress();
