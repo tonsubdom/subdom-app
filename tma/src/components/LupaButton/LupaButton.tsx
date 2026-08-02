@@ -128,7 +128,16 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
     try {
       const parsed = await fetchSiteAndStorageRecords(address, isTestnet);
       if (parsed.siteAdnl) {
-        window.open(`tonsite://${domain}`, '_blank', 'noopener,noreferrer');
+        // window.open('tonsite://...') открывал ссылку в ТЕКУЩЕЙ вкладке
+        // вместо отдельной — кастомные URI-схемы браузеры обрабатывают через
+        // window.open ненадёжно. Клик по настоящему <a href> — тот же
+        // паттерн, что уже работает в ManageDomainPage/AvatarSecretPage.
+        const link = document.createElement('a');
+        link.href = `tonsite://${domain}`;
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
         setOpen(false);
       } else {
         setResult({ kind: 'site-not-found' });

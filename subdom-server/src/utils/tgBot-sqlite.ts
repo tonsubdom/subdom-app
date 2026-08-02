@@ -2561,6 +2561,14 @@ class TelegramBotService {
       this.setupBotMenu();
 
       this.sendTestNotification();
+
+      // Промо-рассылка "зарегайся и получи SBT-зону бесплатно" — раз в 24
+      // часа во все чаты с активной public-подпиской (не только один раз в
+      // /start), см. sendPublicPromoNotification.
+      const PROMO_BROADCAST_INTERVAL_MS = 24 * 60 * 60 * 1000;
+      setInterval(() => {
+        this.sendPublicPromoNotification();
+      }, PROMO_BROADCAST_INTERVAL_MS);
     } catch (error) {
       console.error('❌ Ошибка инициализации Telegram бота:', error);
     }
@@ -3361,6 +3369,25 @@ ${$.fieldRegisteredAt}: ${new Date().toLocaleString('ru-RU')}
       });
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления о пользователе:', error);
+      return false;
+    }
+  }
+
+  // --- ПРОМО-РАССЫЛКА (раз в 24 часа, см. таймер в initializeBot) ---
+  // Тот же баннер, что и в /start, но отдельным сообщением во все чаты с
+  // активной public-подпиской — юзеры, уже видевшие /start один раз, тоже
+  // периодически получают напоминание.
+  async sendPublicPromoNotification(): Promise<boolean> {
+    try {
+      return await this.sendGroupNotification(
+        (lang) => {
+          const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
+          return $.promoBanner;
+        },
+        [[{ text: LANG.ru.btnRegisterPromo, url: DeeplinkUtils.generateHomeLink() }]]
+      );
+    } catch (error) {
+      console.error('❌ Ошибка при отправке промо-рассылки:', error);
       return false;
     }
   }

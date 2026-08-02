@@ -4536,7 +4536,7 @@ import { Page } from "@/components/Page";
 import { ShowSnackbar } from "@/components/ShowSnackbar";
 import { ScanProgressLoader } from "@/components/ScanProgressLoader";
 import { useTonAPI } from "@/hooks/useTonAPI";
-import { useBlockchainLoadProgress } from "@/hooks/useBlockchainLoadProgress";
+import { useBlockchainScanUi } from "@/hooks/useBlockchainLoadProgress";
 import { shortenAddress } from "@/utils/address";
 import { AppDispatch } from "@/store/store";
 
@@ -4691,22 +4691,7 @@ export const ManageDomainPage: FC = () => {
   );
 
   // Живой прогресс первичной загрузки (коллекции -> итемы), см. loading-progress-bus.ts.
-  const blockchainScanProgress = useBlockchainLoadProgress();
-  const blockchainScanUi = useMemo(() => {
-    if (blockchainScanProgress.stage === "items" && blockchainScanProgress.total > 0) {
-      return {
-        percent: Math.round((blockchainScanProgress.done / blockchainScanProgress.total) * 100),
-        statusText: `Обработано ${blockchainScanProgress.done} из ${blockchainScanProgress.total} коллекций`,
-      };
-    }
-    if (blockchainScanProgress.stage === "collections") {
-      return {
-        percent: undefined,
-        statusText: `Найдено коллекций: ${blockchainScanProgress.done}`,
-      };
-    }
-    return { percent: undefined, statusText: undefined };
-  }, [blockchainScanProgress]);
+  const blockchainScanUi = useBlockchainScanUi();
 
   // ====== LOCAL STATE ======
   const [snackbar, setSnackbar] = useState<JSX.Element | null>(null);

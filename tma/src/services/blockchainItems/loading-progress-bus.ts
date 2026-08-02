@@ -11,9 +11,15 @@ export interface BlockchainLoadProgress {
   done: number;
   /** total === 0 значит "неизвестно заранее" (пагинация) — показываем просто счётчик */
   total: number;
+  /**
+   * Момент (Date.now()), когда стадия "items" реально началась — нужен UI,
+   * чтобы прикинуть оставшееся время по факту прошедшего (elapsed / done *
+   * total), а не гадать. null, пока стадия не items или ещё не стартовала.
+   */
+  startedAt: number | null;
 }
 
-let current: BlockchainLoadProgress = { stage: 'idle', done: 0, total: 0 };
+let current: BlockchainLoadProgress = { stage: 'idle', done: 0, total: 0, startedAt: null };
 const listeners = new Set<(p: BlockchainLoadProgress) => void>();
 
 export function reportBlockchainLoadProgress(
@@ -21,7 +27,11 @@ export function reportBlockchainLoadProgress(
   done: number,
   total: number
 ): void {
-  current = { stage, done, total };
+  // startedAt фиксируется один раз, в момент первого репорта стадии "items" —
+  // дальше просто переносится как есть, пока стадия снова не сменится на idle.
+  const startedAt =
+    stage === 'items' ? current.startedAt ?? Date.now() : stage === 'idle' ? null : current.startedAt;
+  current = { stage, done, total, startedAt };
   listeners.forEach((listener) => listener(current));
 }
 

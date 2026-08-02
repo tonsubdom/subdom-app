@@ -26,7 +26,13 @@ export const Link: FC<LinkProps> = ({
     const isExternal = targetUrl.protocol !== currentUrl.protocol
       || targetUrl.host !== currentUrl.host;
 
-    if (isExternal) {
+    // openLink() из Telegram SDK рассчитан на обычные http(s)-ссылки — для
+    // кастомных схем вроде tonsite:// он на Android молча ничего не делает
+    // (кнопка "не реагирует", подтверждено юзером вживую 2026-08-03). Для
+    // них НЕ вызываем preventDefault — обычный клик по <a href="tonsite://...">
+    // браузер/вебвью обрабатывает штатно, как и остальные tonsite-ссылки в
+    // приложении (ManageDomainPage, AvatarSecretPage).
+    if (isExternal && (targetUrl.protocol === 'http:' || targetUrl.protocol === 'https:')) {
       e.preventDefault();
       openLink(targetUrl.toString());
     }

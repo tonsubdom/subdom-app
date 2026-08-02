@@ -1017,17 +1017,28 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
     // Обрабатываем коллекции параллельно, но с ограничением
     const chunks = this.chunkArray(collections, this.config.maxConcurrentRequests);
     let processedCollections = 0;
+    reportBlockchainLoadProgress('items', 0, collections.length);
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       console.log(`📄 Пакет коллекций ${i + 1}/${chunks.length}`);
 
+      // Репортим прогресс СРАЗУ по завершении каждой отдельной коллекции, а
+      // не только всего пакета через Promise.all — иначе одна медленная
+      // коллекция (например, зона с большой пагинацией) держит на месте
+      // прогресс всего пакета, и юзер видит "залипание", а потом резкий
+      // скачок, когда пакет наконец резолвится целиком (см. живой репорт юзера
+      // 2026-08-03: 10-15 сек без движения, потом сразу 100%).
       const chunkPromises = chunk.map(async (collection) => {
         try {
           const items = await this.getItemsFromCollection(collection.address);
+          processedCollections += 1;
+          reportBlockchainLoadProgress('items', processedCollections, collections.length);
           return items;
         } catch (error) {
           console.error(`❌ Ошибка загрузки итемов из коллекции ${collection.address}:`, error);
+          processedCollections += 1;
+          reportBlockchainLoadProgress('items', processedCollections, collections.length);
           return [];
         }
       });
@@ -1035,8 +1046,6 @@ async getAllNFTWrappers(forceRefresh = false): Promise<SimpleEnrichedItem[]> {
       const chunkResults = await Promise.all(chunkPromises);
       const flatResults = chunkResults.flat();
       allItems.push(...flatResults);
-      processedCollections += chunk.length;
-      reportBlockchainLoadProgress('items', processedCollections, collections.length);
 
       // Задержка между пакетами
       if (i < chunks.length - 1) {
