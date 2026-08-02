@@ -1,11 +1,12 @@
 // src/components/ChatWidget/ChatWidget.tsx
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { TonConnectButton, useTonAddress, useTonWallet } from "@tonconnect/ui-react";
+import { useTonAddress, useTonWallet } from "@tonconnect/ui-react";
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useUser } from '@/contexts/UserContext';
 import { apiService } from '@/services/api';
+import ConnectWalletPrompt from '@/components/ConnectWalletPrompt/ConnectWalletPrompt';
 
 interface Message {
   id: string;
@@ -438,21 +439,8 @@ const ChatWidget: React.FC = () => {
           </div>
 
           {!wallet ? (
-            <div style={{
-              padding: "40px 20px",
-              textAlign: "center",
-              backgroundColor: colors.secondaryBg,
-            }}>
-              <TonConnectButton />
-              <p style={{
-                marginTop: "20px",
-                fontSize: "12px",
-                color: colors.text,
-                opacity: 0.7,
-                fontFamily: 'monospace'
-              }}>
-                {t('connectToChat')}
-              </p>
+            <div style={{ backgroundColor: colors.secondaryBg }}>
+              <ConnectWalletPrompt subtitle={t('connectToChat')} />
             </div>
           ) : (
             <>

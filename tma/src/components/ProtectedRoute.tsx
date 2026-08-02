@@ -2,6 +2,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAlphaAccess } from '@/hooks/useAlphaAccess';
+import ConnectWalletPrompt from '@/components/ConnectWalletPrompt/ConnectWalletPrompt';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -37,15 +38,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // Если статус disconnected, показываем сообщение о необходимости подключения
   if (status === 'disconnected') {
     console.log('🔌 ProtectedRoute: Wallet not connected');
-    return (
-      <div style={{ 
-        padding: '40px', 
-        textAlign: 'center',
-        fontFamily: 'monospace'
-      }}>
-        🔌 Пожалуйста, подключите кошелек
-      </div>
-    );
+    return <ConnectWalletPrompt />;
   }
 
   // Если нет доступа, перенаправляем на главную

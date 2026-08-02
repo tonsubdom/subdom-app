@@ -436,6 +436,9 @@ export const ruTranslations = {
 // ChatWidget
 support: '💬 Поддержка',
 connectToChat: 'Подключите кошелек для чата',
+connectWalletFirstTitle: 'Сначала войдите',
+connectWalletFirstSubtitle: 'Подключите TON-кошелёк, чтобы продолжить',
+connectWalletFirstButton: 'Подключить кошелёк',
 noMessagesFirst: 'Нет сообщений',
 writeMessage: 'Напишите сообщение...',
 send: 'Отправить',
