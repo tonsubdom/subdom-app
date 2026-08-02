@@ -4957,6 +4957,12 @@ const ProfileWidget: React.FC = () => {
           {address ? (
             <div
               style={{
+                display: "flex",
+                flexDirection: "column",
+                flex: 1,
+                minHeight: 0,
+                overflow: "hidden",
+                gap: "12px",
                 opacity: showSetupPrompt ? 0.4 : 1,
                 filter: showSetupPrompt ? "saturate(0.5)" : undefined,
                 transition: "opacity 0.2s ease",
