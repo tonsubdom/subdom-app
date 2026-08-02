@@ -244,6 +244,11 @@ async function fetchSelfDnsRecordsDict(
   // пустой слайс), category = 0.
   const selfMarkerBoc = beginCell().storeUint(0, 8).endCell().toBoc().toString('base64');
 
+  // toncenter v3 runGetMethod ждёт стек как объекты {type, value}, а не
+  // array-tuple ["tvm.Slice", ...] (это формат другой, TL-based, API — им
+  // здесь никогда не пользовались). С array-tuple v3 отдаёт 422:
+  // "cannot unmarshal array into Go struct field ...V2StackEntity" —
+  // подтверждено вручную запросом к живому API 2026-08-02.
   const response = await fetch(apiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -251,8 +256,8 @@ async function fetchSelfDnsRecordsDict(
       address: rawAddress,
       method: 'dnsresolve',
       stack: [
-        ['tvm.Slice', selfMarkerBoc],
-        ['num', '0'],
+        { type: 'slice', value: selfMarkerBoc },
+        { type: 'num', value: '0' },
       ],
     }),
   });
@@ -263,9 +268,9 @@ async function fetchSelfDnsRecordsDict(
   // Пустой словарь TVM отдаёт как null, а не как Cell — это нормальное состояние
   // "у домена ещё нет ни одной записи", не ошибка.
   const dictEntry = data?.stack?.[1];
-  if (!dictEntry || dictEntry[0] !== 'tvm.Cell') return null;
+  if (!dictEntry || dictEntry.type !== 'cell') return null;
 
-  const boc = dictEntry[1]?.bytes ?? dictEntry[1];
+  const boc = dictEntry.value;
   if (!boc) return null;
   const dictRootCell = Cell.fromBoc(Buffer.from(boc, 'base64'))[0];
 
