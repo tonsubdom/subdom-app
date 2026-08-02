@@ -11,6 +11,7 @@ import { Address } from "@ton/core";
 // Импортируем наш новый механизм
 import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-context.tsx';
 import { SimpleEnrichedItem } from '@/services/blockchainItems/blockchain-items-types';
+import { LupaButton } from '@/components/LupaButton/LupaButton';
 
 // Типы для табов
 type TabType = 'subdomains' | 'nft-wrappers';
@@ -1212,9 +1213,9 @@ const MarketPage: React.FC = () => {
                     onClick={() => handleItemClick(item)}
                   >
                     {/* Image */}
-                    <div style={{ flexShrink: 0 }}>
-                      <img 
-                        src={item.imgUri} 
+                    <div style={{ flexShrink: 0, position: 'relative' }}>
+                      <img
+                        src={item.imgUri}
                         alt={item.name}
                         style={{
                           width: '140px',
@@ -1227,6 +1228,16 @@ const MarketPage: React.FC = () => {
                           e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="140" height="140" viewBox="0 0 140 140"><rect width="140" height="140" fill="%23f0f0f0"/><text x="70" y="70" font-family="Arial" font-size="14" fill="%23999" text-anchor="middle" dy=".3em">No Image</text></svg>';
                         }}
                       />
+                      {item.address && (
+                        <LupaButton
+                          domain={item.name}
+                          address={item.address}
+                          isTestnet={isTestnet}
+                          size={32}
+                          offset={4}
+                          corner="bottom-right"
+                        />
+                      )}
                     </div>
                     
                     {/* Details */}

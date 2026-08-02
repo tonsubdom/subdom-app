@@ -4566,6 +4566,7 @@ import { DomainExpirationInfo } from "@/utils/domainExpiredAtFetchConvert";
 import { useBlockchainItems } from "@/services/blockchainItems/blockchain-items-context";
 import { SimpleEnrichedItem } from "@/services/blockchainItems/blockchain-items-types";
 import { getInactiveZoneAddresses } from "@/services/blockchainItems/blockchain-items-utils";
+import { LupaButton } from "@/components/LupaButton/LupaButton";
 
 // ====================================================================
 // ИНТЕРФЕЙСЫ
@@ -6074,6 +6075,14 @@ export const ManageDomainPage: FC = () => {
                       INACTIVE
                     </div>
                   )}
+                  <LupaButton
+                    domain={item.title}
+                    address={item.address}
+                    isTestnet={isTestnet}
+                    size={32}
+                    offset={4}
+                    corner="bottom-right"
+                  />
                 </div>
                 {/* Колонка 2: текст + кнопка */}
                 <div
