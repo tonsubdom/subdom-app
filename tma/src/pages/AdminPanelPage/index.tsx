@@ -84,15 +84,18 @@ const ProtectedAdminPanel: React.FC = () => {
       const { payload } = await payloadRes.json();
 
       // Одноразовый слушатель следующего успешного коннекта — именно он
-      // придёт с запрошенным tonProof в connectItems.
+      // придёт с запрошенным tonProof в connectItems. tonConnectUI.disconnect()
+      // ниже сам триггерит onStatusChange(null) — это НЕ провал логина, а
+      // ожидаемый побочный эффект отключения перед переподключением. Раньше
+      // это null-событие ловилось тем же listener'ом, который тут же себя
+      // отписывал и сбрасывал isLoggingIn — то есть логин падал ещё до того,
+      // как открывалась модалка переподключения. Игнорируем null и ждём
+      // именно следующего реального коннекта.
       const unsubscribe = tonConnectUI.onStatusChange(async (connectedWallet) => {
-        unsubscribe();
         if (!connectedWallet) {
-          setLoginState('error');
-          setLoginError('Кошелёк не подключился');
-          setIsLoggingIn(false);
           return;
         }
+        unsubscribe();
         const proofReply = connectedWallet.connectItems?.tonProof;
         if (!proofReply || !('proof' in proofReply)) {
           setLoginState('error');
