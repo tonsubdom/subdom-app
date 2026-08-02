@@ -22,6 +22,7 @@ import { LanguageProvider } from '@/contexts/LanguageContext';
 // Импортируем виджеты
 import ChatWidget from '@/components/ChatWidget/ChatWidget';
 import ProfileWidget from '@/components/ProfileWidget/ProfileWidget';
+import SearchWidget from '@/components/SearchWidget/SearchWidget';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { UserProvider } from '@/contexts/UserContext';
 
@@ -86,6 +87,7 @@ export const App: React.FC = () => {
                   {/* Виджеты в углах экрана */}
                   <ChatWidget />
                   <ProfileWidget />
+                  <SearchWidget />
 
                   {/* Модальное окно для альфа-тестирования */}
                   <AlphaTestModal
