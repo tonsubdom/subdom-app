@@ -171,6 +171,21 @@ const CreateTorrentPage: React.FC = () => {
       .finally(() => setProvidersLoading(false));
   }, []);
 
+  // domain приходит с карточки конкретной зоны/субдомена в ProfileWidget
+  // (handleCreateTorrent) — сразу подставляет имя в поле привязки и включает
+  // чекбокс, а не пустую форму без параметров.
+  useEffect(() => {
+    const hash = window.location.hash;
+    const queryString = hash.includes('?') ? hash.split('?')[1] : '';
+    const params = new URLSearchParams(queryString);
+    const domainFromUrl = params.get('domain');
+    if (domainFromUrl) {
+      setDomainInput(domainFromUrl);
+      setBindImmediately(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const sortedProviders = useMemo(() => {
     const list = [...providers];
     const value = (p: Provider): number => {
@@ -327,19 +342,28 @@ const CreateTorrentPage: React.FC = () => {
     setBindResult(null);
     setBindMessage(null);
     try {
-      const domain = domainInput.trim().toLowerCase();
-      // Пробуем как есть первым (t.me/.gram и т.п. не нуждаются в ".ton"),
-      // и только потом — с ".ton" на конце, см. тот же фикс в AvatarSecretPage.
-      let resolved = await resolveDomainNftAddress(domain, isTestnet);
-      if (!resolved && !domain.endsWith('.ton')) {
-        resolved = await resolveDomainNftAddress(`${domain}.ton`, isTestnet);
-      }
-      if (!resolved) {
-        throw new Error(t('createTorrentDomainNotFound') || 'Домен не найден');
+      const raw = domainInput.trim();
+      let nftAddress: string;
+      try {
+        // Ввод уже сам по себе адрес NFT-контракта — резолв домена не нужен.
+        Address.parse(raw);
+        nftAddress = raw;
+      } catch {
+        const domain = raw.toLowerCase();
+        // Пробуем как есть первым (t.me/.gram и т.п. не нуждаются в ".ton"),
+        // и только потом — с ".ton" на конце, см. тот же фикс в AvatarSecretPage.
+        let resolved = await resolveDomainNftAddress(domain, isTestnet);
+        if (!resolved && !domain.endsWith('.ton')) {
+          resolved = await resolveDomainNftAddress(`${domain}.ton`, isTestnet);
+        }
+        if (!resolved) {
+          throw new Error(t('createTorrentDomainNotFound') || 'Домен не найден');
+        }
+        nftAddress = resolved.nftAddress;
       }
       const result = await dispatch(
         setStorageRecord({
-          dnsItemAddress: resolved.nftAddress,
+          dnsItemAddress: nftAddress,
           bagIdHex: id,
           tonConnectUI,
         })
@@ -635,7 +659,7 @@ const CreateTorrentPage: React.FC = () => {
             {bindImmediately && (
               <input
                 type="text"
-                placeholder={t('createTorrentBindDomainPlaceholder') || 'Имя домена (например: mysite.ton)'}
+                placeholder={t('createTorrentBindDomainPlaceholder') || 'Имя домена или адрес NFT (например: mysite.ton или EQ...)'}
                 value={domainInput}
                 onChange={(e) => setDomainInput(e.target.value)}
                 style={inputStyle}
@@ -682,10 +706,26 @@ const CreateTorrentPage: React.FC = () => {
                     {bindMessage}
                   </p>
                 )}
-                {bagDetails && !bindImmediately && (
-                  <p style={{ color: colors.textSecondary, marginTop: '8px', marginBottom: 0 }}>
-                    {t('createTorrentPaymentHint') || 'Дальше — оплати провайдеру ниже, чтобы он начал реально раздавать файлы, и при желании привяжи bagID к домену вручную на странице DNS-записей.'}
-                  </p>
+                {bagDetails && !bindImmediately && bindResult !== 'success' && (
+                  <div style={{ marginTop: '10px' }}>
+                    <p style={{ color: colors.textSecondary, marginBottom: '8px' }}>
+                      {t('createTorrentPaymentHint') || 'Дальше — оплати провайдеру ниже, чтобы он начал реально раздавать файлы. Привязать bagID к домену можно и сейчас:'}
+                    </p>
+                    <input
+                      type="text"
+                      placeholder={t('createTorrentBindDomainPlaceholder') || 'Имя домена или адрес NFT (например: mysite.ton или EQ...)'}
+                      value={domainInput}
+                      onChange={(e) => setDomainInput(e.target.value)}
+                      style={{ ...inputStyle, marginBottom: '8px' }}
+                    />
+                    <button
+                      onClick={() => handleBind()}
+                      disabled={!domainInput.trim() || binding}
+                      style={primaryButtonStyle(!domainInput.trim() || binding)}
+                    >
+                      {binding ? (t('createTorrentBinding') || 'Привязываем к домену...') : (t('createTorrentBindNowButton') || 'Привязать')}
+                    </button>
+                  </div>
                 )}
               </div>
             )}

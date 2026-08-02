@@ -2316,6 +2316,7 @@ import {
   fetchAllOwnerDnsText,
 } from "@/services/ownerMetaService";
 import { ShowSnackbar } from "@/components/ShowSnackbar";
+import { LupaButton } from "@/components/LupaButton/LupaButton";
 
 // ====================================================================
 // КОНСТАНТЫ
@@ -2795,6 +2796,17 @@ const ProfileWidget: React.FC = () => {
       if (domainName) params.set("domain", domainName);
       const query = params.toString();
       navigateHash(query ? `/#/avatar-secret?${query}` : `/#/avatar-secret`);
+    }, 300);
+  };
+  // domainName передаём с карточки конкретной зоны/субдомена — сразу
+  // подставляет имя в поле привязки bagID на CreateTorrentPage (см. эффект
+  // чтения query-параметра там), а не пустую форму.
+  const handleCreateTorrent = (domainName?: string) => {
+    setIsExpanded(false);
+    setTimeout(() => {
+      navigateHash(
+        domainName ? `/#/create-torrent?domain=${encodeURIComponent(domainName)}` : `/#/create-torrent`
+      );
     }, 300);
   };
   const handleGoToAuction = (zoneName: string, subdomainName: string) => {
@@ -3659,6 +3671,10 @@ const ProfileWidget: React.FC = () => {
           position: "relative" as const,
         }}
       >
+        {!(zone as any).image && (
+          <LupaButton domain={zone.name} address={zone.address} isTestnet={isTestnet} />
+        )}
+
         {/* КАРТИНКА СЛЕВА + КОНТЕНТ СПРАВА */}
         <div style={{ display: "flex", gap: "14px", marginBottom: "10px" }}>
           {(zone as any).image && (
@@ -3670,6 +3686,7 @@ const ProfileWidget: React.FC = () => {
                 overflow: "hidden",
                 flexShrink: 0,
                 backgroundColor: colors.background,
+                position: "relative" as const,
               }}
             >
               <img
@@ -3684,6 +3701,14 @@ const ProfileWidget: React.FC = () => {
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
+              />
+              <LupaButton
+                domain={zone.name}
+                address={zone.address}
+                isTestnet={isTestnet}
+                size={32}
+                offset={4}
+                corner="bottom-right"
               />
             </div>
           )}
@@ -3823,42 +3848,9 @@ const ProfileWidget: React.FC = () => {
           </div>
         </div>
 
-        {/* КНОПКИ: ряд 1 + ряд 2 */}
+        {/* КНОПКИ: 4 плоских по углам + круглая "Создать субдомен" в центре */}
         {zone.status !== "inactive" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {/* Ряд 1 */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "8px",
-              }}
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAddSubdomain(zone.name);
-                }}
-                style={responsiveButtonStyle(
-                  t("createSubdomain") || "Сделать субдомен"
-                )}
-              >
-                {t("createSubdomain") || "Сделать субдомен"}
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleManage(zone.address);
-                }}
-                style={responsiveButtonStyle(
-                  t("manageDomain") || "Управлять доменом"
-                )}
-              >
-                {t("manageDomain") || "Управлять доменом"}
-              </button>
-            </div>
-
-            {/* Ряд 2 */}
+          <div style={{ position: "relative" as const, marginTop: "2px" }}>
             <div
               style={{
                 display: "grid",
@@ -3874,24 +3866,93 @@ const ProfileWidget: React.FC = () => {
                     window.open(MiniAppLinks.siteBuilder(zone.name), "_blank");
                   }, 300);
                 }}
-                style={responsiveButtonStyle(
-                  t("createSiteButton") || "Создать сайт"
-                )}
+                style={{
+                  ...responsiveButtonStyle(
+                    t("createSiteButton") || "Создать сайт"
+                  ),
+                  borderBottomRightRadius: "22px",
+                }}
               >
                 {t("createSiteButton") || "Создать сайт"}
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  handleCreateTorrent(zone.name);
+                }}
+                style={{
+                  ...responsiveButtonStyle(
+                    t("createTorrentTitle") || "Создать торрент"
+                  ),
+                  borderBottomLeftRadius: "22px",
+                }}
+              >
+                {t("createTorrentTitle") || "Создать торрент"}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleManage(zone.address);
+                }}
+                style={{
+                  ...responsiveButtonStyle(
+                    t("manageDomain") || "Управлять доменом"
+                  ),
+                  borderTopRightRadius: "22px",
+                }}
+              >
+                {t("manageDomain") || "Управлять доменом"}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
                   handleOpenAvatarSecret(zone.name, zone.address);
                 }}
-                style={responsiveButtonStyle(
-                  t("avatarSecretTitle") || "Аватар / Секрет"
-                )}
+                style={{
+                  ...responsiveButtonStyle(
+                    t("avatarSecretTitle") || "Аватар / Секрет"
+                  ),
+                  borderTopLeftRadius: "22px",
+                }}
               >
                 {t("avatarSecretTitle") || "Аватар / Секрет"}
               </button>
             </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddSubdomain(zone.name);
+              }}
+              title={t("createSubdomain") || "Сделать субдомен"}
+              style={{
+                position: "absolute" as const,
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "54px",
+                height: "54px",
+                borderRadius: "50%",
+                border: `3px solid ${colors.secondaryBg}`,
+                background: isDark ? colors.gold : colors.blue,
+                color: isDark ? "#000" : "#fff",
+                fontSize: "9px",
+                fontWeight: 700,
+                fontFamily: "monospace",
+                textTransform: "uppercase" as const,
+                letterSpacing: "0.3px",
+                lineHeight: 1.15,
+                cursor: "pointer",
+                boxShadow: `0 2px 8px ${colors.shadow}`,
+                zIndex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center" as const,
+                padding: "2px",
+              }}
+            >
+              {t("createSubdomain") || "Сделать субдомен"}
+            </button>
           </div>
         )}
       </div>
@@ -3920,6 +3981,10 @@ const ProfileWidget: React.FC = () => {
           position: "relative" as const,
         }}
       >
+        {!imgUri && (
+          <LupaButton domain={subdomain.name} address={subdomain.address} isTestnet={isTestnet} />
+        )}
+
         {/* КАРТИНКА + КОНТЕНТ */}
         <div style={{ display: "flex", gap: "14px", marginBottom: "10px" }}>
           {imgUri && (
@@ -3931,6 +3996,7 @@ const ProfileWidget: React.FC = () => {
                 overflow: "hidden",
                 flexShrink: 0,
                 backgroundColor: colors.background,
+                position: "relative" as const,
               }}
             >
               <img
@@ -3940,6 +4006,14 @@ const ProfileWidget: React.FC = () => {
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
+              />
+              <LupaButton
+                domain={subdomain.name}
+                address={subdomain.address}
+                isTestnet={isTestnet}
+                size={32}
+                offset={4}
+                corner="bottom-right"
               />
             </div>
           )}
@@ -4078,8 +4152,7 @@ const ProfileWidget: React.FC = () => {
         )}
 
         {effectiveStatus !== "auction" && effectiveStatus !== "inactive" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {/* Ряд 1: Продать (только proxy) + Управлять */}
+          <div style={{ position: "relative" as const, marginTop: "2px" }}>
             <div
               style={{
                 display: "grid",
@@ -4093,32 +4166,16 @@ const ProfileWidget: React.FC = () => {
                     e.stopPropagation();
                     handleMarket();
                   }}
-                  style={responsiveButtonStyle(t("sell") || "Продать")}
+                  style={{
+                    ...responsiveButtonStyle(t("sell") || "Продать"),
+                    borderBottomRightRadius: "22px",
+                  }}
                 >
                   {t("sell")}
                 </button>
               ) : (
                 <div />
               )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleManage(subdomain.address);
-                }}
-                style={responsiveButtonStyle(t("manage") || "Управлять")}
-              >
-                {t("manage")}
-              </button>
-            </div>
-
-            {/* Ряд 2: Создать сайт + Аватар/Секрет */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "8px",
-              }}
-            >
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -4130,24 +4187,64 @@ const ProfileWidget: React.FC = () => {
                     );
                   }, 300);
                 }}
-                style={responsiveButtonStyle(
-                  t("createSiteButton") || "Создать сайт"
-                )}
+                style={{
+                  ...responsiveButtonStyle(
+                    t("createSiteButton") || "Создать сайт"
+                  ),
+                  borderBottomLeftRadius: "22px",
+                }}
               >
                 {t("createSiteButton") || "Создать сайт"}
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleOpenAvatarSecret(subdomain.name, subdomain.address);
+                  handleManage(subdomain.address);
                 }}
-                style={responsiveButtonStyle(
-                  t("avatarSecretTitle") || "Аватар / Секрет"
-                )}
+                style={{
+                  ...responsiveButtonStyle(t("manage") || "Управлять"),
+                  borderTopRightRadius: "22px",
+                }}
               >
-                {t("avatarSecretTitle") || "Аватар / Секрет"}
+                {t("manage")}
               </button>
+              <div />
             </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenAvatarSecret(subdomain.name, subdomain.address);
+              }}
+              title={t("avatarSecretTitle") || "Аватар / Секрет"}
+              style={{
+                position: "absolute" as const,
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "54px",
+                height: "54px",
+                borderRadius: "50%",
+                border: `3px solid ${colors.secondaryBg}`,
+                background: isDark ? colors.gold : colors.blue,
+                color: isDark ? "#000" : "#fff",
+                fontSize: "9px",
+                fontWeight: 700,
+                fontFamily: "monospace",
+                textTransform: "uppercase" as const,
+                letterSpacing: "0.3px",
+                lineHeight: 1.15,
+                cursor: "pointer",
+                boxShadow: `0 2px 8px ${colors.shadow}`,
+                zIndex: 1,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center" as const,
+                padding: "2px",
+              }}
+            >
+              {t("avatarSecretTitle") || "Аватар / Секрет"}
+            </button>
           </div>
         )}
       </div>
