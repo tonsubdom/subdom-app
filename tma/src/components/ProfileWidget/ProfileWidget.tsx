@@ -3289,7 +3289,7 @@ const ProfileWidget: React.FC = () => {
         null;
 
       try {
-        const resolved = await resolveDomainNftAddress(domain);
+        const resolved = await resolveDomainNftAddress(domain, isTestnet);
         if (cancelled) return;
         const dnsText = resolved
           ? await fetchAllOwnerDnsText(resolved.nftAddress, isTestnet)

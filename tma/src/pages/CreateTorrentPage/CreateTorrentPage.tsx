@@ -328,7 +328,12 @@ const CreateTorrentPage: React.FC = () => {
     setBindMessage(null);
     try {
       const domain = domainInput.trim().toLowerCase();
-      const resolved = await resolveDomainNftAddress(domain.endsWith('.ton') ? domain : `${domain}.ton`);
+      // Пробуем как есть первым (t.me/.gram и т.п. не нуждаются в ".ton"),
+      // и только потом — с ".ton" на конце, см. тот же фикс в AvatarSecretPage.
+      let resolved = await resolveDomainNftAddress(domain, isTestnet);
+      if (!resolved && !domain.endsWith('.ton')) {
+        resolved = await resolveDomainNftAddress(`${domain}.ton`, isTestnet);
+      }
       if (!resolved) {
         throw new Error(t('createTorrentDomainNotFound') || 'Домен не найден');
       }

@@ -141,8 +141,7 @@ export interface ResolvedDomain {
   ownerAddress: string;
 }
 
-/** Ищет dns_item-адрес домена через публичный tonapi.io GET (без похода на свой бэкенд/гейтвей). */
-export async function resolveDomainNftAddress(domain: string): Promise<ResolvedDomain | null> {
+async function resolveDomainViaTonapi(domain: string): Promise<ResolvedDomain | null> {
   const res = await fetch(`https://tonapi.io/v2/dns/${encodeURIComponent(domain)}`);
   if (!res.ok) return null;
   const data = await res.json();
@@ -157,6 +156,119 @@ export async function resolveDomainNftAddress(domain: string): Promise<ResolvedD
     nftAddress: Address.parse(addr).toString({ bounceable: true }),
     ownerAddress: Address.parse(owner).toString({ bounceable: true }),
   };
+}
+
+// ==================== ПОЛНЫЙ TEP-81 РЕЗОЛВ (корень сети → любой поддомен) ====================
+//
+// tonapi.io/v2/dns/{name} — это плоский лукап по её собственному индексу
+// зарегистрированных ИМЁН, а не настоящий ончейн-резолв: подтверждено вживую
+// 2026-08-02 — резолвит корневые .ton-домены и "плоские" коллекции (t.me-
+// юзернеймы), но 404 на ЛЮБОЙ вложенный поддомен ЛЮБОЙ коллекции (в т.ч.
+// заведомо существующий, судя по address_book chuжого домена). Единственный
+// общий способ резолвить поддомен (сабдом-платформы или чужой — .gram,
+// tonnel.ton, getgems.ton, vipx.ton, pseudonym.ton и т.д.) — самому пройти
+// протокол TEP-81 рекурсивного делегирования от корневого DNS-резолвера
+// сети (ConfigParam 4), как это делает tonweb's Dns.resolve (сверено с её
+// исходником: node_modules/tonweb/src/contract/dns/DnsUtils.js — тот же
+// формат байт домена и тот же алгоритм цикла по dns_next_resolver, портировано
+// на toncenter v3 runGetMethod). Проверено вживую 2026-08-02: root → "TON DNS
+// Domains" коллекция → nft-айтем 7707.ton, оба адреса совпали с уже
+// подтверждённым результатом tonapi для того же домена.
+
+const MAINNET_ROOT_DNS = '-1:e56754f83426f69b09267bd876ac97c44821345b7e266bd956a7bfbfb98df35c';
+const TESTNET_ROOT_DNS = '-1:efe71d13860afaa6aeaeaf636f9168487f80f1031b0bf8d939ae49d3ea7f7da0';
+
+/** TEP-81 domainToBytes — реверс лейблов через null-байты, с ведущим null-байтом (см. tonweb DnsUtils.js). */
+function domainToBytes(domain: string): Buffer {
+  const labels = domain.toLowerCase().split('.');
+  if (labels.some((l) => l.length === 0)) throw new Error('domain name cannot have an empty component');
+  const parts: Buffer[] = [];
+  for (const label of [...labels].reverse()) {
+    parts.push(Buffer.from(label, 'utf8'), Buffer.from([0]));
+  }
+  let raw = Buffer.concat(parts);
+  if (raw.length < 126) raw = Buffer.concat([Buffer.from([0]), raw]);
+  return raw;
+}
+
+async function runGetMethodV3(address: string, method: string, stack: Array<{ type: string; value: string }>, isTestnet: boolean) {
+  const apiUrl = isTestnet ? 'https://testnet.toncenter.com/api/v3/runGetMethod' : 'https://toncenter.com/api/v3/runGetMethod';
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address, method, stack }),
+  });
+  if (!response.ok) return null;
+  return response.json();
+}
+
+/** Один шаг рекурсивного dnsresolve — при неполном резолве прыгает на dns_next_resolver и продолжает с остатком байт. */
+async function dnsResolveChain(address: string, rawDomainBytes: Buffer, isTestnet: boolean): Promise<string | null> {
+  const lenBits = rawDomainBytes.length * 8;
+  const sliceBoc = beginCell().storeBuffer(rawDomainBytes).endCell().toBoc().toString('base64');
+
+  const data = await runGetMethodV3(
+    address,
+    'dnsresolve',
+    [
+      { type: 'slice', value: sliceBoc },
+      { type: 'num', value: '0' },
+    ],
+    isTestnet
+  );
+  if (!data?.stack || data.stack.length < 2) return null;
+
+  const resultLenEntry = data.stack[0];
+  const cellEntry = data.stack[1];
+  if (!resultLenEntry || resultLenEntry.type !== 'num') return null;
+  const resultLen = parseInt(resultLenEntry.value, 16);
+  if (!resultLen || resultLen % 8 !== 0 || resultLen > lenBits) return null;
+
+  if (resultLen === lenBits) {
+    // Полностью резолвлено этим контрактом — он и есть искомый dns_item.
+    return address;
+  }
+  if (!cellEntry || cellEntry.type !== 'cell') return null; // дальше пути нет
+
+  try {
+    const nextCell = Cell.fromBoc(Buffer.from(cellEntry.value, 'base64'))[0];
+    const slice = nextCell.beginParse();
+    slice.loadUint(16); // dns_next_resolver record prefix (0xba93) — не проверяем строго, как и tonweb
+    const nextAddress = slice.loadAddress();
+    return dnsResolveChain(nextAddress.toRawString(), rawDomainBytes.subarray(resultLen / 8), isTestnet);
+  } catch {
+    return null;
+  }
+}
+
+async function resolveDomainViaFullChain(domain: string, isTestnet: boolean): Promise<ResolvedDomain | null> {
+  try {
+    const rootAddress = isTestnet ? TESTNET_ROOT_DNS : MAINNET_ROOT_DNS;
+    const finalAddress = await dnsResolveChain(rootAddress, domainToBytes(domain), isTestnet);
+    if (!finalAddress) return null;
+    // ownerAddress здесь не резолвим (нужен отдельный вызов get_nft_data,
+    // которым ни один текущий вызывающий код не пользуется) — пустая строка,
+    // не undefined, чтобы не ломать существующий тип ResolvedDomain.
+    return {
+      nftAddress: Address.parse(finalAddress).toString({ bounceable: true, testOnly: isTestnet }),
+      ownerAddress: '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Ищет dns_item-адрес домена. Сначала быстрый путь через tonapi.io (корневые
+ * .ton-домены, t.me-юзернеймы), при неудаче — общий путь: полный TEP-81
+ * резолв от корня сети, который умеет резолвить ЛЮБОЙ поддомен ЛЮБОЙ
+ * коллекции (сабдом-платформы или чужой), если та стандартно реализует
+ * dns_next_resolver-делегирование.
+ */
+export async function resolveDomainNftAddress(domain: string, isTestnet: boolean = false): Promise<ResolvedDomain | null> {
+  const viaTonapi = await resolveDomainViaTonapi(domain);
+  if (viaTonapi) return viaTonapi;
+  return resolveDomainViaFullChain(domain, isTestnet);
 }
 
 // ==================== ЧТЕНИЕ dns_text (зеркало энкодера выше) ====================

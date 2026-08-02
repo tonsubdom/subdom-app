@@ -160,12 +160,20 @@ export const AvatarSecretPage: React.FC = () => {
   const resolveDomain = async (rawDomain: string) => {
     const trimmed = rawDomain.trim().toLowerCase();
     if (!trimmed) return;
-    const fullDomain = trimmed.endsWith('.ton') ? trimmed : `${trimmed}.ton`;
 
     setResolving(true);
     resetResolvedState();
     try {
-      const resolved = await resolveDomainNftAddress(fullDomain);
+      // Раньше тут слепо приклеивался ".ton" к любому вводу без него — ломало
+      // t.me-юзернеймы (ifyes.t.me) и другие не-.ton TLD (.gram и т.п.),
+      // для которых ".ton" на конце в принципе не нужен. Вместо угадывания
+      // TLD пробуем ввод как есть (покрывает t.me/.gram/уже полный ".ton"-
+      // домен/поддомен), и только если это не нашлось — пробуем с ".ton" на
+      // конце (удобство: можно писать "7707" или "sub.zone" без суффикса).
+      let resolved = await resolveDomainNftAddress(trimmed, isTestnet);
+      if (!resolved && !trimmed.endsWith('.ton')) {
+        resolved = await resolveDomainNftAddress(`${trimmed}.ton`, isTestnet);
+      }
       if (!resolved) {
         setResolveError(t('avatarDomainNotFound') || 'Домен не найден');
         return;
