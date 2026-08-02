@@ -1,12 +1,17 @@
 // tma/src/components/LupaButton/LupaButton.tsx
 //
-// Переиспользуемая "лупа" на карточках зон/субдоменов/маркета/менеджера:
+// Переиспользуемая кнопка-"сеть" на карточках зон/субдоменов/маркета/менеджера:
 // клик открывает поп-меню "Открыть кошелек" / "Открыть как сайт" / "Открыть
 // как торрент". Резолв site/storage через уже существующий dnsRecordsSlice
 // (fetchDNSRecords -> parseDNSRecord), bagID-детали — через тот же
 // /api/storage/details, что и в CreateTorrentPage.
+//
+// Меню рендерится через портал в document.body с position:fixed — если бы
+// оно жило внутри карточки/картинки как обычный ребёнок, оно бы обрезалось
+// их overflow:hidden (сама картинка триммится под borderRadius).
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useDispatch } from 'react-redux';
 import { AppDispatch } from '@/store/store';
 import { fetchDNSRecords, fetchTestnetDNSRecords, parseDNSRecord } from '@/store/dns/dnsRecordsSlice';
@@ -14,6 +19,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const MENU_WIDTH = 240;
+const MENU_HEIGHT_ESTIMATE = 230;
 
 interface BagDetails {
   bag_id: string;
@@ -52,20 +59,25 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
   const dispatch = useDispatch<AppDispatch>();
 
   const [open, setOpen] = useState(false);
-  const [openLeft, setOpenLeft] = useState(true);
-  const [openDown, setOpenDown] = useState(true);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [busy, setBusy] = useState<'site' | 'torrent' | null>(null);
   const [result, setResult] = useState<InlineResult>(null);
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
-  const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
     const onDocClick = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
+      const target = e.target as Node;
+      if (
+        triggerRef.current?.contains(target) ||
+        menuRef.current?.contains(target)
+      ) {
+        return;
       }
+      setOpen(false);
     };
     document.addEventListener('mousedown', onDocClick);
     return () => document.removeEventListener('mousedown', onDocClick);
@@ -76,6 +88,7 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
     textSecondary: isDark ? '#9CA3AF' : '#6B7280',
     border: isDark ? '#374151' : '#E5E7EB',
     menuBg: isDark ? '#111827' : '#FFFFFF',
+    hoverBg: isDark ? '#1F2937' : '#F3F4F6',
     accent: isDark ? '#FFD700' : '#3B82F6',
     error: '#e53935',
   };
@@ -83,17 +96,20 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
   const toggleOpen = () => {
     if (!open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      const menuWidth = 210;
-      const menuHeight = 200;
 
-      const spaceLeftOfTrigger = rect.right;
-      const spaceRightOfTrigger = window.innerWidth - rect.left;
-      setOpenLeft(spaceLeftOfTrigger >= menuWidth || spaceLeftOfTrigger >= spaceRightOfTrigger);
+      const spaceRight = window.innerWidth - rect.left;
+      const spaceLeftSide = rect.right;
+      const alignRightEdgeToTrigger = spaceLeftSide >= MENU_WIDTH || spaceLeftSide >= spaceRight;
+      let left = alignRightEdgeToTrigger ? rect.right - MENU_WIDTH : rect.left;
+      left = Math.min(Math.max(left, 8), window.innerWidth - MENU_WIDTH - 8);
 
-      const spaceAbove = rect.top;
       const spaceBelow = window.innerHeight - rect.bottom;
-      setOpenDown(spaceBelow >= menuHeight || spaceBelow >= spaceAbove);
+      const spaceAbove = rect.top;
+      const openDown = spaceBelow >= MENU_HEIGHT_ESTIMATE || spaceBelow >= spaceAbove;
+      let top = openDown ? rect.bottom + 8 : rect.top - MENU_HEIGHT_ESTIMATE - 8;
+      top = Math.min(Math.max(top, 8), window.innerHeight - 8);
 
+      setPos({ top, left });
       setResult(null);
     }
     setOpen((v) => !v);
@@ -157,106 +173,132 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
     }
   };
 
-  const menuItemStyle: React.CSSProperties = {
+  const menuItemStyle = (key: string): React.CSSProperties => ({
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '10px',
     width: '100%',
-    padding: '10px 12px',
-    background: 'transparent',
+    padding: '13px 16px',
+    background: hoveredItem === key ? colors.hoverBg : 'transparent',
     border: 'none',
     borderBottom: `1px solid ${colors.border}`,
     color: colors.text,
-    fontSize: '12px',
+    fontSize: '14px',
     fontFamily: 'monospace',
     textAlign: 'left',
     cursor: 'pointer',
     whiteSpace: 'nowrap',
-  };
+    transition: 'background 0.12s ease',
+  });
 
-  return (
+  const menu = open && pos ? (
     <div
-      ref={rootRef}
+      ref={menuRef}
       style={{
-        position: 'absolute',
-        ...(corner === 'bottom-right' ? { bottom: `${offset}px` } : { top: `${offset}px` }),
-        right: `${offset}px`,
-        zIndex: 2,
+        position: 'fixed',
+        top: `${pos.top}px`,
+        left: `${pos.left}px`,
+        width: `${MENU_WIDTH}px`,
+        background: colors.menuBg,
+        border: `1px solid ${colors.border}`,
+        borderRadius: '14px',
+        boxShadow: '0 8px 28px rgba(0,0,0,0.4)',
+        overflow: 'hidden',
+        zIndex: 1000,
       }}
     >
       <button
-        ref={triggerRef}
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleOpen();
-        }}
-        title={t('lupaButtonTitle') || 'Открыть / проверить'}
-        style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          borderRadius: '50%',
-          border: `1px solid ${colors.border}`,
-          background: isDark ? 'rgba(17,24,39,0.85)' : 'rgba(255,255,255,0.9)',
-          color: colors.text,
-          fontSize: `${Math.round(size * 0.45)}px`,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
-        }}
+        onClick={handleOpenWallet}
+        onMouseEnter={() => setHoveredItem('wallet')}
+        onMouseLeave={() => setHoveredItem(null)}
+        style={{ ...menuItemStyle('wallet'), fontSize: '20px' }}
       >
-        🌐
+        <span>👛</span>
+        <span style={{ fontSize: '14px' }}>{t('lupaOpenWallet') || 'Открыть кошелек'}</span>
+      </button>
+      <button
+        onClick={handleOpenAsSite}
+        onMouseEnter={() => setHoveredItem('site')}
+        onMouseLeave={() => setHoveredItem(null)}
+        style={menuItemStyle('site')}
+        disabled={busy !== null}
+      >
+        <span style={{ fontSize: '20px' }}>🖥️</span>
+        <span>{busy === 'site' ? (t('processing') || 'Обработка...') : (t('lupaOpenAsSite') || 'Открыть как сайт')}</span>
+      </button>
+      <button
+        onClick={handleOpenAsTorrent}
+        onMouseEnter={() => setHoveredItem('torrent')}
+        onMouseLeave={() => setHoveredItem(null)}
+        style={{ ...menuItemStyle('torrent'), borderBottom: result ? `1px solid ${colors.border}` : 'none' }}
+        disabled={busy !== null}
+      >
+        <span style={{ fontSize: '20px' }}>📦</span>
+        <span>{busy === 'torrent' ? (t('processing') || 'Обработка...') : (t('lupaOpenAsTorrent') || 'Открыть как торрент')}</span>
       </button>
 
-      {open && (
-        <div
-          style={{
-            position: 'absolute',
-            ...(openDown ? { top: `${size + 6}px` } : { bottom: `${size + 6}px` }),
-            ...(openLeft ? { right: 0 } : { left: 0 }),
-            width: '210px',
-            background: colors.menuBg,
-            border: `1px solid ${colors.border}`,
-            borderRadius: '10px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
-            overflow: 'hidden',
-          }}
-        >
-          <button onClick={handleOpenWallet} style={menuItemStyle}>
-            👛 {t('lupaOpenWallet') || 'Открыть кошелек'}
-          </button>
-          <button onClick={handleOpenAsSite} style={menuItemStyle} disabled={busy !== null}>
-            🖥️ {busy === 'site' ? (t('processing') || 'Обработка...') : (t('lupaOpenAsSite') || 'Открыть как сайт')}
-          </button>
-          <button onClick={handleOpenAsTorrent} style={{ ...menuItemStyle, borderBottom: 'none' }} disabled={busy !== null}>
-            📦 {busy === 'torrent' ? (t('processing') || 'Обработка...') : (t('lupaOpenAsTorrent') || 'Открыть как торрент')}
-          </button>
-
-          {result?.kind === 'site-not-found' && (
-            <div style={{ padding: '8px 12px', fontSize: '11px', color: colors.error, borderTop: `1px solid ${colors.border}` }}>
-              {t('lupaSiteNotFound') || 'ADNL-запись сайта не найдена'}
-            </div>
-          )}
-          {result?.kind === 'torrent-not-found' && (
-            <div style={{ padding: '8px 12px', fontSize: '11px', color: colors.error, borderTop: `1px solid ${colors.border}` }}>
-              {t('lupaTorrentNotFound') || 'bagID-запись не найдена'}
-            </div>
-          )}
-          {result?.kind === 'torrent-found' && (
-            <div style={{ padding: '8px 12px', fontSize: '11px', color: colors.textSecondary, borderTop: `1px solid ${colors.border}`, wordBreak: 'break-all' }}>
-              <div style={{ color: colors.text, fontWeight: 600, marginBottom: '4px' }}>bagID</div>
-              <div>{result.bagId}</div>
-              {result.details && (
-                <div style={{ marginTop: '6px' }}>
-                  {t('lupaTorrentSize') || 'Размер'}: {(result.details.bag_size / (1024 * 1024)).toFixed(2)} МБ
-                </div>
-              )}
+      {result?.kind === 'site-not-found' && (
+        <div style={{ padding: '12px 16px', fontSize: '12px', color: colors.error }}>
+          {t('lupaSiteNotFound') || 'ADNL-запись сайта не найдена'}
+        </div>
+      )}
+      {result?.kind === 'torrent-not-found' && (
+        <div style={{ padding: '12px 16px', fontSize: '12px', color: colors.error }}>
+          {t('lupaTorrentNotFound') || 'bagID-запись не найдена'}
+        </div>
+      )}
+      {result?.kind === 'torrent-found' && (
+        <div style={{ padding: '12px 16px', fontSize: '12px', color: colors.textSecondary, wordBreak: 'break-all' }}>
+          <div style={{ color: colors.text, fontWeight: 600, marginBottom: '4px' }}>bagID</div>
+          <div>{result.bagId}</div>
+          {result.details && (
+            <div style={{ marginTop: '6px' }}>
+              {t('lupaTorrentSize') || 'Размер'}: {(result.details.bag_size / (1024 * 1024)).toFixed(2)} МБ
             </div>
           )}
         </div>
       )}
     </div>
+  ) : null;
+
+  return (
+    <>
+      <div
+        style={{
+          position: 'absolute',
+          ...(corner === 'bottom-right' ? { bottom: `${offset}px` } : { top: `${offset}px` }),
+          right: `${offset}px`,
+          zIndex: 2,
+        }}
+      >
+        <button
+          ref={triggerRef}
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleOpen();
+          }}
+          title={t('lupaButtonTitle') || 'Открыть / проверить'}
+          style={{
+            width: `${size}px`,
+            height: `${size}px`,
+            borderRadius: '50%',
+            border: `1px solid ${colors.border}`,
+            background: isDark ? 'rgba(17,24,39,0.85)' : 'rgba(255,255,255,0.9)',
+            color: colors.text,
+            fontSize: `${Math.round(size * 0.45)}px`,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+          }}
+        >
+          🌐
+        </button>
+      </div>
+
+      {menu && createPortal(menu, document.body)}
+    </>
   );
 };
 

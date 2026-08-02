@@ -3871,6 +3871,10 @@ const ProfileWidget: React.FC = () => {
                     t("createSiteButton") || "Создать сайт"
                   ),
                   borderBottomRightRadius: "22px",
+                  display: "flex",
+                  justifyContent: "flex-start",
+                  alignItems: "flex-start",
+                  textAlign: "left" as const,
                 }}
               >
                 {t("createSiteButton") || "Создать сайт"}
@@ -3885,6 +3889,10 @@ const ProfileWidget: React.FC = () => {
                     t("createTorrentTitle") || "Создать торрент"
                   ),
                   borderBottomLeftRadius: "22px",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  alignItems: "flex-start",
+                  textAlign: "right" as const,
                 }}
               >
                 {t("createTorrentTitle") || "Создать торрент"}
@@ -3899,6 +3907,10 @@ const ProfileWidget: React.FC = () => {
                     t("manageDomain") || "Управлять доменом"
                   ),
                   borderTopRightRadius: "22px",
+                  display: "flex",
+                  justifyContent: "flex-start",
+                  alignItems: "flex-end",
+                  textAlign: "left" as const,
                 }}
               >
                 {t("manageDomain") || "Управлять доменом"}
@@ -3913,6 +3925,10 @@ const ProfileWidget: React.FC = () => {
                     t("avatarSecretTitle") || "Аватар / Секрет"
                   ),
                   borderTopLeftRadius: "22px",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  alignItems: "flex-end",
+                  textAlign: "right" as const,
                 }}
               >
                 {t("avatarSecretTitle") || "Аватар / Секрет"}
@@ -3929,18 +3945,18 @@ const ProfileWidget: React.FC = () => {
                 top: "50%",
                 left: "50%",
                 transform: "translate(-50%, -50%)",
-                width: "54px",
-                height: "54px",
+                width: "76px",
+                height: "76px",
                 borderRadius: "50%",
                 border: `3px solid ${colors.secondaryBg}`,
                 background: isDark ? colors.gold : colors.blue,
                 color: isDark ? "#000" : "#fff",
-                fontSize: "9px",
+                fontSize: "10px",
                 fontWeight: 700,
                 fontFamily: "monospace",
                 textTransform: "uppercase" as const,
                 letterSpacing: "0.3px",
-                lineHeight: 1.15,
+                lineHeight: 1.2,
                 cursor: "pointer",
                 boxShadow: `0 2px 8px ${colors.shadow}`,
                 zIndex: 1,
@@ -3948,7 +3964,7 @@ const ProfileWidget: React.FC = () => {
                 alignItems: "center",
                 justifyContent: "center",
                 textAlign: "center" as const,
-                padding: "2px",
+                padding: "4px",
               }}
             >
               {t("createSubdomain") || "Сделать субдомен"}
@@ -4169,6 +4185,10 @@ const ProfileWidget: React.FC = () => {
                   style={{
                     ...responsiveButtonStyle(t("sell") || "Продать"),
                     borderBottomRightRadius: "22px",
+                    display: "flex",
+                    justifyContent: "flex-start",
+                    alignItems: "flex-start",
+                    textAlign: "left" as const,
                   }}
                 >
                   {t("sell")}
@@ -4192,6 +4212,10 @@ const ProfileWidget: React.FC = () => {
                     t("createSiteButton") || "Создать сайт"
                   ),
                   borderBottomLeftRadius: "22px",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  alignItems: "flex-start",
+                  textAlign: "right" as const,
                 }}
               >
                 {t("createSiteButton") || "Создать сайт"}
@@ -4204,11 +4228,32 @@ const ProfileWidget: React.FC = () => {
                 style={{
                   ...responsiveButtonStyle(t("manage") || "Управлять"),
                   borderTopRightRadius: "22px",
+                  display: "flex",
+                  justifyContent: "flex-start",
+                  alignItems: "flex-end",
+                  textAlign: "left" as const,
                 }}
               >
                 {t("manage")}
               </button>
-              <div />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCreateTorrent(subdomain.name);
+                }}
+                style={{
+                  ...responsiveButtonStyle(
+                    t("createTorrentTitle") || "Создать торрент"
+                  ),
+                  borderTopLeftRadius: "22px",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  alignItems: "flex-end",
+                  textAlign: "right" as const,
+                }}
+              >
+                {t("createTorrentTitle") || "Создать торрент"}
+              </button>
             </div>
             <button
               onClick={(e) => {
@@ -4221,18 +4266,18 @@ const ProfileWidget: React.FC = () => {
                 top: "50%",
                 left: "50%",
                 transform: "translate(-50%, -50%)",
-                width: "54px",
-                height: "54px",
+                width: "76px",
+                height: "76px",
                 borderRadius: "50%",
                 border: `3px solid ${colors.secondaryBg}`,
                 background: isDark ? colors.gold : colors.blue,
                 color: isDark ? "#000" : "#fff",
-                fontSize: "9px",
+                fontSize: "10px",
                 fontWeight: 700,
                 fontFamily: "monospace",
                 textTransform: "uppercase" as const,
                 letterSpacing: "0.3px",
-                lineHeight: 1.15,
+                lineHeight: 1.2,
                 cursor: "pointer",
                 boxShadow: `0 2px 8px ${colors.shadow}`,
                 zIndex: 1,
@@ -4240,7 +4285,7 @@ const ProfileWidget: React.FC = () => {
                 alignItems: "center",
                 justifyContent: "center",
                 textAlign: "center" as const,
-                padding: "2px",
+                padding: "4px",
               }}
             >
               {t("avatarSecretTitle") || "Аватар / Секрет"}
