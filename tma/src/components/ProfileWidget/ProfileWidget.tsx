@@ -4957,7 +4957,6 @@ const ProfileWidget: React.FC = () => {
           {address ? (
             <div
               style={{
-                pointerEvents: showSetupPrompt ? "none" : undefined,
                 opacity: showSetupPrompt ? 0.4 : 1,
                 filter: showSetupPrompt ? "saturate(0.5)" : undefined,
                 transition: "opacity 0.2s ease",
