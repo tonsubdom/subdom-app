@@ -2808,7 +2808,12 @@ const ProfileWidget: React.FC = () => {
     }, 300);
   };
 
-  const fetchDomain = async () => {
+  // isStale — гейт от гонки между перекрывающимися вызовами (address/isTestnet
+  // меняются быстрее, чем успевает отработать предыдущий fetch): без него более
+  // медленный старый запрос мог применить свой результат (в т.ч. null) поверх
+  // уже актуального, только что записанного domain, и профиль на секунду
+  // показывал "нет данных", хотя домен на самом деле уже был найден.
+  const fetchDomain = async (isStale?: () => boolean) => {
     if (!wallet || !address) return;
     try {
       const hexAddress = wallet.account.address;
@@ -2822,11 +2827,13 @@ const ProfileWidget: React.FC = () => {
       url.searchParams.append("offset", "0");
       if (apiKey) url.searchParams.append("api_key", apiKey);
       const response = await fetch(url.toString());
+      if (isStale?.()) return;
       if (!response.ok) {
         setDomain(null);
         return;
       }
       const data = await response.json();
+      if (isStale?.()) return;
       const domainFromRecords = data.records?.find(
         (record: any) => record.nft_item_owner === hexAddress
       )?.domain;
@@ -2838,7 +2845,7 @@ const ProfileWidget: React.FC = () => {
       ).find((entry: any) => entry.user_friendly === address)?.domain;
       setDomain(domainFromRecords || domainFromAddressBook || null);
     } catch {
-      setDomain(null);
+      if (!isStale?.()) setDomain(null);
     }
   };
 
@@ -3351,16 +3358,22 @@ const ProfileWidget: React.FC = () => {
   // ====== [NEW] ОСНОВНОЙ ЭФФЕКТ ЗАГРУЗКИ ======
 
   useEffect(() => {
+    let cancelled = false;
     const loadData = async () => {
       if (!address) return;
       try {
         apiService.setNetwork(isTestnet);
         await connectWallet(address, domain || "");
+        if (cancelled) return;
         console.log("🔄 Начинаем загрузку данных профиля...");
-        await fetchDomain();
+        await fetchDomain(() => cancelled);
+        if (cancelled) return;
         await new Promise((r) => setTimeout(r, 500));
+        if (cancelled) return;
         await fetchBalanceSimple();
+        if (cancelled) return;
         await new Promise((r) => setTimeout(r, 500));
+        if (cancelled) return;
         await ensureData();
         console.log("✅ Все данные профиля загружены");
       } catch (error) {
@@ -3368,6 +3381,9 @@ const ProfileWidget: React.FC = () => {
       }
     };
     loadData();
+    return () => {
+      cancelled = true;
+    };
   }, [address, isTestnet]);
 
   // ====== [KEEP] Периодический баланс ======
