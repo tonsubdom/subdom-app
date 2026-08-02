@@ -624,6 +624,11 @@ failedToCalculateNFTAddress: '计算NFT地址失败',
 
   // AvatarSecretPage
   avatarSecretTitle: '头像 / 秘密',
+  onchainProfileSetupHint: '设置你的链上资料。',
+  onchainProfileNoDomain: '未设置域名',
+  onchainProfilePreviewHint: '来自该域名 dns_text 记录的数据',
+  onchainProfileEmptyField: '未填写',
+  close: '关闭',
   createSiteButton: '创建网站',
   tonsiteCatalogSubtitle: '所有 TON 网站汇聚一处 — 按分类浏览，附预览图',
   createSiteCardSubtitle: '域名建站工具 — 几步即可搭建你的 tonsite',

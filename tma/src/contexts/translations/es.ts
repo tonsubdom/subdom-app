@@ -626,6 +626,11 @@ failedToCalculateNFTAddress: 'Error al calcular dirección NFT',
 
   // AvatarSecretPage
   avatarSecretTitle: 'Avatar / Secreto',
+  onchainProfileSetupHint: 'Configura tu perfil onchain.',
+  onchainProfileNoDomain: 'Dominio no definido',
+  onchainProfilePreviewHint: 'Datos de los registros dns_text de este dominio',
+  onchainProfileEmptyField: 'sin completar',
+  close: 'Cerrar',
   createSiteButton: 'Crear sitio',
   tonsiteCatalogSubtitle: 'Todos los sitios TON en un solo lugar — por categoría, con vistas previas',
   createSiteCardSubtitle: 'Constructor de sitios para dominios — crea tu tonsite en un par de clics',

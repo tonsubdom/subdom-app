@@ -812,6 +812,11 @@ itemFoundSuccessfully: 'Элемент успешно найден',
 
   // AvatarSecretPage
   avatarSecretTitle: 'Аватар / Секрет',
+  onchainProfileSetupHint: 'Настройте onchain-профиль.',
+  onchainProfileNoDomain: 'Домен не определён',
+  onchainProfilePreviewHint: 'Данные из dns_text-записей этого домена',
+  onchainProfileEmptyField: 'не заполнено',
+  close: 'Закрыть',
   createSiteButton: 'Создать сайт',
   tonsiteCatalogSubtitle: 'Все TON-сайты в одном месте — по категориям и с превью',
   createSiteCardSubtitle: 'Конструктор сайтов для доменов — оформи свой tonsite за пару кликов',

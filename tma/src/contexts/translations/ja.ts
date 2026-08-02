@@ -629,6 +629,11 @@ failedToCalculateNFTAddress: 'NFTアドレスの計算に失敗しました',
 
   // AvatarSecretPage
   avatarSecretTitle: 'アバター / シークレット',
+  onchainProfileSetupHint: 'オンチェーンプロフィールを設定してください。',
+  onchainProfileNoDomain: 'ドメイン未設定',
+  onchainProfilePreviewHint: 'このドメインのdns_textレコードのデータ',
+  onchainProfileEmptyField: '未設定',
+  close: '閉じる',
   createSiteButton: 'サイトを作成',
   tonsiteCatalogSubtitle: 'すべてのTONサイトが一箇所に — カテゴリー別、プレビュー付き',
   createSiteCardSubtitle: 'ドメイン用サイトビルダー — 数クリックで自分のtonsiteを作成',

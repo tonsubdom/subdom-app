@@ -681,6 +681,11 @@ itemFoundSuccessfully: 'Item found successfully',
 
   // AvatarSecretPage
   avatarSecretTitle: 'Avatar / Secret',
+  onchainProfileSetupHint: 'Set up your onchain profile.',
+  onchainProfileNoDomain: 'Domain not set',
+  onchainProfilePreviewHint: 'Data from this domain\'s dns_text records',
+  onchainProfileEmptyField: 'not set',
+  close: 'Close',
   createSiteButton: 'Create site',
   tonsiteCatalogSubtitle: 'All TON sites in one place — by category, with previews',
   createSiteCardSubtitle: 'Site builder for domains — set up your tonsite in a couple of clicks',

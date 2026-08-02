@@ -628,6 +628,11 @@ failedToCalculateNFTAddress: 'NFT पता गणना विफल',
 
   // AvatarSecretPage
   avatarSecretTitle: 'अवतार / सीक्रेट',
+  onchainProfileSetupHint: 'अपनी ऑनचेन प्रोफ़ाइल सेट करें।',
+  onchainProfileNoDomain: 'डोमेन सेट नहीं है',
+  onchainProfilePreviewHint: 'इस डोमेन की dns_text रिकॉर्ड्स से डेटा',
+  onchainProfileEmptyField: 'भरा नहीं गया',
+  close: 'बंद करें',
   createSiteButton: 'साइट बनाएं',
   tonsiteCatalogSubtitle: 'सभी TON साइटें एक जगह — श्रेणी अनुसार, प्रीव्यू के साथ',
   createSiteCardSubtitle: 'डोमेन के लिए साइट बिल्डर — कुछ ही क्लिक में अपनी tonsite बनाएं',

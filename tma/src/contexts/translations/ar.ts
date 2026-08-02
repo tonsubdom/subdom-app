@@ -628,6 +628,11 @@ failedToCalculateNFTAddress: 'فشل في حساب عنوان NFT',
 
   // AvatarSecretPage
   avatarSecretTitle: 'الصورة الرمزية / السر',
+  onchainProfileSetupHint: 'قم بإعداد ملفك الشخصي على السلسلة.',
+  onchainProfileNoDomain: 'لم يتم تحديد النطاق',
+  onchainProfilePreviewHint: 'بيانات من سجلات dns_text لهذا النطاق',
+  onchainProfileEmptyField: 'غير معبأ',
+  close: 'إغلاق',
   createSiteButton: 'إنشاء موقع',
   tonsiteCatalogSubtitle: 'كل مواقع TON في مكان واحد — حسب الفئة، مع معاينات',
   createSiteCardSubtitle: 'أداة إنشاء المواقع للنطاقات — أنشئ موقع tonsite الخاص بك بنقرات قليلة',

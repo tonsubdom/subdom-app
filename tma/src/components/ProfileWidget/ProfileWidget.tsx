@@ -3264,11 +3264,23 @@ const ProfileWidget: React.FC = () => {
   // "picture" (URL) в приоритете, "tsi_icon" (локальный файл без хостинга,
   // см. AvatarSecretPage) — второй по очереди, зона — последний фолбэк.
   const [avatarPictureUrl, setAvatarPictureUrl] = useState<string | null>(null);
+  // Полный набор dns_text домена — тот же вызов, что уже даёт аватар, но
+  // сохраняем целиком (не только picture/icon), чтобы превью-модалка при
+  // клике на блок аватарки могла показать title/description/category без
+  // повторного похода в сеть.
+  const [profileDnsText, setProfileDnsText] = useState<{
+    title: string | null;
+    description: string | null;
+    category: string | null;
+    picture: string | null;
+    icon: string | null;
+  } | null>(null);
   useEffect(() => {
     let cancelled = false;
     const loadAvatarPicture = async () => {
       if (!domain) {
         setAvatarPictureUrl(null);
+        setProfileDnsText(null);
         return;
       }
       const zoneFallback =
@@ -3279,12 +3291,17 @@ const ProfileWidget: React.FC = () => {
       try {
         const resolved = await resolveDomainNftAddress(domain);
         if (cancelled) return;
-        const { picture, icon } = resolved
+        const dnsText = resolved
           ? await fetchAllOwnerDnsText(resolved.nftAddress, isTestnet)
-          : { picture: null, icon: null };
-        if (!cancelled) setAvatarPictureUrl(picture || icon || zoneFallback);
+          : { title: null, description: null, category: null, picture: null, icon: null };
+        if (cancelled) return;
+        setProfileDnsText(dnsText);
+        setAvatarPictureUrl(dnsText.picture || dnsText.icon || zoneFallback);
       } catch {
-        if (!cancelled) setAvatarPictureUrl(zoneFallback);
+        if (!cancelled) {
+          setProfileDnsText(null);
+          setAvatarPictureUrl(zoneFallback);
+        }
       }
     };
     loadAvatarPicture();
@@ -3292,6 +3309,32 @@ const ProfileWidget: React.FC = () => {
       cancelled = true;
     };
   }, [domain, isTestnet, getUserZones]);
+
+  // ====== ПРЕВЬЮ-МОДАЛКА ОНЧЕЙН-ПРОФИЛЯ (аватар/домен/баланс) ======
+  const [showProfilePreview, setShowProfilePreview] = useState(false);
+  const [avatarBlockHovered, setAvatarBlockHovered] = useState(false);
+  // "Настройте onchain-профиль" — только пока подключено, нет ни картинки,
+  // ни резолвнутого домена, и юзер ещё не закрыл подсказку крестиком для
+  // ЭТОГО конкретного адреса (ключ в localStorage per-address, чтобы не
+  // спамить повторно при каждом заходе после отказа).
+  const needsProfileSetup = !!address && !avatarPictureUrl && !domain;
+  const [setupPromptDismissed, setSetupPromptDismissed] = useState(false);
+  useEffect(() => {
+    if (!address) {
+      setSetupPromptDismissed(false);
+      return;
+    }
+    setSetupPromptDismissed(
+      localStorage.getItem(`subdom:onchainProfilePromptDismissed:${address}`) === "1"
+    );
+  }, [address]);
+  const dismissSetupPrompt = () => {
+    setSetupPromptDismissed(true);
+    if (address) {
+      localStorage.setItem(`subdom:onchainProfilePromptDismissed:${address}`, "1");
+    }
+  };
+  const showSetupPrompt = needsProfileSetup && !setupPromptDismissed;
 
   // Основной эффект загрузки ниже стартует только при наличии address —
   // при дисконнекте он просто не запускается и НЕ чистит то, что уже
@@ -4418,6 +4461,144 @@ const ProfileWidget: React.FC = () => {
         </div>
       )}
 
+      {/* Превью ончейн-профиля (аватар/домен/dns_text) — обычная, не пугающая
+          модалка (в отличие от подтверждения деактивации зоны выше). */}
+      {showProfilePreview && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)",
+            zIndex: 10000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => setShowProfilePreview(false)}
+        >
+          <div
+            style={{
+              backgroundColor: colors.background,
+              borderRadius: "16px",
+              padding: "24px",
+              maxWidth: "380px",
+              width: "100%",
+              border: `1px solid ${colors.cyberpunk}`,
+              boxShadow: `0 10px 40px ${colors.shadow}`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                width: "64px",
+                height: "64px",
+                borderRadius: "50%",
+                background: colors.primary,
+                margin: "0 auto 12px auto",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden",
+                boxShadow: `0 4px 12px ${colors.shadow}`,
+              }}
+            >
+              {avatarPictureUrl ? (
+                <img src={avatarPictureUrl} alt="avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill={isDark ? "black" : "white"} stroke={isDark ? "black" : "white"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+              )}
+            </div>
+            <h3
+              style={{
+                margin: "0 0 4px 0",
+                fontSize: "16px",
+                fontWeight: 700,
+                color: colors.text,
+                textAlign: "center",
+                fontFamily: "monospace",
+              }}
+            >
+              {domain || t("onchainProfileNoDomain") || "Домен не определён"}
+            </h3>
+            <p
+              style={{
+                margin: "0 0 16px 0",
+                fontSize: "11px",
+                color: colors.text,
+                opacity: 0.6,
+                textAlign: "center",
+              }}
+            >
+              {t("onchainProfilePreviewHint") || "Данные из dns_text-записей этого домена"}
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+              {[
+                { label: t("avatarTitlePlaceholder") || "Название", value: profileDnsText?.title },
+                { label: t("avatarDescriptionPlaceholder") || "Описание", value: profileDnsText?.description },
+                { label: t("avatarCategoryPlaceholder") || "Категория", value: profileDnsText?.category },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <div style={{ fontSize: "10px", color: colors.text, opacity: 0.5, textTransform: "uppercase" }}>
+                    {label}
+                  </div>
+                  <div style={{ fontSize: "13px", color: colors.text }}>
+                    {value || <span style={{ opacity: 0.4 }}>{t("onchainProfileEmptyField") || "не заполнено"}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => setShowProfilePreview(false)}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: `1px solid ${colors.border}`,
+                  background: "transparent",
+                  color: colors.text,
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {t("close") || "Закрыть"}
+              </button>
+              <button
+                onClick={() => {
+                  setShowProfilePreview(false);
+                  dismissSetupPrompt();
+                  handleOpenAvatarSecret(domain || undefined, undefined);
+                }}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: colors.primary,
+                  color: isDark ? "#000" : "#fff",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  boxShadow: `0 0 10px ${colors.shadow}`,
+                }}
+              >
+                ✏️ {t("edit") || "Редактировать"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Кнопка открытия */}
       {!isExpanded && (
         <div
@@ -4595,14 +4776,71 @@ const ProfileWidget: React.FC = () => {
             }}
           >
             <div
+              onClick={() => {
+                if (address) setShowProfilePreview(true);
+              }}
+              onMouseEnter={() => setAvatarBlockHovered(true)}
+              onMouseLeave={() => setAvatarBlockHovered(false)}
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "flex-start",
                 gap: "16px",
                 flex: 1,
+                position: "relative",
+                cursor: address ? "pointer" : "default",
+                padding: "6px",
+                margin: "-6px",
+                borderRadius: "14px",
+                border: `2px solid ${
+                  showSetupPrompt || avatarBlockHovered ? colors.cyberpunk : "transparent"
+                }`,
+                transition: "border-color 0.2s ease",
               }}
             >
+              {showSetupPrompt && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    position: "absolute",
+                    bottom: "calc(100% + 8px)",
+                    left: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 10px",
+                    borderRadius: "10px",
+                    background: colors.background,
+                    border: `1px solid ${colors.cyberpunk}`,
+                    boxShadow: `0 4px 12px ${colors.shadow}`,
+                    fontSize: "11px",
+                    color: colors.text,
+                    whiteSpace: "nowrap",
+                    zIndex: 5,
+                  }}
+                >
+                  <span>{t("onchainProfileSetupHint") || "Настройте onchain-профиль."}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      dismissSetupPrompt();
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: colors.text,
+                      opacity: 0.6,
+                      cursor: "pointer",
+                      fontSize: "13px",
+                      padding: 0,
+                      lineHeight: 1,
+                    }}
+                    aria-label={t("close") || "Закрыть"}
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
               <div
                 style={{
                   width: "50px",
@@ -4614,6 +4852,7 @@ const ProfileWidget: React.FC = () => {
                   justifyContent: "center",
                   boxShadow: `0 4px 12px ${colors.shadow}`,
                   overflow: "hidden",
+                  flexShrink: 0,
                 }}
               >
                 {avatarPictureUrl ? (
@@ -4709,7 +4948,14 @@ const ProfileWidget: React.FC = () => {
           </div>
 
           {address ? (
-            <>
+            <div
+              style={{
+                pointerEvents: showSetupPrompt ? "none" : undefined,
+                opacity: showSetupPrompt ? 0.4 : 1,
+                filter: showSetupPrompt ? "saturate(0.5)" : undefined,
+                transition: "opacity 0.2s ease",
+              }}
+            >
               {/* TABS */}
               <div
                 style={{
@@ -5715,7 +5961,7 @@ const ProfileWidget: React.FC = () => {
                   🔄 {t("refreshData")}
                 </button>
               </div>
-            </>
+            </div>
           ) : (
             /* НЕ ПОДКЛЮЧЕН */
             <div
