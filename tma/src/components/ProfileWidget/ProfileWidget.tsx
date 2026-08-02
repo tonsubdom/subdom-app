@@ -2264,6 +2264,7 @@
 // ⚠️ Импорты useZones / apiService сохранены ради info-блока — НЕ УДАЛЯТЬ.
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   useTonAddress,
   useTonWallet,
@@ -2729,15 +2730,22 @@ const ProfileWidget: React.FC = () => {
     }
   };
 
+  // Все переходы внутри виджета шли через window.location.href — в Safari
+  // такое присвоение иногда триггерит полную перезагрузку документа даже
+  // при смене только hash-части, что рвёт TonConnect-сессию и сбрасывает
+  // Redux/кэш ончейн-данных на каждый клик. navigateHash делает то же самое
+  // через SPA-роутер (без reload); принимает готовые hash-URL вида "/#/..."
+  // (тот же формат, что возвращает createAuctionUrl) и режет префикс "/#".
+  const navigate = useNavigate();
+  const navigateHash = (hashUrl: string) => navigate(hashUrl.replace(/^\/?#/, ""));
+
   // zoneName передаём с карточки конкретной зоны — сразу открывает
   // add-subdomain с этой зоной предвыбранной (см. selectZoneFromParams в
   // AddSubdomainPage.tsx), а не пустую форму без параметров.
   const handleAddSubdomain = (zoneName?: string) => {
     setIsExpanded(false);
     setTimeout(() => {
-      window.location.href = zoneName
-        ? createAuctionUrl({ zone: zoneName })
-        : `/#/add-subdomain`;
+      navigateHash(zoneName ? createAuctionUrl({ zone: zoneName }) : `/#/add-subdomain`);
     }, 300);
   };
   // address передаём с карточки конкретного домена/субдомена — сразу
@@ -2746,15 +2754,15 @@ const ProfileWidget: React.FC = () => {
   const handleManage = (address?: string) => {
     setIsExpanded(false);
     setTimeout(() => {
-      window.location.href = address
-        ? `/#/manage?address=${encodeURIComponent(address)}`
-        : `/#/manage`;
+      navigateHash(
+        address ? `/#/manage?address=${encodeURIComponent(address)}` : `/#/manage`
+      );
     }, 300);
   };
   const handleMarket = () => {
     setIsExpanded(false);
     setTimeout(() => {
-      window.location.href = `/#/market`;
+      navigateHash(`/#/market`);
     }, 300);
   };
   // domainName/address передаём с карточки конкретной зоны/субдомена —
@@ -2771,9 +2779,7 @@ const ProfileWidget: React.FC = () => {
       if (address) params.set("address", address);
       if (domainName) params.set("domain", domainName);
       const query = params.toString();
-      window.location.href = query
-        ? `/#/avatar-secret?${query}`
-        : `/#/avatar-secret`;
+      navigateHash(query ? `/#/avatar-secret?${query}` : `/#/avatar-secret`);
     }, 300);
   };
   const handleGoToAuction = (zoneName: string, subdomainName: string) => {
@@ -2783,10 +2789,7 @@ const ProfileWidget: React.FC = () => {
     // (см. getAuctionParamsFromUrl в AddSubdomainPage.tsx) и сразу проверяет итем.
     setIsExpanded(false);
     setTimeout(() => {
-      window.location.href = createAuctionUrl({
-        zone: zoneName,
-        subdomain: subdomainName,
-      });
+      navigateHash(createAuctionUrl({ zone: zoneName, subdomain: subdomainName }));
     }, 300);
   };
 
@@ -4938,7 +4941,7 @@ const ProfileWidget: React.FC = () => {
                             onClick={() => {
                               setIsExpanded(false);
                               setTimeout(() => {
-                                window.location.href = "#/create-collection";
+                                navigateHash("#/create-collection");
                               }, 300);
                             }}
                             style={{
@@ -5025,7 +5028,7 @@ const ProfileWidget: React.FC = () => {
                             onClick={() => {
                               setIsExpanded(false);
                               setTimeout(() => {
-                                window.location.href = "#/add-subdomain";
+                                navigateHash("#/add-subdomain");
                               }, 300);
                             }}
                             style={{
@@ -5117,7 +5120,7 @@ const ProfileWidget: React.FC = () => {
                             onClick={() => {
                               setIsExpanded(false);
                               setTimeout(() => {
-                                window.location.href = "/#/add-subdomain";
+                                navigateHash("/#/add-subdomain");
                               }, 300);
                             }}
                             style={{

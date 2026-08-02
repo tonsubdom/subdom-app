@@ -1,5 +1,6 @@
 // src/hooks/useAdminAccess.ts
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTonAddress, useTonConnectUI } from '@tonconnect/ui-react';
 import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
 
@@ -11,6 +12,7 @@ export const useAdminAccess = () => {
   const [lastClickTime, setLastClickTime] = useState<number>(0);
   const address = useTonAddress();
   const [tonConnectUI] = useTonConnectUI();
+  const navigate = useNavigate();
 
   // Используем ref для отслеживания isOwner без пересоздания callback
   const chain = tonConnectUI.account?.chain;
@@ -50,7 +52,11 @@ export const useAdminAccess = () => {
 
         if (newCount >= 5 && isOwner) {
           console.log(`[AdminAccess] 🚀 5 кликов + isOwner! Переходим в админку!`);
-          window.location.href = '/#/admin';
+          // window.location.href на '/#/admin' в Safari иногда триггерит
+          // полную перезагрузку документа, даже если меняется только hash —
+          // из-за этого TonConnect не успевал восстановить кошелёк, и
+          // ProtectedAdminPanel видел пустой адрес. SPA-навигация этого не делает.
+          navigate('/admin');
           return 0;
         }
         return newCount;
@@ -58,7 +64,7 @@ export const useAdminAccess = () => {
     }
 
     setLastClickTime(now);
-  }, [lastClickTime, isOwner]);
+  }, [lastClickTime, isOwner, navigate]);
 
   return {
     clickCount,

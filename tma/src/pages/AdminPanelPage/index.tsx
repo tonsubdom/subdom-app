@@ -15,6 +15,7 @@
 // явному клику "Войти".
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTonAddress, useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
 import AdminPanelPage from './AdminPanelPage';
 import { apiService } from '@/services/api';
@@ -32,6 +33,7 @@ const ProtectedAdminPanel: React.FC = () => {
   const address = useTonAddress();
   const wallet = useTonWallet();
   const [tonConnectUI] = useTonConnectUI();
+  const navigate = useNavigate();
   const isTestnet = wallet?.account?.chain === '-3';
 
   const [isChecking, setIsChecking] = useState<boolean>(true);
@@ -68,9 +70,9 @@ const ProtectedAdminPanel: React.FC = () => {
   // isLoggingIn гейт см. комментарий у объявления состояния выше.
   useEffect(() => {
     if (isChecking || looksLikeOwner || isLoggingIn) return;
-    const t = setTimeout(() => { window.location.href = '/'; }, 2000);
+    const t = setTimeout(() => { navigate('/'); }, 2000);
     return () => clearTimeout(t);
-  }, [isChecking, looksLikeOwner, isLoggingIn]);
+  }, [isChecking, looksLikeOwner, isLoggingIn, navigate]);
 
   const handleLogin = useCallback(async () => {
     setIsLoggingIn(true);
