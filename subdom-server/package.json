@@ -23,6 +23,7 @@
   "license": "MIT",
   "dependencies": {
     "@ton/core": "^0.63.1",
+    "@ton/crypto": "^3.3.0",
     "@types/better-sqlite3": "^7.6.13",
     "better-sqlite3": "^12.5.0",
     "buildx": "^0.1.1",
