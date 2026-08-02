@@ -4792,8 +4792,15 @@ const ProfileWidget: React.FC = () => {
                 padding: "6px",
                 margin: "-6px",
                 borderRadius: "14px",
+                // Рамка видна всегда (приглушённо), чтобы блок сразу читался
+                // как кликабельная сущность профиля, не только при ховере —
+                // ярче при ховере и во время onboarding-подсказки.
                 border: `2px solid ${
-                  showSetupPrompt || avatarBlockHovered ? colors.cyberpunk : "transparent"
+                  showSetupPrompt || avatarBlockHovered
+                    ? colors.cyberpunk
+                    : address
+                    ? `${colors.cyberpunk}40`
+                    : "transparent"
                 }`,
                 transition: "border-color 0.2s ease",
               }}
