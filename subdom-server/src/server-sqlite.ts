@@ -18,7 +18,7 @@ dotenv.config();
 import telegramBot from './utils/tgBot-sqlite';
 import { generatePayload, verifyAdminProof, CheckProofRequest } from './utils/tonProof';
 import { createAdminToken, requireAdminAuth } from './utils/adminAuth';
-import { createBag } from './utils/storageDaemon';
+import { createBag, getBagDetails } from './utils/storageDaemon';
 
 const APP_DOMAIN = 'subdom.zone';
 const STORAGE_UPLOADS_PATH = process.env.STORAGE_UPLOADS_PATH || '/app/storage-uploads';
@@ -527,6 +527,21 @@ const storageUpload = multer({
     filename: (_req, file, cb) => cb(null, file.originalname),
   }),
   limits: { fileSize: 200 * 1024 * 1024, files: 50 }, // 200MB/файл, до 50 файлов — разумный потолок для сайта
+});
+
+app.get('/api/storage/details', async (req, res) => {
+  try {
+    const bagId = typeof req.query?.bag_id === 'string' ? req.query.bag_id : '';
+    if (!bagId) {
+      res.status(400).json({ error: 'bag_id is required' });
+      return;
+    }
+    const details = await getBagDetails(bagId);
+    res.json(details);
+  } catch (error: any) {
+    console.error('❌ Ошибка получения деталей bag:', error);
+    res.status(500).json({ error: error?.message || 'Failed to get bag details' });
+  }
 });
 
 app.post(

@@ -48,6 +48,12 @@ export interface BagDetails {
   files_count: number;
   completed: boolean;
   seeding: boolean;
+  // Нужны для деплоя storage-contract (см. xssnick/tonutils-contracts
+  // storage-contract.fc): bag_size = полный размер (file_size в TL-B),
+  // piece_size = chunk_size, merkle_hash — корень merkle-дерева кусков.
+  piece_size: number;
+  bag_size: number;
+  merkle_hash: string;
 }
 
 export async function getBagDetails(bagId: string): Promise<BagDetails> {
