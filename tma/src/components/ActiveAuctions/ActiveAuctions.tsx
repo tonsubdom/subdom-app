@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Address } from '@ton/core';
 import { apiService } from '../../services/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTonAddress } from '@tonconnect/ui-react';
@@ -46,6 +47,19 @@ interface ActiveAuction {
   bids?: Bid[];
   auctionEndTime: string;
 }
+
+// Тот же normalizeAddress, что уже используется в AddSubdomainPage.tsx для
+// canClaim — сравнение через Address.parse().toString() устойчиво к
+// разнице bounceable/testOnly-флагов между форматами адресов из разных
+// источников (кошелёк vs распарсенный из BOC).
+const normalizeAddress = (addr: string | null | undefined): string => {
+  if (!addr) return '';
+  try {
+    return Address.parse(addr).toString({ bounceable: true, testOnly: false });
+  } catch {
+    return addr;
+  }
+};
 
 interface ActiveAuctionsProps {
   width?: string;
@@ -850,8 +864,22 @@ const loadActiveAuctions = useCallback(async () => {
           const subName = item.domain.split('.')[0];
           const info = await getAuctionInfo(subName, item.collection_address, isTestnet);
 
-          // Аукцион либо ещё не начат, либо уже завершён — пропускаем.
-          if (!info || !info.isActive) return null;
+          // info === null — аукциона ещё не было ИЛИ айтем уже заклеймлен
+          // (заклеймленные отдают невалидный стек get_auction_info, это
+          // норма). !info.isActive — аукцион истёк, но ещё не заклеймлен:
+          // раньше такие тоже отбрасывались здесь, из-за чего собственный
+          // выигранный, но не забранный лот нигде не появлялся ни в общем
+          // списке, ни в профиле. Показываем истёкший лот только если
+          // текущий юзер — победитель (у остальных он больше не актуален),
+          // тем же способом, что уже определяет canClaim в AddSubdomainPage.
+          if (!info) return null;
+          if (!info.isActive) {
+            const isMine =
+              !!userAddress &&
+              !!info.maxBidderOwner &&
+              normalizeAddress(info.maxBidderOwner) === normalizeAddress(userAddress);
+            if (!isMine) return null;
+          }
 
           const bids = await getAuctionBidHistory(info.nftAddress, isTestnet);
           const lastBidAmount = Number(info.maxBid) / 1_000_000_000;
@@ -911,7 +939,7 @@ const loadActiveAuctions = useCallback(async () => {
     setLoading(false);
     console.log(`✅ Загрузка завершена, кэш изображений: ${imageCache.size}`);
   }
-}, [isTestnet, fetchDomainsForBidders, imageCache, proxySubdomains]);
+}, [isTestnet, fetchDomainsForBidders, imageCache, proxySubdomains, userAddress]);
 
   // Фильтрация и сортировка
   useEffect(() => {

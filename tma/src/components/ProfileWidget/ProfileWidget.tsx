@@ -2483,9 +2483,13 @@ const AUCTION_CHECK_CONCURRENCY = 10;
 const loadAuctionsFromBlockchain = async (
   subdomains: Subdomain[],
   isTestnet: boolean,
+  currentUserAddress: string,
   onProgress?: (done: number, total: number, found: number) => void
 ): Promise<Auction[]> => {
   let foundSoFar = 0;
+  const normalizedUser = currentUserAddress
+    ? convertUserFriendlyToRaw(currentUserAddress)
+    : "";
 
   const results = await mapWithConcurrency(
     subdomains,
@@ -2504,18 +2508,29 @@ const loadAuctionsFromBlockchain = async (
           isTestnet
         );
 
-        if (info && info.isActive) {
-          foundSoFar += 1;
-          return {
-            name: sub.name,
-            bid: `${(Number(info.maxBid) / 1e9).toFixed(2)} TON`,
-            ends: new Date(info.timestamp * 1000).toISOString(),
-            lastBidder: info.maxBidderOwner || undefined,
-            lastBid: Number(info.maxBid),
-            subdomain: sub,
-          };
+        if (!info) return null;
+
+        // Истёкший, но ещё не заклейменный лот — показываем только если
+        // текущий юзер и есть победитель (см. тот же принцип в
+        // ActiveAuctions.tsx), иначе он больше не актуален ни для кого.
+        if (!info.isActive) {
+          const isMine =
+            !!normalizedUser &&
+            !!info.maxBidderOwner &&
+            convertUserFriendlyToRaw(info.maxBidderOwner) === normalizedUser;
+          if (!isMine) return null;
         }
-        return null;
+
+        foundSoFar += 1;
+        return {
+          name: sub.name,
+          bid: `${(Number(info.maxBid) / 1e9).toFixed(2)} TON`,
+          ends: new Date(info.timestamp * 1000).toISOString(),
+          lastBidder: info.maxBidderOwner || undefined,
+          lastBid: Number(info.maxBid),
+          subdomain: sub,
+          isActive: info.isActive,
+        };
       } catch {
         // не на аукционе — пропускаем
         return null;
@@ -3224,6 +3239,7 @@ const ProfileWidget: React.FC = () => {
         const auctions = await loadAuctionsFromBlockchain(
           allProxySubdomainsAsSubdomains,
           isTestnet,
+          address,
           (done, total, found) =>
             setAuctionsScanProgress({ done, total, found })
         );
@@ -3235,7 +3251,7 @@ const ProfileWidget: React.FC = () => {
       }
     };
     load();
-  }, [allProxySubdomainsAsSubdomains, isTestnet]);
+  }, [allProxySubdomainsAsSubdomains, isTestnet, address]);
 
   // ====== АВАТАР: dns_text "picture"/"tsi_icon" СВОЕГО ДОМЕНА, С ФОЛБЭКОМ НА КАРТИНКУ NFT-ЗОНЫ ======
   // Та же идея, что уже есть для domain-вместо-адреса (fetchDomain): вместо
@@ -4211,7 +4227,12 @@ const ProfileWidget: React.FC = () => {
         </div>
 
         <div style={{ display: "flex", gap: "8px" }}>
-          {checkAuctionTimerEnd(new Date(auction.ends)) ? (
+          {/* checkAuctionTimerEnd(time) = "now <= time", т.е. true пока
+              аукцион ЕЩЁ идёт — значит "Забрать" нужен в ветке false
+              (аукцион закончился), а не true. Раньше это было перепутано,
+              просто оставалось незаметным, пока завершённые-невыкупленные
+              лоты вообще не попадали в этот список (см. loadAuctionsFromBlockchain). */}
+          {!checkAuctionTimerEnd(new Date(auction.ends)) ? (
             <button
               onClick={() =>
                 handleGoToAuction(

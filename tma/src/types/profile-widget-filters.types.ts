@@ -65,6 +65,10 @@ export interface Auction {
   lastBidder?: string;
   lastBid?: number;
   subdomain?: Subdomain;
+  // false — аукцион истёк, но ещё не заклеймлен. Такие попадают в список
+  // только если текущий юзер и есть победитель (см. loadAuctionsFromBlockchain
+  // в ProfileWidget.tsx) — нужно, чтобы карточка могла показать «забрать».
+  isActive?: boolean;
 }
 
 // types/profile-widget-filters.types.ts
