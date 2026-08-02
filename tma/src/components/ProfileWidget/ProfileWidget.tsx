@@ -2297,6 +2297,7 @@ import {
   SimpleEnrichedItem,
   ItemType,
 } from "@/services/blockchainItems/blockchain-items-types";
+import { cleanZoneDisplayName } from "@/services/blockchainItems/blockchain-items-utils";
 import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInfo";
 import { getAuctionBidHistory } from "@/pages/AddSubdomainPage/flipTimer/getAuctionBidHistory";
 import { mapWithConcurrency } from "@/utils/concurrency";
@@ -2363,14 +2364,7 @@ const collectionToZone = (col: SimpleCollection): Zone => {
     `🔍 collectionToZone: raw="${rawName}", address=${col.address.slice(0, 10)}`
   );
 
-  const zoneName = rawName
-    .replace(/^proxy\s+/i, "") // префикс "Proxy downloader ton Domain" -> "downloader ton Domain"
-    .replace(/\s+dns\s+domains?$/i, "") // "... DNS Domains" / "... DNS Domain"
-    .replace(/\s+proxy\s+domains?$/i, "") // "... Proxy Domains" / "... Proxy Domain" (суффиксом)
-    .replace(/\s+domains?$/i, "") // остаточное "... Domain"/"... Domains" (единственное число — старый баг)
-    .replace(/\s+ton$/i, ".ton") // "downloader ton" -> "downloader.ton" (точка потерялась в метаданных)
-    .trim()
-    .toLowerCase();
+  const zoneName = cleanZoneDisplayName(rawName).toLowerCase();
 
   console.log(
     `   zoneName="${zoneName}", endsWith('.ton')=${zoneName.endsWith(".ton")}`

@@ -18,7 +18,7 @@ dotenv.config();
 import telegramBot from './utils/tgBot-sqlite';
 import { generatePayload, verifyAdminProof, CheckProofRequest } from './utils/tonProof';
 import { createAdminToken, requireAdminAuth } from './utils/adminAuth';
-import { createBag, getBagDetails } from './utils/storageDaemon';
+import { createBag, getBagDetails, addBag } from './utils/storageDaemon';
 
 const APP_DOMAIN = 'subdom.zone';
 const STORAGE_UPLOADS_PATH = process.env.STORAGE_UPLOADS_PATH || '/app/storage-uploads';
@@ -593,6 +593,64 @@ app.post(
     }
   }
 );
+
+// bagID — 64 hex-символа (sha256 корня Merkle-дерева) — только этот формат
+// пускаем дальше в диск-путь, чтобы chuжой ввод не мог сделать path traversal.
+const BAG_ID_RE = /^[0-9a-fA-F]{64}$/;
+
+const DOWNLOADS_DIR = path.join(STORAGE_UPLOADS_PATH, 'downloads');
+
+// Скачивание УЖЕ СУЩЕСТВУЮЩЕГО bag'а по bagID (не создание нового) — для
+// вкладки "Загрузить" в CreateTorrentPage. Не блокирует запрос до завершения
+// скачивания (может быть долгим) — просто запускает его на демоне, прогресс
+// фронт опрашивает через уже существующий GET /api/storage/details.
+app.post('/api/storage/download', async (req, res) => {
+  try {
+    const bagId = typeof req.body?.bagId === 'string' ? req.body.bagId.trim() : '';
+    if (!BAG_ID_RE.test(bagId)) {
+      return res.status(400).json({ error: 'bagId должен быть 64-символьной hex-строкой' });
+    }
+    const diskPath = path.join(DOWNLOADS_DIR, bagId);
+    fs.mkdirSync(diskPath, { recursive: true });
+    await addBag(bagId, diskPath);
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('❌ Ошибка запуска скачивания bag через tonutils-storage:', error);
+    return res.status(500).json({ error: error?.message || 'Failed to start bag download' });
+  }
+});
+
+// Отдаёт содержимое одного файла из уже скачанного bag'а. Имя файла сверяется
+// со списком files из getBagDetails (а не берётся из query как есть) — иначе
+// произвольная строка в query стала бы path traversal через диск-путь.
+app.get('/api/storage/download-file', async (req, res) => {
+  try {
+    const bagId = typeof req.query?.bag_id === 'string' ? req.query.bag_id : '';
+    const fileName = typeof req.query?.file === 'string' ? req.query.file : '';
+    if (!BAG_ID_RE.test(bagId) || !fileName) {
+      return res.status(400).json({ error: 'bag_id и file обязательны' });
+    }
+
+    const details = await getBagDetails(bagId);
+    const fileInfo = details.files?.find((f) => f.name === fileName);
+    if (!fileInfo) {
+      return res.status(404).json({ error: 'Файл не найден в этом bag' });
+    }
+
+    const filePath = path.join(DOWNLOADS_DIR, bagId, fileInfo.name);
+    if (!filePath.startsWith(path.join(DOWNLOADS_DIR, bagId))) {
+      return res.status(400).json({ error: 'Некорректный путь файла' });
+    }
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'Файл ещё не скачан на диск' });
+    }
+
+    return res.download(filePath, path.basename(fileInfo.name));
+  } catch (error: any) {
+    console.error('❌ Ошибка отдачи файла из bag:', error);
+    return res.status(500).json({ error: error?.message || 'Failed to serve file' });
+  }
+});
 
 // 1. Проверить наличие оплаченной попытки
 app.get('/api/users/:address/payments/check', (req, res) => {
@@ -1942,6 +2000,66 @@ app.put('/api/zones/:id/address', requireAdminAuth, (req, res) => {
     });
   } catch (error) {
     console.error('❌ Ошибка при обновлении адреса зоны:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
+// ========== ОБНОВЛЕНИЕ OWNER ЗОНЫ ПО ID ==========
+//
+// Пока чисто ручная бухгалтерия в БД — реального смартконтракта офферов
+// на покупку/продажу Proxy-коллекций ещё нет (третий таб в MarketPage,
+// планируется отдельно). До него — админ вручную сверяет офчейн-договорённость
+// об оффере и правит владельца тут же, как уже делает updateSubdomainOwner.
+app.put('/api/zones/:id/owner', requireAdminAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { owner } = req.body;
+    const db = req.db;
+    const isTestnet = req.isTestnet;
+
+    console.log('🔄 [UPDATE ZONE OWNER] Запрос на обновление владельца зоны:');
+    console.log('📝 ID зоны:', id);
+    console.log('📝 Новый владелец:', owner);
+    console.log('🌐 Network:', isTestnet ? 'testnet' : 'mainnet');
+
+    if (!id || !owner) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID зоны и новый владелец обязательны'
+      });
+    }
+
+    const existingZone = db.prepare('SELECT * FROM zones WHERE id = ?').get(id) as Zone;
+
+    if (!existingZone) {
+      console.log('❌ [UPDATE ZONE OWNER] Зона не найдена');
+      return res.status(404).json({
+        success: false,
+        message: 'Зона не найдена'
+      });
+    }
+
+    const stmt = db.prepare(`
+      UPDATE zones
+      SET owner = ?, updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+      RETURNING *
+    `);
+
+    const updatedZone = stmt.get(owner, id) as Zone;
+
+    console.log(`✅ [UPDATE ZONE OWNER] Владелец зоны ${existingZone.name} обновлен с ${existingZone.owner || 'нет'} на ${owner}`);
+
+    return res.json({
+      success: true,
+      message: `Владелец зоны "${existingZone.name}" успешно обновлен`,
+      data: updatedZone
+    });
+  } catch (error) {
+    console.error('❌ Ошибка при обновлении владельца зоны:', error);
     return res.status(500).json({
       success: false,
       message: 'Внутренняя ошибка сервера'

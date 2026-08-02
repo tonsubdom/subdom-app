@@ -42,7 +42,7 @@ const INITIAL_API_INPUTS = {
   getUser: { address: '' }, createUser: { address: '', name: '' }, registerOrGetUser: { address: '', name: '' }, deleteUser: { id: '' }, // НОВЫЙ
 
 // Зоны 
-createZone: { name: '', address: '', collectionAddress: '', wrapperAddress: '', proxy: false, owner: '', status: 'active', zonePrice: 0 }, updateZoneStatusToInactive: { id: '' }, updateZoneCollection: { name: '', collectionAddress: '' }, updateZoneWrapper: { name: '', wrapperAddress: '' }, getUserZones: { address: '', isTestnet: false }, getAllZones: {}, getZoneByName: { name: '' }, getZoneById: { id: '' }, deleteZone: { id: '' }, updateZoneAddress: { id: '', address: '' }, 
+createZone: { name: '', address: '', collectionAddress: '', wrapperAddress: '', proxy: false, owner: '', status: 'active', zonePrice: 0 }, updateZoneStatusToInactive: { id: '' }, updateZoneCollection: { name: '', collectionAddress: '' }, updateZoneWrapper: { name: '', wrapperAddress: '' }, getUserZones: { address: '', isTestnet: false }, getAllZones: {}, getZoneByName: { name: '' }, getZoneById: { id: '' }, deleteZone: { id: '' }, updateZoneAddress: { id: '', address: '' }, updateZoneOwner: { id: '', owner: '' },
 
 // Субдомены 
 createSubdomain: { name: '', address: '', mintPrice: 0, links: '[]', zoneId: '', owner: '', status: 'active', auctionEndTime: '', collectionAddress: '' }, updateSubdomainStatus: { id: '', status: 'active' }, addBidToSubdomain: { id: '', bidder: '', amount: 0 }, getUserSubdomains: { address: '', isTestnet: false }, getZoneSubdomains: { zoneId: '' }, getAllSubdomains: {}, getSubdomainByName: { name: '' }, getSubdomainsByStatus: { status: 'active' }, deleteSubdomain: { id: '' }, updateSubdomainAddress: { id: '', address: '' }, updateSubdomainOwner: { id: '', ownerAddress: '' },
@@ -130,6 +130,9 @@ const AdminPanelPage: React.FC = () => {
 
         case 'updateZoneAddress':
           result = await apiService.updateZoneAddress(parseInt(inputs.id), inputs.address);
+          break;
+        case 'updateZoneOwner':
+          result = await apiService.updateZoneOwner(parseInt(inputs.id), inputs.owner);
           break;
         case 'updateZoneCollection':
           result = await apiService.updateZoneCollection(inputs.name, inputs.collectionAddress);
@@ -995,7 +998,8 @@ const AdminPanelPage: React.FC = () => {
           'getAllZones',
           'getZoneByName',
           'getZoneById',
-          'deleteZone' // НОВЫЙ
+          'deleteZone', // НОВЫЙ
+          'updateZoneOwner' // НОВЫЙ — ручная правка владельца зоны до готовности смартконтракта офферов
         ])}
         
         {/* Субдомены */}

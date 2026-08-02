@@ -2,9 +2,12 @@
 //
 // Переиспользуемая кнопка-"сеть" на карточках зон/субдоменов/маркета/менеджера:
 // клик открывает поп-меню "Открыть кошелек" / "Открыть как сайт" / "Открыть
-// как торрент". Резолв site/storage через уже существующий dnsRecordsSlice
-// (fetchDNSRecords -> parseDNSRecord), bagID-детали — через тот же
-// /api/storage/details, что и в CreateTorrentPage.
+// как торрент". Резолв site/storage — через ownerMetaService.fetchSiteAndStorageRecords
+// (прямой dnsresolve по адресу NFT-айтема, который уже используют
+// title/description/picture там же) — а не через dnsRecordsSlice/toncenter
+// REST-поиск по имени домена, который (как и tonapi.io) находит только
+// корневые .ton-домены и не резолвит кастомные субдомены платформы.
+// bagID-детали — через тот же /api/storage/details, что и в CreateTorrentPage.
 //
 // Меню рендерится через портал в document.body с position:fixed — если бы
 // оно жило внутри карточки/картинки как обычный ребёнок, оно бы обрезалось
@@ -12,9 +15,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@/store/store';
-import { fetchDNSRecords, fetchTestnetDNSRecords, parseDNSRecord } from '@/store/dns/dnsRecordsSlice';
+import { fetchSiteAndStorageRecords } from '@/services/ownerMetaService';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -56,7 +57,6 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
   const { currentTheme } = useTheme();
   const isDark = currentTheme === 'dark';
   const { t } = useLanguage();
-  const dispatch = useDispatch<AppDispatch>();
 
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -115,17 +115,9 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
     setOpen((v) => !v);
   };
 
-  const resolveDns = async () => {
-    const thunk = isTestnet ? fetchTestnetDNSRecords : fetchDNSRecords;
-    const data = await dispatch(thunk(domain)).unwrap();
-    const record = data.records.find((r) => r.domain === domain) || data.records[0];
-    if (!record) return null;
-    return parseDNSRecord(record, data.address_book);
-  };
-
   const handleOpenWallet = (e: React.MouseEvent) => {
     e.stopPropagation();
-    window.open(`https://app.tonkeeper.com/nft/${address}`, '_blank', 'noopener,noreferrer');
+    window.open(`https://${isTestnet ? 'testnet.' : ''}tonviewer.com/${address}`, '_blank', 'noopener,noreferrer');
     setOpen(false);
   };
 
@@ -134,8 +126,8 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
     setBusy('site');
     setResult(null);
     try {
-      const parsed = await resolveDns();
-      if (parsed?.siteAdnl) {
+      const parsed = await fetchSiteAndStorageRecords(address, isTestnet);
+      if (parsed.siteAdnl) {
         window.open(`tonsite://${domain}`, '_blank', 'noopener,noreferrer');
         setOpen(false);
       } else {
@@ -153,8 +145,8 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
     setBusy('torrent');
     setResult(null);
     try {
-      const parsed = await resolveDns();
-      if (parsed?.storageBagId) {
+      const parsed = await fetchSiteAndStorageRecords(address, isTestnet);
+      if (parsed.storageBagId) {
         let details: BagDetails | null = null;
         try {
           const res = await fetch(`${API_BASE_URL}/api/storage/details?bag_id=${encodeURIComponent(parsed.storageBagId)}`);

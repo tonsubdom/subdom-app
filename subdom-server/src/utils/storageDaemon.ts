@@ -41,6 +41,12 @@ export async function createBag(diskPath: string, description: string): Promise<
   return result.bag_id;
 }
 
+export interface BagFileInfo {
+  index: number;
+  name: string;
+  size: number;
+}
+
 export interface BagDetails {
   bag_id: string;
   description: string;
@@ -54,8 +60,28 @@ export interface BagDetails {
   piece_size: number;
   bag_size: number;
   merkle_hash: string;
+  // Присутствуют для bag'ов, добавленных через addBag (скачивание готового
+  // bagID, не создание нового) — у только что созданных локально bag'ов эти
+  // поля демон обычно не возвращает содержательными.
+  downloaded?: number;
+  active?: boolean;
+  files?: BagFileInfo[];
 }
 
 export async function getBagDetails(bagId: string): Promise<BagDetails> {
   return storageFetch<BagDetails>(`/api/v1/details?bag_id=${encodeURIComponent(bagId)}`);
+}
+
+/**
+ * Скачивание УЖЕ СУЩЕСТВУЮЩЕГО bag'а по его bagID (в отличие от createBag,
+ * который создаёт новый bag из локальных файлов) — демон сам качает
+ * содержимое от пиров в сети TON Storage и пишет на diskPath. download_all:
+ * true — качаем реально все файлы, а не только заголовок (по умолчанию у
+ * демона download_all:false качает только метаданные).
+ */
+export async function addBag(bagId: string, diskPath: string): Promise<void> {
+  await storageFetch<{ ok: boolean }>('/api/v1/add', {
+    method: 'POST',
+    body: JSON.stringify({ bag_id: bagId, path: diskPath, download_all: true }),
+  });
 }

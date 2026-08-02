@@ -476,3 +476,59 @@ export async function fetchAllOwnerDnsText(
 export async function fetchOwnerPicture(nftAddress: string, isTestnet: boolean): Promise<string | null> {
   return fetchOwnerDnsTextCategory(nftAddress, CATEGORY_PICTURE, isTestnet);
 }
+
+// ==================== SITE (ADNL) / STORAGE (bagID) ====================
+//
+// Те же категории "site"/"storage", что уже читает toncenter's REST
+// /api/v3/dns/records (см. dnsRecordsSlice.ts, dns_site_adnl/dns_storage_bag_id) —
+// но тот эндпоинт индексирует по ИМЕНИ домена и, как tonapi.io, находит
+// только корневые .ton-домены, не кастомные субдомены платформы. Тут —
+// тот же прямой dnsresolve по адресу NFT-айтема, что уже используется выше
+// для title/description/picture, поэтому резолвит ЛЮБОЙ субдомен.
+// Форматы записей — TEP-81: dns_adnl_address#ad01 (256 бит ADNL),
+// dns_storage_address#7473 (256 бит bagID).
+const SITE_ADNL_TAG = 0xad01;
+const STORAGE_BAG_ID_TAG = 0x7473;
+
+function decodeSiteAdnl(cell: Cell): string | null {
+  try {
+    const slice = cell.beginParse();
+    if (slice.loadUint(16) !== SITE_ADNL_TAG) return null;
+    return slice.loadBuffer(32).toString('hex').toUpperCase();
+  } catch {
+    return null;
+  }
+}
+
+function decodeStorageBagId(cell: Cell): string | null {
+  try {
+    const slice = cell.beginParse();
+    if (slice.loadUint(16) !== STORAGE_BAG_ID_TAG) return null;
+    return slice.loadBuffer(32).toString('hex').toUpperCase();
+  } catch {
+    return null;
+  }
+}
+
+/** Читает site (ADNL) и storage (bagID) записи одним dnsresolve-вызовом — работает и для субдоменов. */
+export async function fetchSiteAndStorageRecords(
+  nftAddress: string,
+  isTestnet: boolean
+): Promise<{ siteAdnl: string | null; storageBagId: string | null }> {
+  const empty = { siteAdnl: null, storageBagId: null };
+  try {
+    const dict = await fetchSelfDnsRecordsDict(nftAddress, isTestnet);
+    if (!dict) return empty;
+
+    const [siteKey, storageKey] = await Promise.all([categoryKey('site'), categoryKey('storage')]);
+    const siteCell = dict.get(siteKey);
+    const storageCell = dict.get(storageKey);
+
+    return {
+      siteAdnl: siteCell ? decodeSiteAdnl(siteCell) : null,
+      storageBagId: storageCell ? decodeStorageBagId(storageCell) : null,
+    };
+  } catch {
+    return empty;
+  }
+}

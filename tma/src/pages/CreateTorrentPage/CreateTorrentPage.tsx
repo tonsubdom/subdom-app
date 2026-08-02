@@ -17,7 +17,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { AppDispatch } from '@/store/store';
 import { setStorageRecord } from '@/store/dns/dnsRecordsSlice';
-import { resolveDomainNftAddress } from '@/services/ownerMetaService';
+import { resolveDomainNftAddress, fetchSiteAndStorageRecords } from '@/services/ownerMetaService';
 import {
   calculateStorageCostNanoTon,
   prepareStorageDeal,
@@ -58,12 +58,22 @@ interface Provider {
   telemetry?: ProviderTelemetry;
 }
 
+interface BagFileInfo {
+  index: number;
+  name: string;
+  size: number;
+}
+
 interface BagDetails {
   bag_id: string;
   size: number;
   piece_size: number;
   bag_size: number;
   merkle_hash: string;
+  downloaded?: number;
+  completed?: boolean;
+  active?: boolean;
+  files?: BagFileInfo[];
 }
 
 async function fetchProviders(): Promise<Provider[]> {
@@ -115,8 +125,10 @@ function formatTon(nanoTon: bigint | number): string {
 }
 
 type SortField = 'rating' | 'price' | 'uptime' | 'freeSpace';
-const TABS = ['create', '10k'] as const;
+const TABS = ['create', 'download'] as const;
 type Tab = typeof TABS[number];
+
+const BAG_ID_RE = /^[0-9a-fA-F]{64}$/;
 
 const CreateTorrentPage: React.FC = () => {
   const { currentTheme } = useTheme();
@@ -158,6 +170,14 @@ const CreateTorrentPage: React.FC = () => {
   const [dealError, setDealError] = useState<string | null>(null);
   const [dealContractAddress, setDealContractAddress] = useState<Address | null>(null);
   const [dealSent, setDealSent] = useState(false);
+
+  // ====== ВКЛАДКА "ЗАГРУЗИТЬ" (скачивание уже существующего bagID) ======
+  const [downloadInput, setDownloadInput] = useState('');
+  const [downloadResolving, setDownloadResolving] = useState(false);
+  const [downloadBagId, setDownloadBagId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadDetails, setDownloadDetails] = useState<BagDetails | null>(null);
+  const downloadPollRef = useRef<number | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -292,6 +312,82 @@ const CreateTorrentPage: React.FC = () => {
       return await res.json();
     } catch {
       return null;
+    }
+  };
+
+  // ====== ВКЛАДКА "ЗАГРУЗИТЬ" ======
+  // Принимает и голый bagID (64 hex-символа), и имя домена/субдомена — во
+  // втором случае резолвим NFT-адрес (та же схема с фолбэком на ".ton", что
+  // и в handleBind) и достаём storageBagId тем же прямым dnsresolve, что
+  // теперь использует LupaButton (работает и для субдоменов, не только
+  // корневых .ton-доменов).
+  const stopDownloadPolling = () => {
+    if (downloadPollRef.current) {
+      window.clearInterval(downloadPollRef.current);
+      downloadPollRef.current = null;
+    }
+  };
+
+  useEffect(() => stopDownloadPolling, []);
+
+  const startDownloadPolling = (bagId: string) => {
+    stopDownloadPolling();
+    const poll = async () => {
+      const details = await fetchBagDetails(bagId);
+      if (details) {
+        setDownloadDetails(details);
+        if (details.completed) stopDownloadPolling();
+      }
+    };
+    poll();
+    downloadPollRef.current = window.setInterval(poll, 3000);
+  };
+
+  const handleDownloadStart = async () => {
+    const raw = downloadInput.trim();
+    if (!raw || downloadResolving) return;
+
+    setDownloadResolving(true);
+    setDownloadError(null);
+    setDownloadDetails(null);
+    setDownloadBagId(null);
+    stopDownloadPolling();
+
+    try {
+      let bagId: string;
+      if (BAG_ID_RE.test(raw)) {
+        bagId = raw.toLowerCase();
+      } else {
+        const domain = raw.toLowerCase();
+        let resolved = await resolveDomainNftAddress(domain, isTestnet);
+        if (!resolved && !domain.endsWith('.ton')) {
+          resolved = await resolveDomainNftAddress(`${domain}.ton`, isTestnet);
+        }
+        if (!resolved) {
+          throw new Error(t('createTorrentDomainNotFound') || 'Домен не найден');
+        }
+        const records = await fetchSiteAndStorageRecords(resolved.nftAddress, isTestnet);
+        if (!records.storageBagId) {
+          throw new Error(t('createTorrentDownloadNoBagId') || 'У этого домена нет привязанного bagID');
+        }
+        bagId = records.storageBagId.toLowerCase();
+      }
+
+      setDownloadBagId(bagId);
+      const res = await fetch(`${API_BASE_URL}/api/storage/download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bagId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || `HTTP ${res.status}`);
+      }
+      startDownloadPolling(bagId);
+    } catch (e: any) {
+      setDownloadError(e?.message || 'Ошибка загрузки');
+    } finally {
+      setDownloadResolving(false);
     }
   };
 
@@ -430,8 +526,8 @@ const CreateTorrentPage: React.FC = () => {
           <button style={tabButtonStyle(tab === 'create')} onClick={() => setTab('create')}>
             {t('createTorrentTabCreate') || 'Создать'}
           </button>
-          <button style={tabButtonStyle(tab === '10k')} onClick={() => setTab('10k')}>
-            10k Club
+          <button style={tabButtonStyle(tab === 'download')} onClick={() => setTab('download')}>
+            {t('createTorrentTabDownload') || 'Загрузить'}
           </button>
         </div>
 
@@ -777,10 +873,95 @@ const CreateTorrentPage: React.FC = () => {
           </>
         )}
 
-        {tab === '10k' && (
-          <p style={{ fontSize: '13px', color: colors.textSecondary, textAlign: 'center', padding: '40px 0' }}>
-            {t('comingSoon') || 'Скоро'}
-          </p>
+        {tab === 'download' && (
+          <>
+            <p style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '16px' }}>
+              {t('createTorrentDownloadDescription') ||
+                'Введи bagID или имя домена/субдомена, привязанного к bagID — скачаем содержимое через демон TON Storage.'}
+            </p>
+
+            <input
+              type="text"
+              placeholder={t('createTorrentDownloadPlaceholder') || 'bagID или домен (например: mysite.ton)'}
+              value={downloadInput}
+              onChange={(e) => setDownloadInput(e.target.value)}
+              style={inputStyle}
+            />
+
+            <button
+              onClick={handleDownloadStart}
+              disabled={!downloadInput.trim() || downloadResolving}
+              style={primaryButtonStyle(!downloadInput.trim() || downloadResolving)}
+            >
+              {downloadResolving ? (t('processing') || 'Обработка...') : (t('createTorrentDownloadButton') || 'Загрузить')}
+            </button>
+
+            {downloadError && <p style={{ fontSize: '12px', color: colors.error, marginTop: '12px' }}>{downloadError}</p>}
+
+            {downloadBagId && (
+              <div
+                style={{
+                  marginTop: '16px',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  border: `1px solid ${colors.accent}`,
+                  fontSize: '12px',
+                  color: colors.text,
+                  wordBreak: 'break-all',
+                }}
+              >
+                <strong>bagID:</strong> {downloadBagId}
+
+                {downloadDetails && (
+                  <div style={{ marginTop: '10px' }}>
+                    <div style={{ color: colors.textSecondary, marginBottom: '6px' }}>
+                      {downloadDetails.completed
+                        ? (t('createTorrentDownloadCompleted') || 'Скачано полностью')
+                        : `${t('createTorrentDownloadInProgress') || 'Скачивается'}${
+                            downloadDetails.downloaded !== undefined
+                              ? ` — ${formatBytes(downloadDetails.downloaded)} / ${formatBytes(downloadDetails.size)}`
+                              : '...'
+                          }`}
+                    </div>
+
+                    {downloadDetails.files && downloadDetails.files.length > 0 && (
+                      <div>
+                        <div style={{ color: colors.text, fontWeight: 600, marginBottom: '6px' }}>
+                          {t('createTorrentDownloadFiles') || 'Файлы'}:
+                        </div>
+                        {downloadDetails.files.map((f) => (
+                          <div
+                            key={f.index}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '6px 0',
+                              borderTop: `1px solid ${colors.border}`,
+                              gap: '8px',
+                            }}
+                          >
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                              {f.name}
+                            </span>
+                            <span style={{ color: colors.textSecondary, whiteSpace: 'nowrap' }}>{formatBytes(f.size)}</span>
+                            {downloadDetails.completed && (
+                              <a
+                                href={`${API_BASE_URL}/api/storage/download-file?bag_id=${encodeURIComponent(downloadBagId)}&file=${encodeURIComponent(f.name)}`}
+                                style={{ color: colors.accent, whiteSpace: 'nowrap' }}
+                              >
+                                {t('createTorrentDownloadFile') || 'Скачать'} ⬇️
+                              </a>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
     </Page>

@@ -4565,7 +4565,7 @@ import { DomainExpirationInfo } from "@/utils/domainExpiredAtFetchConvert";
 
 import { useBlockchainItems } from "@/services/blockchainItems/blockchain-items-context";
 import { SimpleEnrichedItem } from "@/services/blockchainItems/blockchain-items-types";
-import { getInactiveZoneAddresses } from "@/services/blockchainItems/blockchain-items-utils";
+import { getInactiveZoneAddresses, cleanZoneDisplayName } from "@/services/blockchainItems/blockchain-items-utils";
 import { LupaButton } from "@/components/LupaButton/LupaButton";
 
 // ====================================================================
@@ -4782,8 +4782,11 @@ export const ManageDomainPage: FC = () => {
   // ====== АДАПТЕР ======
   const enrichedItemToDisplayItem = useCallback(
     (item: SimpleEnrichedItem, isZone: boolean): DisplayItem => {
-      const name =
+      const rawName =
         item.metadata?.token_info?.[0]?.name || item.domain || "Без названия";
+      // Только у зон сырое имя коллекции бывает замусорено "Proxy .../Domain" —
+      // у субдоменов такого не встречается, чистка не нужна и не трогает их.
+      const name = isZone ? cleanZoneDisplayName(rawName) : rawName;
       const image =
         item.metadata?.image ||
         item.metadata?.token_info?.[0]?.image ||

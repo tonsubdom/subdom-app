@@ -455,6 +455,20 @@ async updateZoneAddress(id: number, address: string): Promise<Zone> {
   return data.data;
 }
 
+  // Пока чисто ручная правка в БД, пока нет смартконтракта офферов на продажу
+  // Proxy-коллекций (третий таб в MarketPage, планируется отдельно) — админ
+  // сверяет офчейн-договорённость сам и правит владельца тут.
+  async updateZoneOwner(id: number, owner: string): Promise<Zone> {
+    const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/zones/${id}/owner`), {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify({ owner, isTestnet: this.isTestnet }),
+    });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message);
+    return data.data;
+  }
+
   async updateZoneCollection(name: string, collectionAddress: string): Promise<Zone> {
     const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/zones/${name}/collection`), {
       method: 'PUT',

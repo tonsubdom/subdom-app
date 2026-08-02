@@ -48,8 +48,25 @@ export const extractSubdomainName = (uri: string): string => {
 export const extractZoneName = (uri: string): string => {
   const { zone } = extractDomainAndZone(uri);
   if (!zone) return 'Без названия зоны';
-  
+
   return zone;
+};
+
+// Сырые имена NFT-коллекций зон приходят с мусорными префиксами/суффиксами
+// вида "Proxy downloader ton Domain" вместо "downloader.ton" (метаданные
+// коллекции так и были заданы при деплое, не поле для правки) — было
+// исправлено локально в ProfileWidget.tsx (collectionToZone), но
+// ManageDomainPage строил свой DisplayItem.title из тех же сырых метаданных
+// отдельно и той же чистки не делал — юзер увидел разницу между виджетом
+// профиля и менеджером на одной и той же зоне.
+export const cleanZoneDisplayName = (rawName: string): string => {
+  return rawName
+    .replace(/^proxy\s+/i, '') // "Proxy downloader ton Domain" -> "downloader ton Domain"
+    .replace(/\s+dns\s+domains?$/i, '') // "... DNS Domains" / "... DNS Domain"
+    .replace(/\s+proxy\s+domains?$/i, '') // "... Proxy Domains" / "... Proxy Domain" (суффиксом)
+    .replace(/\s+domains?$/i, '') // остаточное "... Domain"/"... Domains" (единственное число — старый баг)
+    .replace(/\s+ton$/i, '.ton') // "downloader ton" -> "downloader.ton" (точка потерялась в метаданных)
+    .trim();
 };
 
 
