@@ -256,8 +256,9 @@ const partnerAddress = isTestnet
   // фокусируем ввод домена, чтобы юзеру не пришлось самому тыкать в поле.
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.get('promo') === 'sbt') {
-      setActiveTab('sbt');
+    const promo = params.get('promo');
+    if (promo === 'sbt' || promo === 'proxy') {
+      setActiveTab(promo);
       const id = window.setTimeout(() => domainInputRef.current?.focus(), 300);
       return () => window.clearTimeout(id);
     }

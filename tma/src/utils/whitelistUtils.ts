@@ -1,8 +1,5 @@
 // src/utils/whitelistUtils.ts
 
-//import { Address } from 'ton-core';
-import { convertRawToUserFriendlyTest, convertUserFriendlyToRaw } from './tonUtils';
-
 // Whitelist map - адреса в тестнет формате (начинаются с 0Q)
 export const whitelistMap: Record<string, string> = {
   "0QBHTJVZSECcnS3fgcz0rUSN5rE8GEks5H3CI7WfPdZ_mz0N": "@Topruble",
@@ -133,32 +130,12 @@ export const mainnetWhitelistMap: Record<string , string> = {
 
 
 export function checkWhitelist(address: string, isTestnet: boolean) {
-  try {
-    if (isTestnet) {
-      const testnetAddress = convertRawToUserFriendlyTest(address);
-      const telegramName = whitelistMap[testnetAddress];
-      console.log('🔍 [checkWhitelist] Testnet адрес:', testnetAddress, '→', telegramName);
-      return telegramName
-        ? { isWhitelisted: true, telegramName, testnetAddress }
-        : { isWhitelisted: false, testnetAddress };
-    } else {
-      // === Главное исправление ===
-      // Переводим любой формат в raw (0:...)
-      const rawAddress = convertUserFriendlyToRaw(address);
-
-      console.log('🔍 [checkWhitelist] Mainnet raw (0:...):', rawAddress);
-      console.log('🔍 [checkWhitelist] Есть в мапе?', !!mainnetWhitelistMap[rawAddress]);
-
-      const telegramName = mainnetWhitelistMap[rawAddress];
-
-      return telegramName
-        ? { isWhitelisted: true, telegramName, testnetAddress: address }
-        : { isWhitelisted: false, testnetAddress: address };
-    }
-  } catch (error) {
-    console.error('Ошибка проверки вайтлиста:', error);
-    return { isWhitelisted: false };
-  }
+  // Публичный запуск 2026-08-03 — вайтлист-гейт (useAlphaAccess/ProtectedRoute)
+  // снят по решению юзера, доступ открыт всем. whitelistMap/mainnetWhitelistMap
+  // выше не мусор — те же адреса получили полный доступ ко всем длинам через
+  // POST /api/admin/whitelist/migrate, это отдельная история от самого гейта.
+  void isTestnet;
+  return { isWhitelisted: true, telegramName: 'public', testnetAddress: address };
 }
 
 

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { apiService } from "@/services/api";
 import { ZoneLength } from "@/services/api";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useZonePayment, ZoneType } from "@/hooks/useZonePayment";
 import { ShowSnackbar } from "@/components/ShowSnackbar";
+import { LengthRevealCard } from "@/components/PromoRevealModal/LengthRevealCard";
 
 // Импортируем логотип TON (предполагаем, что файл ton.svg находится в той же папке)
 import TonLogo from "./Header/ton.svg";
@@ -25,8 +27,11 @@ interface PaymentAttemptsSectionProps {
 const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
   address,
   colors,
+  isDark,
 }) => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
+  const [revealAfterPurchase, setRevealAfterPurchase] = useState<{ type: "proxy" | "sbt"; length: ZoneLength } | null>(null);
   const [paymentData, setPaymentData] = useState<{
     proxy: Record<ZoneLength, boolean>;
     sbt: Record<ZoneLength, boolean>;
@@ -126,6 +131,9 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
             : t("paymentSentNotConfirmed"),
           result.confirmedInBlock ? "success" : "error"
         );
+        if (result.confirmedInBlock) {
+          setRevealAfterPurchase({ type, length });
+        }
       } else {
         showSnackbar(
           result.error === "walletNotConnected"
@@ -428,6 +436,21 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
         }
       `}</style>
       {snackbar}
+      {revealAfterPurchase && (
+        <LengthRevealCard
+          length={revealAfterPurchase.length}
+          zoneType={revealAfterPurchase.type}
+          variant="purchased"
+          isDark={isDark}
+          t={t}
+          onClose={() => setRevealAfterPurchase(null)}
+          onCta={() => {
+            const type = revealAfterPurchase.type;
+            setRevealAfterPurchase(null);
+            navigate(`/create-collection?promo=${type}`);
+          }}
+        />
+      )}
       {/* Заголовок с кнопкой разворачивания */}
       <div
         style={{
