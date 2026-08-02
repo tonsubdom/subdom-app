@@ -209,18 +209,23 @@ class ApiService {
     };
   }
 
-  async createUser(address: string, name?: string): Promise<User> {
+  // POST /api/users отвечает 201 только при реальной вставке новой строки
+  // (существующий юзер получает обычный 200, см. server-sqlite.ts) — этим
+  // response.status различаем "юзер только что зарегистрировался" (для
+  // промо-баннера "подарена попытка"), а не полагаемся на текст message.
+  async createUserWithMeta(address: string, name?: string): Promise<{ user: User; isNewUser: boolean }> {
     const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/users`), {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify({ address, name, isTestnet: this.isTestnet }),
     });
+    const isNewUser = response.status === 201;
     const data = await response.json();
     if (!data.success) throw new Error(data.message);
-    
+
     // Парсим JSON поля как в getUser
     const userData = data.data;
-    
+
     if (userData && typeof userData.nftAccessAmount === 'string') {
       try {
         userData.nftAccessAmount = JSON.parse(userData.nftAccessAmount);
@@ -231,7 +236,7 @@ class ApiService {
         };
       }
     }
-    
+
     if (userData && typeof userData.totalPaidAttempts === 'string') {
       try {
         userData.totalPaidAttempts = JSON.parse(userData.totalPaidAttempts);
@@ -242,8 +247,8 @@ class ApiService {
         };
       }
     }
-    
-    return {
+
+    const user: User = {
       ...userData,
       domains: Number(userData.domains) || 0,
       zones: Number(userData.zones) || 0,
@@ -260,6 +265,12 @@ class ApiService {
       totalSbtSubdomainSpending: Number(userData.totalSbtSubdomainSpending) || 0,
       totalProfit: Number(userData.totalProfit) || 0
     };
+    return { user, isNewUser };
+  }
+
+  async createUser(address: string, name?: string): Promise<User> {
+    const { user } = await this.createUserWithMeta(address, name);
+    return user;
   }
 
   async deleteUser(id: number): Promise<{ success: boolean; message?: string; data?: any; }> {
@@ -964,6 +975,20 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     throw error;
   }
 }
+
+  // Как registerOrGetUser, но с isNewUser — нужно UserContext, чтобы показать
+  // промо-модалку "подарена попытка" только реально новым юзерам, не при
+  // каждом резолве уже существующего адреса из localStorage.
+  async registerOrGetUserWithMeta(address: string, name: string | undefined): Promise<{ user: User; isNewUser: boolean }> {
+    try {
+      return await this.createUserWithMeta(address, name);
+    } catch (error: any) {
+      if (error.message?.includes('уже существует')) {
+        return { user: await this.getUser(address), isNewUser: false };
+      }
+      throw error;
+    }
+  }
 
 }
 

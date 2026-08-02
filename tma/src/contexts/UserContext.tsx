@@ -60,6 +60,13 @@ interface UserContextType {
       sbt: Record<number, number>;
     };
   };
+  // Длина SBT-попытки, подаренной юзеру промо-акцией при регистрации (см.
+  // server-sqlite.ts POST /api/users) — не null только сразу после первого
+  // подключения кошелька в этой сессии, пока юзер не закроет модалку-реролл
+  // или не перейдёт в создание зоны. Не персистится намеренно — реролл
+  // должен показаться один раз, не при каждом заходе в приложение.
+  promoRevealLength: number | null;
+  dismissPromoReveal: () => void;
 }
 
 // Создаем контекст
@@ -146,8 +153,24 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [subdomains, setSubdomains] = useState<Subdomain[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [promoRevealLength, setPromoRevealLength] = useState<number | null>(null);
   const wallet = useTonWallet();                                    // ← ДОБАВИТЬ
-  const isTestnet = wallet?.account?.chain === "-3"; 
+  const isTestnet = wallet?.account?.chain === "-3";
+
+  const dismissPromoReveal = () => setPromoRevealLength(null);
+
+  // Из nftAccessAmount.sbt достаём ту единственную длину, где промо-акция
+  // выставила true — если их вдруг несколько (юзер и так уже что-то покупал),
+  // берём первую попавшуюся, это чисто для витрины модалки, не для логики выдачи.
+  const findGrantedSbtLength = (u: User): number | null => {
+    const sbt = u.nftAccessAmount?.sbt;
+    if (!sbt) return null;
+    const lengths = Object.keys(sbt).map(Number).sort((a, b) => a - b);
+    for (const length of lengths) {
+      if (sbt[length as keyof typeof sbt]) return length;
+    }
+    return null;
+  };
 
 
   useEffect(() => {
@@ -191,11 +214,15 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     try {
       apiService.setNetwork(isTestnet);
       // Регистрируем/получаем пользователя на бэкенде
-      const apiUser = await apiService.registerOrGetUser(walletAddress, name);
+      const { user: apiUser, isNewUser } = await apiService.registerOrGetUserWithMeta(walletAddress, name);
       const transformedUser = parseUserFields(apiUser);
 
       setUser(transformedUser);
-      
+      if (isNewUser) {
+        const grantedLength = findGrantedSbtLength(transformedUser);
+        if (grantedLength) setPromoRevealLength(grantedLength);
+      }
+
       // Загружаем зоны пользователя
       const userZones = await apiService.getUserZones(walletAddress);
       setZones(userZones);
@@ -404,6 +431,8 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     refreshUser,
     getUserFinancialSummary,
     getUserPaymentAttemptsSummary,
+    promoRevealLength,
+    dismissPromoReveal,
   };
 
   return (

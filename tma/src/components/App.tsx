@@ -23,6 +23,7 @@ import { LanguageProvider } from '@/contexts/LanguageContext';
 import ChatWidget from '@/components/ChatWidget/ChatWidget';
 import ProfileWidget from '@/components/ProfileWidget/ProfileWidget';
 import SearchWidget from '@/components/SearchWidget/SearchWidget';
+import PromoRevealModal from '@/components/PromoRevealModal/PromoRevealModal';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { UserProvider } from '@/contexts/UserContext';
 
@@ -88,6 +89,7 @@ export const App: React.FC = () => {
                   <ChatWidget />
                   <ProfileWidget />
                   <SearchWidget />
+                  <PromoRevealModal />
 
                   {/* Модальное окно для альфа-тестирования */}
                   <AlphaTestModal

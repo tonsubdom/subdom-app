@@ -1,7 +1,8 @@
 // src/pages/CreateCollectionPage/CreateCollectionPageEnhanced.tsx
 // Обновленная версия с интегрированным сервисом проверки транзакций
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ScanProgressLoader } from '@/components/ScanProgressLoader';
 import {
   Banner,
@@ -246,6 +247,21 @@ const partnerAddress = isTestnet
   const [activeTab, setActiveTab] = useState<ActiveTab>('sbt');
   const [activeStep, setActiveStep] = useState(0);
   const [domainName, setDomainName] = useState('');
+  const domainInputRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
+
+  // Переход сюда из промо-модалки (PromoRevealModal, "Создать SBT-зону" после
+  // подарка при регистрации) — ?promo=sbt: убеждаемся, что открыта именно
+  // SBT-вкладка (и так дефолт, но явно на случай будущих изменений), и сразу
+  // фокусируем ввод домена, чтобы юзеру не пришлось самому тыкать в поле.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('promo') === 'sbt') {
+      setActiveTab('sbt');
+      const id = window.setTimeout(() => domainInputRef.current?.focus(), 300);
+      return () => window.clearTimeout(id);
+    }
+  }, [location.search]);
   const [snackbar, setSnackbar] = useState<JSX.Element | null>(null);
   const [, setDnsMainDomainAddress] = useState('');
   const [loading, setLoading] = useState(false);
@@ -1431,6 +1447,7 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
 
             <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
               <Input
+                ref={domainInputRef}
                 placeholder={t('enterDomainName')}
                 value={domainName}
                 onChange={(e) => {

@@ -1822,6 +1822,10 @@ const LANG = {
     active: '✅ Активна',
     inactive: '❌ Не подписан',
 
+    // Промо-акция "зарегайся и получи SBT-зону бесплатно" — см.
+    // server-sqlite.ts POST /api/users (случайная длина 4-9 новому юзеру).
+    promoBanner: '🎁 <b>Действует акция!</b> При регистрации аккаунта (подключении кошелька) дарим одну бесплатную попытку создать SBT-зону случайной длины.',
+
     // Кнопки меню
     btnSubscribe: '✅ Подписаться',
     btnUnsubscribe: '❌ Отписаться',
@@ -1829,6 +1833,7 @@ const LANG = {
     btnLang: '🇷🇺 RU',
     btnConnectChat: '🔌 Подключить к чату',
     btnOpenSubdom: '🔗 Открыть Subdom',
+    btnRegisterPromo: '🎁 Зарегать аккаунт',
 
     // /subscribe
     subscribedAs: '✅ Вы подписаны на уведомления как',
@@ -1975,6 +1980,8 @@ const LANG = {
     active: '✅ Active',
     inactive: '❌ Not subscribed',
 
+    promoBanner: '🎁 <b>Promo is on!</b> Register an account (connect your wallet) and get one free attempt to create an SBT zone of a random length.',
+
     // Кнопки меню
     btnSubscribe: '✅ Subscribe',
     btnUnsubscribe: '❌ Unsubscribe',
@@ -1982,6 +1989,7 @@ const LANG = {
     btnLang: '🇬🇧 EN',
     btnConnectChat: '🔌 Connect to Chat',
     btnOpenSubdom: '🔗 Open Subdom',
+    btnRegisterPromo: '🎁 Register account',
 
     // /subscribe
     subscribedAs: '✅ You are subscribed to notifications as',
@@ -2600,6 +2608,8 @@ class TelegramBotService {
       const startMessage = `
 ${$.startTitle}
 
+${$.promoBanner}
+
 ${$.startDesc}
 
 ${$.startCommands}
@@ -2612,6 +2622,9 @@ ${$.startSubStatus} ${isSubscribed ? $.active : $.inactive}
       `.trim();
 
       const inlineKeyboard = [
+        [
+          { text: $.btnRegisterPromo, url: DeeplinkUtils.generateHomeLink() }
+        ],
         [
           { text: $.btnOpenSubdom, url: DeeplinkUtils.generateHomeLink() }
         ],
