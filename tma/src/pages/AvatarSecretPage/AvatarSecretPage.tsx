@@ -96,6 +96,12 @@ export const AvatarSecretPage: React.FC = () => {
   const [nftAddressInput, setNftAddressInput] = useState('');
   const [resolving, setResolving] = useState(false);
   const [resolvedDomain, setResolvedDomain] = useState<ResolvedDomain | null>(null);
+  // Имя, которым реально нашли resolvedDomain (с учётом ".ton", который мог
+  // подставиться фолбэком в resolveDomain) — отдельно от domainName-инпута,
+  // чтобы бейдж зона/субдомен не сбивался, если юзер потом поправит инпут,
+  // не нажимая "Найти" заново. При резолве по адресу остаётся null — по
+  // одному лишь адресу NFT уровень (зона/субдомен) не определить.
+  const [resolvedDomainName, setResolvedDomainName] = useState<string | null>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [loadingExisting, setLoadingExisting] = useState(false);
 
@@ -144,6 +150,7 @@ export const AvatarSecretPage: React.FC = () => {
   const resetResolvedState = () => {
     setResolveError(null);
     setResolvedDomain(null);
+    setResolvedDomainName(null);
     setTitle('');
     setDescription('');
     setCategory('');
@@ -171,14 +178,17 @@ export const AvatarSecretPage: React.FC = () => {
       // домен/поддомен), и только если это не нашлось — пробуем с ".ton" на
       // конце (удобство: можно писать "7707" или "sub.zone" без суффикса).
       let resolved = await resolveDomainNftAddress(trimmed, isTestnet);
+      let matchedName = trimmed;
       if (!resolved && !trimmed.endsWith('.ton')) {
-        resolved = await resolveDomainNftAddress(`${trimmed}.ton`, isTestnet);
+        matchedName = `${trimmed}.ton`;
+        resolved = await resolveDomainNftAddress(matchedName, isTestnet);
       }
       if (!resolved) {
         setResolveError(t('avatarDomainNotFound') || 'Домен не найден');
         return;
       }
       setResolvedDomain(resolved);
+      setResolvedDomainName(matchedName);
       loadExistingRecords(resolved.nftAddress);
     } catch (e) {
       setResolveError(t('avatarResolveError') || 'Ошибка при поиске домена');
@@ -250,6 +260,16 @@ export const AvatarSecretPage: React.FC = () => {
 
   const handleResolve = () =>
     resolveByAddress ? resolveByAddressValue(nftAddressInput) : resolveDomain(domainName);
+
+  // "sub.zone.ton" (3+ части) — субдомен, "zone.ton" (2 части) — корневая
+  // зона. При резолве по адресу имени нет вообще — уровень не показываем.
+  const resolvedLevelLabel = (): string | null => {
+    if (!resolvedDomainName) return null;
+    const parts = resolvedDomainName.split('.').filter(Boolean);
+    if (parts.length >= 3) return t('avatarFoundSubdomain') || 'Субдомен';
+    if (parts.length === 2) return t('avatarFoundZone') || 'Зона';
+    return null;
+  };
 
   // dns_text "picture" по общему стандарту (см. ownerMetaService.ts) — ЧИСТЫЙ
   // URL картинки, ничего кроме ссылки (так его читают TONresistor/
@@ -484,7 +504,31 @@ export const AvatarSecretPage: React.FC = () => {
           )}
           {resolvedDomain && (
             <Alert severity="success" sx={{ mt: 1, fontSize: '12px' }}>
-              {(t('avatarDomainFound') || 'Домен найден') + `: ${resolvedDomain.nftAddress.slice(0, 6)}...${resolvedDomain.nftAddress.slice(-4)}`}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                {displayImage && (
+                  <Box
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: '50%',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      background: isDark ? '#0D0D0D' : '#FFFFFF',
+                    }}
+                  >
+                    <img
+                      src={displayImage}
+                      alt=""
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </Box>
+                )}
+                <span>
+                  {resolvedLevelLabel() ? `${resolvedLevelLabel()} ` : ''}
+                  {(t('avatarDomainFound') || 'Домен найден') + `: ${resolvedDomain.nftAddress.slice(0, 6)}...${resolvedDomain.nftAddress.slice(-4)}`}
+                </span>
+              </Box>
             </Alert>
           )}
         </Box>

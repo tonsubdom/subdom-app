@@ -1877,6 +1877,7 @@ const LANG = {
     paymentError: '❌ <b>ОШИБКА ПРИ ОПЛАТЕ ПОПЫТКИ!</b>',
     dnsRecordSet: '🔗 <b>DNS-ЗАПИСЬ ПРИВЯЗАНА!</b>',
     dnsRecordDeleted: '🔓 <b>DNS-ЗАПИСЬ ОТВЯЗАНА!</b>',
+    deactivationRequested: '⏳ <b>ЗАПРОС НА ДЕАКТИВАЦИЮ ЗОНЫ!</b>',
 
     // Поля уведомлений
     fieldName: '🏷️ Название',
@@ -1915,6 +1916,8 @@ const LANG = {
     fieldDeactivatedAt: '⏰ Время завершения работы',
     fieldRegisteredAt: '⏰ Время регистрации',
     fieldTime: '⏰ Время',
+    fieldRequestedBy: '👤 Запросил',
+    btnReviewDeactivation: '🔍 Перейти к исполнению',
 
     // Подсказки
     hintProxyZone: '💡 Теперь можно создавать субдомены в этой Proxy-зоне!',
@@ -2027,6 +2030,7 @@ const LANG = {
     paymentError: '❌ <b>PAYMENT ATTEMPT ERROR!</b>',
     dnsRecordSet: '🔗 <b>DNS RECORD LINKED!</b>',
     dnsRecordDeleted: '🔓 <b>DNS RECORD UNLINKED!</b>',
+    deactivationRequested: '⏳ <b>ZONE DEACTIVATION REQUESTED!</b>',
 
     // Поля уведомлений
     fieldName: '🏷️ Name',
@@ -2065,6 +2069,8 @@ const LANG = {
     fieldDeactivatedAt: '⏰ Deactivated',
     fieldRegisteredAt: '⏰ Registered',
     fieldTime: '⏰ Time',
+    fieldRequestedBy: '👤 Requested by',
+    btnReviewDeactivation: '🔍 Review & execute',
 
     // Подсказки
     hintProxyZone: '💡 You can now create subdomains in this Proxy zone!',
@@ -2156,6 +2162,10 @@ class DeeplinkUtils {
 
   static generateHomeLink(): string {
     return this.generateTelegramDeeplink('/');
+  }
+
+  static generateAdminPendingActionsLink(): string {
+    return this.generateTelegramDeeplink('admin', { section: 'pending-actions' });
   }
 
   static parseStartappParam(startappParam: string): { route: string; params: Record<string, string> } {
@@ -3129,6 +3139,39 @@ ${$.fieldDeactivatedAt}: ${new Date().toLocaleString('ru-RU')}
       await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления о SBT зоне:', error);
+    }
+  }
+
+  // Юзер кликнул "Деактивировать" на своей зоне, но change_content на
+  // SBT-коллекции может вызвать только адрес площадки — сама транзакция
+  // не уходит с клиента, вместо неё пишется заявка в pending_admin_actions
+  // (см. server-sqlite.ts) и владельцу площадки прилетает это уведомление
+  // с кнопкой в админку, где он сам подписывает транзакцию своим кошельком.
+  async sendPendingDeactivationNotification(name: string, address: string, requestedBy: string, isTestnet: boolean = true): Promise<void> {
+    if (!this.isBotAvailable()) return;
+
+    try {
+      const $ = LANG.ru;
+      const network = this.formatNetwork(isTestnet);
+      const message = `
+${$.deactivationRequested}
+
+${network}
+${$.fieldName}: <code>${name}</code>
+${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldRequestedBy}: ${this.formatTonviewerLink(requestedBy, isTestnet)}
+
+${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
+      `.trim();
+
+      const inlineKeyboard = [[{ text: $.btnReviewDeactivation, url: DeeplinkUtils.generateAdminPendingActionsLink() }]];
+
+      await this.bot!.sendMessage(this.ownerId, message, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: inlineKeyboard }
+      });
+    } catch (error) {
+      console.error('❌ Ошибка при отправке уведомления о заявке на деактивацию:', error);
     }
   }
 

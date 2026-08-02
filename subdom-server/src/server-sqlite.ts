@@ -427,6 +427,24 @@ const initializeDatabase = (db: SqliteDatabase) => {
       updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (subdomainId) REFERENCES subdomains(id)
     );
+
+    -- Заявки на действия, которые может выполнить только адрес площадки
+    -- (change_content/деактивация SBT-зоны, смена владельца и т.п.) —
+    -- ончейн-зоны, найденные через сканирование, не имеют id в таблице zones,
+    -- поэтому ключ тут — сам ончейн-адрес (targetAddress), а не FK.
+    CREATE TABLE IF NOT EXISTS pending_admin_actions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      actionType TEXT NOT NULL,
+      targetType TEXT NOT NULL,
+      targetAddress TEXT NOT NULL,
+      targetCollectionAddress TEXT,
+      targetName TEXT NOT NULL,
+      requestedBy TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      executedTxHash TEXT,
+      requestedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      executedAt TEXT
+    );
   `);
   
   // Выполняем миграцию после создания таблиц
@@ -3434,6 +3452,129 @@ app.post('/api/notifications/zone-deactivated', (req, res) => {
       success: false,
       message: 'Внутренняя ошибка сервера'
     });
+  }
+});
+
+// ========== ЗАЯВКИ НА ДЕЙСТВИЯ АДРЕСА ПЛОЩАДКИ ==========
+//
+// change_content (деактивация SBT-зоны) и подобные привилегированные вызовы
+// на контракте может исполнить только сам адрес площадки — обычный юзер
+// физически не может отправить такую транзакцию своим кошельком (см.
+// confirmSbtZoneToggle в ProfileWidget.tsx). Вместо того чтобы притворяться,
+// что клик что-то сделал, юзерский клик пишет заявку сюда, владельцу летит
+// уведомление в бота, а исполняет он сам из админки своим же TonConnect —
+// без серверного приватного ключа (осознанное решение, автоматику обсудим
+// позже).
+
+// Юзер создаёт заявку кликом "Деактивировать" — не требует админ-авторизации,
+// это же обычное действие обычного юзера над своей же зоной.
+app.post('/api/admin/pending-actions', (req, res) => {
+  try {
+    const { actionType, targetType, targetAddress, targetCollectionAddress, targetName, requestedBy } = req.body;
+    const db = req.db;
+    const isTestnet = req.isTestnet;
+
+    if (!actionType || !targetType || !targetAddress || !targetName || !requestedBy) {
+      return res.status(400).json({
+        success: false,
+        message: 'actionType, targetType, targetAddress, targetName и requestedBy обязательны'
+      });
+    }
+
+    // Не плодим дубликаты — если по этому адресу уже есть необработанная заявка
+    // того же типа, просто возвращаем её.
+    const existing = db.prepare(`
+      SELECT * FROM pending_admin_actions
+      WHERE targetAddress = ? AND actionType = ? AND status = 'pending'
+    `).get(targetAddress, actionType);
+
+    if (existing) {
+      return res.json({ success: true, data: existing, alreadyPending: true });
+    }
+
+    const stmt = db.prepare(`
+      INSERT INTO pending_admin_actions (actionType, targetType, targetAddress, targetCollectionAddress, targetName, requestedBy)
+      VALUES (?, ?, ?, ?, ?, ?)
+      RETURNING *
+    `);
+    const created = stmt.get(actionType, targetType, targetAddress, targetCollectionAddress || null, targetName, requestedBy);
+
+    if (actionType === 'deactivate_zone') {
+      telegramBot.sendPendingDeactivationNotification(targetName, targetAddress, requestedBy, isTestnet);
+    }
+
+    return res.json({ success: true, data: created });
+  } catch (error) {
+    console.error('❌ Ошибка при создании заявки на действие площадки:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Список заявок для админки — только владелец площадки.
+app.get('/api/admin/pending-actions', requireAdminAuth, (req, res) => {
+  try {
+    const db = req.db;
+    const status = typeof req.query.status === 'string' ? req.query.status : null;
+
+    const rows = status
+      ? db.prepare('SELECT * FROM pending_admin_actions WHERE status = ? ORDER BY requestedAt DESC').all(status)
+      : db.prepare('SELECT * FROM pending_admin_actions ORDER BY requestedAt DESC').all();
+
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('❌ Ошибка при получении заявок на действия площадки:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Публичная карта "какие targetAddress сейчас в очереди на деактивацию" —
+// нужна фронту (ProfileWidget), чтобы показать юзеру "в процессе" вместо
+// того, чтобы врать, что зона уже неактивна. Не приватная информация —
+// просто факт наличия заявки, без деталей.
+app.get('/api/admin/pending-actions/pending-map', (req, res) => {
+  try {
+    const db = req.db;
+    const actionType = typeof req.query.actionType === 'string' ? req.query.actionType : 'deactivate_zone';
+
+    const rows = db.prepare(`
+      SELECT targetAddress FROM pending_admin_actions WHERE actionType = ? AND status = 'pending'
+    `).all(actionType) as { targetAddress: string }[];
+
+    const map: Record<string, boolean> = {};
+    rows.forEach((r) => { map[r.targetAddress] = true; });
+
+    return res.json({ success: true, data: map });
+  } catch (error) {
+    console.error('❌ Ошибка при получении карты ожидающих заявок:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Админ сам подписал транзакцию своим TonConnect в AdminPanelPage — тут
+// только фиксируем факт исполнения, саму транзакцию сервер не отправляет.
+app.post('/api/admin/pending-actions/:id/complete', requireAdminAuth, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { txHash } = req.body;
+    const db = req.db;
+
+    const existing = db.prepare('SELECT * FROM pending_admin_actions WHERE id = ?').get(id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Заявка не найдена' });
+    }
+
+    const stmt = db.prepare(`
+      UPDATE pending_admin_actions
+      SET status = 'executed', executedTxHash = ?, executedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+      RETURNING *
+    `);
+    const updated = stmt.get(txHash || null, id);
+
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('❌ Ошибка при подтверждении исполнения заявки:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
   }
 });
 

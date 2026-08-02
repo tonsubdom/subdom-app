@@ -840,6 +840,75 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
+  // ========== ЗАЯВКИ НА ДЕЙСТВИЯ АДРЕСА ПЛОЩАДКИ ==========
+  // change_content/деактивация SBT-зоны может исполнить только сам адрес
+  // площадки — юзерский клик создаёт заявку тут вместо (обречённой) отправки
+  // транзакции со своего кошелька, см. confirmSbtZoneToggle в ProfileWidget.
+
+  async createPendingAction(data: {
+    actionType: string;
+    targetType: string;
+    targetAddress: string;
+    targetCollectionAddress?: string;
+    targetName: string;
+    requestedBy: string;
+  }): Promise<{ success: boolean; data?: any; alreadyPending?: boolean; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/admin/pending-actions`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error creating pending action:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getPendingActionsMap(actionType: string = 'deactivate_zone'): Promise<Record<string, boolean>> {
+    try {
+      const response = await fetch(
+        this.addNetworkParam(`${this.baseUrl}/api/admin/pending-actions/pending-map?actionType=${encodeURIComponent(actionType)}`)
+      );
+      const data = await response.json();
+      return data.success ? data.data : {};
+    } catch (error) {
+      console.error('Error fetching pending actions map:', error);
+      return {};
+    }
+  }
+
+  async getPendingActions(status?: string): Promise<{ success: boolean; data?: any[]; message?: string }> {
+    try {
+      const url = status
+        ? `${this.baseUrl}/api/admin/pending-actions?status=${encodeURIComponent(status)}`
+        : `${this.baseUrl}/api/admin/pending-actions`;
+      const response = await fetch(this.addNetworkParam(url), { headers: this.getHeaders() });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error fetching pending actions:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async completePendingAction(id: number, txHash?: string): Promise<{ success: boolean; data?: any; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/admin/pending-actions/${id}/complete`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ txHash }),
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error completing pending action:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
   // ========== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ==========
   async checkDomainAvailability(domain: string): Promise<boolean> {
     try {

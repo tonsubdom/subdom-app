@@ -2268,7 +2268,6 @@ import { useNavigate } from "react-router-dom";
 import {
   useTonAddress,
   useTonWallet,
-  useTonConnectUI,
   TonConnectButton,
 } from "@tonconnect/ui-react";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -2582,7 +2581,6 @@ const ProfileWidget: React.FC = () => {
   }, []);
 
   const wallet = useTonWallet();
-  const [tonConnectUI] = useTonConnectUI();
   const address = useTonAddress();
   const isTestnet = wallet?.account?.chain === "-3";
 
@@ -2993,26 +2991,13 @@ const ProfileWidget: React.FC = () => {
       return new Set();
     }
   };
-  const [manuallyInactiveSbtZones, setManuallyInactiveSbtZones] = useState<
-    Set<string>
-  >(() => loadAddrSet(SBT_MANUAL_INACTIVE_KEY));
-
-  // Только локальный UI-оверрайд (бейдж) — сам по себе НЕ трогает ончейн.
-  // Вызывается ПОСЛЕ успешной транзакции change_content в
-  // confirmSbtZoneToggle ниже, не раньше.
-  const applySbtZoneToggleLocalState = (address: string) => {
-    setManuallyInactiveSbtZones((prev) => {
-      const next = new Set(prev);
-      next.add(address);
-      try {
-        localStorage.setItem(
-          SBT_MANUAL_INACTIVE_KEY,
-          JSON.stringify(Array.from(next))
-        );
-      } catch {}
-      return next;
-    });
-  };
+  // Оставлено только для чтения — старые записи ещё с тех пор, когда клик
+  // "Деактивировать" оптимистично помечал зону неактивной локально (до того,
+  // как выяснилось, что change_content вызывает только адрес площадки).
+  // Новых записей сюда больше не пишется, см. confirmSbtZoneToggle.
+  const [manuallyInactiveSbtZones] = useState<Set<string>>(() =>
+    loadAddrSet(SBT_MANUAL_INACTIVE_KEY)
+  );
 
   // Клик по "Деактивировать" открывает модалку подтверждения (та же идея,
   // что UnlinkConfirmationModal в CreateCollectionPage.tsx) — сама транзакция
@@ -3024,13 +3009,14 @@ const ProfileWidget: React.FC = () => {
   } | null>(null);
   const [sbtToggleInProgress, setSbtToggleInProgress] = useState(false);
 
-  // Реальная ончейн-транзакция: change_content на SBT-коллекции — тот же
-  // payload-эндпоинт и та же схема (content/common_content uri), что уже
-  // использует unlinkExistingCollection в CreateCollectionPage.tsx при
-  // пересоздании зоны. Контракт допускает этот вызов ровно один раз —
-  // действие необратимо, назад коллекцию отсюда не вернуть.
+  // change_content на SBT-коллекции может вызвать только сам адрес площадки —
+  // юзерский кошелёк такую транзакцию отправить не может (проверено вживую).
+  // Поэтому клик здесь не шлёт транзакцию сам, а создаёт заявку в очередь
+  // (pending_admin_actions на бэкенде), которую владелец площадки исполняет
+  // из AdminPanelPage своим же TonConnect. См. AskUserQuestion-решение
+  // 2026-08-03: без серверного приватного ключа, автоматику обсудим позже.
   const confirmSbtZoneToggle = async () => {
-    if (!sbtToggleConfirm || !wallet) return;
+    if (!sbtToggleConfirm || !wallet || !address) return;
     const { zone } = sbtToggleConfirm;
     if (!zone.collectionAddress) {
       showSnackbar(
@@ -3042,53 +3028,31 @@ const ProfileWidget: React.FC = () => {
 
     setSbtToggleInProgress(true);
     try {
-      const zoneNameWithoutTld = zone.name.endsWith(".ton")
-        ? zone.name.slice(0, -4)
-        : zone.name;
-      const metadataBase = `${API_PAYLOAD_URL}/api/v1/inactive-subdomain/metadata/ton/${zoneNameWithoutTld}`;
-
-      const changeContentUrl = `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/${zone.collectionAddress}/change_content?query_id=0`;
-      const response = await fetch(changeContentUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          new_content: {
-            content: { uri: metadataBase },
-            common_content: { suffix_uri: `${metadataBase}/` },
-          },
-        }),
+      const result = await apiService.createPendingAction({
+        actionType: "deactivate_zone",
+        targetType: "zone",
+        targetAddress: zone.address,
+        targetCollectionAddress: zone.collectionAddress,
+        targetName: zone.name,
+        requestedBy: address,
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const result = await response.json();
-      if (!result.messages || result.messages.length === 0) {
-        throw new Error("empty messages from change_content");
+      if (!result.success) {
+        throw new Error(result.message || "не удалось создать заявку");
       }
 
-      await tonConnectUI.sendTransaction({
-        validUntil: result.validUntil || Math.floor(Date.now() / 1000) + 240,
-        messages: result.messages,
+      setPendingDeactivationAddresses((prev) => {
+        const next = new Set(prev);
+        next.add(zone.address);
+        return next;
       });
-
-      try {
-        await apiService.notifyZoneDeactivated({
-          name: zone.name,
-          address: zone.collectionAddress,
-        });
-      } catch {
-        /* relay-only, не блокирует успех транзакции */
-      }
-
-      applySbtZoneToggleLocalState(zone.address);
       showSnackbar(
-        t("zoneDeactivatedSuccess") || "Зона деактивирована",
+        t("zoneDeactivationQueued") ||
+          "Заявка на деактивацию отправлена — площадка исполнит её вручную",
         "success"
       );
       setSbtToggleConfirm(null);
     } catch (error: any) {
-      console.error("❌ Ошибка смены статуса SBT-зоны:", error);
+      console.error("❌ Ошибка постановки заявки на деактивацию SBT-зоны:", error);
       showSnackbar(
         error?.message || t("zoneToggleError") || "Ошибка транзакции",
         "error"
@@ -3103,6 +3067,20 @@ const ProfileWidget: React.FC = () => {
     manuallyInactiveSbtZones.forEach((a) => merged.add(a));
     return merged;
   }, [autoInactiveSbtZoneAddresses, manuallyInactiveSbtZones]);
+
+  // Заявки на деактивацию, ожидающие исполнения адресом площадки из админки
+  // (change_content может вызвать только он, не юзерский кошелёк — см.
+  // confirmSbtZoneToggle). Пока заявка pending — на карточке "в процессе"
+  // вместо того, чтобы врать про уже случившуюся деактивацию.
+  const [pendingDeactivationAddresses, setPendingDeactivationAddresses] =
+    useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    apiService
+      .getPendingActionsMap("deactivate_zone")
+      .then((map) => setPendingDeactivationAddresses(new Set(Object.keys(map))))
+      .catch(() => {});
+  }, []);
 
   // ====== [NEW] СУБДОМЕНЫ ПОЛЬЗОВАТЕЛЯ — ИЗ БЛОКЧЕЙНА ======
 
@@ -3667,6 +3645,11 @@ const ProfileWidget: React.FC = () => {
     const isSbtZone = Number(zone.proxy) === 0;
     const isInactiveDuplicate =
       isSbtZone && inactiveSbtZoneAddresses.has(zone.address);
+    // Заявка на деактивацию уже отправлена, но площадка её ещё не исполнила —
+    // реальный inactiveSbtZoneAddresses (пришедший с ончейна) главнее: как
+    // только он реально появится там, "в процессе" уступает настоящему INACTIVE.
+    const isDeactivationPending =
+      isSbtZone && !isInactiveDuplicate && pendingDeactivationAddresses.has(zone.address);
 
     return (
       <div
@@ -3783,8 +3766,23 @@ const ProfileWidget: React.FC = () => {
                   INACTIVE
                 </div>
               )}
+              {isDeactivationPending && (
+                <div
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    backgroundColor: "#f59e0b",
+                    color: "white",
+                    fontSize: "10px",
+                    fontWeight: "700",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  {t("zoneInactivatingProcess") || "INACTIVATING PROCESS"}
+                </div>
+              )}
             </div>
-            {isSbtZone && !isInactiveDuplicate && (
+            {isSbtZone && !isInactiveDuplicate && !isDeactivationPending && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();

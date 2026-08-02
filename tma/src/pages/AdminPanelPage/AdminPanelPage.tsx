@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { apiService } from '@/services/api';
 import { TransactionSender } from '@/pages/CreateCollectionPage/TransactionSender';
+import { PendingActionsPanel } from './PendingActionsPanel';
 
 
 const renderUserDetails = (user: any, currentTheme: string) => {
@@ -936,6 +937,21 @@ const AdminPanelPage: React.FC = () => {
             Testnet Mode
           </span>
         </label>
+      </div>
+
+      {/* Часть 0: Заявки на действия площадки (деактивация и т.п.) */}
+      <div style={{ marginBottom: '40px' }}>
+        <h2 style={{
+          margin: '0 0 20px 0',
+          color: currentTheme === 'dark' ? '#FFD700' : '#3B82F6',
+          borderBottom: `3px solid ${currentTheme === 'dark' ? '#FFD700' : '#3B82F6'}`,
+          paddingBottom: '10px',
+          fontFamily: 'monospace'
+        }}>
+          ⏳ PENDING PLATFORM ACTIONS
+        </h2>
+
+        <PendingActionsPanel isTestnet={isTestnet} currentTheme={currentTheme} />
       </div>
 
       {/* Часть 1: Управление оплаченными попытками */}
