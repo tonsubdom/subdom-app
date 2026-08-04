@@ -445,11 +445,41 @@ const initializeDatabase = (db: SqliteDatabase) => {
       requestedAt TEXT DEFAULT CURRENT_TIMESTAMP,
       executedAt TEXT
     );
+
+    -- Прогресс пошаговой обучалки. completedSteps — JSON string[] id шагов
+    -- из TUTORIAL_STEPS. rewardGranted гарантирует, что вторая (за обучение,
+    -- отдельно от промо-попытки при регистрации) SBT-награда выдаётся не
+    -- больше одного раза на адрес.
+    CREATE TABLE IF NOT EXISTS tutorial_progress (
+      address TEXT PRIMARY KEY,
+      completedSteps TEXT NOT NULL DEFAULT '[]',
+      rewardGranted INTEGER NOT NULL DEFAULT 0,
+      rewardLength TEXT,
+      startedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      completedAt TEXT
+    );
   `);
-  
+
   // Выполняем миграцию после создания таблиц
   // migrateDatabase(db);
 };
+
+// Все шаги обучалки по всем 5 блокам (см. Log.md/подраздел "обучалка" —
+// блоки: профиль → sbt-зона/субдомен → сайт+торрент → маркет → вкладки
+// профиля). Награда выдаётся только когда completedSteps содержит их все —
+// блок 1 ветвится (domain_answered закрывает и "нет домена", и "привязали
+// домен" — сама привязка/инфо про регистрацию не хранятся как разные шаги,
+// потому что для награды важен сам факт прохождения ветки, а не какая
+// именно). Блоки 2-5 пока не подключены на фронте (следующие сессии), но
+// список объявлен целиком сразу, чтобы /api/tutorial/complete не переписывать.
+const TUTORIAL_STEPS = [
+  'profile_saved', 'domain_answered', // блок 1 — профиль
+  'zone_selected', 'subdomain_created', // блок 2 — sbt-зона/субдомен
+  'site_visited', 'torrent_created', // блок 3 — сайт + торрент
+  'market_toured', 'catalog_focused', // блок 4 — маркет
+  'profile_tabs_toured', // блок 5 — вкладки профиля
+] as const;
+type TutorialStep = typeof TUTORIAL_STEPS[number];
 
 
 // Инициализируем обе базы данных
@@ -3722,6 +3752,188 @@ app.post('/api/admin/pending-actions/:id/complete', requireAdminAuth, (req, res)
     return res.json({ success: true, data: updated });
   } catch (error) {
     console.error('❌ Ошибка при подтверждении исполнения заявки:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// ========== ОБУЧАЛКА (пошаговый онбординг) ==========
+
+// Публичный, по address — как /api/users. Без записи в БД, если юзер ещё
+// не начинал обучение (дефолт, не 404), чтобы фронту не пришлось отдельно
+// обрабатывать "ещё нет строки" как ошибку.
+app.get('/api/tutorial/progress/:address', (req, res) => {
+  try {
+    const { address } = req.params;
+    const db = req.db;
+
+    const row = db.prepare('SELECT * FROM tutorial_progress WHERE address = ?').get(address) as
+      { address: string; completedSteps: string; rewardGranted: number; rewardLength: string | null; startedAt: string; completedAt: string | null }
+      | undefined;
+
+    if (!row) {
+      return res.json({ success: true, data: { started: false, completedSteps: [], rewardGranted: false, rewardLength: null } });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        started: true,
+        completedSteps: JSON.parse(row.completedSteps || '[]'),
+        rewardGranted: !!row.rewardGranted,
+        rewardLength: row.rewardLength
+      }
+    });
+  } catch (error) {
+    console.error('❌ Ошибка при получении прогресса обучалки:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+app.post('/api/tutorial/start', (req, res) => {
+  try {
+    const { address } = req.body;
+    const db = req.db;
+
+    if (!address) {
+      return res.status(400).json({ success: false, message: 'address обязателен' });
+    }
+
+    const existing = db.prepare('SELECT * FROM tutorial_progress WHERE address = ?').get(address);
+    if (existing) {
+      return res.json({ success: true, data: existing, alreadyStarted: true });
+    }
+
+    const stmt = db.prepare(`
+      INSERT INTO tutorial_progress (address)
+      VALUES (?)
+      RETURNING *
+    `);
+    const created = stmt.get(address);
+
+    return res.json({ success: true, data: created });
+  } catch (error) {
+    console.error('❌ Ошибка при старте обучалки:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Записывает прохождение одного шага. Дедуп — повторный вызов с уже
+// пройденным шагом просто возвращает текущий список, не дублирует.
+// Реальную защиту от читерства даёт не этот эндпоинт сам по себе, а то,
+// ОТКУДА он вызывается на фронте: для шагов с настоящим онchain/бэкенд-
+// действием (сохранение профиля, привязка DNS, создание субдомена, торрента)
+// вызов стоит в хендлере успеха этого действия, а не по клику "Далее".
+app.post('/api/tutorial/step', (req, res) => {
+  try {
+    const { address, step } = req.body;
+    const db = req.db;
+
+    if (!address || !step) {
+      return res.status(400).json({ success: false, message: 'address и step обязательны' });
+    }
+
+    if (!TUTORIAL_STEPS.includes(step)) {
+      return res.status(400).json({ success: false, message: `Неизвестный шаг обучалки: ${step}` });
+    }
+
+    let row = db.prepare('SELECT * FROM tutorial_progress WHERE address = ?').get(address) as
+      { address: string; completedSteps: string } | undefined;
+
+    if (!row) {
+      row = db.prepare('INSERT INTO tutorial_progress (address) VALUES (?) RETURNING *').get(address) as
+        { address: string; completedSteps: string };
+    }
+
+    const completedSteps: string[] = JSON.parse(row.completedSteps || '[]');
+    if (!completedSteps.includes(step)) {
+      completedSteps.push(step);
+    }
+
+    const updated = db.prepare(`
+      UPDATE tutorial_progress SET completedSteps = ? WHERE address = ?
+      RETURNING *
+    `).get(JSON.stringify(completedSteps), address) as { completedSteps: string; rewardGranted: number; rewardLength: string | null };
+
+    return res.json({
+      success: true,
+      data: {
+        completedSteps: JSON.parse(updated.completedSteps),
+        rewardGranted: !!updated.rewardGranted,
+        rewardLength: updated.rewardLength
+      }
+    });
+  } catch (error) {
+    console.error('❌ Ошибка при записи шага обучалки:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Выдаёт награду (случайная бесплатная SBT-попытка, 4-9 символов — не proxy,
+// слишком ценно раздавать бесплатно), только если пройдены ВСЕ шаги
+// TUTORIAL_STEPS. Идемпотентно: повторный вызов при уже выданной награде
+// просто возвращает ранее выданную длину, повторно не начисляет — иначе
+// это была бы бесконечная печать бесплатных попыток одним и тем же юзером.
+app.post('/api/tutorial/complete', (req, res) => {
+  try {
+    const { address } = req.body;
+    const db = req.db;
+    const isTestnet = req.isTestnet;
+
+    if (!address) {
+      return res.status(400).json({ success: false, message: 'address обязателен' });
+    }
+
+    const progress = db.prepare('SELECT * FROM tutorial_progress WHERE address = ?').get(address) as
+      { completedSteps: string; rewardGranted: number; rewardLength: string | null } | undefined;
+
+    if (!progress) {
+      return res.status(400).json({ success: false, message: 'Обучалка ещё не начата' });
+    }
+
+    if (progress.rewardGranted) {
+      return res.json({ success: true, data: { rewardGranted: true, rewardLength: progress.rewardLength } });
+    }
+
+    const completedSteps: string[] = JSON.parse(progress.completedSteps || '[]');
+    const allDone = TUTORIAL_STEPS.every((step) => completedSteps.includes(step));
+
+    if (!allDone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Не все шаги обучалки пройдены',
+        data: { completedSteps, missing: TUTORIAL_STEPS.filter((s) => !completedSteps.includes(s)) }
+      });
+    }
+
+    const user = db.prepare('SELECT * FROM users WHERE address = ?').get(address) as User;
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Пользователь не найден' });
+    }
+
+    const rewardLengthNum = (4 + Math.floor(Math.random() * 6)) as ZoneLength; // 4..9
+    const rewardLength = String(rewardLengthNum);
+    const nftAccessAmount = parseNftAccessAmount(user.nftAccessAmount);
+    const totalPaidAttempts = parsePaymentAttemptsCount(user.totalPaidAttempts);
+    nftAccessAmount.sbt[rewardLengthNum] = true;
+    totalPaidAttempts.sbt[rewardLengthNum] = (totalPaidAttempts.sbt[rewardLengthNum] || 0) + 1;
+
+    db.prepare(`
+      UPDATE users SET nftAccessAmount = ?, totalPaidAttempts = ?, updatedAt = CURRENT_TIMESTAMP WHERE address = ?
+    `).run(JSON.stringify(nftAccessAmount), JSON.stringify(totalPaidAttempts), address);
+
+    db.prepare(`
+      UPDATE tutorial_progress SET rewardGranted = 1, rewardLength = ?, completedAt = CURRENT_TIMESTAMP WHERE address = ?
+    `).run(rewardLength, address);
+
+    console.log(`🎓 [TUTORIAL] Юзер ${address} завершил обучалку, выдана SBT-попытка длины ${rewardLength}`);
+
+    if (telegramBot && telegramBot.sendTutorialCompletedNotification) {
+      telegramBot.sendTutorialCompletedNotification(address, rewardLength, isTestnet);
+    }
+
+    return res.json({ success: true, data: { rewardGranted: true, rewardLength } });
+  } catch (error) {
+    console.error('❌ Ошибка при завершении обучалки:', error);
     return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
   }
 });

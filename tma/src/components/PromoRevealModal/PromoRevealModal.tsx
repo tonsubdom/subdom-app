@@ -15,10 +15,12 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useUser } from '@/contexts/UserContext';
+import { useTutorial } from '@/contexts/TutorialContext';
 import { LengthRevealCard } from './LengthRevealCard';
 
 export const PromoRevealModal: React.FC = () => {
   const { promoRevealLength, dismissPromoReveal } = useUser();
+  const tutorial = useTutorial();
   const { currentTheme } = useTheme();
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -30,6 +32,12 @@ export const PromoRevealModal: React.FC = () => {
     navigate('/create-collection?promo=sbt');
   };
 
+  const startTutorial = async () => {
+    dismissPromoReveal();
+    await tutorial.startTutorial();
+    navigate('/avatar-secret');
+  };
+
   return (
     <LengthRevealCard
       length={promoRevealLength}
@@ -39,6 +47,7 @@ export const PromoRevealModal: React.FC = () => {
       t={t}
       onClose={dismissPromoReveal}
       onCta={goCreate}
+      onStartTutorial={startTutorial}
     />
   );
 };

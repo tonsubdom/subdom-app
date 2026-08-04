@@ -22,6 +22,10 @@ interface LengthRevealCardProps {
   t: (key: string) => string;
   onClose: () => void;
   onCta: () => void;
+  // Только для варианта 'gift' — вход в обучалку прямо с карточки промо-
+  // попытки. Награда за прохождение обучалки — тоже случайная SBT-попытка
+  // (см. TutorialContext/POST /api/tutorial/complete), отсюда "+1" в подписи.
+  onStartTutorial?: () => void;
 }
 
 export const LengthRevealCard: React.FC<LengthRevealCardProps> = ({
@@ -32,6 +36,7 @@ export const LengthRevealCard: React.FC<LengthRevealCardProps> = ({
   t,
   onClose,
   onCta,
+  onStartTutorial,
 }) => {
   const price = (zoneType === 'sbt' ? sbtPrices : proxyPrices)[length] ?? 0;
   const isGift = variant === 'gift';
@@ -173,6 +178,41 @@ export const LengthRevealCard: React.FC<LengthRevealCardProps> = ({
               </span>
             </div>
           </div>
+
+          {isGift && onStartTutorial && (
+            <div
+              style={{
+                fontSize: '11px',
+                lineHeight: 1.5,
+                color: isDark ? '#9CA3AF' : '#6B7280',
+                marginBottom: '8px',
+                textAlign: 'left',
+              }}
+            >
+              {t('tutorialPromoDescription') ||
+                'Вы можете пройти обучение по приложению. Вы освоите: настройку ончейн-профиля, создание зон и субдоменов, публикацию сайта и торрента, маркет и другие возможности платформы.'}
+            </div>
+          )}
+
+          {isGift && onStartTutorial && (
+            <button
+              onClick={onStartTutorial}
+              style={{
+                width: '100%',
+                padding: '11px 16px',
+                borderRadius: '10px',
+                border: `1px solid ${isDark ? '#FFD700' : '#3B82F6'}`,
+                background: 'transparent',
+                color: isDark ? '#FFD700' : '#3B82F6',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer',
+                marginBottom: '10px',
+              }}
+            >
+              🎓 {t('tutorialPromoButton') || 'Пройти обучение'} (+1 🎫)
+            </button>
+          )}
 
           <button
             onClick={onCta}

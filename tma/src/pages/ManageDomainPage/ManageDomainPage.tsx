@@ -4567,6 +4567,8 @@ import { useBlockchainItems } from "@/services/blockchainItems/blockchain-items-
 import { SimpleEnrichedItem } from "@/services/blockchainItems/blockchain-items-types";
 import { getInactiveZoneAddresses, cleanZoneDisplayName } from "@/services/blockchainItems/blockchain-items-utils";
 import { LupaButton } from "@/components/LupaButton/LupaButton";
+import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
+import { useTutorial } from "@/contexts/TutorialContext";
 
 // ====================================================================
 // ИНТЕРФЕЙСЫ
@@ -4637,6 +4639,7 @@ export const ManageDomainPage: FC = () => {
   const wallet = useTonWallet();
   const [tonConnectUI] = useTonConnectUI();
   const location = useLocation();
+  const tutorial = useTutorial();
 
   const { t } = useLanguage();
   const { currentTheme } = useTheme();
@@ -4982,6 +4985,25 @@ export const ManageDomainPage: FC = () => {
     }
   }, [currentDomain, parsedRecords, editingItem]);
 
+  // ====== ЭФФЕКТ 5.1: Обучалка — предзаполнение адреса кошелька ======
+  // Блок 1, ветка "есть домен → привязать" — юзер попал сюда через
+  // AvatarSecretPage (?address=...), подставляем его же подключённый
+  // кошелёк в поле привязки, чтобы оставалось только нажать "Сохранить".
+  // Только в туре и только если поле реально пустое — не перезаписываем
+  // существующую on-chain запись вне обучалки.
+  useEffect(() => {
+    if (
+      tutorial.active &&
+      !tutorial.isStepDone('domain_answered') &&
+      editingItem &&
+      !formData.walletAddress &&
+      wallet?.account?.address
+    ) {
+      setFormData((prev) => ({ ...prev, walletAddress: wallet.account!.address }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutorial.active, editingItem, wallet?.account?.address]);
+
   // ====== ПРОВЕРКА АДРЕСА ======
   const handleCheckResolverAddress = async () => {
     try {
@@ -5196,6 +5218,9 @@ export const ManageDomainPage: FC = () => {
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
             apiService.notifyDnsRecordUpdated(editingItem.title, "address", "set");
+          }
+          if (tutorial.active && !tutorial.isStepDone('domain_answered')) {
+            tutorial.recordStep('domain_answered');
           }
         }
       } else if (!formData.walletAddress && originalFormData.walletAddress) {
@@ -6659,7 +6684,18 @@ export const ManageDomainPage: FC = () => {
             <div
               style={{ display: "flex", flexDirection: "column", gap: "15px" }}
             >
-              <div>
+              <div
+                style={
+                  tutorial.active && !tutorial.isStepDone('domain_answered')
+                    ? {
+                        border: `2px solid ${isDark ? '#FFD700' : '#3B82F6'}`,
+                        borderRadius: '10px',
+                        padding: '10px',
+                        margin: '-10px',
+                      }
+                    : undefined
+                }
+              >
                 <div style={{ marginBottom: "8px" }}>
                   <span
                     style={{
@@ -6684,6 +6720,15 @@ export const ManageDomainPage: FC = () => {
                     color: isDark ? "white" : "black",
                   }}
                 />
+                {tutorial.active && !tutorial.isStepDone('domain_answered') && (
+                  <TutorialTooltip
+                    blockLabel={t('tutorialBlock1Label') || 'Блок 1'}
+                    stepLabel={t('tutorialStep2Label') || 'Шаг 2'}
+                    text={t('tutorialDomainBindHint') || 'Привяжите адрес своего кошелька к домену и нажмите «Сохранить» — это подтвердит, что домен ваш.'}
+                    buttons={[]}
+                    style={{ position: 'static', marginTop: '8px' }}
+                  />
+                )}
                 <div
                   style={{
                     display: "flex",

@@ -24,8 +24,10 @@ import ChatWidget from '@/components/ChatWidget/ChatWidget';
 import ProfileWidget from '@/components/ProfileWidget/ProfileWidget';
 import SearchWidget from '@/components/SearchWidget/SearchWidget';
 import PromoRevealModal from '@/components/PromoRevealModal/PromoRevealModal';
+import TutorialEntryWidget from '@/components/Tutorial/TutorialEntryWidget';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { UserProvider } from '@/contexts/UserContext';
+import { TutorialProvider } from '@/contexts/TutorialContext';
 
 // Импортируем компоненты для альфа-тестирования
 import AlphaTestModal from '@/components/AlphaTestModal';
@@ -48,6 +50,7 @@ export const App: React.FC = () => {
           <UserProvider>
             {/* Оборачиваем все в BlockchainItemsProvider */}
             <BlockchainItemsProvider>
+            <TutorialProvider>
               <CircuitBackground theme={isDark ? 'dark' : 'light'} />
               <AppRoot
                 appearance={isDark ? 'dark' : 'light'}
@@ -89,6 +92,7 @@ export const App: React.FC = () => {
                   <ChatWidget />
                   <ProfileWidget />
                   <SearchWidget />
+                  <TutorialEntryWidget />
                   <PromoRevealModal />
 
                   {/* Модальное окно для альфа-тестирования */}
@@ -100,6 +104,7 @@ export const App: React.FC = () => {
                   />
                 </HashRouter>
               </AppRoot>
+            </TutorialProvider>
             </BlockchainItemsProvider>
           </UserProvider>
         </ThemeProvider>

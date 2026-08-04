@@ -1876,6 +1876,7 @@ const LANG = {
     auctionEnded: '🎉 <b>АУКЦИОН ЗАВЕРШЕН!</b>',
     newUser: '👤 <b>НОВЫЙ ПОЛЬЗОВАТЕЛЬ ЗАРЕГИСТРИРОВАН!</b>',
     promoGranted: '🎁 <b>ВЫДАНА БЕСПЛАТНАЯ ПОПЫТКА!</b>',
+    tutorialCompleted: '🎓 <b>ОБУЧЕНИЕ ПРОЙДЕНО!</b>',
     newMessage: '📨 <b>НОВОЕ СООБЩЕНИЕ ОТ КЛИЕНТА</b>',
     newChat: '🔔 <b>НОВЫЙ ЧАТ!</b>',
     paymentRecorded: '💰 <b>ОПЛАЧЕННАЯ ПОПЫТКА ДОБАВЛЕНА!</b>',
@@ -2034,6 +2035,7 @@ const LANG = {
     auctionEnded: '🎉 <b>AUCTION ENDED!</b>',
     newUser: '👤 <b>NEW USER REGISTERED!</b>',
     promoGranted: '🎁 <b>FREE ATTEMPT GRANTED!</b>',
+    tutorialCompleted: '🎓 <b>TUTORIAL COMPLETED!</b>',
     newMessage: '📨 <b>NEW CLIENT MESSAGE</b>',
     newChat: '🔔 <b>NEW CHAT!</b>',
     paymentRecorded: '💰 <b>PAYMENT ATTEMPT ADDED!</b>',
@@ -3440,6 +3442,30 @@ ${$.fieldLength}: ${length} символов
       }, [[{ text: LANG.ru.btnRegisterPromo, url: DeeplinkUtils.generateHomeLink() }]]);
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления о промо-попытке:', error);
+      return false;
+    }
+  }
+
+  // --- ЗАВЕРШЕНИЕ ОБУЧАЛКИ (см. POST /api/tutorial/complete) ---
+  // Публично, тем же паттерном, что и sendPublicPromoGrantedNotification —
+  // это отдельная вторая награда (за реально пройденные шаги), не промо при
+  // регистрации, и её тоже стоит показывать в паблик-чате как соц.доказательство.
+  async sendTutorialCompletedNotification(address: string, length: string, isTestnet: boolean = true): Promise<boolean> {
+    try {
+      const network = this.formatNetwork(isTestnet);
+
+      return await this.sendGroupNotification((lang) => {
+        const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
+        return `
+${$.tutorialCompleted}
+
+${network}
+${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldLength}: ${length} символов
+        `.trim();
+      }, [[{ text: LANG.ru.btnRegisterPromo, url: DeeplinkUtils.generateHomeLink() }]]);
+    } catch (error) {
+      console.error('❌ Ошибка при отправке уведомления о завершении обучалки:', error);
       return false;
     }
   }

@@ -772,6 +772,74 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
+  // Обучалка (пошаговый онбординг, см. TutorialContext). В отличие от
+  // notify*-методов ниже это не fire-and-forget — фронту нужен актуальный
+  // список пройденных шагов/факт награды, поэтому дожидаемся и парсим ответ.
+  async getTutorialProgress(address: string): Promise<{
+    started: boolean;
+    completedSteps: string[];
+    rewardGranted: boolean;
+    rewardLength: string | null;
+  }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/tutorial/progress/${address}`), {
+        method: 'GET',
+        headers: this.getHeaders(),
+      });
+      const json = await response.json();
+      return json.data;
+    } catch (error) {
+      console.error('Error getting tutorial progress:', error);
+      return { started: false, completedSteps: [], rewardGranted: false, rewardLength: null };
+    }
+  }
+
+  async startTutorial(address: string): Promise<void> {
+    try {
+      await fetch(this.addNetworkParam(`${this.baseUrl}/api/tutorial/start`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address }),
+      });
+    } catch (error) {
+      console.error('Error starting tutorial:', error);
+    }
+  }
+
+  async recordTutorialStep(address: string, step: string): Promise<{
+    completedSteps: string[];
+    rewardGranted: boolean;
+    rewardLength: string | null;
+  }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/tutorial/step`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, step }),
+      });
+      const json = await response.json();
+      return json.data;
+    } catch (error) {
+      console.error('Error recording tutorial step:', error);
+      return { completedSteps: [], rewardGranted: false, rewardLength: null };
+    }
+  }
+
+  async completeTutorial(address: string): Promise<{ rewardGranted: boolean; rewardLength?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/tutorial/complete`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address }),
+      });
+      const json = await response.json();
+      return json.data || { rewardGranted: false };
+    } catch (error) {
+      console.error('Error completing tutorial:', error);
+      return { rewardGranted: false };
+    }
+  }
+
   // Relay-only: сообщает боту факт обновления ончейн-контента домена
   // (title/description/picture) — ничего не пишет в БД, сами значения полей
   // не передаются (см. AvatarSecretPage).

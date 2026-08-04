@@ -5,7 +5,8 @@
 // из референса вадвека). Читает это TONresistor/webdom.market — тот же
 // формат, без похода на свой бэкенд.
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@telegram-apps/telegram-ui';
 import { Address } from '@ton/core';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
@@ -18,6 +19,12 @@ import { Page } from '@/components/Page';
 import { ShowSnackbar } from '@/components/ShowSnackbar';
 import { apiService } from '@/services/api';
 import { StepIndicator } from '@/components/StepIndicator/StepIndicator';
+import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
+import { useTutorial } from '@/contexts/TutorialContext';
+import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-context.tsx';
+import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-items-utils';
+import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
+import webdomLogo from '@/assets/webdom_logo.svg';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -88,6 +95,32 @@ export const AvatarSecretPage: React.FC = () => {
   const wallet = useTonWallet();
   const [tonConnectUI] = useTonConnectUI();
   const isTestnet = wallet?.account?.chain === '-3';
+  const navigate = useNavigate();
+  const tutorial = useTutorial();
+  const { proxyCollections, sbtCollections } = useBlockchainItems();
+
+  // Блок 1 обучалки, ветка "у вас есть домен?" — Да/Нет, локальный UI-стейт,
+  // сама персистится только через tutorial.recordStep('domain_answered')
+  // по факту завершения выбранной ветки.
+  const [tutorialDomainAnswer, setTutorialDomainAnswer] = useState<'yes' | 'no' | null>(null);
+
+  // Список доменов юзера для мини-пикера на ветке "Да" — переиспользует ту
+  // же фильтрацию по creator_address/owner_address, что и getUserZones в
+  // ProfileWidget.tsx (~2875-2923), без завязки на его локальный тип Zone —
+  // тут нужны только name+address для кнопок пикера.
+  const tutorialUserDomains = useMemo(() => {
+    const myAddress = wallet?.account?.address;
+    if (!myAddress) return [];
+    const normalized = convertUserFriendlyToRaw(myAddress).toLowerCase();
+    const fromCollections = (cols: any[]) =>
+      cols
+        .filter((col) => (col.creator_address || col.owner_address || '').toLowerCase() === normalized)
+        .map((col) => ({
+          name: cleanZoneDisplayName(col.name || '').toLowerCase(),
+          address: col.address as string,
+        }));
+    return [...fromCollections(proxyCollections), ...fromCollections(sbtCollections)];
+  }, [wallet?.account?.address, proxyCollections, sbtCollections]);
 
   const [domainName, setDomainName] = useState('');
   // Домен через tonapi.io /v2/dns/ находит только корневые .ton-домены —
@@ -389,6 +422,9 @@ export const AvatarSecretPage: React.FC = () => {
         apiService.setNetwork(isTestnet);
         apiService.notifyContentUpdated(domainName);
       }
+      if (tutorial.active && !tutorial.isStepDone('profile_saved')) {
+        tutorial.recordStep('profile_saved');
+      }
     } catch (e: any) {
       console.error('Avatar/Secret save error:', e);
       showSnackbar(e?.message || t('avatarSaveError') || 'Ошибка сохранения', 'error');
@@ -558,6 +594,16 @@ export const AvatarSecretPage: React.FC = () => {
             >
               {t('avatarSetupIntro') || 'Загрузите картинку до 45кБ в png формате в качестве ончейн-аватарки вашего домена. Добавьте описание, чтобы другие пользователи могли найти ваш сайт в тонбраузере.'}
             </Typography>
+
+            {tutorial.active && !tutorial.isStepDone('profile_saved') && (
+              <TutorialTooltip
+                blockLabel={t('tutorialBlock1Label') || 'Блок 1'}
+                stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
+                text={t('tutorialStep1Text') || 'Настройте on-chain профиль. Этот аватар и имя с описанием будет видно в других dApp-приложениях.'}
+                buttons={[]}
+                style={{ position: 'static', width: '100%', maxWidth: 'none', marginBottom: '14px' }}
+              />
+            )}
 
             <StepIndicator
               current={2}
@@ -731,6 +777,63 @@ export const AvatarSecretPage: React.FC = () => {
           </Box>
         )}
       </Box>
+
+      {/* Блок 1 обучалки: как только профиль сохранён, спрашиваем "есть ли
+          домен" — оверлей внизу экрана, не завязан на скролл формы выше. */}
+      {tutorial.active && tutorial.isStepDone('profile_saved') && !tutorial.isStepDone('domain_answered') && (
+        <Box sx={{ position: 'fixed', left: 0, right: 0, bottom: '80px', display: 'flex', justifyContent: 'center', zIndex: 1002, px: 2 }}>
+          {tutorialDomainAnswer === null && (
+            <TutorialTooltip
+              blockLabel={t('tutorialBlock1Label') || 'Блок 1'}
+              stepLabel={t('tutorialStep2Label') || 'Шаг 2'}
+              text={t('tutorialDomainQuestion') || 'У вас есть домен?'}
+              buttons={[
+                { label: t('tutorialDomainYes') || 'Да', primary: true, onClick: () => setTutorialDomainAnswer('yes') },
+                { label: t('tutorialDomainNo') || 'Нет', onClick: () => setTutorialDomainAnswer('no') },
+              ]}
+              style={{ position: 'static' }}
+            />
+          )}
+
+          {tutorialDomainAnswer === 'no' && (
+            <TutorialTooltip
+              blockLabel={t('tutorialBlock1Label') || 'Блок 1'}
+              stepLabel={t('tutorialStep2Label') || 'Шаг 2'}
+              icon={<img src={webdomLogo} alt="" style={{ width: '22px', height: '22px', flexShrink: 0 }} />}
+              text={t('tutorialNoDomainInfo') || 'Зарегистрируйте домен или купите его на вторичном рынке.'}
+              buttons={[
+                {
+                  label: t('tutorialNext') || 'Далее',
+                  primary: true,
+                  onClick: () => {
+                    window.open('tonsite://domain.minter.ton', '_blank');
+                    tutorial.recordStep('domain_answered');
+                    setTutorialDomainAnswer(null);
+                  },
+                },
+              ]}
+              style={{ position: 'static' }}
+            />
+          )}
+
+          {tutorialDomainAnswer === 'yes' && (
+            <TutorialTooltip
+              blockLabel={t('tutorialBlock1Label') || 'Блок 1'}
+              stepLabel={t('tutorialStep2Label') || 'Шаг 2'}
+              text={
+                tutorialUserDomains.length === 0
+                  ? t('tutorialNoDomainsFound') || 'Домены не найдены на этом кошельке — обновите страницу или попробуйте позже.'
+                  : t('tutorialDomainPickHint') || 'Выберите домен, чтобы привязать его к кошельку:'
+              }
+              buttons={tutorialUserDomains.slice(0, 5).map((d) => ({
+                label: d.name,
+                onClick: () => navigate(`/manage?address=${d.address}`),
+              }))}
+              style={{ position: 'static' }}
+            />
+          )}
+        </Box>
+      )}
     </Page>
   );
 };
