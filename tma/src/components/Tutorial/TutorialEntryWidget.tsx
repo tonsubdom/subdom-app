@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTutorial } from '@/contexts/TutorialContext';
-import { TutorialTooltip } from './TutorialTooltip';
+import { LengthRevealCard } from '@/components/PromoRevealModal/LengthRevealCard';
 
 const WIDGET_SIZE = 60;
 
@@ -32,8 +32,14 @@ export const TutorialEntryWidget: React.FC = () => {
   };
 
   const handleStart = async () => {
+    // startTutorial() сам открывает виджет профиля (первый незавершённый
+    // шаг всегда "профиль" при свежем старте) — навигация не нужна здесь.
     await tutorial.startTutorial();
-    navigate('/avatar-secret');
+  };
+
+  const handleRewardCta = () => {
+    tutorial.dismissRewardReveal();
+    navigate('/create-collection?promo=sbt');
   };
 
   const handleWidgetClick = () => {
@@ -62,10 +68,16 @@ export const TutorialEntryWidget: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: '24px',
         }}
       >
-        🎓
+        {/* Контурная "шапка выпускника" — тем же стилем (stroke=colors.text,
+            без заливки), что и лупа в SearchWidget, эмодзи 🎓 плохо видно на
+            тёмном фоне ("чёрное на чёрном", по фидбэку юзера вживую). */}
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={colors.text} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3 2 8l10 5 10-5-10-5z" />
+          <path d="M6 10.5V16c0 1.5 2.5 3 6 3s6-1.5 6-3v-5.5" />
+          <path d="M22 8v6" />
+        </svg>
       </button>
 
       {showCompletedHint && (
@@ -152,17 +164,16 @@ export const TutorialEntryWidget: React.FC = () => {
         </div>
       )}
 
-      {/* Блок 2-5 ещё не собраны (следующие сессии) — как только пройден
-          блок 1, честно говорим об этом вместо того, чтобы молча зависнуть
-          на недостроенном туре. */}
-      {tutorial.active && tutorial.isStepDone('domain_answered') && !tutorial.isStepDone('zone_selected') && (
-        <div style={{ position: 'fixed', left: 0, right: 0, bottom: '80px', display: 'flex', justifyContent: 'center', zIndex: 1002, padding: '0 16px' }}>
-          <TutorialTooltip
-            text={t('tutorialBlock1Done') || 'Блок 1 пройден. Продолжение обучения появится совсем скоро!'}
-            buttons={[{ label: t('tutorialExit') || 'Выйти', primary: true, onClick: tutorial.exitTutorial }]}
-            style={{ position: 'static' }}
-          />
-        </div>
+      {tutorial.showRewardReveal && tutorial.rewardLength && (
+        <LengthRevealCard
+          length={Number(tutorial.rewardLength)}
+          zoneType="sbt"
+          variant="gift"
+          isDark={isDark}
+          t={t}
+          onClose={tutorial.dismissRewardReveal}
+          onCta={handleRewardCta}
+        />
       )}
     </div>
   );

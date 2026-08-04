@@ -27,6 +27,8 @@ import {
   type StorageProviderDeal,
 } from '@/utils/storageContract';
 import { Address } from '@ton/core';
+import { useTutorial } from '@/contexts/TutorialContext';
+import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -137,6 +139,7 @@ const CreateTorrentPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [tonConnectUI] = useTonConnectUI();
   const userAddress = useTonAddress();
+  const tutorial = useTutorial();
   // TODO: подхватить реальный флаг сети, как в остальном приложении
   // (сейчас страница не завязана на isTestnet нигде — оставляем mainnet).
   const isTestnet = false;
@@ -416,6 +419,9 @@ const CreateTorrentPage: React.FC = () => {
       }
       const data = await res.json();
       setBagId(data.bagId);
+      if (tutorial.active && !tutorial.isStepDone('torrent_created')) {
+        tutorial.recordStep('torrent_created');
+      }
 
       const details = await fetchBagDetails(data.bagId);
       setBagDetails(details);
@@ -765,6 +771,16 @@ const CreateTorrentPage: React.FC = () => {
             <button onClick={handleCreate} disabled={files.length === 0 || creating || oversizeProvider} style={primaryButtonStyle(files.length === 0 || creating || oversizeProvider)}>
               {creating ? (t('processing') || 'Создание...') : (t('createTorrentButton') || 'Создать bagID')}
             </button>
+
+            {tutorial.active && !tutorial.isStepDone('torrent_created') && (
+              <TutorialTooltip
+                blockLabel={t('tutorialBlock3Label') || 'Блок 3'}
+                stepLabel={t('tutorialStep2Label') || 'Шаг 2'}
+                text={t('tutorialCreateTorrentHint') || 'Загрузите файл и создайте торрент — так ваш сайт можно будет раздавать через TON Storage.'}
+                buttons={[]}
+                style={{ position: 'static', width: '280px', marginTop: '8px' }}
+              />
+            )}
 
             {createError && <p style={{ fontSize: '12px', color: colors.error, marginTop: '12px' }}>{createError}</p>}
 

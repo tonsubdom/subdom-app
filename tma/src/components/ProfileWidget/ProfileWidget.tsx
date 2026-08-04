@@ -2318,6 +2318,8 @@ import {
 import { ShowSnackbar } from "@/components/ShowSnackbar";
 import { LupaButton } from "@/components/LupaButton/LupaButton";
 import { StepIndicator } from "@/components/StepIndicator/StepIndicator";
+import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
+import { useTutorial } from "@/contexts/TutorialContext";
 import { OPEN_PROFILE_WIDGET_EVENT } from "@/components/SearchWidget/SearchWidget";
 
 // ====================================================================
@@ -2737,6 +2739,33 @@ const ProfileWidget: React.FC = () => {
   // (тот же формат, что возвращает createAuctionUrl) и режет префикс "/#".
   const navigate = useNavigate();
   const navigateHash = (hashUrl: string) => navigate(hashUrl.replace(/^\/?#/, ""));
+  const tutorial = useTutorial();
+  const tutorialStep1Active = tutorial.active && !tutorial.isStepDone('profile_saved');
+
+  // Блок 5 обучалки: тур по 4 вкладкам (индексы 0-3) + финальная подсказка
+  // про чат (индекс 4) — на последнем шаге "Далее" закрывает блок и
+  // resumeStep() увидит все TUTORIAL_STEPS пройденными и выдаст награду.
+  const tutorialBlock5Active =
+    tutorial.active && tutorial.isStepDone('catalog_focused') && !tutorial.isStepDone('profile_tabs_toured');
+  const [tutorialTourStep, setTutorialTourStep] = useState(0);
+  const TUTORIAL_TAB_ORDER: Array<'zones' | 'subdomains' | 'auctions' | 'info'> = ['zones', 'subdomains', 'auctions', 'info'];
+
+  useEffect(() => {
+    if (tutorialBlock5Active && tutorialTourStep < TUTORIAL_TAB_ORDER.length) {
+      setActiveTab(TUTORIAL_TAB_ORDER[tutorialTourStep]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutorialBlock5Active, tutorialTourStep]);
+
+  const handleTutorialTourNext = async () => {
+    if (tutorialTourStep < TUTORIAL_TAB_ORDER.length) {
+      setTutorialTourStep((i) => i + 1);
+    } else {
+      await tutorial.recordStep('profile_tabs_toured');
+      tutorial.resumeStep();
+      setTutorialTourStep(0);
+    }
+  };
 
   // zoneName передаём с карточки конкретной зоны — сразу открывает
   // add-subdomain с этой зоной предвыбранной (см. selectZoneFromParams в
@@ -4947,7 +4976,7 @@ const ProfileWidget: React.FC = () => {
                 // как кликабельная сущность профиля, не только при ховере —
                 // ярче при ховере и во время onboarding-подсказки.
                 border: `2px solid ${
-                  showSetupPrompt || avatarBlockHovered
+                  showSetupPrompt || tutorialStep1Active || avatarBlockHovered
                     ? colors.cyberpunk
                     : address
                     ? `${colors.cyberpunk}40`
@@ -4956,6 +4985,21 @@ const ProfileWidget: React.FC = () => {
                 transition: "border-color 0.2s ease",
               }}
             >
+              {tutorialStep1Active && (
+                <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 6 }}>
+                  <TutorialTooltip
+                    blockLabel={t('tutorialBlock1Label') || 'Блок 1'}
+                    stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
+                    text={t('tutorialStep1Text') || 'Настройте on-chain профиль. Этот аватар и имя с описанием будет видно в других dApp-приложениях.'}
+                    buttons={[{
+                      label: t('tutorialSetupNow') || 'Настроить',
+                      primary: true,
+                      onClick: () => navigate('/avatar-secret'),
+                    }]}
+                    style={{ position: 'static', width: '260px' }}
+                  />
+                </div>
+              )}
               {showSetupPrompt && (
                 <div
                   onClick={(e) => e.stopPropagation()}
@@ -5126,6 +5170,10 @@ const ProfileWidget: React.FC = () => {
                   display: "flex",
                   gap: "4px",
                   borderBottom: `1px solid ${colors.border}`,
+                  position: "relative",
+                  ...(tutorialBlock5Active && tutorialTourStep < TUTORIAL_TAB_ORDER.length
+                    ? { border: `2px solid ${colors.cyberpunk}`, borderRadius: "10px", padding: "2px" }
+                    : {}),
                 }}
               >
                 <button
@@ -5153,6 +5201,30 @@ const ProfileWidget: React.FC = () => {
                   ℹ️ {t("info")}
                 </button>
               </div>
+
+              {tutorialBlock5Active && (
+                <TutorialTooltip
+                  blockLabel={t('tutorialBlock5Label') || 'Блок 5'}
+                  stepLabel={t(`tutorialStep${Math.min(tutorialTourStep + 1, 5)}Label`) || `Шаг ${Math.min(tutorialTourStep + 1, 5)}`}
+                  text={
+                    tutorialTourStep === 0
+                      ? t('tutorialProfileTabZones') || 'Здесь ваши зоны — созданные .ton-коллекции, в которых можно регистрировать субдомены.'
+                      : tutorialTourStep === 1
+                      ? t('tutorialProfileTabSubdomains') || 'Здесь ваши субдомены — уже созданные записи внутри зон.'
+                      : tutorialTourStep === 2
+                      ? t('tutorialProfileTabAuctions') || 'Здесь ваши активные аукционы — ставки и сроки завершения по Proxy-субдоменам.'
+                      : tutorialTourStep === 3
+                      ? t('tutorialProfileTabInfo') || 'Здесь общая информация о вашем профиле и балансе попыток.'
+                      : t('tutorialChatHint') || 'Если какие-то проблемы — пишите в чат, вам ответят и помогут с проблемой.'
+                  }
+                  buttons={[{
+                    label: tutorialTourStep < TUTORIAL_TAB_ORDER.length ? (t('tutorialNext') || 'Далее') : (t('tutorialFinish') || 'Завершить'),
+                    primary: true,
+                    onClick: handleTutorialTourNext,
+                  }]}
+                  style={{ position: 'static', width: '100%', maxWidth: 'none' }}
+                />
+              )}
 
               {/* FILTERS + VIEW TOGGLE */}
               {activeTab !== "info" && (

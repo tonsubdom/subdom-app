@@ -34,8 +34,8 @@ export const PromoRevealModal: React.FC = () => {
 
   const startTutorial = async () => {
     dismissPromoReveal();
+    // startTutorial() сам открывает виджет профиля — навигация не нужна.
     await tutorial.startTutorial();
-    navigate('/avatar-secret');
   };
 
   return (

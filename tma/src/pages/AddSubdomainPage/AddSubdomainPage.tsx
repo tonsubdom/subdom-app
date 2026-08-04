@@ -12463,6 +12463,8 @@ import { useLaunchParams } from "@telegram-apps/sdk-react";
 import { MiniAppLinks } from "@/utils/miniAppLinks";
 import { AuctionCollectionSelector } from "./AuctionCollectionSelector";
 import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
+import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
+import { useTutorial } from "@/contexts/TutorialContext";
 
 // ====== ТИПЫ ======
 
@@ -12586,6 +12588,29 @@ export const AuctionPage: React.FC<{}> = () => {
   const [manualBidValue, setManualBidValue] = useState("");
   const [sbtPurchaseCompleted, setSbtPurchaseCompleted] = useState(false);
   const [sbtLoading, setSbtLoading] = useState(false);
+
+  const tutorial = useTutorial();
+  // Блок 2 обучалки: сначала два информационных слайда (что такое SBT-
+  // субдомен / кратко про Proxy-режим, локальный UI-стейт, не пишется на
+  // бэкенд), потом интерактивная часть — выбор зоны и ввод имени, где уже
+  // реальные действия страницы пишут прогресс.
+  const [tutorialBlock2Intro, setTutorialBlock2Intro] = useState<'sbt' | 'proxy' | null>('sbt');
+
+  const tutorialBlock2Active =
+    tutorial.active && tutorial.isStepDone('domain_answered') && !tutorial.isStepDone('subdomain_created');
+
+  useEffect(() => {
+    if (
+      tutorialBlock2Active &&
+      tutorialBlock2Intro === null &&
+      selectedDomainZone &&
+      !tutorial.isStepDone('zone_selected')
+    ) {
+      tutorial.recordStep('zone_selected');
+      window.setTimeout(() => subdomainNameInputRef.current?.focus(), 200);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutorialBlock2Active, tutorialBlock2Intro, selectedDomainZone]);
 
   const prevSbtMapRef = useRef<{
     cacheKey: string;
@@ -13279,6 +13304,9 @@ export const AuctionPage: React.FC<{}> = () => {
       }
       showSnackbar(t("sbtSubdomainPurchased"), "success");
       setSbtPurchaseCompleted(true);
+      if (tutorial.active && !tutorial.isStepDone('subdomain_created')) {
+        tutorial.recordStep('subdomain_created');
+      }
     } catch (error: any) {
       if (error?.message?.includes("cancelled"))
         showSnackbar(t("sbtPurchaseCancelled"), "error");
@@ -13580,7 +13608,13 @@ export const AuctionPage: React.FC<{}> = () => {
           paddingBottom: "150px",
         }}
       >
-        <div>
+        <div
+          style={
+            tutorialBlock2Active && tutorialBlock2Intro === null && !tutorial.isStepDone('zone_selected')
+              ? { border: `2px solid ${isDark ? '#FFD700' : '#3B82F6'}`, borderRadius: '12px', padding: '8px' }
+              : undefined
+          }
+        >
           <AuctionCollectionSelector
             activeTab={activeTab}
             selectedDomainZone={selectedDomainZone}
@@ -13593,6 +13627,19 @@ export const AuctionPage: React.FC<{}> = () => {
             activeSbtZones={activeSbtZones}
             proxyZones={allProxyZones}
           />
+          {tutorialBlock2Active && tutorialBlock2Intro === null && !tutorial.isStepDone('zone_selected') && (
+            <TutorialTooltip
+              blockLabel={t('tutorialBlock2Label') || 'Блок 2'}
+              stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
+              text={
+                selectedDomainZone
+                  ? (t('tutorialZoneConfirmed') || 'Мы выбрали зону: {zone}').replace('{zone}', selectedDomainZone)
+                  : (t('tutorialZonePickHint') || 'Выберите зону из списка для создания субдомена.')
+              }
+              buttons={[]}
+              style={{ position: 'static', width: '280px', marginTop: '8px' }}
+            />
+          )}
         </div>
 
         {selectedDomainZone && (
@@ -13690,6 +13737,15 @@ export const AuctionPage: React.FC<{}> = () => {
               </div>
             }
           />
+          {tutorialBlock2Active && tutorialBlock2Intro === null && tutorial.isStepDone('zone_selected') && !subDomainName && (
+            <TutorialTooltip
+              blockLabel={t('tutorialBlock2Label') || 'Блок 2'}
+              stepLabel={t('tutorialStep2Label') || 'Шаг 2'}
+              text={t('tutorialSubdomainNameHint') || 'Введите любое имя субдомена — цена для любой длины 0.5 TON, в 2 раза дешевле самого дешёвого домена.'}
+              buttons={[]}
+              style={{ position: 'static', width: '280px', marginTop: '8px' }}
+            />
+          )}
         </div>
 
         <div style={{ position: "relative", width: "280px" }}>
@@ -14296,6 +14352,12 @@ export const AuctionPage: React.FC<{}> = () => {
               href="https://t.me/Ton_site_builder_bot?startapp"
               target="_blank"
               rel="noopener noreferrer"
+              onClick={async () => {
+                if (tutorial.active && !tutorial.isStepDone('site_visited')) {
+                  await tutorial.recordStep('site_visited');
+                  tutorial.resumeStep();
+                }
+              }}
               style={{
                 display: "block",
                 width: "280px",
@@ -14307,15 +14369,49 @@ export const AuctionPage: React.FC<{}> = () => {
                 textAlign: "center",
                 fontWeight: "bold",
                 cursor: "pointer",
-                border: "none",
+                border: tutorial.active && !tutorial.isStepDone('site_visited')
+                  ? `3px solid ${isDark ? '#FFD700' : '#3B82F6'}`
+                  : "none",
                 fontSize: "14px",
               }}
             >
               🏗️ Создать сайт на {subDomainName}.{selectedDomainZone}
             </a>
+            {tutorial.active && !tutorial.isStepDone('site_visited') && (
+              <TutorialTooltip
+                blockLabel={t('tutorialBlock3Label') || 'Блок 3'}
+                stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
+                text={t('tutorialCreateSiteHint') || 'Создайте первый сайт — это займёт несколько минут.'}
+                buttons={[]}
+                style={{ position: 'static', width: '280px', marginTop: '8px' }}
+              />
+            )}
           </div>
         )}
       </List>
+
+      {/* Блок 2 обучалки: два информационных слайда до интерактивной части
+          (выбор зоны/ввод имени уже подсвечиваются прямо в форме выше). */}
+      {tutorialBlock2Active && tutorialBlock2Intro !== null && (
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: '80px', display: 'flex', justifyContent: 'center', zIndex: 1002, padding: '0 16px' }}>
+          {tutorialBlock2Intro === 'sbt' && (
+            <TutorialTooltip
+              blockLabel={t('tutorialBlock2Label') || 'Блок 2'}
+              text={t('tutorialBlock2SbtIntro') || 'Здесь вы создадите SBT-субдомен, потратив вашу бесплатную попытку.'}
+              buttons={[{ label: t('tutorialNext') || 'Далее', primary: true, onClick: () => setTutorialBlock2Intro('proxy') }]}
+              style={{ position: 'static' }}
+            />
+          )}
+          {tutorialBlock2Intro === 'proxy' && (
+            <TutorialTooltip
+              blockLabel={t('tutorialBlock2Label') || 'Блок 2'}
+              text={t('tutorialBlock2ProxyIntro') || 'Кроме SBT есть режим Proxy — субдомены на нём разыгрываются на аукционе и их можно перепродавать. Об этом подробнее в другой раз, а сейчас продолжим с SBT.'}
+              buttons={[{ label: t('tutorialNext') || 'Далее', primary: true, onClick: () => setTutorialBlock2Intro(null) }]}
+              style={{ position: 'static' }}
+            />
+          )}
+        </div>
+      )}
     </Page>
   );
 };

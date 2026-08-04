@@ -50,7 +50,6 @@ export const App: React.FC = () => {
           <UserProvider>
             {/* Оборачиваем все в BlockchainItemsProvider */}
             <BlockchainItemsProvider>
-            <TutorialProvider>
               <CircuitBackground theme={isDark ? 'dark' : 'light'} />
               <AppRoot
                 appearance={isDark ? 'dark' : 'light'}
@@ -67,44 +66,48 @@ export const App: React.FC = () => {
                     просто <a>. Заодно ChatWidget/ProfileWidget/Footer получают доступ к
                     router-хукам, если он им когда-нибудь понадобится. */}
                 <HashRouter>
-                  {/* Основной контент */}
-                  <div style={{
-                    position: "relative",
-                    zIndex: 10,
-                    flex: 1,
-                    backgroundColor: 'transparent'
-                  }}>
-                    <Header/>
-                    {/* Добавляем DeeplinkHandler для обработки deeplink */}
-                    <DeeplinkHandler />
+                  {/* TutorialProvider — внутри HashRouter (не снаружи, как
+                      остальные провайдеры): resumeStep() ходит по роутам
+                      через useNavigate(), которому нужен контекст роутера. */}
+                  <TutorialProvider>
+                    {/* Основной контент */}
+                    <div style={{
+                      position: "relative",
+                      zIndex: 10,
+                      flex: 1,
+                      backgroundColor: 'transparent'
+                    }}>
+                      <Header/>
+                      {/* Добавляем DeeplinkHandler для обработки deeplink */}
+                      <DeeplinkHandler />
 
-                    {/* <TgRedirector /> */}
-                    <Routes>
-                      {routes.map(({ path, Component }) => (
-                        <Route key={path} path={path} element={<Component />} />
-                      ))}
-                      <Route path="*" element={<Navigate to="/" />} />
-                    </Routes>
-                    <Footer/>
-                  </div>
+                      {/* <TgRedirector /> */}
+                      <Routes>
+                        {routes.map(({ path, Component }) => (
+                          <Route key={path} path={path} element={<Component />} />
+                        ))}
+                        <Route path="*" element={<Navigate to="/" />} />
+                      </Routes>
+                      <Footer/>
+                    </div>
 
-                  {/* Виджеты в углах экрана */}
-                  <ChatWidget />
-                  <ProfileWidget />
-                  <SearchWidget />
-                  <TutorialEntryWidget />
-                  <PromoRevealModal />
+                    {/* Виджеты в углах экрана */}
+                    <ChatWidget />
+                    <ProfileWidget />
+                    <SearchWidget />
+                    <TutorialEntryWidget />
+                    <PromoRevealModal />
 
-                  {/* Модальное окно для альфа-тестирования */}
-                  <AlphaTestModal
-                    isOpen={modalOpen}
-                    onClose={hideModal}
-                    type={modalType}
-                    testnetAddress={testnetAddress}
-                  />
+                    {/* Модальное окно для альфа-тестирования */}
+                    <AlphaTestModal
+                      isOpen={modalOpen}
+                      onClose={hideModal}
+                      type={modalType}
+                      testnetAddress={testnetAddress}
+                    />
+                  </TutorialProvider>
                 </HashRouter>
               </AppRoot>
-            </TutorialProvider>
             </BlockchainItemsProvider>
           </UserProvider>
         </ThemeProvider>

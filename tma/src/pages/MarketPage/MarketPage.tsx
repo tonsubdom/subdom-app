@@ -13,6 +13,8 @@ import { Address } from "@ton/core";
 import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-context.tsx';
 import { SimpleEnrichedItem } from '@/services/blockchainItems/blockchain-items-types';
 import { LupaButton } from '@/components/LupaButton/LupaButton';
+import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
+import { useTutorial } from '@/contexts/TutorialContext';
 
 // Типы для табов
 type TabType = 'subdomains' | 'nft-wrappers';
@@ -315,7 +317,8 @@ const MarketPage: React.FC = () => {
   
   // Добавляем launchParams для deeplink
   const launchParams = useLaunchParams();
-  
+  const tutorial = useTutorial();
+
   // Состояния
   const [activeTab, setActiveTab] = useState<TabType>('subdomains');
   const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
@@ -1520,6 +1523,18 @@ const MarketPage: React.FC = () => {
           </div> */}
         </div>
       </div>
+
+      {tutorial.active && tutorial.isStepDone('torrent_created') && !tutorial.isStepDone('market_toured') && (
+        <div style={{ position: 'fixed', left: 0, right: 0, bottom: '80px', display: 'flex', justifyContent: 'center', zIndex: 1002, padding: '0 16px' }}>
+          <TutorialTooltip
+            blockLabel={t('tutorialBlock4Label') || 'Блок 4'}
+            stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
+            text={t('tutorialMarketTourText') || 'Здесь маркет: вкладка "Субдомены" — покупка/продажа готовых субдоменов, вкладка "NFT-обёртки" — площадка для Proxy-доменов, разыгранных на аукционе.'}
+            buttons={[{ label: t('tutorialNext') || 'Далее', primary: true, onClick: async () => { await tutorial.recordStep('market_toured'); tutorial.resumeStep(); } }]}
+            style={{ position: 'static' }}
+          />
+        </div>
+      )}
     </Page>
   );
 };

@@ -805,9 +805,10 @@ export const AvatarSecretPage: React.FC = () => {
                 {
                   label: t('tutorialNext') || 'Далее',
                   primary: true,
-                  onClick: () => {
+                  onClick: async () => {
                     window.open('tonsite://domain.minter.ton', '_blank');
-                    tutorial.recordStep('domain_answered');
+                    await tutorial.recordStep('domain_answered');
+                    tutorial.resumeStep();
                     setTutorialDomainAnswer(null);
                   },
                 },

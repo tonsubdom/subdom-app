@@ -6,8 +6,15 @@ import { Link } from "@/components/Link/Link.tsx";
 import { Page } from "@/components/Page";
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useTutorial } from '@/contexts/TutorialContext';
+import { TutorialDim } from '@/components/Tutorial/TutorialDim';
+import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 import {FormattedHeaderDescription} from "../IndexPage/acentHeaderFrases"
 import tsbLogo from "./img/tsb_logo.png";
+
+// Блок 3/4 обучалки: какие карточки на этой странице участвуют в туре и
+// какой шаг они закрывают по клику на настоящую кнопку карточки.
+type TutorialCardId = 'site' | 'catalog';
 
 // Анимированная иконка карточек TonSite Catalog и "Создать сайт" вместо
 // плоских эмодзи — подгружаем JSON лениво. Временно одна и та же анимация на
@@ -64,6 +71,7 @@ interface CardProps {
   cornerIcon?: CornerIconKind;
   actionText: string;
   to: string;
+  tutorialId?: TutorialCardId;
 }
 
 const IconWrapper: React.FC<{ children: React.ReactNode; bgColor: string; isDark: boolean }> = ({ 
@@ -159,8 +167,20 @@ const CornerIconBadge: React.FC<{ kind: CornerIconKind; isDark: boolean }> = ({ 
   </div>
 );
 
-const Card: React.FC<CardProps & { isDark: boolean }> = ({ title, description, icon, cornerIcon, actionText, to, isDark }) => {
-  
+interface CardTutorialProps {
+  isTutorialTarget?: boolean;
+  tutorialText?: string;
+  tutorialBlockLabel?: string;
+  tutorialStepLabel?: string;
+  onTutorialClick?: () => void;
+  cardRef?: React.Ref<HTMLDivElement>;
+}
+
+const Card: React.FC<CardProps & { isDark: boolean } & CardTutorialProps> = ({
+  title, description, icon, cornerIcon, actionText, to, isDark,
+  isTutorialTarget, tutorialText, tutorialBlockLabel, tutorialStepLabel, onTutorialClick, cardRef,
+}) => {
+
   const colors = {
     light: {
       primary: "#3B82F6",
@@ -184,12 +204,13 @@ const Card: React.FC<CardProps & { isDark: boolean }> = ({ title, description, i
 
   return (
     <div
+      ref={cardRef}
       style={{
         background: theme.background,
         borderRadius: "16px",
         padding: "24px",
         boxShadow: theme.shadow,
-        border: `1px solid ${theme.border}`,
+        border: isTutorialTarget ? `2px solid ${isDark ? '#FFD700' : '#3B82F6'}` : `1px solid ${theme.border}`,
         transition: "all 0.3s ease",
         position: "relative",
         overflow: "hidden",
@@ -234,7 +255,17 @@ const Card: React.FC<CardProps & { isDark: boolean }> = ({ title, description, i
         {description}
       </p>
 
-      <Link to={to}>
+      {isTutorialTarget && tutorialText && (
+        <TutorialTooltip
+          blockLabel={tutorialBlockLabel}
+          stepLabel={tutorialStepLabel}
+          text={tutorialText}
+          buttons={[]}
+          style={{ position: 'static', width: '100%', maxWidth: 'none', marginBottom: '12px' }}
+        />
+      )}
+
+      <Link to={to} onClick={onTutorialClick}>
         <button
           style={{
             width: "100%",
@@ -273,6 +304,34 @@ export const IndexPage: React.FC = () => {
   
   // Получаем переводы из LanguageContext
   const { t } = useLanguage();
+
+  // Блок 3/4 обучалки: "Создать сайт" идёт раньше "TonSite Catalog" в
+  // TUTORIAL_STEPS — та же приоритетность здесь, чтобы не подсветить обе
+  // карточки сразу или не ту, что нужна по порядку.
+  const tutorial = useTutorial();
+  const tutorialTargetId: TutorialCardId | null = !tutorial.active
+    ? null
+    : !tutorial.isStepDone('site_visited')
+    ? 'site'
+    : !tutorial.isStepDone('catalog_focused')
+    ? 'catalog'
+    : null;
+  const tutorialCardRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (tutorialTargetId) {
+      window.setTimeout(() => {
+        tutorialCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    }
+  }, [tutorialTargetId]);
+
+  const handleTutorialCardClick = async () => {
+    if (!tutorialTargetId) return;
+    const step = tutorialTargetId === 'site' ? 'site_visited' : 'catalog_focused';
+    await tutorial.recordStep(step);
+    tutorial.resumeStep();
+  };
 
   // Создаем карточки с передачей isDark
   const createCards = (isDark: boolean): CardProps[] => [
@@ -378,6 +437,7 @@ export const IndexPage: React.FC = () => {
       cornerIcon: "edit",
       actionText: t('open'),
       to: "https://t.me/Ton_site_builder_bot",
+      tutorialId: 'site',
     },
     {
       title: t('createTorrentTitle') || 'Создать торрент',
@@ -427,6 +487,7 @@ export const IndexPage: React.FC = () => {
       cornerIcon: "search",
       actionText: t('open'),
       to: "tonsite://tonsitecatalog.ton",
+      tutorialId: 'catalog',
     },
     {
       title: t('marketTitle'),
@@ -486,18 +547,46 @@ export const IndexPage: React.FC = () => {
             gridTemplateColumns: '1fr',
           }}
         >
-          {cards.map((card, index) => (
-            <Card
-              key={index}
-              title={card.title}
-              description={card.description}
-              icon={card.icon}
-              cornerIcon={card.cornerIcon}
-              actionText={card.actionText}
-              to={card.to}
-              isDark={isDark}
-            />
-          ))}
+          {cards.map((card, index) => {
+            const isTutorialTarget = !!card.tutorialId && card.tutorialId === tutorialTargetId;
+            return (
+              <TutorialDim key={index} dimmed={!!tutorialTargetId && !isTutorialTarget}>
+                <Card
+                  title={card.title}
+                  description={card.description}
+                  icon={card.icon}
+                  cornerIcon={card.cornerIcon}
+                  actionText={card.actionText}
+                  to={card.to}
+                  isDark={isDark}
+                  isTutorialTarget={isTutorialTarget}
+                  cardRef={isTutorialTarget ? tutorialCardRef : undefined}
+                  tutorialBlockLabel={
+                    card.tutorialId === 'site'
+                      ? t('tutorialBlock3Label') || 'Блок 3'
+                      : card.tutorialId === 'catalog'
+                      ? t('tutorialBlock4Label') || 'Блок 4'
+                      : undefined
+                  }
+                  tutorialStepLabel={
+                    card.tutorialId === 'site'
+                      ? t('tutorialStep1Label') || 'Шаг 1'
+                      : card.tutorialId === 'catalog'
+                      ? t('tutorialStep2Label') || 'Шаг 2'
+                      : undefined
+                  }
+                  tutorialText={
+                    card.tutorialId === 'site'
+                      ? t('tutorialCreateSiteHint') || 'Создайте первый сайт — это займёт несколько минут.'
+                      : card.tutorialId === 'catalog'
+                      ? t('tutorialCatalogHint') || 'Каталог TonSite — все опубликованные сайты платформы в одном месте.'
+                      : undefined
+                  }
+                  onTutorialClick={isTutorialTarget ? handleTutorialCardClick : undefined}
+                />
+              </TutorialDim>
+            );
+          })}
         </div>
       </div>
     </Page>

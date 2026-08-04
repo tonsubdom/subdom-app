@@ -201,7 +201,9 @@ export const SearchWidget: React.FC = () => {
           alignItems: 'center',
           height: `${WIDGET_SIZE}px`,
           width: open ? `${EXPANDED_WIDTH}px` : `${WIDGET_SIZE}px`,
-          maxWidth: 'calc(100vw - 40px)',
+          // Запас слева под TutorialEntryWidget (левый верхний угол) — на
+          // узких экранах развёрнутый поиск иначе наезжает на него.
+          maxWidth: 'calc(100vw - 140px)',
           borderRadius: `${WIDGET_SIZE / 2}px`,
           background: open ? colors.panelBg : colors.triggerBg,
           backdropFilter: 'blur(6px)',
@@ -261,7 +263,10 @@ export const SearchWidget: React.FC = () => {
             top: `${WIDGET_SIZE + 8}px`,
             right: 0,
             width: `${EXPANDED_WIDTH}px`,
-            maxWidth: 'calc(100vw - 40px)',
+            // 40px запаса справа + ~100px слева под виджет обучалки
+            // (TutorialEntryWidget, левый верхний угол) с отступом — иначе
+            // на узких экранах развёрнутый поиск наезжает на него.
+            maxWidth: 'calc(100vw - 140px)',
             background: colors.panelBg,
             border: `1px solid ${colors.border}`,
             borderRadius: '14px',

@@ -5220,7 +5220,8 @@ export const ManageDomainPage: FC = () => {
             apiService.notifyDnsRecordUpdated(editingItem.title, "address", "set");
           }
           if (tutorial.active && !tutorial.isStepDone('domain_answered')) {
-            tutorial.recordStep('domain_answered');
+            await tutorial.recordStep('domain_answered');
+            tutorial.resumeStep();
           }
         }
       } else if (!formData.walletAddress && originalFormData.walletAddress) {
