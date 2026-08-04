@@ -257,7 +257,7 @@ export const getProxySubdomainInfo = async (
 };
 
 /**
- * Получает информацию о адресе с использованием API ключа
+ * Получает информацию о адресе с испоьзованием API ключа
  */
 const getAddressInformationWithAPIKey = async (
   address: string,
