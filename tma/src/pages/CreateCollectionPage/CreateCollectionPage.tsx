@@ -53,6 +53,7 @@ import { convertUserFriendlyToRaw, getNftOwnerAddress } from '@/utils/tonUtils';
 // Импортируем новый сервис транзакций
 import { TransactionService, TransactionResult } from '@/services/transactionService';
 import { TonUtilsEnhanced } from '@/utils/tonUtilsEnhanced';
+import { StepIndicator } from '@/components/StepIndicator/StepIndicator';
 
 // Тип для активной вкладки
 type ActiveTab = 'proxy' | 'sbt';
@@ -1663,6 +1664,18 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
         subheader={t('updateTONDNSUtility')}
         description={t('enterDomainNameSteps')}
         style={{ textAlign: 'center', marginRight: '20px', marginLeft: '20px' }}
+      />
+
+      <StepIndicator
+        current={3}
+        labels={[
+          t('onboardingStepWallet') || 'Кошелёк',
+          t('onboardingStepAvatar') || 'Аватарка',
+          t('onboardingStepZone') || 'Зона',
+        ]}
+        accentColor={isDark ? '#FFD700' : '#3B82F6'}
+        mutedColor={isDark ? '#555555' : '#cccccc'}
+        textColor={isDark ? '#ffffff' : '#333333'}
       />
 
       {/* Tabs для выбора режима */}

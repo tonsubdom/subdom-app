@@ -22,12 +22,14 @@ interface PaymentAttemptsSectionProps {
     link: string;
   };
   isDark: boolean;
+  onBeforeNavigate?: () => void;
 }
 
 const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
   address,
   colors,
   isDark,
+  onBeforeNavigate,
 }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -447,7 +449,8 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
           onCta={() => {
             const type = revealAfterPurchase.type;
             setRevealAfterPurchase(null);
-            navigate(`/create-collection?promo=${type}`);
+            onBeforeNavigate?.();
+            setTimeout(() => navigate(`/create-collection?promo=${type}`), 300);
           }}
         />
       )}

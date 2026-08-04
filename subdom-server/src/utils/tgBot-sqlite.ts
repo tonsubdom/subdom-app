@@ -1875,6 +1875,7 @@ const LANG = {
     sbtSubdomainMinted: '🎫 <b>НОВЫЙ SBT СУБДОМЕН СМИНЧЕН!</b>',
     auctionEnded: '🎉 <b>АУКЦИОН ЗАВЕРШЕН!</b>',
     newUser: '👤 <b>НОВЫЙ ПОЛЬЗОВАТЕЛЬ ЗАРЕГИСТРИРОВАН!</b>',
+    promoGranted: '🎁 <b>ВЫДАНА БЕСПЛАТНАЯ ПОПЫТКА!</b>',
     newMessage: '📨 <b>НОВОЕ СООБЩЕНИЕ ОТ КЛИЕНТА</b>',
     newChat: '🔔 <b>НОВЫЙ ЧАТ!</b>',
     paymentRecorded: '💰 <b>ОПЛАЧЕННАЯ ПОПЫТКА ДОБАВЛЕНА!</b>',
@@ -1882,6 +1883,7 @@ const LANG = {
     paymentError: '❌ <b>ОШИБКА ПРИ ОПЛАТЕ ПОПЫТКИ!</b>',
     dnsRecordSet: '🔗 <b>DNS-ЗАПИСЬ ПРИВЯЗАНА!</b>',
     dnsRecordDeleted: '🔓 <b>DNS-ЗАПИСЬ ОТВЯЗАНА!</b>',
+    contentUpdated: '🖼️ <b>ОБНОВЛЁН КОНТЕНТ ДОМЕНА!</b>',
     deactivationRequested: '⏳ <b>ЗАПРОС НА ДЕАКТИВАЦИЮ ЗОНЫ!</b>',
 
     // Поля уведомлений
@@ -2031,6 +2033,7 @@ const LANG = {
     sbtSubdomainMinted: '🎫 <b>NEW SBT SUBDOMAIN MINTED!</b>',
     auctionEnded: '🎉 <b>AUCTION ENDED!</b>',
     newUser: '👤 <b>NEW USER REGISTERED!</b>',
+    promoGranted: '🎁 <b>FREE ATTEMPT GRANTED!</b>',
     newMessage: '📨 <b>NEW CLIENT MESSAGE</b>',
     newChat: '🔔 <b>NEW CHAT!</b>',
     paymentRecorded: '💰 <b>PAYMENT ATTEMPT ADDED!</b>',
@@ -2038,6 +2041,7 @@ const LANG = {
     paymentError: '❌ <b>PAYMENT ATTEMPT ERROR!</b>',
     dnsRecordSet: '🔗 <b>DNS RECORD LINKED!</b>',
     dnsRecordDeleted: '🔓 <b>DNS RECORD UNLINKED!</b>',
+    contentUpdated: '🖼️ <b>DOMAIN CONTENT UPDATED!</b>',
     deactivationRequested: '⏳ <b>ZONE DEACTIVATION REQUESTED!</b>',
 
     // Поля уведомлений
@@ -2157,8 +2161,19 @@ class DeeplinkUtils {
     return this.generateTelegramDeeplink('/add-subdomain', params);
   }
 
-  static generateMarketLink(): string {
-    return this.generateTelegramDeeplink('/market');
+  // domain опционален: без него — просто открыть маркет (как раньше).
+  // С ним (завершённый аукцион ведёт на конкретный итем, а не только на
+  // список) — прокидываем zone/subdomain так же, как в generateAuctionLink,
+  // MarketPage сам развернёт их обратно в поиск по конкретному домену.
+  static generateMarketLink(domain?: string): string {
+    if (!domain) return this.generateTelegramDeeplink('/market');
+
+    const [subdomainName, zoneName] = this.formatDomainForUrl(domain);
+    if (!zoneName) return this.generateTelegramDeeplink('/market');
+
+    const params: Record<string, string> = { zone: this.stripTonTld(zoneName) };
+    if (subdomainName) params.subdomain = subdomainName;
+    return this.generateTelegramDeeplink('/market', params);
   }
 
   static generateAuctionLink(zoneName: string, subdomainName: string): string {
@@ -2502,14 +2517,18 @@ class TelegramBotService {
 
     if (parts.length === 1) {
       // Зона: "pension" из "pension.ton"
+      const zonePart = encodeURIComponent(parts[0]!);
       return isProxy
-        ? `${API_PAYLOAD_URL}/api/v1/proxy/metadata/ton/${parts[0]}.png`
-        : `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${parts[0]}.png`;
+        ? `${API_PAYLOAD_URL}/api/v1/proxy/metadata/ton/${zonePart}.png`
+        : `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${zonePart}.png`;
     }
 
-    // Субдомен: sub.zone(.ton) — первая часть сабдомен, остальное — зона
-    const subName = parts[0];
-    const effectiveZone = parts.slice(1).join('.') || parts[0]!;
+    // Субдомен: sub.zone(.ton) — первая часть сабдомен, остальное — зона.
+    // TON-домены допускают юникод в имени — без encodeURIComponent сырые
+    // байты в пути URL Telegram (который сам скачивает фото по этому URL)
+    // не мог получить, sendPhoto падал и уходил в текстовый fallback.
+    const subName = encodeURIComponent(parts[0]!);
+    const effectiveZone = parts.slice(1).map(encodeURIComponent).join('.') || subName;
 
     return isProxy
       ? `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${effectiveZone}/${subName}.png`
@@ -3233,6 +3252,37 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     }
   }
 
+  // --- ОБНОВЛЕНИЕ АВАТАРКИ/КОНТЕНТА ДОМЕНА ---
+  // Сами title/description/picture не публикуются (могут быть большими/
+  // непубличными) — уведомление сообщает только сам факт обновления
+  // ончейн-контента домена, по аналогии с sendDnsRecordUpdatedNotification.
+  async sendContentUpdatedNotification(domain: string, isTestnet: boolean = true): Promise<void> {
+    if (!this.isBotAvailable()) return;
+
+    try {
+      const $ = LANG.ru;
+      const network = this.formatNetwork(isTestnet);
+
+      const message = `
+${$.contentUpdated}
+
+${network}
+${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
+
+${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
+      `.trim();
+
+      const inlineKeyboard = [[{ text: $.btnViewCatalog, url: 'https://tonsitecatalog.ton' }]];
+
+      await this.bot!.sendMessage(this.ownerId, message, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: inlineKeyboard }
+      });
+    } catch (error) {
+      console.error('❌ Ошибка при отправке уведомления об обновлении аватарки/контента:', error);
+    }
+  }
+
   // --- АУКЦИОН ---
   async sendPublicAuctionStartedNotification(domain: string, address: string, price: number, isTestnet: boolean = true): Promise<boolean> {
     try {
@@ -3324,10 +3374,10 @@ ${$.hintCongrats}
   }
 
   // --- АУКЦИОН ЗАВЕРШЕН ---
-  async sendPublicAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true): Promise<boolean> {
+  async sendPublicAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true, itemAddress?: string): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
-      const miniAppLink = DeeplinkUtils.generateMarketLink();
+      const miniAppLink = DeeplinkUtils.generateMarketLink(domain);
       const inlineKeyboard = [[{ text: LANG.ru.btnViewMarket, url: miniAppLink }]];
 
       return await this.sendGroupNotification((lang) => {
@@ -3336,8 +3386,8 @@ ${$.hintCongrats}
 ${$.auctionEnded}
 
 ${network}
-${$.fieldDomain}: <code>${domain}</code>
-${$.fieldWinner}: ${this.formatTonviewerLink(winner, isTestnet)}
+${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
+${itemAddress ? `${$.fieldAddress}: ${this.formatTonviewerLink(itemAddress, isTestnet)}\n` : ''}${$.fieldWinner}: ${this.formatTonviewerLink(winner, isTestnet)}
 ${$.fieldFinalPrice}: ${finalPrice} TON
 
 ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
@@ -3369,6 +3419,27 @@ ${$.fieldRegisteredAt}: ${new Date().toLocaleString('ru-RU')}
       });
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления о пользователе:', error);
+      return false;
+    }
+  }
+
+  // --- ВЫДАНА ПРОМО-ПОПЫТКА (регистрация нового юзера, см. POST /api/users) ---
+  async sendPublicPromoGrantedNotification(address: string, length: string, isTestnet: boolean = true): Promise<boolean> {
+    try {
+      const network = this.formatNetwork(isTestnet);
+
+      return await this.sendGroupNotification((lang) => {
+        const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
+        return `
+${$.promoGranted}
+
+${network}
+${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldLength}: ${length} символов
+        `.trim();
+      }, [[{ text: LANG.ru.btnRegisterPromo, url: DeeplinkUtils.generateHomeLink() }]]);
+    } catch (error) {
+      console.error('❌ Ошибка при отправке публичного уведомления о промо-попытке:', error);
       return false;
     }
   }
@@ -3579,7 +3650,7 @@ ${$.fieldMintTime}: ${new Date().toLocaleString('ru-RU')}
     }
   }
 
-  async sendAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true): Promise<void> {
+  async sendAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true, itemAddress?: string): Promise<void> {
     if (!this.isBotAvailable()) return;
 
     try {
@@ -3590,14 +3661,14 @@ ${$.fieldMintTime}: ${new Date().toLocaleString('ru-RU')}
 ${$.auctionEnded}
 
 ${network}
-${$.fieldDomain}: <code>${domain}</code>
-${$.fieldWinner}: ${this.formatTonviewerLink(winner, isTestnet)}
+${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
+${itemAddress ? `${$.fieldAddress}: ${this.formatTonviewerLink(itemAddress, isTestnet)}\n` : ''}${$.fieldWinner}: ${this.formatTonviewerLink(winner, isTestnet)}
 ${$.fieldFinalPrice}: ${finalPrice} TON
 
 ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      const miniAppLink = DeeplinkUtils.generateMarketLink();
+      const miniAppLink = DeeplinkUtils.generateMarketLink(domain);
       const inlineKeyboard = [[{ text: $.btnViewMarket, url: miniAppLink }]];
 
       await this.sendPhotoWithCaption(
@@ -3607,7 +3678,7 @@ ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
         inlineKeyboard
       );
 
-      await this.sendPublicAuctionEndedNotification(domain, winner, finalPrice, isTestnet);
+      await this.sendPublicAuctionEndedNotification(domain, winner, finalPrice, isTestnet, itemAddress);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления о завершении аукциона:', error);
     }

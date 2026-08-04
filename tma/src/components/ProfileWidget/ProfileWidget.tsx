@@ -2317,6 +2317,7 @@ import {
 } from "@/services/ownerMetaService";
 import { ShowSnackbar } from "@/components/ShowSnackbar";
 import { LupaButton } from "@/components/LupaButton/LupaButton";
+import { StepIndicator } from "@/components/StepIndicator/StepIndicator";
 import { OPEN_PROFILE_WIDGET_EVENT } from "@/components/SearchWidget/SearchWidget";
 
 // ====================================================================
@@ -3198,11 +3199,9 @@ const ProfileWidget: React.FC = () => {
   }, [activeTab, getUserZones, allProxySubdomains, isTestnet]);
 
   useEffect(() => {
-    if (getUserSubdomainsFromBlockchain.length > 0) {
-      setSubdomains(getUserSubdomainsFromBlockchain);
-      setSubdomainsLoading(false);
-      setSubdomainsError(null);
-    }
+    setSubdomains(getUserSubdomainsFromBlockchain);
+    setSubdomainsLoading(false);
+    setSubdomainsError(null);
   }, [getUserSubdomainsFromBlockchain]);
 
   // ====== [NEW] АУКЦИОНЫ — ОНЧЕЙН ======
@@ -4679,6 +4678,18 @@ const ProfileWidget: React.FC = () => {
               {t("onchainProfilePreviewHint") || "Данные из dns_text-записей этого домена"}
             </p>
 
+            <StepIndicator
+              current={2}
+              labels={[
+                t("onboardingStepWallet") || "Кошелёк",
+                t("onboardingStepAvatar") || "Аватарка",
+                t("onboardingStepZone") || "Зона",
+              ]}
+              accentColor={colors.cyberpunk}
+              mutedColor={colors.border}
+              textColor={colors.text}
+            />
+
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
               {[
                 { label: t("avatarTitlePlaceholder") || "Название", value: profileDnsText?.title },
@@ -6074,6 +6085,7 @@ const ProfileWidget: React.FC = () => {
                         address={address}
                         colors={colors}
                         isDark={isDark}
+                        onBeforeNavigate={() => setIsExpanded(false)}
                       />
                     </div>
                   </div>

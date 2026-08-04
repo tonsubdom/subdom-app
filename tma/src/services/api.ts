@@ -772,6 +772,21 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
+  // Relay-only: сообщает боту факт обновления ончейн-контента домена
+  // (title/description/picture) — ничего не пишет в БД, сами значения полей
+  // не передаются (см. AvatarSecretPage).
+  async notifyContentUpdated(domain: string): Promise<void> {
+    try {
+      await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/content-updated`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ domain }),
+      });
+    } catch (error) {
+      console.error('Error notifying about content update:', error);
+    }
+  }
+
   // Relay-only: сообщает боту о создании зоны (proxy/SBT), ничего не пишет в
   // БД — старый createZone()/POST /api/zones остаётся отдельно для легаси-читателей.
   async notifyZoneCreated(zoneData: {
@@ -839,6 +854,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     domain: string;
     winner: string;
     finalPrice: number;
+    itemAddress?: string;
   }): Promise<void> {
     try {
       await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/auction-ended`), {

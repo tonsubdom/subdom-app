@@ -181,22 +181,23 @@ const createService = (network: NetworkType, apiKey?: string): UniversalBlockcha
  */
 export const initializeService = createAsyncThunk(
   'blockchainItems/initializeService',
-  async (params: { network?: NetworkType; apiKey?: string }, thunkAPI) => {
+  async (params: { network?: NetworkType; apiKey?: string; userAddress?: string | null }, thunkAPI) => {
     try {
-      const { network = 'testnet', apiKey } = params;
-      
+      const { network = 'testnet', apiKey, userAddress = null } = params;
+
       // Создаем сервис
      // const _service = createService(network, apiKey);
-      
+
       // Просто создаем сервис без тестирования подключения
       // (метод testConnection не существует)
       console.log('✅ Сервис создан успешно');
-      
+
       // Возвращаем только конфигурацию, а не сам сервис
-      return { 
-        network, 
+      return {
+        network,
         apiKey,
-        isInitialized: true 
+        isInitialized: true,
+        userAddress
       };
     } catch (error: any) {
       console.error('❌ Ошибка инициализации сервиса:', error);
@@ -441,14 +442,14 @@ const blockchainItemsSlice = createSlice({
     });
     
     builder.addCase(initializeService.fulfilled, (state, action) => {
-      const { network, apiKey, isInitialized } = action.payload;
-      
+      const { network, apiKey, isInitialized, userAddress: currentWalletAddress } = action.payload;
+
       state.serviceConfig = {
         network,
         apiKey,
         isInitialized
       };
-      
+
       state.network = network;
       state.isLoading = false;
       state.error = null;
@@ -460,7 +461,13 @@ const blockchainItemsSlice = createSlice({
       if (!state.appData) {
         const persisted = loadPersistedAppData(network);
         if (persisted) {
-          const { data, userAddress, savedAt } = persisted;
+          const { data, userAddress: persistedUserAddress, savedAt } = persisted;
+          // Снапшот принадлежал другому кошельку (например, ранее подключённому
+          // на этом же устройстве) — общие (не привязанные к юзеру) коллекции/
+          // итемы всё равно валидны и их можно показать сразу, но user-scoped
+          // массивы обязаны остаться пустыми, иначе UI на секунду покажет
+          // субдомены/зоны чужого адреса до того, как отработает реальный рефетч.
+          const sameUser = persistedUserAddress === currentWalletAddress;
 
           state.appData = data;
           state.allCollections = data.allCollections;
@@ -471,11 +478,11 @@ const blockchainItemsSlice = createSlice({
           state.proxySubdomains = data.proxySubdomains;
           state.sbtSubdomains = data.sbtSubdomains;
           state.nftWrappers = data.nftWrappers;
-          state.userProxySubdomains = data.userProxySubdomains;
-          state.userSBTSubdomains = data.userSBTSubdomains;
-          state.userNFTWrappers = data.userNFTWrappers;
+          state.userProxySubdomains = sameUser ? data.userProxySubdomains : [];
+          state.userSBTSubdomains = sameUser ? data.userSBTSubdomains : [];
+          state.userNFTWrappers = sameUser ? data.userNFTWrappers : [];
           state.lastUpdated = new Date(savedAt).toISOString();
-          state.currentUserAddress = userAddress;
+          state.currentUserAddress = sameUser ? persistedUserAddress : currentWalletAddress;
         }
       }
 

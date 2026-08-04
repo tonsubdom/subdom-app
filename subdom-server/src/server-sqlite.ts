@@ -1210,7 +1210,8 @@ app.post('/api/users', (req, res) => {
     ) as User;
     
     telegramBot.sendNewUserNotification(address, isTestnet);
-    
+    telegramBot.sendPublicPromoGrantedNotification(address, promoLength, isTestnet);
+
     return res.status(201).json({
       success: true,
       message: 'Пользователь успешно создан',
@@ -2654,10 +2655,11 @@ app.post('/api/subdomains/:id/bid', (req, res) => {
           // Отправляем уведомление в Telegram о завершении аукциона
           const priceInTON = amount / 1_000_000_000;
           telegramBot.sendAuctionEndedNotification(
-            finalSubdomain.name, 
-            finalSubdomain.owner, 
-            priceInTON, 
-            isTestnet
+            finalSubdomain.name,
+            finalSubdomain.owner,
+            priceInTON,
+            isTestnet,
+            finalSubdomain.address
           );
         }
         
@@ -2750,10 +2752,11 @@ app.put('/api/subdomains/:id/status', requireAdminAuth, (req, res) => {
     if (status === 'claimed' && existingSubdomain.status === 'auction') {
       const finalPrice = (existingSubdomain.lastBid || 0) / 1_000_000_000;
       telegramBot.sendAuctionEndedNotification(
-        existingSubdomain.name, 
-        existingSubdomain.lastBidder || existingSubdomain.owner || '', 
+        existingSubdomain.name,
+        existingSubdomain.lastBidder || existingSubdomain.owner || '',
         finalPrice,
-        isTestnet
+        isTestnet,
+        existingSubdomain.address
       );
     }
     
@@ -3431,6 +3434,33 @@ app.post('/api/notifications/dns-record', (req, res) => {
   }
 });
 
+// Relay-only: сообщает боту факт обновления ончейн-контента домена (title/
+// description/picture, см. AvatarSecretPage) — ничего не пишет в БД, значения
+// полей не публикуются (те же соображения, что и у dns-record выше).
+app.post('/api/notifications/content-updated', (req, res) => {
+  try {
+    const { domain } = req.body;
+    const isTestnet = req.isTestnet;
+
+    if (!domain) {
+      return res.status(400).json({
+        success: false,
+        message: 'domain обязателен'
+      });
+    }
+
+    telegramBot.sendContentUpdatedNotification(domain, isTestnet);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при отправке уведомления об обновлении контента:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
 // Зона создана (proxy или SBT). Старый POST /api/zones (пишет в zones + счётчики
 // users) намеренно не трогаем и не убираем — это отдельный, всё ещё рабочий путь
 // для легаси-читателей (админ-панель и т.п.). Новый флоу создания зоны на фронте
@@ -3524,7 +3554,7 @@ app.post('/api/notifications/bid', (req, res) => {
 // on-chain auctionInfo.maxBid — бэкенду тут искать/обновлять нечего.
 app.post('/api/notifications/auction-ended', (req, res) => {
   try {
-    const { domain, winner, finalPrice } = req.body;
+    const { domain, winner, finalPrice, itemAddress } = req.body;
     const isTestnet = req.isTestnet;
 
     if (!domain || !winner || finalPrice === undefined) {
@@ -3534,7 +3564,7 @@ app.post('/api/notifications/auction-ended', (req, res) => {
       });
     }
 
-    telegramBot.sendAuctionEndedNotification(domain, winner, finalPrice, isTestnet);
+    telegramBot.sendAuctionEndedNotification(domain, winner, finalPrice, isTestnet, itemAddress);
 
     return res.json({ success: true });
   } catch (error) {

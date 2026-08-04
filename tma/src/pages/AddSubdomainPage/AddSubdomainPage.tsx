@@ -13318,6 +13318,7 @@ export const AuctionPage: React.FC<{}> = () => {
           domain: full,
           winner: userAddress,
           finalPrice: auctionInfo ? Number(auctionInfo.maxBid) / 1_000_000_000 : 0,
+          itemAddress: nftAddress,
         });
       } catch (e) {
         console.error("Notify claim error:", e);
@@ -13579,20 +13580,7 @@ export const AuctionPage: React.FC<{}> = () => {
           paddingBottom: "150px",
         }}
       >
-        <div style={{ position: "relative", width: "280px" }}>
-          <div
-            style={{
-              position: "absolute",
-              left: "-30px",
-              top: "50%",
-              transform: "translateY(-50%)",
-              fontSize: "18px",
-              fontWeight: "bold",
-              color: isDark ? "white" : "black",
-            }}
-          >
-            1
-          </div>
+        <div>
           <AuctionCollectionSelector
             activeTab={activeTab}
             selectedDomainZone={selectedDomainZone}
@@ -13605,26 +13593,6 @@ export const AuctionPage: React.FC<{}> = () => {
             activeSbtZones={activeSbtZones}
             proxyZones={allProxyZones}
           />
-          {zonesError && (
-            <p style={{ color: "#f87171", fontSize: "12px", marginTop: "5px" }}>
-              {zonesError}
-            </p>
-          )}
-          {activeTab === "sbt" &&
-            userSbtZones.length === 0 &&
-            !zonesLoading &&
-            !zonesError && (
-              <p
-                style={{
-                  color: "#f59e0b",
-                  fontSize: "12px",
-                  marginTop: "5px",
-                  textAlign: "center",
-                }}
-              >
-                {t("noSbtZones")}
-              </p>
-            )}
         </div>
 
         {selectedDomainZone && (

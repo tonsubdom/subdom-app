@@ -165,18 +165,19 @@ export const BlockchainItemsProvider: React.FC<BlockchainItemsProviderProps> = (
   
   // ==================== ДЕЙСТВИЯ ====================
   
-  const initialize = useCallback(async (initNetwork?: NetworkType, initApiKey?: string) => {
-    await dispatch(initializeService({
-      network: initNetwork || resolvedNetwork,
-      apiKey: initApiKey || apiKey
-    })).unwrap();
-  }, [dispatch, network, apiKey]);
-  
   // Завязано на wallet?.account?.address (примитив), а не на весь объект
   // wallet — у TonConnect SDK он не гарантированно стабилен по ссылке между
   // рендерами, и колбэк, зависящий от него целиком, мог пересоздаваться чаще,
   // чем логически менялся сам адрес кошелька.
   const walletAddress = wallet?.account?.address || null;
+
+  const initialize = useCallback(async (initNetwork?: NetworkType, initApiKey?: string) => {
+    await dispatch(initializeService({
+      network: initNetwork || resolvedNetwork,
+      apiKey: initApiKey || apiKey,
+      userAddress: walletAddress
+    })).unwrap();
+  }, [dispatch, network, apiKey, walletAddress]);
 
   const loadAllData = useCallback(async (forceRefresh = false) => {
     await dispatch(loadAllAppData({

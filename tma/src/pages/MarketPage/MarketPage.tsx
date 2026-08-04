@@ -6,6 +6,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTonWallet } from '@tonconnect/ui-react';
 import { useLaunchParams } from '@telegram-apps/sdk-react';
+import { MiniAppLinkGenerator } from '@/utils/miniAppLinks';
 import { Address } from "@ton/core";
 
 // Импортируем наш новый механизм
@@ -317,7 +318,6 @@ const MarketPage: React.FC = () => {
   
   // Состояния
   const [activeTab, setActiveTab] = useState<TabType>('subdomains');
-  const [openedViaDeeplink, setOpenedViaDeeplink] = useState(false);
   const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -386,17 +386,22 @@ const MarketPage: React.FC = () => {
     tabInactive: '#E5E7EB'
   };
 
-  // Проверяем, открыто ли через deeplink при монтировании
+  // Проверяем, открыто ли через deeplink при монтировании. Если ссылка
+  // сгенерирована для конкретного завершённого аукциона (zone/subdomain в
+  // startapp — см. DeeplinkUtils.generateMarketLink(domain) на бэкенде),
+  // подставляем полное имя домена в поиск — список сразу сужается до этого
+  // одного итема, а не просто открывает общий список.
   useEffect(() => {
     const startappParam = launchParams.startParam;
-    if (startappParam) {
-      console.log(`🔗 MarketPage открыт через deeplink: ${startappParam}`);
-      setOpenedViaDeeplink(true);
-      
-      const parts = startappParam.split('_');
-      if (parts[0] === 'market') {
-        console.log('✅ Пользователь перешел на маркет из уведомления о завершенном аукционе');
-      }
+    if (!startappParam) return;
+
+    console.log(`🔗 MarketPage открыт через deeplink: ${startappParam}`);
+    const { route, params } = MiniAppLinkGenerator.parseStartappParam(startappParam);
+
+    if (route === '/market' && params.zone) {
+      const domain = params.subdomain ? `${params.subdomain}.${params.zone}` : params.zone;
+      console.log(`✅ Переход с конкретного завершённого аукциона: ${domain}`);
+      setSearchQuery(domain);
     }
   }, [launchParams.startParam]);
 
@@ -656,31 +661,6 @@ const MarketPage: React.FC = () => {
     }
   };
 
-  // Добавляем блок информации о deeplink
-  const renderDeeplinkInfo = () => {
-    if (!openedViaDeeplink) return null;
-    
-    return (
-      <div style={{
-        marginBottom: '16px',
-        padding: '12px 16px',
-        background: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
-        border: `1px solid ${isDark ? '#22c55e' : '#16a34a'}`,
-        borderRadius: '8px',
-        fontSize: '14px',
-        color: isDark ? '#bbf7d0' : '#166534'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <span style={{ fontSize: '16px' }}>🔗</span>
-          <span style={{ fontWeight: '600' }}>{t('marketDeeplinkTitle')}</span>
-        </div>
-        <p style={{ margin: 0, fontSize: '13px' }}>
-          {t('marketDeeplinkMessage')}
-        </p>
-      </div>
-    );
-  };
-
   // Функция для обновления данных
   const handleRefresh = async () => {
     setLoading(true);
@@ -738,9 +718,6 @@ const MarketPage: React.FC = () => {
             {t('marketSubtitle')}
           </p>
         </div>
-
-        {/* Информация о deeplink */}
-        {renderDeeplinkInfo()}
 
         {/* Табы для переключения между субдоменами и NFT обертками */}
         <div style={{

@@ -16,6 +16,8 @@ import Typography from '@mui/material/Typography';
 
 import { Page } from '@/components/Page';
 import { ShowSnackbar } from '@/components/ShowSnackbar';
+import { apiService } from '@/services/api';
+import { StepIndicator } from '@/components/StepIndicator/StepIndicator';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -383,6 +385,10 @@ export const AvatarSecretPage: React.FC = () => {
       });
 
       showSnackbar(t('avatarSaved') || 'Сохранено онchain', 'success');
+      if (domainName) {
+        apiService.setNetwork(isTestnet);
+        apiService.notifyContentUpdated(domainName);
+      }
     } catch (e: any) {
       console.error('Avatar/Secret save error:', e);
       showSnackbar(e?.message || t('avatarSaveError') || 'Ошибка сохранения', 'error');
@@ -540,6 +546,30 @@ export const AvatarSecretPage: React.FC = () => {
                 {t('avatarLoadingExisting') || 'Проверяю, что уже записано ончейн…'}
               </Typography>
             )}
+
+            <Typography
+              sx={{
+                fontSize: '12px',
+                color: colors.accent,
+                textAlign: 'center',
+                mb: 2,
+                lineHeight: 1.5,
+              }}
+            >
+              {t('avatarSetupIntro') || 'Загрузите картинку до 45кБ в png формате в качестве ончейн-аватарки вашего домена. Добавьте описание, чтобы другие пользователи могли найти ваш сайт в тонбраузере.'}
+            </Typography>
+
+            <StepIndicator
+              current={2}
+              labels={[
+                t('onboardingStepWallet') || 'Кошелёк',
+                t('onboardingStepAvatar') || 'Аватарка',
+                t('onboardingStepZone') || 'Зона',
+              ]}
+              accentColor={colors.accent}
+              mutedColor={colors.border}
+              textColor={colors.text}
+            />
 
             {/* Круглый аватар — видно с первого взгляда, что запись уже есть, до того как что-то менять */}
             <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
