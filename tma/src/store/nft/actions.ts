@@ -336,8 +336,9 @@ export const filterNftsByCollection = createAsyncThunk<
  *   dnsresolve-коллекции): у айтема вообще нет token_info[0].name/.image —
  *   имя лежит прямо в item.content.domain (сырой контент, без off-chain
  *   metadata), запасной путь — token_info[0].extra.domain. Картинки на
- *   уровне айтема у таких доменов в принципе нет (только общая иконка
- *   коллекции) — это ожидаемо, не баг.
+ *   уровне айтема у таких доменов в принципе нет — фолбэк на иконку самой
+ *   коллекции (metadata[collectionAddr].token_info[0].image), у "TON DNS
+ *   Domains" она есть (dns.ton.org/icon.png).
  */
 function toncenterItemToNft(
   item: any,
@@ -349,7 +350,11 @@ function toncenterItemToNft(
 
   const name: string | undefined = item.content?.domain || itemMeta?.name || itemMeta?.extra?.domain;
   const image: string | undefined =
-    itemMeta?.image || itemMeta?.extra?._image_medium || itemMeta?.extra?._image_small;
+    itemMeta?.image ||
+    itemMeta?.extra?._image_medium ||
+    itemMeta?.extra?._image_small ||
+    collectionMeta?.image ||
+    collectionMeta?.extra?._image_medium;
 
   return {
     address: (item.address as string)?.toLowerCase(),
