@@ -19,6 +19,8 @@ import telegramBot from './utils/tgBot-sqlite';
 import { generatePayload, verifyAdminProof, CheckProofRequest } from './utils/tonProof';
 import { createAdminToken, requireAdminAuth } from './utils/adminAuth';
 import { createBag, getBagDetails, addBag } from './utils/storageDaemon';
+import platformCacheRouter from './services/platformCache/routes';
+import { startPlatformCacheCrawler } from './services/platformCache/crawler';
 
 const APP_DOMAIN = 'subdom.zone';
 const STORAGE_UPLOADS_PATH = process.env.STORAGE_UPLOADS_PATH || '/app/storage-uploads';
@@ -458,6 +460,61 @@ const initializeDatabase = (db: SqliteDatabase) => {
       startedAt TEXT DEFAULT CURRENT_TIMESTAMP,
       completedAt TEXT
     );
+
+    -- Платформенный read-cache (Group 3.3, 2026-08-05) — источник для "список всего
+    -- на платформе" (Market, селектор зоны в минте, вкладка Wrappers в DNS-менеджере).
+    -- Отдельно от легаси zones/subdomains выше (те с 2026-08-01 для новых записей не
+    -- пишутся, см. Group 3.2) — здесь ключ collectionAddress/itemAddress, а не
+    -- FK-integer id, потому что источник истины — периодический ончейн-кроулер
+    -- (subdom-server/src/services/platformCache), а не создание через сам бэкенд.
+    -- Персональные запросы ("что моё") тоже читаются отсюда, фильтром по ownerAddress —
+    -- живой per-wallet ончейн-запрос (universal-blockchain-service на фронте) остаётся
+    -- как фолбэк/кнопка принудительного рефреша, не убирается.
+    CREATE TABLE IF NOT EXISTS platform_zones_cache (
+      collectionAddress TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      isProxy INTEGER NOT NULL DEFAULT 0,
+      wrapperAddress TEXT,
+      ownerAddress TEXT,
+      status TEXT DEFAULT 'active',
+      firstSeenAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      lastSyncedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      source TEXT DEFAULT 'crawler'
+    );
+    CREATE INDEX IF NOT EXISTS idx_platform_zones_owner ON platform_zones_cache(ownerAddress);
+
+    CREATE TABLE IF NOT EXISTS platform_subdomains_cache (
+      itemAddress TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      collectionAddress TEXT NOT NULL,
+      isProxy INTEGER NOT NULL DEFAULT 0,
+      ownerAddress TEXT,
+      status TEXT DEFAULT 'active',
+      firstSeenAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      lastSyncedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      source TEXT DEFAULT 'crawler'
+    );
+    CREATE INDEX IF NOT EXISTS idx_platform_subdomains_owner ON platform_subdomains_cache(ownerAddress);
+    CREATE INDEX IF NOT EXISTS idx_platform_subdomains_collection ON platform_subdomains_cache(collectionAddress);
+
+    -- wrapperHolderAddress и dividendOwnerAddress — намеренно разные поля, не
+    -- один "owner". По дизайну контракта номинальный ончейн-владелец обёртки
+    -- после wrap — сам адрес платформы (нужно для индексации), а держатель/
+    -- продавец обёртки и получатель 90% с аукционов на зоне — два отдельных
+    -- адреса (см. Задачи - Group 3 §3.3 в Obsidian). Путать их в одно поле нельзя.
+    CREATE TABLE IF NOT EXISTS platform_wrappers_cache (
+      wrapperAddress TEXT PRIMARY KEY,
+      domainName TEXT NOT NULL,
+      collectionAddress TEXT,
+      wrapperHolderAddress TEXT,
+      dividendOwnerAddress TEXT,
+      status TEXT DEFAULT 'active',
+      firstSeenAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      lastSyncedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      source TEXT DEFAULT 'crawler'
+    );
+    CREATE INDEX IF NOT EXISTS idx_platform_wrappers_holder ON platform_wrappers_cache(wrapperHolderAddress);
+    CREATE INDEX IF NOT EXISTS idx_platform_wrappers_dividend ON platform_wrappers_cache(dividendOwnerAddress);
   `);
 
   // Выполняем миграцию после создания таблиц
@@ -520,6 +577,11 @@ const networkMiddleware = (req: express.Request, res: express.Response, next: ex
 
 // Применяем middleware ко всем API роутам
 app.use('/api/*', networkMiddleware);
+
+// Платформенный read-cache (Group 3.3) — монтируется после networkMiddleware,
+// чтобы req.db/req.isTestnet были уже выставлены.
+app.use('/api/platform', platformCacheRouter);
+startPlatformCacheCrawler(testnetDb, mainnetDb);
 
 // ==================== ADMIN AUTH (TonProof) ====================
 // Единственный способ получить доступ к чувствительным CRUD-ручкам ниже —

@@ -84,6 +84,23 @@ jobs:
              export PLATFORM_OWNER_TESTNET='${{ vars.PLATFORM_OWNER_TESTNET }}' && \
              export PLATFORM_OWNER_MAINNET='${{ vars.PLATFORM_OWNER_MAINNET }}' && \
              export ADMIN_JWT_SECRET='${{ secrets.ADMIN_JWT_SECRET }}' && \
+             export TONCENTER_API_KEY='${{ secrets.TONCENTER_API_KEY }}' && \
+             export NFT_WRAPPER_COLLECTION_TESTNET='${{ vars.NFT_WRAPPER_COLLECTION_TESTNET }}' && \
+             export NFT_WRAPPER_COLLECTION_MAINNET='${{ vars.NFT_WRAPPER_COLLECTION_MAINNET }}' && \
+             export HASH_PROXY_COLLECTION_TESTNET='${{ vars.HASH_PROXY_COLLECTION_TESTNET }}' && \
+             export HASH_SBT_COLLECTION_TESTNET='${{ vars.HASH_SBT_COLLECTION_TESTNET }}' && \
+             export HASH_NFT_WRAPPER_COLLECTION_TESTNET='${{ vars.HASH_NFT_WRAPPER_COLLECTION_TESTNET }}' && \
+             export HASH_PROXY_SUBDOMAIN_TESTNET='${{ vars.HASH_PROXY_SUBDOMAIN_TESTNET }}' && \
+             export HASH_PROXY_SUBDOMAIN_NEW_TESTNET='${{ vars.HASH_PROXY_SUBDOMAIN_NEW_TESTNET }}' && \
+             export HASH_SBT_SUBDOMAIN_TESTNET='${{ vars.HASH_SBT_SUBDOMAIN_TESTNET }}' && \
+             export HASH_NFT_WRAPPER_TESTNET='${{ vars.HASH_NFT_WRAPPER_TESTNET }}' && \
+             export HASH_PROXY_COLLECTION_MAINNET='${{ vars.HASH_PROXY_COLLECTION_MAINNET }}' && \
+             export HASH_SBT_COLLECTION_MAINNET='${{ vars.HASH_SBT_COLLECTION_MAINNET }}' && \
+             export HASH_NFT_WRAPPER_COLLECTION_MAINNET='${{ vars.HASH_NFT_WRAPPER_COLLECTION_MAINNET }}' && \
+             export HASH_PROXY_SUBDOMAIN_MAINNET='${{ vars.HASH_PROXY_SUBDOMAIN_MAINNET }}' && \
+             export HASH_PROXY_SUBDOMAIN_NEW_MAINNET='${{ vars.HASH_PROXY_SUBDOMAIN_NEW_MAINNET }}' && \
+             export HASH_SBT_SUBDOMAIN_MAINNET='${{ vars.HASH_SBT_SUBDOMAIN_MAINNET }}' && \
+             export HASH_NFT_WRAPPER_MAINNET='${{ vars.HASH_NFT_WRAPPER_MAINNET }}' && \
              docker-compose build backend && \
              docker-compose down && \
              docker-compose up -d && \
