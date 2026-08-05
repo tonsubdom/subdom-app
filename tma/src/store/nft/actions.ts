@@ -342,7 +342,7 @@ export const filterNftsByCollection = createAsyncThunk<
  *   от https://cache.tonapi.io/dns/preview/{domain}.png>.webp. Раз URL
  *   предсказуемый по имени — строим его сами, без похода в tonapi.io.
  */
-const tonDnsPreviewImage = (domain: string): string =>
+export const tonDnsPreviewImage = (domain: string): string =>
   `https://cache.tonapi.io/dns/preview/${domain}.png`;
 
 function toncenterItemToNft(

@@ -2303,6 +2303,7 @@ import { getAuctionBidHistory } from "@/pages/AddSubdomainPage/flipTimer/getAuct
 import { mapWithConcurrency } from "@/utils/concurrency";
 import { createAuctionUrl } from "@/utils/urlParams";
 import { MiniAppLinks } from "@/utils/miniAppLinks";
+import { tonDnsPreviewImage } from "@/store/nft/actions";
 import { useBlockchainScanUi } from "@/hooks/useBlockchainLoadProgress";
 
 // ====== [KEEP] БЭКЕНД ДЛЯ INFO-БЛОКА ======
@@ -3271,7 +3272,11 @@ const ProfileWidget: React.FC = () => {
   // fallback на уже рабочий источник, картинку самой NFT-обёртки зоны
   // (тот же (zone as any).image, что уже показывается на карточках зон).
   // "picture" (URL) в приоритете, "tsi_icon" (локальный файл без хостинга,
-  // см. AvatarSecretPage) — второй по очереди, зона — последний фолбэк.
+  // см. AvatarSecretPage) — второй по очереди, картинка платформенной зоны —
+  // третий. Если ни одного из них нет (обычный *.ton домен не с платформы,
+  // без кастомного dns_text-аватара) — последний фолбэк, тот же
+  // tonDnsPreviewImage, что уже используется в DNS-менеджере ("Other" таб)
+  // для рендера превью стандартных *.ton доменов по имени.
   const [avatarPictureUrl, setAvatarPictureUrl] = useState<string | null>(null);
   // Полный набор dns_text домена — тот же вызов, что уже даёт аватар, но
   // сохраняем целиком (не только picture/icon), чтобы превью-модалка при
@@ -3296,6 +3301,7 @@ const ProfileWidget: React.FC = () => {
         (getUserZones.find((z) => z.name === domain) as any)?.image ||
         (getUserZones[0] as any)?.image ||
         null;
+      const previewFallback = tonDnsPreviewImage(domain);
 
       try {
         const resolved = await resolveDomainNftAddress(domain, isTestnet);
@@ -3305,11 +3311,11 @@ const ProfileWidget: React.FC = () => {
           : { title: null, description: null, category: null, picture: null, icon: null };
         if (cancelled) return;
         setProfileDnsText(dnsText);
-        setAvatarPictureUrl(dnsText.picture || dnsText.icon || zoneFallback);
+        setAvatarPictureUrl(dnsText.picture || dnsText.icon || zoneFallback || previewFallback);
       } catch {
         if (!cancelled) {
           setProfileDnsText(null);
-          setAvatarPictureUrl(zoneFallback);
+          setAvatarPictureUrl(zoneFallback || previewFallback);
         }
       }
     };
@@ -5406,6 +5412,11 @@ const ProfileWidget: React.FC = () => {
               {cardView === "list" && (
                 <>
                   {/* ЗОНЫ */}
+                  {/* blockchainLoading — общий флаг useBlockchainItems() на весь апп (см.
+                      6e0fa22 в ManageDomainPage): держится true пока где-то ещё идёт
+                      несвязанный фетч (напр. ActiveAuctions на другой странице), даже
+                      когда список этого таба уже готов. Гейтим ещё и по пустоте самого
+                      массива, чтобы спиннер не перекрывал уже отрендеренные данные. */}
                   {activeTab === "zones" && (
                     <div
                       style={{
@@ -5418,7 +5429,7 @@ const ProfileWidget: React.FC = () => {
                         paddingRight: "6px",
                       }}
                     >
-                      {blockchainLoading ? (
+                      {blockchainLoading && getUserZones.length === 0 ? (
                         <ScanProgressLoader
                           label={t("loadingZones") || "Загрузка данных..."}
                           percent={blockchainScanUi.percent}
@@ -5503,7 +5514,7 @@ const ProfileWidget: React.FC = () => {
                         paddingRight: "6px",
                       }}
                     >
-                      {blockchainLoading ? (
+                      {blockchainLoading && subdomains.length === 0 ? (
                         <ScanProgressLoader
                           label={t("loadingSubdomains") || "Загрузка данных..."}
                           percent={blockchainScanUi.percent}
@@ -5590,7 +5601,7 @@ const ProfileWidget: React.FC = () => {
                         paddingRight: "6px",
                       }}
                     >
-                      {blockchainLoading ? (
+                      {blockchainLoading && activeAuctions.length === 0 ? (
                         <ScanProgressLoader
                           label={t("loadingAuctions") || "Загрузка данных..."}
                           percent={blockchainScanUi.percent}

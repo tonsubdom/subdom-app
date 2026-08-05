@@ -1357,7 +1357,11 @@ useEffect(() => {
 
         {/* Контент */}
         <div style={{ background: colors.cardBg, overflowX: 'auto' }}>
-          {blockchainLoading ? (
+          {/* blockchainLoading — общий флаг useBlockchainItems() на весь апп, может
+              взводиться заново несвязанным фетчем с другой страницы/виджета уже после
+              того, как список аукционов тут отрендерился. Гейтим по пустоте
+              activeAuctions, чтобы не перекрывать спиннером уже готовые данные. */}
+          {blockchainLoading && activeAuctions.length === 0 ? (
             <ScanProgressLoader
               label={t('loadingAuctions') || 'Загрузка аукционов'}
               statusText={t('loadingItemsList') || 'Загружаем список итемов...'}

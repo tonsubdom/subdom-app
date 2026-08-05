@@ -1500,7 +1500,12 @@ export const CustomZoneSelector: React.FC<CustomZoneSelectorProps> = ({
             </>
           ) : (
             <span style={{ color: "#999", fontFamily: "monospace" }}>
-              {isLoading ? "Loading zones..." : placeholder}
+              {/* isLoading приходит из общего useBlockchainItems().isLoading (см.
+                  AddSubdomainPage) и может остаться true из-за несвязанного фетча
+                  (напр. ActiveAuctions на этой же странице), даже когда сам список
+                  зон уже наполнен и доступен в открытом дропдауне. Гейтим ещё и по
+                  пустоте zones, чтобы не врать "Loading zones..." на готовых данных. */}
+              {isLoading && zones.length === 0 ? "Loading zones..." : placeholder}
             </span>
           )}
         </div>
