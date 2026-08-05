@@ -4744,7 +4744,12 @@ export const ManageDomainPage: FC = () => {
   const prevIsTestnet = useRef(isTestnet);
 
   // ====== ОБЪЕДИНЁННЫЙ ЛОАДЕР ======
-  const isLoading = reduxLoading || blockchainLoading;
+  // blockchainLoading (useBlockchainItems, медленный ончейн-агрегатор всех
+  // платформенных коллекций) нужен только для mode==="service" —
+  // getFilteredItemsForMode в режиме "other" его вообще не читает. Раньше
+  // спиннер держался, пока не досчитается несвязанный service-пайплайн,
+  // даже если юзер сидит в "Other" и ждёт только fetchNfts (reduxLoading).
+  const isLoading = reduxLoading || (mode === "service" && blockchainLoading);
 
   // ====== SNACKBAR ======
   const showSnackbar = (
