@@ -335,11 +335,16 @@ export const filterNftsByCollection = createAsyncThunk<
  * - Стандартные *.ton root-домены (TON DNS Domains и т.п. сторонние
  *   dnsresolve-коллекции): у айтема вообще нет token_info[0].name/.image —
  *   имя лежит прямо в item.content.domain (сырой контент, без off-chain
- *   metadata), запасной путь — token_info[0].extra.domain. Картинки на
- *   уровне айтема у таких доменов в принципе нет — фолбэк на иконку самой
- *   коллекции (metadata[collectionAddr].token_info[0].image), у "TON DNS
- *   Domains" она есть (dns.ton.org/icon.png).
+ *   metadata), запасной путь — token_info[0].extra.domain. У toncenter для
+ *   таких доменов картинки в принципе нет нигде в ответе. У tonapi.io она
+ *   была — не из метаданных айтема, а с его собственного рендер-сервиса по
+ *   имени домена: previews[].url вида cache.tonapi.io/imgproxy/.../<base64
+ *   от https://cache.tonapi.io/dns/preview/{domain}.png>.webp. Раз URL
+ *   предсказуемый по имени — строим его сами, без похода в tonapi.io.
  */
+const tonDnsPreviewImage = (domain: string): string =>
+  `https://cache.tonapi.io/dns/preview/${domain}.png`;
+
 function toncenterItemToNft(
   item: any,
   metadataByAddress: Record<string, any>
@@ -349,12 +354,12 @@ function toncenterItemToNft(
   const collectionMeta = collectionAddress ? metadataByAddress[item.collection_address]?.token_info?.[0] : undefined;
 
   const name: string | undefined = item.content?.domain || itemMeta?.name || itemMeta?.extra?.domain;
+  const isPlainTonDomain = !!item.content?.domain;
   const image: string | undefined =
     itemMeta?.image ||
     itemMeta?.extra?._image_medium ||
     itemMeta?.extra?._image_small ||
-    collectionMeta?.image ||
-    collectionMeta?.extra?._image_medium;
+    (isPlainTonDomain && name ? tonDnsPreviewImage(name) : undefined);
 
   return {
     address: (item.address as string)?.toLowerCase(),
