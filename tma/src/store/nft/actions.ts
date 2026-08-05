@@ -328,6 +328,16 @@ export const filterNftsByCollection = createAsyncThunk<
  * Адреса — в нижний регистр: getNFTCollections (constants.ts) хранит их
  * lowercase, а фильтрация в filterNftsByCollection сравнивает строго (===,
  * без .toLowerCase()) — toncenter же отдаёт HEX в верхнем регистре.
+ *
+ * Два разных формата контента у toncenter в зависимости от типа коллекции:
+ * - Наши SBT/proxy субдомены: content.uri → JSON, имя резолвится в
+ *   metadata[addr].token_info[0].name (плюс .image/.description).
+ * - Стандартные *.ton root-домены (TON DNS Domains и т.п. сторонние
+ *   dnsresolve-коллекции): у айтема вообще нет token_info[0].name/.image —
+ *   имя лежит прямо в item.content.domain (сырой контент, без off-chain
+ *   metadata), запасной путь — token_info[0].extra.domain. Картинки на
+ *   уровне айтема у таких доменов в принципе нет (только общая иконка
+ *   коллекции) — это ожидаемо, не баг.
  */
 function toncenterItemToNft(
   item: any,
@@ -337,7 +347,7 @@ function toncenterItemToNft(
   const collectionAddress: string | undefined = (item.collection_address || item.collection?.address)?.toLowerCase();
   const collectionMeta = collectionAddress ? metadataByAddress[item.collection_address]?.token_info?.[0] : undefined;
 
-  const name: string | undefined = itemMeta?.name;
+  const name: string | undefined = item.content?.domain || itemMeta?.name || itemMeta?.extra?.domain;
   const image: string | undefined =
     itemMeta?.image || itemMeta?.extra?._image_medium || itemMeta?.extra?._image_small;
 
