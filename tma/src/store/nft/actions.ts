@@ -4,6 +4,7 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../rootReducer';
 import { getNFTCollections, getServiceCollections, CollectionKey, NFTCollectionKey } from './constants';
 import axios from 'axios';
+import { TonCenterAPI } from '../../services/blockchainItems/toncenter-api-config';
 
 const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL;
 
@@ -320,9 +321,43 @@ export const filterNftsByCollection = createAsyncThunk<
     }
   }
 );
-// Обновленный fetchNfts с поддержкой testnet
+/**
+ * Один айтем toncenter /nft/items → наш NFT (см. интерфейс выше). Имена/картинки
+ * берём из отдельной top-level карты `metadata` того же ответа (toncenter уже
+ * резолвит content.uri сам, второй round-trip за метадатой не нужен).
+ * Адреса — в нижний регистр: getNFTCollections (constants.ts) хранит их
+ * lowercase, а фильтрация в filterNftsByCollection сравнивает строго (===,
+ * без .toLowerCase()) — toncenter же отдаёт HEX в верхнем регистре.
+ */
+function toncenterItemToNft(
+  item: any,
+  metadataByAddress: Record<string, any>
+): NFT {
+  const itemMeta = metadataByAddress[item.address]?.token_info?.[0];
+  const collectionAddress: string | undefined = (item.collection_address || item.collection?.address)?.toLowerCase();
+  const collectionMeta = collectionAddress ? metadataByAddress[item.collection_address]?.token_info?.[0] : undefined;
+
+  const name: string | undefined = itemMeta?.name;
+  const image: string | undefined =
+    itemMeta?.image || itemMeta?.extra?._image_medium || itemMeta?.extra?._image_small;
+
+  return {
+    address: (item.address as string)?.toLowerCase(),
+    owner_address: ((item.real_owner || item.owner_address) as string | undefined)?.toLowerCase(),
+    collection: collectionAddress
+      ? { address: collectionAddress, name: collectionMeta?.name }
+      : undefined,
+    metadata: { name, image, description: itemMeta?.description },
+    title: name,
+    dns: name,
+  };
+}
+
+// Переведено на toncenter (наш платный ключ, 25 rps) — раньше был tonapi.io
+// без ключа с искусственной паузой 1с/страницу. Тот же TonCenterAPI-клиент,
+// что и в universal-blockchain-service.ts.
 export const fetchNfts = createAsyncThunk<
-  NFT[], 
+  NFT[],
   { walletAddress: string, isTestnet: boolean }, // Добавляем isTestnet параметр
   { state: RootState }
 >(
@@ -331,51 +366,45 @@ export const fetchNfts = createAsyncThunk<
     let offset = 0;
     let allNfts: NFT[] = [];
     const limit = 100;
-    const API_DELAY = 1000;
+    // 25 rps по плану — 100мс запас с головой (10/сек), не выедаем весь
+    // бюджет лимита в одиночку, пока рядом могут идти другие ончейн-запросы.
+    const MIN_REQUEST_INTERVAL_MS = 100;
+    let lastRequestStartedAt = 0;
 
     try {
-      // Используем правильный URL в зависимости от сети
-      const apiUrl = isTestnet 
-        ? 'https://testnet.tonapi.io/v2' 
-        : 'https://tonapi.io/v2';
-      
-      console.log(`📡 Загружаем NFT с ${apiUrl} для ${walletAddress} (${isTestnet ? 'testnet' : 'mainnet'})`);
-      
-      while (true) {
-        const response = await fetch(
-          `${apiUrl}/accounts/${walletAddress}/nfts?limit=${limit}&offset=${offset}&indirect_ownership=false`
-        );
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
+      const api = new TonCenterAPI(isTestnet);
 
-        console.log('Полный ответ API:', data);
-        
+      console.log(`📡 Загружаем NFT с toncenter для ${walletAddress} (${isTestnet ? 'testnet' : 'mainnet'})`);
+
+      while (true) {
+        if (lastRequestStartedAt > 0) {
+          const elapsed = Date.now() - lastRequestStartedAt;
+          if (elapsed < MIN_REQUEST_INTERVAL_MS) {
+            await new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_INTERVAL_MS - elapsed));
+          }
+        }
+        lastRequestStartedAt = Date.now();
+
+        const data = await api.getItemsByOwner(walletAddress, { limit, offset });
+
         if (!data.nft_items || data.nft_items.length === 0) {
           break;
         }
 
         console.log('Количество NFT в текущем запросе:', data.nft_items.length);
-        
-        // Подробный лог каждого NFT
-        data.nft_items.forEach((nft: any, index: number) => {
-          console.log(`NFT #${index + 1} - Полная информация:`, nft);
-          console.log(`NFT #${index + 1} - Структура:`, {
-            address: nft.address,
-            collection: nft.collection,
-            title: nft.title,
-            previews: nft.previews,
-            metadata: nft.metadata,
-            dns: nft.dns
-          });
-        });
 
-        allNfts = allNfts.concat(data.nft_items);
-        offset += 100;
-        await new Promise((resolve) => setTimeout(resolve, API_DELAY));
+        const metadataByAddress = data.metadata || {};
+        allNfts = allNfts.concat(
+          data.nft_items.map((item) => toncenterItemToNft(item, metadataByAddress))
+        );
+
+        // Страница короче limit — дальше уже нечего забирать, не тратим
+        // ещё один цикл запрос+пауза только чтобы получить пустой ответ.
+        if (data.nft_items.length < limit) {
+          break;
+        }
+
+        offset += limit;
       }
 
       console.log('Общее количество NFT:', allNfts.length);

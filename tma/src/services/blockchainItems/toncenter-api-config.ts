@@ -282,7 +282,7 @@ export class TonCenterAPI {
       offset?: number;
       collection_address?: string;
     } = {}
-  ): Promise<{ nft_items: any[] }> {
+  ): Promise<GetItemsByCollectionResponse> {
     return this.request('/nft/items', {
       owner_address: ownerAddress,
       ...options
