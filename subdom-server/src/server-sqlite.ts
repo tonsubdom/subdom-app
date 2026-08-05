@@ -476,6 +476,9 @@ const initializeDatabase = (db: SqliteDatabase) => {
       isProxy INTEGER NOT NULL DEFAULT 0,
       wrapperAddress TEXT,
       ownerAddress TEXT,
+      image TEXT,
+      description TEXT,
+      totalItems INTEGER DEFAULT 0,
       status TEXT DEFAULT 'active',
       firstSeenAt TEXT DEFAULT CURRENT_TIMESTAMP,
       lastSyncedAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -487,8 +490,14 @@ const initializeDatabase = (db: SqliteDatabase) => {
       itemAddress TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       collectionAddress TEXT NOT NULL,
+      zoneName TEXT,
       isProxy INTEGER NOT NULL DEFAULT 0,
+      itemType TEXT,
       ownerAddress TEXT,
+      image TEXT,
+      description TEXT,
+      onSale INTEGER DEFAULT 0,
+      lastTransactionLt TEXT,
       status TEXT DEFAULT 'active',
       firstSeenAt TEXT DEFAULT CURRENT_TIMESTAMP,
       lastSyncedAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -508,6 +517,9 @@ const initializeDatabase = (db: SqliteDatabase) => {
       collectionAddress TEXT,
       wrapperHolderAddress TEXT,
       dividendOwnerAddress TEXT,
+      image TEXT,
+      description TEXT,
+      lastTransactionLt TEXT,
       status TEXT DEFAULT 'active',
       firstSeenAt TEXT DEFAULT CURRENT_TIMESTAMP,
       lastSyncedAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -519,6 +531,37 @@ const initializeDatabase = (db: SqliteDatabase) => {
 
   // Выполняем миграцию после создания таблиц
   // migrateDatabase(db);
+
+  migratePlatformCacheColumns(db);
+};
+
+// CREATE TABLE IF NOT EXISTS не добавляет новые колонки, если таблица уже
+// существовала (например, локально после более раннего запуска до этой
+// правки схемы) — досыпаем недостающие колонки вручную. Безопасно повторять:
+// ALTER TABLE ADD COLUMN гоняем только для того, чего ещё нет в PRAGMA table_info.
+const migratePlatformCacheColumns = (db: SqliteDatabase) => {
+  const addColumnIfMissing = (table: string, column: string, ddl: string) => {
+    const existing = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+    if (!existing.some((col) => col.name === column)) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+      console.log(`🔧 Миграция: добавлена колонка ${table}.${column}`);
+    }
+  };
+
+  addColumnIfMissing('platform_zones_cache', 'image', 'image TEXT');
+  addColumnIfMissing('platform_zones_cache', 'description', 'description TEXT');
+  addColumnIfMissing('platform_zones_cache', 'totalItems', 'totalItems INTEGER DEFAULT 0');
+
+  addColumnIfMissing('platform_subdomains_cache', 'zoneName', 'zoneName TEXT');
+  addColumnIfMissing('platform_subdomains_cache', 'itemType', 'itemType TEXT');
+  addColumnIfMissing('platform_subdomains_cache', 'image', 'image TEXT');
+  addColumnIfMissing('platform_subdomains_cache', 'description', 'description TEXT');
+  addColumnIfMissing('platform_subdomains_cache', 'onSale', 'onSale INTEGER DEFAULT 0');
+  addColumnIfMissing('platform_subdomains_cache', 'lastTransactionLt', 'lastTransactionLt TEXT');
+
+  addColumnIfMissing('platform_wrappers_cache', 'image', 'image TEXT');
+  addColumnIfMissing('platform_wrappers_cache', 'description', 'description TEXT');
+  addColumnIfMissing('platform_wrappers_cache', 'lastTransactionLt', 'lastTransactionLt TEXT');
 };
 
 // Все шаги обучалки по всем 5 блокам (см. Log.md/подраздел "обучалка" —
