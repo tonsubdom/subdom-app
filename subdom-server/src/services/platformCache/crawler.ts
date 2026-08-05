@@ -4,13 +4,21 @@
  * Периодический (раз в 15 мин) обход платформенных сущностей — зоны, субдомены,
  * proxy-обёртки — в platform_zones_cache / platform_subdomains_cache /
  * platform_wrappers_cache. Источник истины для "список всего на платформе"
- * (Market, селектор зоны в минте, вкладка Wrappers) — см. Obsidian,
+ * (Market, селектор зоны в минте, вкладка Wrappers, и центральный
+ * BlockchainItemsProvider/loadAllAppData на фронте) — см. Obsidian,
  * Задачи - Group 3 §3.3 / Group 4.
  *
- * НЕ трогает: аукционы/ставки (остаются live get_auction_info на фронте),
- * личные "что моё" запросы (остаются live per-wallet на фронте — этот кроулер
- * лишь пишет ownerAddress в кэш как быстрый первый рендер, не единственный
- * источник для персональных списков).
+ * НЕ трогает: аукционы/ставки (остаются live get_auction_info на фронте).
+ * Персональные "что моё" списки — обычный фильтр по ownerAddress поверх ЭТИХ
+ * ЖЕ данных на фронте (как и раньше делал ончейн-путь), отдельного
+ * персонального запроса тут нет и не нужно.
+ *
+ * ВАЖНО про формат ответа toncenter (проверено вживую 2026-08-05, см. Log.md):
+ * ни у коллекций (/nft/collections), ни у айтемов (/nft/items) имя/картинка/
+ * описание НЕ лежат инлайново на самом объекте — они в отдельной top-level
+ * карте `metadata`, ключ — адрес (тот же, что у коллекции/айтема). Инлайновые
+ * col.collection_content/item.content — это сырой ончейн-контент (чаще uri на
+ * off-chain JSON, который toncenter сам резолвит в ту самую карту metadata).
  */
 
 import type Database from 'better-sqlite3';
@@ -29,6 +37,9 @@ const BATCH_DELAY_MS = 500;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const nowIso = () => new Date().toISOString();
+
+const metaFor = (metadataByAddress: Record<string, any>, address: string) =>
+  metadataByAddress[address]?.token_info?.[0];
 
 /**
  * "Реальный создатель" — отправитель deploy-транзакции адреса. 1:1 с
@@ -75,42 +86,54 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
 
   const upsertZone = db.prepare(`
     INSERT INTO platform_zones_cache
-      (collectionAddress, name, isProxy, wrapperAddress, ownerAddress, status, lastSyncedAt, source)
-    VALUES (@collectionAddress, @name, @isProxy, @wrapperAddress, @ownerAddress, 'active', @lastSyncedAt, 'crawler')
+      (collectionAddress, name, isProxy, wrapperAddress, ownerAddress, image, description, totalItems, status, lastSyncedAt, source)
+    VALUES (@collectionAddress, @name, @isProxy, @wrapperAddress, @ownerAddress, @image, @description, @totalItems, 'active', @lastSyncedAt, 'crawler')
     ON CONFLICT(collectionAddress) DO UPDATE SET
       name = excluded.name,
       isProxy = excluded.isProxy,
       ownerAddress = excluded.ownerAddress,
+      image = excluded.image,
+      description = excluded.description,
+      totalItems = excluded.totalItems,
       status = 'active',
       lastSyncedAt = excluded.lastSyncedAt
   `);
 
   const upsertSubdomain = db.prepare(`
     INSERT INTO platform_subdomains_cache
-      (itemAddress, name, collectionAddress, isProxy, ownerAddress, status, lastSyncedAt, source)
-    VALUES (@itemAddress, @name, @collectionAddress, @isProxy, @ownerAddress, 'active', @lastSyncedAt, 'crawler')
+      (itemAddress, name, collectionAddress, zoneName, isProxy, itemType, ownerAddress, image, description, onSale, lastTransactionLt, status, lastSyncedAt, source)
+    VALUES (@itemAddress, @name, @collectionAddress, @zoneName, @isProxy, @itemType, @ownerAddress, @image, @description, @onSale, @lastTransactionLt, 'active', @lastSyncedAt, 'crawler')
     ON CONFLICT(itemAddress) DO UPDATE SET
       name = excluded.name,
+      zoneName = excluded.zoneName,
+      itemType = excluded.itemType,
       ownerAddress = excluded.ownerAddress,
+      image = excluded.image,
+      description = excluded.description,
+      onSale = excluded.onSale,
+      lastTransactionLt = excluded.lastTransactionLt,
       status = 'active',
       lastSyncedAt = excluded.lastSyncedAt
   `);
 
   const upsertWrapper = db.prepare(`
     INSERT INTO platform_wrappers_cache
-      (wrapperAddress, domainName, collectionAddress, wrapperHolderAddress, dividendOwnerAddress, status, lastSyncedAt, source)
-    VALUES (@wrapperAddress, @domainName, @collectionAddress, @wrapperHolderAddress, @dividendOwnerAddress, 'active', @lastSyncedAt, 'crawler')
+      (wrapperAddress, domainName, collectionAddress, wrapperHolderAddress, dividendOwnerAddress, image, description, lastTransactionLt, status, lastSyncedAt, source)
+    VALUES (@wrapperAddress, @domainName, @collectionAddress, @wrapperHolderAddress, @dividendOwnerAddress, @image, @description, @lastTransactionLt, 'active', @lastSyncedAt, 'crawler')
     ON CONFLICT(wrapperAddress) DO UPDATE SET
       domainName = excluded.domainName,
       wrapperHolderAddress = excluded.wrapperHolderAddress,
       dividendOwnerAddress = COALESCE(excluded.dividendOwnerAddress, platform_wrappers_cache.dividendOwnerAddress),
+      image = excluded.image,
+      description = excluded.description,
+      lastTransactionLt = excluded.lastTransactionLt,
       status = 'active',
       lastSyncedAt = excluded.lastSyncedAt
   `);
 
   try {
     // 1) Все коллекции платформы (зоны + сама wrapper-коллекция)
-    const { nft_collections } = await api.getCollectionsByOwner(
+    const { nft_collections, metadata: collectionsMetadata = {} } = await api.getCollectionsByOwner(
       config.DEFAULT_ADDRESSES.PLATFORM_OWNER,
       1000
     );
@@ -131,35 +154,47 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
           const isProxy = classifier.isProxyCollection(col);
           const creator = await getCreatorAddress(api, col.address);
           const ownerAddress = creator || col.owner_address || null;
-          const rawName: string = col.metadata?.name || col.collection_content?.name || '';
+          const colMeta = metaFor(collectionsMetadata, col.address);
+          const zoneName: string = colMeta?.name || '';
 
-          upsertZone.run({
-            collectionAddress: col.address,
-            name: rawName,
-            isProxy: isProxy ? 1 : 0,
-            wrapperAddress: null,
-            ownerAddress,
-            lastSyncedAt: nowIso(),
-          });
-
-          // 3) Субдомены внутри зоны
+          // 3) Субдомены внутри зоны — считаем заодно totalItems для зоны
+          let itemsCount = 0;
           try {
-            const { nft_items } = await api.getItemsByCollection(col.address, 1000);
+            const { nft_items, metadata: itemsMetadata = {} } = await api.getItemsByCollection(col.address, 1000);
             for (const item of nft_items) {
               if (!classifier.isSubdomainItem(item)) continue;
-              const itemName: string = item.metadata?.name || item.content?.name || '';
+              itemsCount++;
+              const itemMeta = metaFor(itemsMetadata, item.address);
               upsertSubdomain.run({
                 itemAddress: item.address,
-                name: itemName,
+                name: itemMeta?.name || '',
                 collectionAddress: col.address,
+                zoneName,
                 isProxy: isProxy ? 1 : 0,
+                itemType: classifier.isProxySubdomain(item) ? 'proxy_subdomain' : 'sbt_subdomain',
                 ownerAddress: item.owner_address || null,
+                image: itemMeta?.image || itemMeta?.extra?._image_medium || null,
+                description: itemMeta?.description || null,
+                onSale: item.on_sale ? 1 : 0,
+                lastTransactionLt: item.last_transaction_lt || null,
                 lastSyncedAt: nowIso(),
               });
             }
           } catch (err) {
             console.error(`[platformCache] ${label}: сбой чтения итемов зоны ${col.address}`, err);
           }
+
+          upsertZone.run({
+            collectionAddress: col.address,
+            name: zoneName,
+            isProxy: isProxy ? 1 : 0,
+            wrapperAddress: null,
+            ownerAddress,
+            image: colMeta?.image || colMeta?.extra?._image_medium || null,
+            description: colMeta?.description || null,
+            totalItems: itemsCount,
+            lastSyncedAt: nowIso(),
+          });
         })
       );
 
@@ -171,10 +206,14 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
     // 4) Обёртки (proxy-zone wrapper NFT) — если коллекция обёрток известна
     if (wrapperCollection) {
       try {
-        const { nft_items } = await api.getItemsByCollection(wrapperCollection.address, 1000);
+        const { nft_items, metadata: wrapperItemsMetadata = {} } = await api.getItemsByCollection(
+          wrapperCollection.address,
+          1000
+        );
         for (const item of nft_items) {
           if (!classifier.isNFTWrapper(item)) continue;
-          const domainName: string = item.metadata?.name || item.content?.name || '';
+          const itemMeta = metaFor(wrapperItemsMetadata, item.address);
+          const domainName: string = itemMeta?.name || '';
           // dividendOwnerAddress: приближение через создателя обёрнутой зоны —
           // ищем среди только что записанных зон совпадение по имени домена.
           const matchingZone = db
@@ -187,6 +226,9 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
             collectionAddress: wrapperCollection.address,
             wrapperHolderAddress: item.owner_address || null,
             dividendOwnerAddress: matchingZone?.ownerAddress ?? null,
+            image: itemMeta?.image || itemMeta?.extra?._image_medium || null,
+            description: itemMeta?.description || null,
+            lastTransactionLt: item.last_transaction_lt || null,
             lastSyncedAt: nowIso(),
           });
         }
@@ -212,7 +254,12 @@ export function startPlatformCacheCrawler(testnetDb: SqliteDatabase, mainnetDb: 
   setInterval(run, CRAWL_INTERVAL_MS);
 }
 
-/** Точечный апсерт одной свежесозданной зоны/субдомена/обёртки — см. upsert-on-create в §3.3. */
+/**
+ * Точечный апсерт одной свежесозданной зоны/субдомена/обёртки — см.
+ * upsert-on-create в §3.3. Принимает только то, что фронт реально знает сразу
+ * после создания (не все колонки схемы) — остальное (image/description/
+ * totalItems/onSale/...) доедет на следующем проходе кроулера.
+ */
 export function upsertSinglePlatformEntity(
   db: SqliteDatabase,
   kind: 'zone' | 'subdomain' | 'wrapper',
