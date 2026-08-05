@@ -39,6 +39,13 @@ async function tryLoadFromPlatformCache(
 
   if (!zoneRows || !subdomainRows || !wrapperRows) return null;
 
+  // Пустой ответ (не null!) — это не "на платформе правда 0 зон", а почти
+  // наверняка кроулер ещё не сделал первый проход (только задеплоили) или
+  // упал молча (например опечатка в env). Отдавать пустой Market/селектор
+  // зоны реальным юзерам хуже, чем один раз пойти медленным ончейн-путём —
+  // считаем это тем же "кэш не готов", что и null/таймаут.
+  if (zoneRows.length === 0) return null;
+
   const allCollections = zoneRows.map(platformZoneToSimpleCollection);
   const proxyCollections = allCollections.filter((c) => c.type === 'proxy');
   const sbtCollections = allCollections.filter((c) => c.type === 'sbt');
