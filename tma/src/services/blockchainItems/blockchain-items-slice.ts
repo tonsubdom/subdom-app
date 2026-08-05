@@ -8,6 +8,70 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { AppData, SimpleEnrichedItem, SimpleCollection, NetworkType, CollectionType } from './blockchain-items-types';
 import { UniversalBlockchainService } from './universal-blockchain-service';
+import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
+import {
+  fetchPlatformCache,
+  platformZoneToSimpleCollection,
+  platformSubdomainToSimpleEnrichedItem,
+  platformWrapperToSimpleEnrichedItem,
+} from './platformCacheClient';
+
+/**
+ * Group 3.3 — бэкенд read-cache как быстрый акселератор перед полным
+ * ончейн-обходом. fetchPlatformCache сама укладывается в таймаут (2 сек) и
+ * возвращает null при любой проблеме — тут просто проверяем, что ВСЕ три
+ * запроса удались, иначе бросаем частичный результат и идём в фолбэк
+ * (service.getAllAppData ниже), а не мешаем кэш с ончейном в одном AppData.
+ *
+ * Персональные user*-массивы — тот же фильтр по owner_address, что уже
+ * делает getItemsData в universal-blockchain-service.ts (raw-адрес,
+ * lowercase) — не отдельный запрос, а срез той же платформенной выборки.
+ */
+async function tryLoadFromPlatformCache(
+  isTestnet: boolean,
+  userAddress?: string
+): Promise<AppData | null> {
+  const [zoneRows, subdomainRows, wrapperRows] = await Promise.all([
+    fetchPlatformCache('zones', isTestnet),
+    fetchPlatformCache('subdomains', isTestnet),
+    fetchPlatformCache('wrappers', isTestnet),
+  ]);
+
+  if (!zoneRows || !subdomainRows || !wrapperRows) return null;
+
+  const allCollections = zoneRows.map(platformZoneToSimpleCollection);
+  const proxyCollections = allCollections.filter((c) => c.type === 'proxy');
+  const sbtCollections = allCollections.filter((c) => c.type === 'sbt');
+
+  const proxySubdomains = subdomainRows
+    .filter((r) => r.isProxy === 1)
+    .map(platformSubdomainToSimpleEnrichedItem);
+  const sbtSubdomains = subdomainRows
+    .filter((r) => r.isProxy !== 1)
+    .map(platformSubdomainToSimpleEnrichedItem);
+  const nftWrappers = wrapperRows.map(platformWrapperToSimpleEnrichedItem);
+  const allItems = [...proxySubdomains, ...sbtSubdomains, ...nftWrappers];
+
+  const rawUserAddress = userAddress ? convertUserFriendlyToRaw(userAddress).toLowerCase() : undefined;
+  const byOwner = (items: SimpleEnrichedItem[]) =>
+    rawUserAddress ? items.filter((i) => (i.owner_address || '').toLowerCase() === rawUserAddress) : [];
+
+  return {
+    allCollections,
+    proxyCollections,
+    sbtCollections,
+    nftWrapperCollections: [], // не персистится отдельно — нет реальных потребителей вне сервиса (см. Log.md)
+    allItems,
+    proxySubdomains,
+    sbtSubdomains,
+    nftWrappers,
+    userProxySubdomains: byOwner(proxySubdomains),
+    userSBTSubdomains: byOwner(sbtSubdomains),
+    userNFTWrappers: byOwner(nftWrappers),
+    lastUpdated: new Date().toISOString(),
+    network: isTestnet ? 'testnet' : 'mainnet',
+  };
+}
 
 // ==================== СОСТОЯНИЕ ====================
 
@@ -215,11 +279,20 @@ export const loadAllAppData = createAsyncThunk(
     try {
       const state = thunkAPI.getState() as { blockchainItems: BlockchainItemsState };
       const { network, apiKey } = state.blockchainItems.serviceConfig;
-      
+      const { userAddress, forceRefresh = false } = params;
+
+      // Бэкенд read-cache (Group 3.3) — акселератор перед полным ончейн-обходом,
+      // не при forceRefresh (юзер явно просит live-данные — не отдаём кэш).
+      if (!forceRefresh) {
+        const cached = await tryLoadFromPlatformCache(network === 'testnet', userAddress);
+        if (cached) {
+          persistAppData(network, cached, userAddress ?? null);
+          return { data: cached, userAddress };
+        }
+      }
+
       // Создаем сервис на лету
       const service = createService(network, apiKey);
-      
-      const { userAddress, forceRefresh = false } = params;
       const data = await service.getAllAppData(userAddress, forceRefresh);
       persistAppData(network, data, userAddress ?? null);
 

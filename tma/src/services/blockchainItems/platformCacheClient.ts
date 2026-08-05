@@ -12,6 +12,8 @@
  * минта/любых пишущих транзакций (всегда напрямую кошелёк→блокчейн).
  */
 
+import { SimpleCollection, SimpleEnrichedItem } from './blockchain-items-types';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const DEFAULT_TIMEOUT_MS = 2000;
 
@@ -21,6 +23,9 @@ export interface PlatformZoneCacheRow {
   isProxy: number;
   wrapperAddress: string | null;
   ownerAddress: string | null;
+  image: string | null;
+  description: string | null;
+  totalItems: number;
   status: string;
   lastSyncedAt: string;
 }
@@ -29,8 +34,14 @@ export interface PlatformSubdomainCacheRow {
   itemAddress: string;
   name: string;
   collectionAddress: string;
+  zoneName: string | null;
   isProxy: number;
+  itemType: 'proxy_subdomain' | 'sbt_subdomain' | null;
   ownerAddress: string | null;
+  image: string | null;
+  description: string | null;
+  onSale: number;
+  lastTransactionLt: string | null;
   status: string;
   lastSyncedAt: string;
 }
@@ -41,6 +52,9 @@ export interface PlatformWrapperCacheRow {
   collectionAddress: string | null;
   wrapperHolderAddress: string | null;
   dividendOwnerAddress: string | null;
+  image: string | null;
+  description: string | null;
+  lastTransactionLt: string | null;
   status: string;
   lastSyncedAt: string;
 }
@@ -94,6 +108,69 @@ export async function fetchPlatformCache<K extends PlatformCacheKind>(
  * notify*-вызовы в api.ts) — ошибка тут не должна ломать основной флоу
  * создания, следующий проход кроулера сам сверит и поправит запись.
  */
+/**
+ * Адаптеры кэш-строк бэкенда в те же типы, что и ончейн-путь
+ * (UniversalBlockchainService/AppData) — чтобы вставить кэш перед ним в
+ * loadAllAppData без изменения формы данных для всех потребителей
+ * (Market/минт/профиль/менеджер читают эти типы, не зная, откуда они пришли).
+ */
+
+export function platformZoneToSimpleCollection(row: PlatformZoneCacheRow): SimpleCollection {
+  return {
+    address: row.collectionAddress,
+    name: row.name,
+    domain: row.name,
+    description: row.description ?? undefined,
+    image: row.image ?? undefined,
+    total_items: row.totalItems,
+    item_count: row.totalItems,
+    type: row.isProxy ? 'proxy' : 'sbt',
+    owner_address: row.ownerAddress ?? '',
+    creator_address: row.ownerAddress ?? undefined,
+    lastUpdated: row.lastSyncedAt,
+  };
+}
+
+export function platformSubdomainToSimpleEnrichedItem(row: PlatformSubdomainCacheRow): SimpleEnrichedItem {
+  return {
+    address: row.itemAddress,
+    domain: row.name,
+    zone: row.zoneName ?? '',
+    type: row.itemType ?? (row.isProxy ? 'proxy_subdomain' : 'sbt_subdomain'),
+    owner_address: row.ownerAddress,
+    collection_address: row.collectionAddress,
+    on_sale: !!row.onSale,
+    lastUpdated: row.lastSyncedAt,
+    last_transaction_lt: row.lastTransactionLt ?? '',
+    metadata: {
+      image: row.image ?? undefined,
+      token_info: [
+        { name: row.name, description: row.description ?? undefined, image: row.image ?? undefined },
+      ],
+    },
+  };
+}
+
+export function platformWrapperToSimpleEnrichedItem(row: PlatformWrapperCacheRow): SimpleEnrichedItem {
+  return {
+    address: row.wrapperAddress,
+    domain: row.domainName,
+    zone: row.domainName,
+    type: 'nft_wrapper',
+    owner_address: row.wrapperHolderAddress,
+    collection_address: row.collectionAddress ?? '',
+    on_sale: false,
+    lastUpdated: row.lastSyncedAt,
+    last_transaction_lt: row.lastTransactionLt ?? '',
+    metadata: {
+      image: row.image ?? undefined,
+      token_info: [
+        { name: row.domainName, description: row.description ?? undefined, image: row.image ?? undefined },
+      ],
+    },
+  };
+}
+
 export async function upsertPlatformCacheEntity(
   kind: PlatformCacheKind extends 'zones' ? 'zones' : 'zones' | 'subdomains' | 'wrappers',
   isTestnet: boolean,
