@@ -29,9 +29,9 @@ export default function ServiceTabs({
 
   // Конфигурация табов. "Any" — форма ручного ввода адреса, реальных элементов не хранит, счётчик всегда 0.
   const tabConfigs = [
-    { icon: anyMode, label: t('service.any') || 'Any', key: 'any' as string, count: 0 },
-    { icon: subdomLogo, label: t('service.zones') || 'Zones', key: 'zones' as string, count: zonesCount },
-    { icon: subdomLogo, label: t('service.subdomains') || 'Subdomains', key: 'subdomains' as string, count: subdomainsCount },
+    { icon: anyMode, label: t('serviceTabAny'), key: 'any' as string, count: 0 },
+    { icon: subdomLogo, label: t('serviceTabZones'), key: 'zones' as string, count: zonesCount },
+    { icon: subdomLogo, label: t('serviceTabSubdomains'), key: 'subdomains' as string, count: subdomainsCount },
   ];
 
   // Проценты — от реальных счётчиков элементов, с пересортировкой по убыванию (анимация переплывания)
