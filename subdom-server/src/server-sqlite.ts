@@ -21,6 +21,11 @@ import { createAdminToken, requireAdminAuth } from './utils/adminAuth';
 import { createBag, getBagDetails, addBag } from './utils/storageDaemon';
 import platformCacheRouter from './services/platformCache/routes';
 import { startPlatformCacheCrawler } from './services/platformCache/crawler';
+// Flat JSON tool manifest for LLM/MCP tool-use (same file as
+// agent-manifest/subdom-tools.json in the subdom-sdk repo, copied here so it
+// ships with the backend deploy) — imported (not fs.readFileSync'd) so
+// resolveJsonModule makes tsc copy it into dist/ automatically.
+import subdomToolsManifest from './mcp/subdom-tools.json';
 
 const APP_DOMAIN = 'subdom.zone';
 const STORAGE_UPLOADS_PATH = process.env.STORAGE_UPLOADS_PATH || '/app/storage-uploads';
@@ -598,6 +603,14 @@ console.log('🔧 Переменные окружения:', {
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Agent/MCP tool manifest — MVP path per release checklist: not a full MCP
+// WebSocket server, just the flat JSON tool list (27 curated builder-api
+// endpoints, admin/owner params hardcoded server-side) that any Function
+// Calling / MCP client can load directly. No auth, no network context needed.
+app.get('/mcp/manifest', (req, res) => {
+  res.json(subdomToolsManifest);
+});
 
 // Middleware для определения сети
 // const networkMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {

@@ -1,0 +1,1296 @@
+[
+  {
+    "name": "claim_subdomain",
+    "description": "Claim Subdomain (Post-Auction)\n\nUsed after winning a subdomain auction to **claim ownership** of the\nminted Subdomain Item (NFT) to the user's wallet.\n\nParameters:\n- **subdomain_item_address**: Address of the subdomain NFT to claim.\n- **query_id**: Optional query identifier for async tracking.\n\nReturns:\n- **TransactionResponse** containing a single **transfer message**\n  that moves the subdomain NFT to the user's wallet.",
+    "method": "POST",
+    "path": "/api/v1/claim_subdomain",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "subdomain_item_address": {
+          "type": "string",
+          "description": "Address of the Subdomain Item contract",
+          "title": "Subdomain Item Address"
+        },
+        "query_id": {
+          "type": "integer",
+          "description": "Unique query identifier",
+          "default": 0,
+          "title": "Query Id"
+        }
+      },
+      "required": [
+        "subdomain_item_address"
+      ]
+    }
+  },
+  {
+    "name": "deploy_bundle",
+    "description": "Deploy Bundle\n\nPerforms an **atomic multistep operation** that:\n1) Deploys a **Subdomain Collection**;\n2) Updates the **DNS item's next_resolver** to point to the new subdomain collection;\n3) **Mints a Proxy Item** for the given DNS name in the specified Proxy Collection,\n   setting `user_wallet_address` as the owner/response/receipt address.\n\nParameters:\n- **subdomain_collection_data**: Init data for the new Subdomain Collection.\n- **proxy_collection_address**: Address of the Proxy Collection to mint in.\n- **user_wallet_address**: Address of the user's TON wallet.\n- **dns_item_address**: TON DNS item to be linked via `next_resolver`.\n- **dns_item_name**: TON DNS label for proxy minting (e.g., `\"minter\"` for `minter.ton`).\n- **query_id**: Optional query identifier.\n\nReturns:\n- **TransactionResponse** with a **bundle of 3 messages** ready to be sent:\n  deploy+fund subdomain collection, set DNS next_resolver, mint proxy item.",
+    "method": "POST",
+    "path": "/api/v1/deploy_bundle",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "proxy_collection_address": {
+          "type": "string",
+          "description": "Address of the proxy collection contract",
+          "title": "Proxy Collection Address"
+        },
+        "user_wallet_address": {
+          "type": "string",
+          "description": "Address of the user TON wallet",
+          "title": "User Wallet Address"
+        },
+        "dns_item_address": {
+          "type": "string",
+          "description": "Address of the TON DNS item contract",
+          "title": "Dns Item Address"
+        },
+        "dns_item_name": {
+          "type": "string",
+          "description": "DNS item name (minter.ton -> minter)",
+          "title": "Dns Item Name"
+        },
+        "query_id": {
+          "type": "integer",
+          "description": "Unique query identifier",
+          "default": 0,
+          "title": "Query Id"
+        },
+        "owner_address": {
+          "type": "string",
+          "title": "Owner Address",
+          "examples": [
+            "UQC...abc"
+          ]
+        },
+        "second_owner_address": {
+          "type": "string",
+          "title": "Second Owner Address",
+          "examples": [
+            "UQC...abc"
+          ]
+        },
+        "content": {
+          "properties": {
+            "content": {
+              "properties": {
+                "uri": {
+                  "type": "string",
+                  "title": "Uri",
+                  "examples": [
+                    "https://subdom.ness.su/api/v1/subdomain/metadata/ton/minter"
+                  ]
+                }
+              },
+              "type": "object",
+              "required": [
+                "uri"
+              ],
+              "title": "SubdomainOffchainContent"
+            },
+            "common_content": {
+              "properties": {
+                "suffix_uri": {
+                  "type": "string",
+                  "title": "Suffix Uri",
+                  "examples": [
+                    "https://subdom.ness.su/api/v1/subdomain/metadata/ton/minter/"
+                  ]
+                }
+              },
+              "type": "object",
+              "required": [
+                "suffix_uri"
+              ],
+              "title": "SubdomainOffchainCommonContent"
+            }
+          },
+          "type": "object",
+          "required": [
+            "content",
+            "common_content"
+          ],
+          "title": "SubdomainCollectionContent"
+        },
+        "royalty_params": {
+          "properties": {
+            "address": {
+              "type": "string",
+              "title": "Address",
+              "examples": [
+                "UQC...abc"
+              ]
+            },
+            "share": {
+              "type": "integer",
+              "title": "Share",
+              "examples": [
+                50
+              ]
+            },
+            "denominator": {
+              "type": "integer",
+              "title": "Denominator",
+              "examples": [
+                1000
+              ]
+            }
+          },
+          "type": "object",
+          "required": [
+            "address",
+            "share",
+            "denominator"
+          ],
+          "title": "SubdomainRoyaltyParams"
+        },
+        "config": {
+          "properties": {
+            "tld": {
+              "type": "string",
+              "title": "Tld",
+              "examples": [
+                "ton"
+              ]
+            },
+            "domain": {
+              "type": "string",
+              "title": "Domain",
+              "examples": [
+                "minter"
+              ]
+            },
+            "prices": {
+              "properties": {
+                "prices": {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "type": "object",
+                  "title": "Prices",
+                  "examples": [
+                    {
+                      "0": 0.5,
+                      "1": 500,
+                      "2": 100,
+                      "3": 50,
+                      "4": 10,
+                      "5": 5,
+                      "6": 1
+                    }
+                  ]
+                }
+              },
+              "type": "object",
+              "required": [
+                "prices"
+              ],
+              "title": "SubdomainPrices"
+            },
+            "partner_share": {
+              "properties": {
+                "address": {
+                  "type": "string",
+                  "title": "Address",
+                  "examples": [
+                    "UQC...abc"
+                  ]
+                },
+                "share": {
+                  "type": "integer",
+                  "title": "Share",
+                  "examples": [
+                    900
+                  ]
+                },
+                "denominator": {
+                  "type": "integer",
+                  "title": "Denominator",
+                  "examples": [
+                    1000
+                  ]
+                }
+              },
+              "type": "object",
+              "required": [
+                "address",
+                "share",
+                "denominator"
+              ],
+              "title": "SubdomainPartnerShare"
+            }
+          },
+          "type": "object",
+          "required": [
+            "tld",
+            "domain",
+            "prices",
+            "partner_share"
+          ],
+          "title": "SubdomainCollectionConfig"
+        }
+      },
+      "required": [
+        "config",
+        "content",
+        "dns_item_address",
+        "dns_item_name",
+        "owner_address",
+        "proxy_collection_address",
+        "royalty_params",
+        "second_owner_address",
+        "user_wallet_address"
+      ]
+    }
+  },
+  {
+    "name": "deploy_proxy_collection",
+    "description": "Deploy Subdomain Collection\n\nDeploys a new **Subdomain Collection** contract on the blockchain.\nThe collection defines how subdomains are minted, priced, and managed.\n\nParameters:\n- **data**: Initialization data for the Subdomain Collection.\n- **query_id**: Optional query identifier.\n\nReturns:\n- **TransactionResponse** with deployment message (stateInit + funding payload).",
+    "method": "POST",
+    "path": "/api/v1/subdomain/deploy_collection",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query_id": {
+          "type": "integer",
+          "description": "Unique query identifier",
+          "default": 0,
+          "title": "Query Id"
+        },
+        "owner_address": {
+          "type": "string",
+          "title": "Owner Address",
+          "examples": [
+            "UQC...abc"
+          ]
+        },
+        "second_owner_address": {
+          "type": "string",
+          "title": "Second Owner Address",
+          "examples": [
+            "UQC...abc"
+          ]
+        },
+        "content": {
+          "properties": {
+            "content": {
+              "properties": {
+                "uri": {
+                  "type": "string",
+                  "title": "Uri",
+                  "examples": [
+                    "https://subdom.ness.su/api/v1/subdomain/metadata/ton/minter"
+                  ]
+                }
+              },
+              "type": "object",
+              "required": [
+                "uri"
+              ],
+              "title": "SubdomainOffchainContent"
+            },
+            "common_content": {
+              "properties": {
+                "suffix_uri": {
+                  "type": "string",
+                  "title": "Suffix Uri",
+                  "examples": [
+                    "https://subdom.ness.su/api/v1/subdomain/metadata/ton/minter/"
+                  ]
+                }
+              },
+              "type": "object",
+              "required": [
+                "suffix_uri"
+              ],
+              "title": "SubdomainOffchainCommonContent"
+            }
+          },
+          "type": "object",
+          "required": [
+            "content",
+            "common_content"
+          ],
+          "title": "SubdomainCollectionContent"
+        },
+        "royalty_params": {
+          "properties": {
+            "address": {
+              "type": "string",
+              "title": "Address",
+              "examples": [
+                "UQC...abc"
+              ]
+            },
+            "share": {
+              "type": "integer",
+              "title": "Share",
+              "examples": [
+                50
+              ]
+            },
+            "denominator": {
+              "type": "integer",
+              "title": "Denominator",
+              "examples": [
+                1000
+              ]
+            }
+          },
+          "type": "object",
+          "required": [
+            "address",
+            "share",
+            "denominator"
+          ],
+          "title": "SubdomainRoyaltyParams"
+        },
+        "config": {
+          "properties": {
+            "tld": {
+              "type": "string",
+              "title": "Tld",
+              "examples": [
+                "ton"
+              ]
+            },
+            "domain": {
+              "type": "string",
+              "title": "Domain",
+              "examples": [
+                "minter"
+              ]
+            },
+            "prices": {
+              "properties": {
+                "prices": {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "type": "object",
+                  "title": "Prices",
+                  "examples": [
+                    {
+                      "0": 0.5,
+                      "1": 500,
+                      "2": 100,
+                      "3": 50,
+                      "4": 10,
+                      "5": 5,
+                      "6": 1
+                    }
+                  ]
+                }
+              },
+              "type": "object",
+              "required": [
+                "prices"
+              ],
+              "title": "SubdomainPrices"
+            },
+            "partner_share": {
+              "properties": {
+                "address": {
+                  "type": "string",
+                  "title": "Address",
+                  "examples": [
+                    "UQC...abc"
+                  ]
+                },
+                "share": {
+                  "type": "integer",
+                  "title": "Share",
+                  "examples": [
+                    900
+                  ]
+                },
+                "denominator": {
+                  "type": "integer",
+                  "title": "Denominator",
+                  "examples": [
+                    1000
+                  ]
+                }
+              },
+              "type": "object",
+              "required": [
+                "address",
+                "share",
+                "denominator"
+              ],
+              "title": "SubdomainPartnerShare"
+            }
+          },
+          "type": "object",
+          "required": [
+            "tld",
+            "domain",
+            "prices",
+            "partner_share"
+          ],
+          "title": "SubdomainCollectionConfig"
+        }
+      },
+      "required": [
+        "config",
+        "content",
+        "owner_address",
+        "royalty_params",
+        "second_owner_address"
+      ]
+    }
+  },
+  {
+    "name": "deploy_proxy_zone",
+    "description": "Deploy Proxy Zone (curated)\n\nMinimal-input version of **Deploy Bundle**: deploys a Subdomain Collection,\nbinds it as the DNS item's `next_resolver`, and mints a Proxy Item for the\ngiven DNS name into the platform's Wrapper Collection - in one bundle.\n\nAll platform-owned parameters (owner/second owner/royalty split/pricing,\nand the target Wrapper Collection address) are filled in server-side from\nplatform config, matching what the app itself always sends. Only the\ndomain and the caller's own wallet need to be supplied.\n\nParameters:\n- **dns_item_address**: TON DNS item to be linked via `next_resolver`.\n- **dns_item_name**: TON DNS label (e.g., `\"minter\"` for `minter.ton`).\n- **user_wallet_address**: Address of the caller's TON wallet - receives\n  the minted Proxy Item and the collection's partner-share revenue.\n- **tld**: Top-level domain (default `\"ton\"`).\n- **query_id**: Optional query identifier.\n\nReturns:\n- **TransactionResponse** with the same 3-message bundle as Deploy Bundle.",
+    "method": "POST",
+    "path": "/api/v1/deploy-proxy-zone",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dns_item_address": {
+          "type": "string",
+          "description": "Address of the TON DNS item contract",
+          "title": "Dns Item Address"
+        },
+        "dns_item_name": {
+          "type": "string",
+          "description": "DNS item name (minter.ton -> minter)",
+          "title": "Dns Item Name"
+        },
+        "user_wallet_address": {
+          "type": "string",
+          "description": "Address of the user TON wallet",
+          "title": "User Wallet Address"
+        },
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD)",
+          "default": "ton",
+          "title": "Tld"
+        },
+        "query_id": {
+          "type": "integer",
+          "description": "Unique query identifier",
+          "default": 0,
+          "title": "Query Id"
+        }
+      },
+      "required": [
+        "dns_item_address",
+        "dns_item_name",
+        "user_wallet_address"
+      ]
+    }
+  },
+  {
+    "name": "deploy_sbt_collection",
+    "description": "Deploy SBT Subdomain Collection\n\nDeploys a new **SBT Subdomain Collection** contract on the blockchain.\nThe collection defines how subdomains are minted, priced, and managed.\n\nParameters:\n- **data**: Initialization data for the SBT Subdomain Collection.\n- **query_id**: Optional query identifier.\n\nReturns:\n- **TransactionResponse** with deployment message (stateInit + funding payload).",
+    "method": "POST",
+    "path": "/api/v1/sbt-subdomain/deploy_collection",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query_id": {
+          "type": "integer",
+          "description": "Unique query identifier",
+          "default": 0,
+          "title": "Query Id"
+        },
+        "owner_address": {
+          "type": "string",
+          "title": "Owner Address",
+          "examples": [
+            "UQC...abc"
+          ]
+        },
+        "second_owner_address": {
+          "type": "string",
+          "title": "Second Owner Address",
+          "examples": [
+            "UQC...abc"
+          ]
+        },
+        "partner_address": {
+          "type": "string",
+          "title": "Partner Address",
+          "examples": [
+            "UQC...abc"
+          ]
+        },
+        "content": {
+          "properties": {
+            "content": {
+              "properties": {
+                "uri": {
+                  "type": "string",
+                  "title": "Uri",
+                  "examples": [
+                    "https://subdom.ness.su/api/v1/sbt-subdomain/metadata/ton/minter"
+                  ]
+                }
+              },
+              "type": "object",
+              "required": [
+                "uri"
+              ],
+              "title": "SbtSubdomainOffchainContent"
+            },
+            "common_content": {
+              "properties": {
+                "suffix_uri": {
+                  "type": "string",
+                  "title": "Suffix Uri",
+                  "examples": [
+                    "https://subdom.ness.su/api/v1/sbt-subdomain/metadata/ton/minter/"
+                  ]
+                }
+              },
+              "type": "object",
+              "required": [
+                "suffix_uri"
+              ],
+              "title": "SbtSubdomainOffchainCommonContent"
+            }
+          },
+          "type": "object",
+          "required": [
+            "content",
+            "common_content"
+          ],
+          "title": "SbtSubdomainCollectionContent"
+        },
+        "config": {
+          "properties": {
+            "id": {
+              "type": "integer",
+              "title": "Id",
+              "examples": [
+                "0"
+              ]
+            },
+            "tld": {
+              "type": "string",
+              "title": "Tld",
+              "examples": [
+                "ton"
+              ]
+            },
+            "domain": {
+              "type": "string",
+              "title": "Domain",
+              "examples": [
+                "minter"
+              ]
+            }
+          },
+          "type": "object",
+          "required": [
+            "id",
+            "tld",
+            "domain"
+          ],
+          "title": "SbtSubdomainCollectionConfig"
+        }
+      },
+      "required": [
+        "config",
+        "content",
+        "owner_address",
+        "partner_address",
+        "second_owner_address"
+      ]
+    }
+  },
+  {
+    "name": "deploy_sbt_collection_and_set_dns",
+    "description": "Deploy SBT Subdomain Collection and Set DNS Next Resolver\n\nPerforms two operations in a single transaction batch:\n\n1. **Deploy SBT Subdomain Collection**\n\n   Deploys a new **SBT Subdomain Collection** contract on the blockchain.\n   The collection defines how subdomains are minted, priced, and managed.\n\n   Parameters:\n   - **data**: Initialization data for the SBT Subdomain Collection.\n   - **query_id**: Optional query identifier.\n\n2. **Set Next Resolver Record**\n\n   Updates the `next_resolver` record of a TON DNS item to point to the newly\n   deployed collection contract. This operation defines which contract\n   will handle future DNS resolutions.\n\n   Parameters:\n   - **dns_item_address**: Address of the target DNS item.\n   - **query_id**: Optional query identifier.\n\nReturns:\n- **TransactionResponse** with both:\n  - collection deployment message (stateInit + funding payload)\n  - DNS `set_next_resolver` message",
+    "method": "POST",
+    "path": "/api/v1/sbt-subdomain/deploy_collection_and_set_dns",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dns_item_address": {
+          "type": "string",
+          "description": "Address of the TON DNS item contract",
+          "title": "Dns Item Address"
+        },
+        "query_id": {
+          "type": "integer",
+          "description": "Unique query identifier",
+          "default": 0,
+          "title": "Query Id"
+        },
+        "owner_address": {
+          "type": "string",
+          "title": "Owner Address",
+          "examples": [
+            "UQC...abc"
+          ]
+        },
+        "second_owner_address": {
+          "type": "string",
+          "title": "Second Owner Address",
+          "examples": [
+            "UQC...abc"
+          ]
+        },
+        "partner_address": {
+          "type": "string",
+          "title": "Partner Address",
+          "examples": [
+            "UQC...abc"
+          ]
+        },
+        "content": {
+          "properties": {
+            "content": {
+              "properties": {
+                "uri": {
+                  "type": "string",
+                  "title": "Uri",
+                  "examples": [
+                    "https://subdom.ness.su/api/v1/sbt-subdomain/metadata/ton/minter"
+                  ]
+                }
+              },
+              "type": "object",
+              "required": [
+                "uri"
+              ],
+              "title": "SbtSubdomainOffchainContent"
+            },
+            "common_content": {
+              "properties": {
+                "suffix_uri": {
+                  "type": "string",
+                  "title": "Suffix Uri",
+                  "examples": [
+                    "https://subdom.ness.su/api/v1/sbt-subdomain/metadata/ton/minter/"
+                  ]
+                }
+              },
+              "type": "object",
+              "required": [
+                "suffix_uri"
+              ],
+              "title": "SbtSubdomainOffchainCommonContent"
+            }
+          },
+          "type": "object",
+          "required": [
+            "content",
+            "common_content"
+          ],
+          "title": "SbtSubdomainCollectionContent"
+        },
+        "config": {
+          "properties": {
+            "id": {
+              "type": "integer",
+              "title": "Id",
+              "examples": [
+                "0"
+              ]
+            },
+            "tld": {
+              "type": "string",
+              "title": "Tld",
+              "examples": [
+                "ton"
+              ]
+            },
+            "domain": {
+              "type": "string",
+              "title": "Domain",
+              "examples": [
+                "minter"
+              ]
+            }
+          },
+          "type": "object",
+          "required": [
+            "id",
+            "tld",
+            "domain"
+          ],
+          "title": "SbtSubdomainCollectionConfig"
+        }
+      },
+      "required": [
+        "config",
+        "content",
+        "dns_item_address",
+        "owner_address",
+        "partner_address",
+        "second_owner_address"
+      ]
+    }
+  },
+  {
+    "name": "deploy_sbt_zone",
+    "description": "Deploy SBT Zone (curated)\n\nMinimal-input version of **Deploy SBT Subdomain Collection and Set DNS\nNext Resolver**: deploys a soulbound SBT-mode Subdomain Collection for\nthe given domain and binds it as the DNS item's `next_resolver`, in one\nbundle.\n\nPlatform-owned owner/second-owner values are filled in server-side from\nplatform config. Only the domain and the caller's own wallet\n(partner-share recipient) need to be supplied.\n\nParameters:\n- **dns_item_address**: TON DNS item to be linked via `next_resolver`.\n- **tld**: Top-level domain (default `\"ton\"`).\n- **domain**: Domain name (e.g., `\"minter\"`).\n- **user_wallet_address**: Address of the caller's TON wallet - receives\n  the collection's partner-share revenue.\n- **query_id**: Optional query identifier.\n\nReturns:\n- **TransactionResponse** with 2 messages: deploy+fund SBT collection,\n  set DNS next_resolver.",
+    "method": "POST",
+    "path": "/api/v1/deploy-sbt-zone",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dns_item_address": {
+          "type": "string",
+          "description": "Address of the TON DNS item contract",
+          "title": "Dns Item Address"
+        },
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD)",
+          "default": "ton",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        },
+        "user_wallet_address": {
+          "type": "string",
+          "description": "Address of the user TON wallet",
+          "title": "User Wallet Address"
+        },
+        "query_id": {
+          "type": "integer",
+          "description": "Unique query identifier",
+          "default": 0,
+          "title": "Query Id"
+        }
+      },
+      "required": [
+        "dns_item_address",
+        "domain",
+        "user_wallet_address"
+      ]
+    }
+  },
+  {
+    "name": "get_domain_index_by_name",
+    "description": "Get Domain Index by Name\n\nCalculates the **numeric index** of a DNS name (e.g., `\"minter\"`)\nusing the same hashing method as used on-chain in TON DNS collections.\n\nThis index is the 256-bit hash (interpreted as integer)\nderived from the serialized cell of the given domain name.\n\nParameters:\n- **dns_item_name**: DNS label (e.g., `\"minter\"` for `minter.ton`).\n\nReturns:\n- **JSONResponse** containing:\n    - **name** *(str)* \u2014 Original DNS label;\n    - **index** *(int)* \u2014 256-bit integer hash of the name.",
+    "method": "GET",
+    "path": "/api/v1/domain_index_by_name",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dns_item_name": {
+          "type": "string",
+          "description": "DNS domain name (label) to compute index for.",
+          "title": "Dns Item Name"
+        }
+      },
+      "required": [
+        "dns_item_name"
+      ]
+    }
+  },
+  {
+    "name": "get_inactive_subdomain_collection_image",
+    "description": "Generate Inactive Subdomain Collection Image\n\nDynamically generates a PNG image representing the Inactive Subdomain Collection\nfor a given domain (e.g., `*.example.ton`).\n\nParameters:\n- **tld**: Top-level domain (e.g., \"ton\").\n- **domain**: Domain name (e.g., \"example\").\n\nReturns:\n- PNG image response.",
+    "method": "GET",
+    "path": "/api/v1/inactive-subdomain/metadata/{tld}/{domain}.png",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        }
+      },
+      "required": [
+        "domain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_inactive_subdomain_collection_metadata",
+    "description": "Generate Inactive Subdomain Collection Metadata\n\nProduces NFT-compatible metadata JSON for the Inactive Subdomain Collection,\nincluding image, name, and description.\n\nParameters:\n- **tld**: Top-level domain (e.g., \"ton\").\n- **domain**: Domain name (e.g., \"example\").\n\nReturns:\n- JSON metadata object.",
+    "method": "GET",
+    "path": "/api/v1/inactive-subdomain/metadata/{tld}/{domain}",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        }
+      },
+      "required": [
+        "domain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_inactive_subdomain_item_image",
+    "description": "Generate Inactive Subdomain Item Image\n\nDynamically renders a PNG image for a specific Inactive Subdomain NFT\n(e.g., `sub.example.ton`).\n\nParameters:\n- **tld**: Top-level domain.\n- **domain**: Second-level domain.\n- **subdomain**: Third-level domain (subdomain name).\n\nReturns:\n- PNG image response.",
+    "method": "GET",
+    "path": "/api/v1/inactive-subdomain/metadata/{tld}/{domain}/{subdomain}.png",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        },
+        "subdomain": {
+          "type": "string",
+          "description": "Subdomain name (third-level domain)",
+          "title": "Subdomain"
+        }
+      },
+      "required": [
+        "domain",
+        "subdomain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_inactive_subdomain_item_metadata",
+    "description": "Generate Inactive Subdomain Item Metadata\n\nProduces metadata for an individual Inactive Subdomain NFT,\nincluding its visual, name, and description attributes.\n\nParameters:\n- **tld**: Top-level domain (e.g., \"ton\").\n- **domain**: Second-level domain.\n- **subdomain**: Subdomain name.\n\nReturns:\n- JSON metadata object.",
+    "method": "GET",
+    "path": "/api/v1/inactive-subdomain/metadata/{tld}/{domain}/{subdomain}",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        },
+        "subdomain": {
+          "type": "string",
+          "description": "Subdomain name (third-level domain)",
+          "title": "Subdomain"
+        }
+      },
+      "required": [
+        "domain",
+        "subdomain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_proxy_collection_image",
+    "description": "Generate Subdomain Collection Image\n\nDynamically generates a PNG image representing the Subdomain Collection\nfor a given domain (e.g., `*.example.ton`).\n\nParameters:\n- **tld**: Top-level domain (e.g., \"ton\").\n- **domain**: Domain name (e.g., \"example\").\n\nReturns:\n- PNG image response.",
+    "method": "GET",
+    "path": "/api/v1/subdomain/metadata/{tld}/{domain}.png",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        }
+      },
+      "required": [
+        "domain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_proxy_collection_metadata",
+    "description": "Generate Subdomain Collection Metadata\n\nProduces NFT-compatible metadata JSON for the Subdomain Collection,\nincluding image, name, and description.\n\nParameters:\n- **tld**: Top-level domain (e.g., \"ton\").\n- **domain**: Domain name (e.g., \"example\").\n\nReturns:\n- JSON metadata object.",
+    "method": "GET",
+    "path": "/api/v1/subdomain/metadata/{tld}/{domain}",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        }
+      },
+      "required": [
+        "domain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_proxy_item_image",
+    "description": "Generate Subdomain Item Image\n\nDynamically renders a PNG image for a specific Subdomain NFT\n(e.g., `sub.example.ton`).\n\nParameters:\n- **tld**: Top-level domain.\n- **domain**: Second-level domain.\n- **subdomain**: Third-level domain (subdomain name).\n\nReturns:\n- PNG image response.",
+    "method": "GET",
+    "path": "/api/v1/subdomain/metadata/{tld}/{domain}/{subdomain}.png",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        },
+        "subdomain": {
+          "type": "string",
+          "description": "Subdomain name (third-level domain)",
+          "title": "Subdomain"
+        }
+      },
+      "required": [
+        "domain",
+        "subdomain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_proxy_item_metadata",
+    "description": "Generate Subdomain Item Metadata\n\nProduces metadata for an individual Subdomain NFT,\nincluding its visual, name, and description attributes.\n\nParameters:\n- **tld**: Top-level domain (e.g., \"ton\").\n- **domain**: Second-level domain.\n- **subdomain**: Subdomain name.\n\nReturns:\n- JSON metadata object.",
+    "method": "GET",
+    "path": "/api/v1/subdomain/metadata/{tld}/{domain}/{subdomain}",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        },
+        "subdomain": {
+          "type": "string",
+          "description": "Subdomain name (third-level domain)",
+          "title": "Subdomain"
+        }
+      },
+      "required": [
+        "domain",
+        "subdomain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_sbt_collection_image",
+    "description": "Generate SBT Subdomain Collection Image\n\nDynamically generates a PNG image representing the SBT Subdomain Collection\nfor a given domain (e.g., `*.example.ton`).\n\nParameters:\n- **tld**: Top-level domain (e.g., \"ton\").\n- **domain**: Domain name (e.g., \"example\").\n\nReturns:\n- PNG image response.",
+    "method": "GET",
+    "path": "/api/v1/sbt-subdomain/metadata/{tld}/{domain}.png",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        }
+      },
+      "required": [
+        "domain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_sbt_collection_metadata",
+    "description": "Generate SBT Subdomain Collection Metadata\n\nProduces NFT-compatible metadata JSON for the SBT Subdomain Collection,\nincluding image, name, and description.\n\nParameters:\n- **tld**: Top-level domain (e.g., \"ton\").\n- **domain**: Domain name (e.g., \"example\").\n\nReturns:\n- JSON metadata object.",
+    "method": "GET",
+    "path": "/api/v1/sbt-subdomain/metadata/{tld}/{domain}",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        }
+      },
+      "required": [
+        "domain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_sbt_item_image",
+    "description": "Generate SBT Subdomain Item Image\n\nDynamically renders a PNG image for a specific SBT Subdomain NFT\n(e.g., `sub.example.ton`).\n\nParameters:\n- **tld**: Top-level domain.\n- **domain**: Second-level domain.\n- **subdomain**: Third-level domain (subdomain name).\n\nReturns:\n- PNG image response.",
+    "method": "GET",
+    "path": "/api/v1/sbt-subdomain/metadata/{tld}/{domain}/{subdomain}.png",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        },
+        "subdomain": {
+          "type": "string",
+          "description": "Subdomain name (third-level domain)",
+          "title": "Subdomain"
+        }
+      },
+      "required": [
+        "domain",
+        "subdomain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_sbt_item_metadata",
+    "description": "Generate SBT Subdomain Item Metadata\n\nProduces metadata for an individual SBT Subdomain NFT,\nincluding its visual, name, and description attributes.\n\nParameters:\n- **tld**: Top-level domain (e.g., \"ton\").\n- **domain**: Second-level domain.\n- **subdomain**: Subdomain name.\n\nReturns:\n- JSON metadata object.",
+    "method": "GET",
+    "path": "/api/v1/sbt-subdomain/metadata/{tld}/{domain}/{subdomain}",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        },
+        "subdomain": {
+          "type": "string",
+          "description": "Subdomain name (third-level domain)",
+          "title": "Subdomain"
+        }
+      },
+      "required": [
+        "domain",
+        "subdomain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_wrapper_collection_image",
+    "description": "Generate Proxy Collection Image\n\nDynamically renders a PNG image representing the Proxy Collection\nfor a given top-level domain (TLD).\n\nParameters:\n- **tld**: Top-level domain (e.g. `\"ton\"`).\n\nReturns:\n- PNG image response.",
+    "method": "GET",
+    "path": "/api/v1/proxy/metadata/{tld}.png",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        }
+      },
+      "required": [
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_wrapper_collection_metadata",
+    "description": "Generate Proxy Collection Metadata\n\nProduces a JSON metadata object for the Proxy Collection of a given TLD,\nincluding image, name, and description fields.\n\nParameters:\n- **tld**: Top-level domain (e.g. `\"ton\"`).\n\nReturns:\n- JSON metadata compatible with NFT standards.",
+    "method": "GET",
+    "path": "/api/v1/proxy/metadata/{tld}",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        }
+      },
+      "required": [
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_wrapper_item_image",
+    "description": "Generate Proxy Item Image\n\nDynamically renders a PNG image for an individual Proxy Item NFT.\n\nParameters:\n- **tld**: Top-level domain (e.g. `\"ton\"`).\n- **domain**: Second-level domain (e.g. `\"minter\"`).\n\nReturns:\n- PNG image response.",
+    "method": "GET",
+    "path": "/api/v1/proxy/metadata/{tld}/{domain}.png",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        }
+      },
+      "required": [
+        "domain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "get_wrapper_item_metadata",
+    "description": "Generate Proxy Item Metadata\n\nProduces NFT-compatible metadata for a specific Proxy Item,\ndescribing its image, name, and security-delegation purpose.\n\nParameters:\n- **tld**: Top-level domain (e.g. `\"ton\"`).\n- **domain**: Second-level domain (e.g. `\"minter\"`).\n\nReturns:\n- JSON metadata object.",
+    "method": "GET",
+    "path": "/api/v1/proxy/metadata/{tld}/{domain}",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tld": {
+          "type": "string",
+          "description": "Top-level domain (TLD) name",
+          "title": "Tld"
+        },
+        "domain": {
+          "type": "string",
+          "description": "Domain name (second-level domain)",
+          "title": "Domain"
+        }
+      },
+      "required": [
+        "domain",
+        "tld"
+      ]
+    }
+  },
+  {
+    "name": "mint_sbt_subdomain",
+    "description": "Mint SBT Subdomain\n\nMints a soulbound subdomain item under an **SBT-mode Subdomain\nCollection** at the fixed flat price - same on-chain comment message the\napp itself sends (`op=0` + subdomain name as plain-text comment).\n\nParameters:\n- **collection_address**: Address of the SBT-mode Subdomain Collection.\n- **subdomain_name**: Subdomain label to mint.\n\nReturns:\n- **TransactionResponse** with a single comment message (flat 0.5 TON).",
+    "method": "POST",
+    "path": "/api/v1/mint-sbt-subdomain",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "collection_address": {
+          "type": "string",
+          "description": "Address of the SBT-mode Subdomain Collection contract",
+          "title": "Collection Address"
+        },
+        "subdomain_name": {
+          "type": "string",
+          "description": "Subdomain label to mint.",
+          "title": "Subdomain Name"
+        }
+      },
+      "required": [
+        "collection_address",
+        "subdomain_name"
+      ]
+    }
+  },
+  {
+    "name": "parse_auction_info",
+    "description": "Parse Auction Info\n\nDecodes raw on-chain auction data (returned from a get-method or stack)\nto extract key auction parameters in human-readable format.\n\nParameters:\n- **cell_bytes**: Base64-encoded BOC of the auction data cell,\n  typically containing the max bidder's address.\n- **first_num**: Hexadecimal string representing the highest bid amount.\n- **second_num**: Hexadecimal string representing the auction end timestamp.\n\nReturns:\n- **JSONResponse** with parsed fields:\n    - **max_bid_address** *(str)* \u2014 TON address of the current highest bidder.\n    - **max_bid_amount** *(int)* \u2014 Maximum bid amount (in nanotons).\n    - **auction_end_time** *(int)* \u2014 Unix timestamp when the auction ends.",
+    "method": "POST",
+    "path": "/api/v1/parse_auction_info",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "cell_bytes": {
+          "type": "string",
+          "title": "Cell Bytes"
+        },
+        "first_num": {
+          "type": "string",
+          "title": "First Num"
+        },
+        "second_num": {
+          "type": "string",
+          "title": "Second Num"
+        }
+      },
+      "required": [
+        "cell_bytes",
+        "first_num",
+        "second_num"
+      ]
+    }
+  },
+  {
+    "name": "start_auction",
+    "description": "Start Subdomain Auction\n\nMints a subdomain item under a **Proxy-mode Subdomain Collection**,\nentering its 24h auction phase - same on-chain comment message the app\nitself sends (`op=0` + subdomain name as plain-text comment).\n\nParameters:\n- **collection_address**: Address of the Proxy-mode Subdomain Collection.\n- **subdomain_name**: Subdomain label to start the auction for.\n\nReturns:\n- **TransactionResponse** with a single comment message, priced by\n  subdomain length using the platform's standard price table.",
+    "method": "POST",
+    "path": "/api/v1/start-auction",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "collection_address": {
+          "type": "string",
+          "description": "Address of the Proxy-mode Subdomain Collection contract",
+          "title": "Collection Address"
+        },
+        "subdomain_name": {
+          "type": "string",
+          "description": "Subdomain label to start an auction for.",
+          "title": "Subdomain Name"
+        }
+      },
+      "required": [
+        "collection_address",
+        "subdomain_name"
+      ]
+    }
+  }
+]
