@@ -4,15 +4,114 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <meta name="theme-color" content="#000000"/>
-    <title>TON DNS X</title>
+    <title>Создать NFT субдомен .ton | Create NFT Subdomain .ton — Subdom</title>
+    <meta name="description" content="Subdom — создавайте независимые NFT-субдомены .ton в сети TON: SBT- и Proxy-зоны, ончейн-профиль, сайты и торренты на своём домене. / Create independent NFT subdomains (.ton) on TON: SBT and Proxy zones, on-chain profile, sites and torrents on your own domain. The domain belongs to you, not the platform."/>
+    <meta name="robots" content="index, follow"/>
+    <link rel="canonical" href="https://subdom.zone/"/>
+    <link rel="icon" type="image/png" href="/subdom_logo.png"/>
+
+    <!-- Open Graph / Telegram / соцсети — двуязычно (RU/EN), т.к. отдельных
+         локализованных URL под hreflang нет (single-page, HashRouter). -->
+    <meta property="og:type" content="website"/>
+    <meta property="og:title" content="Создать NFT субдомен .ton | Create NFT Subdomain .ton — Subdom"/>
+    <meta property="og:description" content="Независимые NFT-субдомены в TON — своя зона, ончейн-профиль, сайты и торренты. / Independent NFT subdomains on TON — your own zone, on-chain profile, sites and torrents. Домен принадлежит вам, а не платформе / The domain belongs to you, not the platform."/>
+    <meta property="og:image" content="https://subdom.zone/subdom_logo.png"/>
+    <meta property="og:url" content="https://subdom.zone"/>
+    <meta property="og:locale" content="ru_RU"/>
+    <meta property="og:locale:alternate" content="en_US"/>
+    <meta property="og:site_name" content="Subdom"/>
+
+    <!-- Twitter/X card -->
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" content="Создать NFT субдомен .ton | Create NFT Subdomain .ton — Subdom"/>
+    <meta name="twitter:description" content="Независимые NFT-субдомены в TON. / Independent NFT subdomains on TON — your own zone, on-chain profile, sites and torrents."/>
+    <meta name="twitter:image" content="https://subdom.zone/subdom_logo.png"/>
+
+    <!-- Schema.org: помогает поисковику показать sitelink-сниппет вместо голой ссылки -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Subdom",
+      "applicationCategory": "Blockchain",
+      "operatingSystem": "Web, Telegram",
+      "description": "Инструмент для создания и управления независимыми NFT-субдоменами .ton в сети TON: SBT- и Proxy-зоны, ончейн-профиль в DNS-записях, публикация сайтов и торрентов на своём домене. / Tool for creating and managing independent NFT subdomains (.ton) on TON: SBT and Proxy zones, on-chain profile in DNS records, publishing sites and torrents on your own domain.",
+      "url": "https://subdom.zone",
+      "inLanguage": ["ru", "en"]
+    }
+    </script>
+
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
       Telegram.WebApp.expand();
     </script>
+
+    <!-- Plausible: queue shim so track() calls made before the script finishes
+         loading aren't lost (page_view is tracked automatically by the script). -->
+    <script>window.plausible = window.plausible || function() { (window.plausible.q = window.plausible.q || []).push(arguments) }</script>
+    <script defer data-domain="subdom.zone" src="https://plausible.io/js/script.js"></script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
+    <!--
+      Статический текст для роботов/соцсетей, которые не дожидаются рендера
+      React (CSR отдаёт пустой #root до загрузки JS). React полностью
+      перезаписывает содержимое #root через createRoot(...).render() при
+      монтировании (см. src/index.tsx) — этот блок никогда не остаётся видимым
+      одновременно с настоящим интерфейсом, это не скрытый текст, а честный
+      снимок первого экрана до гидратации.
+    -->
+    <div id="root">
+      <!--
+        Реальный список блоков стартовой страницы (см. createCards() в
+        src/pages/IndexPage/IndexPage.tsx) — не общий маркетинговый текст, а
+        то же самое содержимое, что покажет React после гидратации. Ссылки —
+        в hash-формате (/#/...), как того требует HashRouter приложения
+        (см. src/components/App.tsx); клик по ним и прямой заход на такой URL
+        одинаково открывают нужный экран. Важная оговорка (юзеру): Google
+        принципиально не индексирует hash-фрагменты как отдельные страницы
+        (устаревшая AJAX-crawling схема) — так что каждый из этих разделов
+        сам по себе не появится в поиске отдельной строкой, только "/"
+        целиком. Полноценная многостраничная индексация потребует перехода на
+        BrowserRouter — отдельная задача, не в этом релизе.
+      -->
+      <div id="seo-snapshot">
+        <section lang="ru">
+          <h1>Subdom — создать NFT субдомен .ton</h1>
+          <p>
+            Инструмент для создания независимых NFT-субдоменов в сети TON.
+            Домен принадлежит вам, а не платформе.
+          </p>
+          <nav aria-label="Разделы Subdom">
+            <ul>
+              <li><a href="/#/create-collection">Добавить Subdom Zone — создать коллекцию субдоменов (SBT или Proxy)</a></li>
+              <li><a href="/#/add-subdomain">Создать субдомен — добавить субдомен в коллекцию</a></li>
+              <li><a href="/#/avatar-secret">Аватар / Секрет — блокчейн-профиль на домене: цифровая идентичность и функционал для доменов, субдоменов .ton и юзернеймов @ в Telegram. Загрузи аватар, категорию, описание прямо в txt записи домена</a></li>
+              <li><a href="/#/manage">Управление DNS записями — привязать кошелёк, сайт, хранилище для любого субдомена</a></li>
+              <li><a href="/#/create-torrent">Создать торрент — загрузите файлы, выберите провайдера TON Storage, получите bagID</a></li>
+              <li><a href="/#/market">Рынок — продайте субдомен, прокси-домен или сделайте оффер</a></li>
+            </ul>
+          </nav>
+        </section>
+        <section lang="en">
+          <h2>Subdom — Create an NFT Subdomain on .ton</h2>
+          <p>
+            A tool for creating independent NFT subdomains on the TON network.
+            The domain belongs to you, not the platform.
+          </p>
+          <nav aria-label="Subdom sections">
+            <ul>
+              <li><a href="/#/create-collection">Add a Subdom Zone — create an SBT or Proxy subdomain collection</a></li>
+              <li><a href="/#/add-subdomain">Create a Subdomain — add a subdomain to a collection</a></li>
+              <li><a href="/#/avatar-secret">Avatar / Secret — an on-chain profile on your domain: digital identity and functionality for .ton domains, subdomains, and Telegram @usernames. Upload an avatar, category and description straight into the domain's txt records</a></li>
+              <li><a href="/#/manage">Manage DNS Records — link a wallet, site, or storage to any subdomain</a></li>
+              <li><a href="/#/create-torrent">Create a Torrent — upload files, pick a TON Storage provider, get a bagID</a></li>
+              <li><a href="/#/market">Market — sell a subdomain, proxy domain, or make an offer</a></li>
+            </ul>
+          </nav>
+        </section>
+      </div>
+    </div>
     <script src="/src/index.tsx" type="module"></script>
   </body>
 </html>

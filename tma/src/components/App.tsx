@@ -10,6 +10,7 @@ import { Navigate, Route, Routes, HashRouter } from 'react-router-dom';
 
 import { routes } from '@/navigation/routes.tsx';
 import DeeplinkHandler from '@/components/DeeplinkHandler/DeeplinkHandler'; // Импортируем обработчик
+import { RouteTitleSync } from '@/components/RouteTitleSync';
 
 // import TgRedirector from "@/components/TgRedirector";
 import Footer from "@/components/Footer/Footer";
@@ -70,6 +71,7 @@ export const App: React.FC = () => {
                       остальные провайдеры): resumeStep() ходит по роутам
                       через useNavigate(), которому нужен контекст роутера. */}
                   <TutorialProvider>
+                    <RouteTitleSync />
                     {/* Основной контент */}
                     <div style={{
                       position: "relative",
