@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { useTonWallet } from '@tonconnect/ui-react';
 import { apiService, User as ApiUser, Zone as ApiZone, Subdomain as ApiSubdomain, PaymentAttemptsCount } from '@/services/api';
+import { track } from '@/utils/analytics';
 
 // Интерфейсы для UserContext
 interface User extends ApiUser {
@@ -218,6 +219,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       const transformedUser = parseUserFields(apiUser);
 
       setUser(transformedUser);
+      track('wallet_connected', { isNewUser });
       if (isNewUser) {
         const grantedLength = findGrantedSbtLength(transformedUser);
         if (grantedLength) setPromoRevealLength(grantedLength);
@@ -236,7 +238,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       localStorage.setItem('userData', JSON.stringify(transformedUser));
       
     } catch (err: any) {
-      setError(err.message || 'Ошибка подключения кошелька');
+      const reason = err.message || 'Ошибка подключения кошелька';
+      setError(reason);
+      track('wallet_connect_failed', { reason: reason.slice(0, 120) });
       console.error('Ошибка подключения:', err);
     } finally {
       setLoading(false);

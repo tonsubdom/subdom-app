@@ -12465,6 +12465,7 @@ import { AuctionCollectionSelector } from "./AuctionCollectionSelector";
 import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
 import { useTutorial } from "@/contexts/TutorialContext";
+import { track } from "@/utils/analytics";
 
 // ====== ТИПЫ ======
 
@@ -13165,6 +13166,7 @@ export const AuctionPage: React.FC<{}> = () => {
           status: "auction",
         });
         loadAllData(true);
+        track('subdomain_created', { type: 'proxy_auction_started' });
         showSnackbar(t("startAuction"), "success");
       } catch (dbError: any) {
         console.error("Notify error:", dbError);
@@ -13175,6 +13177,14 @@ export const AuctionPage: React.FC<{}> = () => {
       console.error("START_AUCTION FULL ERROR:", error);
       console.error("ERROR MESSAGE:", error?.message);
       console.error("ERROR STACK:", error?.stack);
+      const reason = error?.message?.includes("cancelled")
+        ? 'user_cancelled'
+        : error?.message?.includes("rejected")
+        ? 'wallet_rejected'
+        : error?.message?.includes("insufficient")
+        ? 'insufficient_funds'
+        : String(error?.message || 'unknown').slice(0, 120);
+      track('subdomain_creation_failed', { type: 'proxy_auction_started', reason });
       if (error?.message?.includes("cancelled"))
         showSnackbar(t("auctionStartCancelled"), "error");
       else if (error?.message?.includes("rejected"))
@@ -13225,12 +13235,21 @@ export const AuctionPage: React.FC<{}> = () => {
         console.error("Notify error:", dbError);
         showSnackbar(t("bidPlacedBlockchainDbError"), "error");
       }
+      track('bid_placed');
       showSnackbar(t("bid"), "success");
       setCustomBidAmount("");
       setShowCustomInput(false);
       setManualBidValue("");
       setTimeout(() => handleCheckItem(), 2000);
     } catch (error: any) {
+      const reason = error?.message?.includes("cancelled")
+        ? 'user_cancelled'
+        : error?.message?.includes("rejected")
+        ? 'wallet_rejected'
+        : error?.message?.includes("insufficient")
+        ? 'insufficient_funds'
+        : String(error?.message || 'unknown').slice(0, 120);
+      track('bid_failed', { reason });
       if (error?.message?.includes("cancelled"))
         showSnackbar(t("bidCancelled"), "error");
       else if (error?.message?.includes("rejected"))
@@ -13302,13 +13321,19 @@ export const AuctionPage: React.FC<{}> = () => {
       } catch (dbError) {
         console.error("Notify error:", dbError);
       }
+      track('subdomain_created', { type: 'sbt' });
       showSnackbar(t("sbtSubdomainPurchased"), "success");
       setSbtPurchaseCompleted(true);
       if (tutorial.active && !tutorial.isStepDone('subdomain_created')) {
         tutorial.recordStep('subdomain_created');
       }
     } catch (error: any) {
-      if (error?.message?.includes("cancelled"))
+      const cancelled = !!error?.message?.includes("cancelled");
+      track('subdomain_creation_failed', {
+        type: 'sbt',
+        reason: cancelled ? 'user_cancelled' : String(error?.message || 'unknown').slice(0, 120),
+      });
+      if (cancelled)
         showSnackbar(t("sbtPurchaseCancelled"), "error");
       else showSnackbar(t("sbtPurchaseError"), "error");
     } finally {
@@ -13351,8 +13376,12 @@ export const AuctionPage: React.FC<{}> = () => {
       } catch (e) {
         console.error("Notify claim error:", e);
       }
+      track('auction_claimed');
       showSnackbar(t("subdomainClaimedSuccess"), "success");
     } catch (error) {
+      track('auction_claim_failed', {
+        reason: (error instanceof Error ? error.message : 'unknown').slice(0, 120),
+      });
       showSnackbar(
         error instanceof Error ? error.message : t("subdomainClaimError"),
         "error"

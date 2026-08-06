@@ -4,6 +4,7 @@
 
 import { TonConnectUI } from '@tonconnect/ui-react';
 import { Cell } from 'ton-core';
+import { trackTxFailed } from '@/utils/analytics';
 
 export interface TransactionOptions {
   /** Максимальное время ожидания подтверждения (мс) */
@@ -16,6 +17,8 @@ export interface TransactionOptions {
   verifyBlockchain?: boolean;
   /** Сеть (mainnet/testnet) */
   network?: 'mainnet' | 'testnet';
+  /** Название сценария для аналитики (funnel-событие tx_failed), напр. 'deploy_sbt_zone' */
+  action?: string;
 }
 
 export interface TransactionResult {
@@ -72,7 +75,8 @@ export class TransactionService {
     const {
       timeout = 60000, // 60 секунд
       verifyBlockchain = true,
-      network = 'mainnet'
+      network = 'mainnet',
+      action = 'unknown'
     } = options;
 
     try {
@@ -80,6 +84,7 @@ export class TransactionService {
       const sendResult = await tonConnectUI.sendTransaction(transaction);
 
       if (!sendResult?.boc) {
+        trackTxFailed(action, 'no_boc_returned');
         return { success: false, error: 'Транзакция не вернула BOC' };
       }
 
@@ -112,6 +117,7 @@ export class TransactionService {
         // timeout — это не "не отправилось", это "неизвестно". Отдаём hash
         // вызывающему коду, чтобы UI мог показать "отправлено, не подтверждено"
         // вместо повторной отправки.
+        trackTxFailed(action, confirmed.error || 'not_confirmed_in_time');
         return {
           success: false,
           boc: sendResult.boc,
@@ -131,6 +137,7 @@ export class TransactionService {
     } catch (error: any) {
       const message = this.normalizeError(error);
       console.error('❌ Ошибка при отправке транзакции:', message);
+      trackTxFailed(action, message);
       return { success: false, error: message };
     }
   }

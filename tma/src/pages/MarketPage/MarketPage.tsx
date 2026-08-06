@@ -15,6 +15,7 @@ import { SimpleEnrichedItem } from '@/services/blockchainItems/blockchain-items-
 import { LupaButton } from '@/components/LupaButton/LupaButton';
 import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 import { useTutorial } from '@/contexts/TutorialContext';
+import { track } from '@/utils/analytics';
 
 // Типы для табов
 type TabType = 'subdomains' | 'nft-wrappers';
@@ -586,9 +587,11 @@ const MarketPage: React.FC = () => {
     
     if (ggLinkToOffer) {
       console.log(`✅ Открываем GetGems для: ${item.name}`, ggLinkToOffer);
+      track('market_offer_clicked', { itemType: item.type });
       window.open(ggLinkToOffer, '_blank');
     } else {
       console.log(`❌ Не удалось создать ссылку для: ${item.name}`);
+      track('market_offer_link_failed', { itemType: item.type });
       alert(`Для ${item.type === 'proxy_subdomain' ? 'субдомена' : 'NFT обертки'} ${item.name} ссылка на GetGems недоступна.\n\nПричина: отсутствует адрес коллекции или NFT.`);
     }
   };

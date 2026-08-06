@@ -53,6 +53,7 @@ import { convertUserFriendlyToRaw, getNftOwnerAddress } from '@/utils/tonUtils';
 // Импортируем новый сервис транзакций
 import { TransactionService, TransactionResult } from '@/services/transactionService';
 import { TonUtilsEnhanced } from '@/utils/tonUtilsEnhanced';
+import { track } from '@/utils/analytics';
 import { StepIndicator } from '@/components/StepIndicator/StepIndicator';
 
 // Тип для активной вкладки
@@ -468,14 +469,15 @@ const partnerAddress = isTestnet
     transaction: any,
     options: {
       description?: string;
+      action?: string;
       onStatusUpdate?: (status: string) => void;
     } = {}
   ): Promise<TransactionResult> => {
-    const { description = 'Транзакция', onStatusUpdate } = options;
+    const { description = 'Транзакция', action = 'unknown', onStatusUpdate } = options;
 
     try {
       onStatusUpdate?.(`Отправка ${description}...`);
-      
+
       const result = await TransactionService.sendTransaction(
         tonConnectUI,
         transaction,
@@ -483,7 +485,8 @@ const partnerAddress = isTestnet
           network: isTestnet ? 'testnet' : 'mainnet',
           maxRetries: 3,
           timeout: 60000,
-          verifyBlockchain: true
+          verifyBlockchain: true,
+          action
         }
       );
 
@@ -1065,6 +1068,7 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
 
         const txResult = await sendTransactionWithVerification(transaction, {
           description: 'Деплой Bundle коллекции',
+          action: 'deploy_proxy_zone',
           onStatusUpdate: (status) => {
             setTransactionStatus(prev => ({ ...prev, message: status }));
           }
@@ -1098,11 +1102,12 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
             }
 
             if (txResult.confirmedInBlock) {
+              track('zone_created', { type: 'proxy' });
               showSnackbar(t('bundleDeployedSuccessfullyConfirmed'), "success");
             } else {
               showSnackbar(t('bundleDeployedSentNotConfirmed'), "error");
             }
-            
+
             setActiveStep(3);
 
           } catch (dbError) {
@@ -1111,11 +1116,13 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
             setActiveStep(3);
           }
         } else {
+          track('zone_creation_failed', { type: 'proxy', reason: (txResult.error || 'not_confirmed').slice(0, 120) });
           showSnackbar(txResult.error || t('transactionNotConfirmed'), "error");
         }
       }
     } catch (error) {
       console.error('Deploy bundle error:', error);
+      track('zone_creation_failed', { type: 'proxy', reason: (error instanceof Error ? error.message : 'unknown').slice(0, 120) });
       showSnackbar(error instanceof Error ? error.message : t('bundleDeploymentFailed'), "error");
     } finally {
       setLoading(false);
@@ -1205,6 +1212,7 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
 
                 const txResult = await sendTransactionWithVerification(transaction, {
           description: 'Деплой SBT коллекции',
+          action: 'deploy_sbt_zone',
           onStatusUpdate: (status) => {
             setTransactionStatus(prev => ({ ...prev, message: status }));
           }
@@ -1237,11 +1245,12 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
             }
 
             if (txResult.confirmedInBlock) {
+              track('zone_created', { type: 'sbt' });
               showSnackbar(t('sbtCollectionDeployedSuccessfullyConfirmed'), "success");
             } else {
               showSnackbar(t('sbtDeployedSentNotConfirmed'), "error");
             }
-            
+
             setActiveStep(3);
 
           } catch (dbError: any) {
@@ -1250,12 +1259,14 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
             setActiveStep(3);
           }
         } else {
+          track('zone_creation_failed', { type: 'sbt', reason: (txResult.error || 'not_confirmed').slice(0, 120) });
           showSnackbar(txResult.error || t('transactionNotConfirmed'), "error");
         }
       }
     } catch (error: any) {
       console.error('❌ Deploy SBT error:', error);
       const errorMessage = error?.detail?.[0]?.msg || error?.message || t('sbtDeploymentFailed');
+      track('zone_creation_failed', { type: 'sbt', reason: String(errorMessage).slice(0, 120) });
       showSnackbar(errorMessage, "error");
     } finally {
       setLoading(false);

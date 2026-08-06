@@ -8,6 +8,7 @@ import { useTonWallet, useTonAddress, useTonConnectUI } from '@tonconnect/ui-rea
 import { apiService, ZoneLength } from '@/services/api';
 import { TransactionService } from '@/services/transactionService';
 import { TonUtilsEnhanced } from '@/utils/tonUtilsEnhanced';
+import { track } from '@/utils/analytics';
 
 export type ZoneType = 'proxy' | 'sbt';
 
@@ -89,6 +90,7 @@ export const useZonePayment = () => {
           maxRetries: 3,
           timeout: 60000,
           verifyBlockchain: true,
+          action: `pay_for_zone_${zoneType}`,
         });
 
         if (!result.success) {
@@ -110,6 +112,7 @@ export const useZonePayment = () => {
           return { success: false, error: 'paymentRecordError' };
         }
 
+        track('zone_payment_completed', { zoneType, length });
         return { success: true, confirmedInBlock };
       } catch (error: any) {
         return { success: false, error: error?.message || 'paymentFailed' };
