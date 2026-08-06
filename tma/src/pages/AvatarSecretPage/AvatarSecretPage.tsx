@@ -24,6 +24,8 @@ import { useTutorial } from '@/contexts/TutorialContext';
 import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-context.tsx';
 import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-items-utils';
 import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
+import { TransactionService } from '@/services/transactionService';
+import { track } from '@/utils/analytics';
 import webdomLogo from '@/assets/webdom_logo.svg';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -408,15 +410,30 @@ export const AvatarSecretPage: React.FC = () => {
         payloads.push(await buildOwnerIconPayload(iconBytes));
       }
 
-      await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 300,
-        messages: payloads.map((payload) => ({
-          address: resolvedDomain.nftAddress,
-          amount: MESSAGE_AMOUNT_NANO,
-          payload,
-        })),
-      });
+      const result = await TransactionService.sendTransaction(
+        tonConnectUI,
+        {
+          validUntil: Math.floor(Date.now() / 1000) + 300,
+          messages: payloads.map((payload) => ({
+            address: resolvedDomain.nftAddress,
+            amount: MESSAGE_AMOUNT_NANO,
+            payload,
+          })),
+        },
+        {
+          network: isTestnet ? 'testnet' : 'mainnet',
+          verifyBlockchain: true,
+          action: 'save_avatar_secret',
+        }
+      );
 
+      if (!result.success) {
+        track('avatar_save_failed', { reason: (result.error || 'not_confirmed').slice(0, 120) });
+        showSnackbar(result.error || t('avatarSaveError') || 'Транзакция не подтверждена', 'error');
+        return;
+      }
+
+      track('avatar_saved');
       showSnackbar(t('avatarSaved') || 'Сохранено онchain', 'success');
       if (domainName) {
         apiService.setNetwork(isTestnet);
@@ -427,6 +444,7 @@ export const AvatarSecretPage: React.FC = () => {
       }
     } catch (e: any) {
       console.error('Avatar/Secret save error:', e);
+      track('avatar_save_failed', { reason: String(e?.message || 'unknown').slice(0, 120) });
       showSnackbar(e?.message || t('avatarSaveError') || 'Ошибка сохранения', 'error');
     } finally {
       setSaving(false);

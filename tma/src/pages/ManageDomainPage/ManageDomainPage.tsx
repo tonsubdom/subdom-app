@@ -4569,6 +4569,8 @@ import { getInactiveZoneAddresses, cleanZoneDisplayName } from "@/services/block
 import { LupaButton } from "@/components/LupaButton/LupaButton";
 import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
 import { useTutorial } from "@/contexts/TutorialContext";
+import { track } from "@/utils/analytics";
+import { TransactionService } from "@/services/transactionService";
 
 // ====================================================================
 // ИНТЕРФЕЙСЫ
@@ -5213,9 +5215,14 @@ export const ManageDomainPage: FC = () => {
             dnsItemAddress: resolverAddress,
             userWalletAddress: formData.walletAddress,
             tonConnectUI,
+            isTestnet,
           })
         );
-        if (result.payload) {
+        // setWalletRecord.fulfilled.match(result), не `if (result.payload)` —
+        // rejectWithValue тоже кладёт значение в action.payload, так что
+        // старая проверка показывала "успех" и на реальной ошибке/неподтверждённой
+        // транзакции (см. коммент в dnsRecordsSlice.ts).
+        if (setWalletRecord.fulfilled.match(result)) {
           showSnackbar(
             t("walletAddress") + " " + t("proxyDeployedSuccessfully"),
             "success"
@@ -5228,12 +5235,14 @@ export const ManageDomainPage: FC = () => {
             await tutorial.recordStep('domain_answered');
             tutorial.resumeStep();
           }
+        } else {
+          showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
         }
       } else if (!formData.walletAddress && originalFormData.walletAddress) {
         const result = await dispatch(
-          deleteWalletRecord({ dnsItemAddress: resolverAddress, tonConnectUI })
+          deleteWalletRecord({ dnsItemAddress: resolverAddress, tonConnectUI, isTestnet })
         );
-        if (result.payload) {
+        if (deleteWalletRecord.fulfilled.match(result)) {
           showSnackbar(
             t("walletAddress") + " " + t("transactionNotConfirmed"),
             "success"
@@ -5242,6 +5251,8 @@ export const ManageDomainPage: FC = () => {
           if (editingItem?.title) {
             apiService.notifyDnsRecordUpdated(editingItem.title, "address", "delete");
           }
+        } else {
+          showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
         }
       }
     } catch (error: any) {
@@ -5260,9 +5271,10 @@ export const ManageDomainPage: FC = () => {
             dnsItemAddress: resolverAddress,
             adnlAddressHex: formData.tonSite,
             tonConnectUI,
+            isTestnet,
           })
         );
-        if (result.payload) {
+        if (setSiteRecord.fulfilled.match(result)) {
           showSnackbar(
             t("tonSites") + " " + t("proxyDeployedSuccessfully"),
             "success"
@@ -5271,12 +5283,14 @@ export const ManageDomainPage: FC = () => {
           if (editingItem?.title) {
             apiService.notifyDnsRecordUpdated(editingItem.title, "adnl", "set");
           }
+        } else {
+          showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
         }
       } else if (!formData.tonSite && originalFormData.tonSite) {
         const result = await dispatch(
-          deleteSiteRecord({ dnsItemAddress: resolverAddress, tonConnectUI })
+          deleteSiteRecord({ dnsItemAddress: resolverAddress, tonConnectUI, isTestnet })
         );
-        if (result.payload) {
+        if (deleteSiteRecord.fulfilled.match(result)) {
           showSnackbar(
             t("tonSites") + " " + t("transactionNotConfirmed"),
             "success"
@@ -5285,6 +5299,8 @@ export const ManageDomainPage: FC = () => {
           if (editingItem?.title) {
             apiService.notifyDnsRecordUpdated(editingItem.title, "adnl", "delete");
           }
+        } else {
+          showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
         }
       }
     } catch (error: any) {
@@ -5306,9 +5322,10 @@ export const ManageDomainPage: FC = () => {
             dnsItemAddress: resolverAddress,
             bagIdHex: formData.tonStorage,
             tonConnectUI,
+            isTestnet,
           })
         );
-        if (result.payload) {
+        if (setStorageRecord.fulfilled.match(result)) {
           showSnackbar(
             t("tonStorage") + " " + t("proxyDeployedSuccessfully"),
             "success"
@@ -5317,12 +5334,14 @@ export const ManageDomainPage: FC = () => {
           if (editingItem?.title) {
             apiService.notifyDnsRecordUpdated(editingItem.title, "bagId", "set");
           }
+        } else {
+          showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
         }
       } else if (!formData.tonStorage && originalFormData.tonStorage) {
         const result = await dispatch(
-          deleteStorageRecord({ dnsItemAddress: resolverAddress, tonConnectUI })
+          deleteStorageRecord({ dnsItemAddress: resolverAddress, tonConnectUI, isTestnet })
         );
-        if (result.payload) {
+        if (deleteStorageRecord.fulfilled.match(result)) {
           showSnackbar(
             t("tonStorage") + " " + t("transactionNotConfirmed"),
             "success"
@@ -5331,6 +5350,8 @@ export const ManageDomainPage: FC = () => {
           if (editingItem?.title) {
             apiService.notifyDnsRecordUpdated(editingItem.title, "bagId", "delete");
           }
+        } else {
+          showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
         }
       }
     } catch (error: any) {
@@ -5352,9 +5373,10 @@ export const ManageDomainPage: FC = () => {
             dnsItemAddress: resolverAddress,
             resolverAddress: formData.subdomains,
             tonConnectUI,
+            isTestnet,
           })
         );
-        if (result.payload) {
+        if (setNextResolverRecord.fulfilled.match(result)) {
           showSnackbar(
             t("subdomainsNextResolver") + " " + t("proxyDeployedSuccessfully"),
             "success"
@@ -5363,15 +5385,18 @@ export const ManageDomainPage: FC = () => {
           if (editingItem?.title) {
             apiService.notifyDnsRecordUpdated(editingItem.title, "address", "set");
           }
+        } else {
+          showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
         }
       } else if (!formData.subdomains && originalFormData.subdomains) {
         const result = await dispatch(
           deleteNextResolverRecord({
             dnsItemAddress: resolverAddress,
             tonConnectUI,
+            isTestnet,
           })
         );
-        if (result.payload) {
+        if (deleteNextResolverRecord.fulfilled.match(result)) {
           showSnackbar(
             t("subdomainsNextResolver") + " " + t("transactionNotConfirmed"),
             "success"
@@ -5380,6 +5405,8 @@ export const ManageDomainPage: FC = () => {
           if (editingItem?.title) {
             apiService.notifyDnsRecordUpdated(editingItem.title, "address", "delete");
           }
+        } else {
+          showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
         }
       }
     } catch (error: any) {
@@ -5444,12 +5471,23 @@ export const ManageDomainPage: FC = () => {
           { address: userFriendlyAddress, amount: amountInNano.toString() },
         ],
       };
-      await tonConnectUI.sendTransaction(transaction);
+      const result = await TransactionService.sendTransaction(tonConnectUI, transaction, {
+        network: isTestnet ? "testnet" : "mainnet",
+        verifyBlockchain: true,
+        action: "renew_domain",
+      });
+      if (!result.success) {
+        track("domain_renewal_failed", { reason: (result.error || "not_confirmed").slice(0, 120) });
+        showSnackbar(result.error || t("transactionNotConfirmed"), "error");
+        return;
+      }
+      track("domain_renewed");
       showSnackbar(
-        `Транзакция на продление ${domainName} отправлена`,
+        `Транзакция на продление ${domainName} подтверждена`,
         "success"
       );
     } catch (error: any) {
+      track("domain_renewal_failed", { reason: String(error?.message || "unknown").slice(0, 120) });
       showSnackbar(error.message || "Ошибка", "error");
     }
   };

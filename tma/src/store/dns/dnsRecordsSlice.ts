@@ -2,6 +2,8 @@
 
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { Address } from 'ton-core';
+import { TransactionService } from '@/services/transactionService';
+import { track } from '@/utils/analytics';
 
 // ============ API CONFIG ============
 const siteApiAddr = import.meta.env.VITE_API_SC_PAYLOAD_URL;
@@ -47,6 +49,44 @@ export interface APIMessage {
 export interface APIResponse {
   messages: APIMessage[];
   validUntil: number;
+}
+
+// Раньше каждый thunk слепо звал `await tonConnectUI.sendTransaction(...)` и
+// считал это успехом сразу по факту подписи — не было ни извлечения hash, ни
+// проверки, что транзакция реально дошла до блокчейна. UI-код на вызывающей
+// стороне усугублял это: `if (result.payload)` истинно и на fulfilled, и на
+// rejected (rejectWithValue тоже кладёт значение в action.payload) — то есть
+// "успешный" тост мог показываться даже при ошибке. Теперь используем тот же
+// TransactionService, что и в CreateCollectionPage (hash + поллинг
+// подтверждения в блокчейне), и кидаем ошибку, если транзакция не
+// подтвердилась — thunk уйдёт в rejected, а не в ложный fulfilled.
+async function sendDnsTransaction(
+  tonConnectUI: any,
+  data: APIResponse,
+  isTestnet: boolean,
+  action: string
+): Promise<void> {
+  if (!data.messages || data.messages.length === 0) return;
+
+  const result = await TransactionService.sendTransaction(
+    tonConnectUI,
+    {
+      validUntil: data.validUntil || Math.floor(Date.now() / 1000) + 360,
+      messages: data.messages,
+    },
+    {
+      network: isTestnet ? 'testnet' : 'mainnet',
+      verifyBlockchain: true,
+      action,
+    }
+  );
+
+  if (!result.success) {
+    track('dns_record_failed', { action, reason: (result.error || 'not_confirmed').slice(0, 120) });
+    throw new Error(result.error || 'Транзакция не подтверждена в блокчейне');
+  }
+
+  track('dns_record_confirmed', { action });
 }
 
 export interface DNSRecordsState {
@@ -177,8 +217,8 @@ export const fetchTestnetDNSRecords = createAsyncThunk(
 export const setWalletRecord = createAsyncThunk(
   'dns/setWalletRecord',
   async (
-    { dnsItemAddress, userWalletAddress, queryId = 0, tonConnectUI }: 
-    { dnsItemAddress: string; userWalletAddress: string; queryId?: number; tonConnectUI: any },
+    { dnsItemAddress, userWalletAddress, queryId = 0, tonConnectUI, isTestnet = false }:
+    { dnsItemAddress: string; userWalletAddress: string; queryId?: number; tonConnectUI: any; isTestnet?: boolean },
     { rejectWithValue }
   ) => {
     try {
@@ -204,15 +244,7 @@ export const setWalletRecord = createAsyncThunk(
       const data: APIResponse = await response.json();
       console.log('✅ API Response:', data);
 
-      // ✅ Отправляем транзакцию через tonConnect
-      if (data.messages && data.messages.length > 0) {
-        console.log('📤 Отправляем транзакцию с messages:', data.messages);
-        await tonConnectUI.sendTransaction({
-          validUntil: data.validUntil || Math.floor(Date.now() / 1000) + 360,
-          messages: data.messages
-        });
-        console.log('✅ Транзакция отправлена успешно');
-      }
+      await sendDnsTransaction(tonConnectUI, data, isTestnet, 'set_wallet_record');
 
       return data;
     } catch (error: any) {
@@ -226,8 +258,8 @@ export const setWalletRecord = createAsyncThunk(
 export const setSiteRecord = createAsyncThunk(
   'dns/setSiteRecord',
   async (
-    { dnsItemAddress, adnlAddressHex, queryId = 0, tonConnectUI }: 
-    { dnsItemAddress: string; adnlAddressHex: string; queryId?: number; tonConnectUI: any },
+    { dnsItemAddress, adnlAddressHex, queryId = 0, tonConnectUI, isTestnet = false }:
+    { dnsItemAddress: string; adnlAddressHex: string; queryId?: number; tonConnectUI: any; isTestnet?: boolean },
     { rejectWithValue }
   ) => {
     try {
@@ -253,15 +285,7 @@ export const setSiteRecord = createAsyncThunk(
       const data: APIResponse = await response.json();
       console.log('✅ API Response:', data);
 
-      // ✅ Отправляем транзакцию через tonConnect
-      if (data.messages && data.messages.length > 0) {
-        console.log('📤 Отправляем транзакцию с messages:', data.messages);
-        await tonConnectUI.sendTransaction({
-          validUntil: data.validUntil || Math.floor(Date.now() / 1000) + 360,
-          messages: data.messages
-        });
-        console.log('✅ Транзакция отправлена успешно');
-      }
+      await sendDnsTransaction(tonConnectUI, data, isTestnet, 'set_site_record');
 
       return data;
     } catch (error: any) {
@@ -275,8 +299,8 @@ export const setSiteRecord = createAsyncThunk(
 export const setStorageRecord = createAsyncThunk(
   'dns/setStorageRecord',
   async (
-    { dnsItemAddress, bagIdHex, queryId = 0, tonConnectUI }: 
-    { dnsItemAddress: string; bagIdHex: string; queryId?: number; tonConnectUI: any },
+    { dnsItemAddress, bagIdHex, queryId = 0, tonConnectUI, isTestnet = false }:
+    { dnsItemAddress: string; bagIdHex: string; queryId?: number; tonConnectUI: any; isTestnet?: boolean },
     { rejectWithValue }
   ) => {
     try {
@@ -302,15 +326,7 @@ export const setStorageRecord = createAsyncThunk(
       const data: APIResponse = await response.json();
       console.log('✅ API Response:', data);
 
-      // ✅ Отправляем транзакцию через tonConnect
-      if (data.messages && data.messages.length > 0) {
-        console.log('📤 Отправляем транзакцию с messages:', data.messages);
-        await tonConnectUI.sendTransaction({
-          validUntil: data.validUntil || Math.floor(Date.now() / 1000) + 360,
-          messages: data.messages
-        });
-        console.log('✅ Транзакция отправлена успешно');
-      }
+      await sendDnsTransaction(tonConnectUI, data, isTestnet, 'set_storage_record');
 
       return data;
     } catch (error: any) {
@@ -324,8 +340,8 @@ export const setStorageRecord = createAsyncThunk(
 export const setNextResolverRecord = createAsyncThunk(
   'dns/setNextResolverRecord',
   async (
-    { dnsItemAddress, resolverAddress, queryId = 0, tonConnectUI }: 
-    { dnsItemAddress: string; resolverAddress: string; queryId?: number; tonConnectUI: any },
+    { dnsItemAddress, resolverAddress, queryId = 0, tonConnectUI, isTestnet = false }:
+    { dnsItemAddress: string; resolverAddress: string; queryId?: number; tonConnectUI: any; isTestnet?: boolean },
     { rejectWithValue }
   ) => {
     try {
@@ -352,15 +368,7 @@ export const setNextResolverRecord = createAsyncThunk(
       const data: APIResponse = await response.json();
       console.log('✅ API Response:', data);
 
-      // ✅ Отправляем транзакцию через tonConnect
-      if (data.messages && data.messages.length > 0) {
-        console.log('📤 Отправляем транзакцию с messages:', data.messages);
-        await tonConnectUI.sendTransaction({
-          validUntil: data.validUntil || Math.floor(Date.now() / 1000) + 360,
-          messages: data.messages
-        });
-        console.log('✅ Транзакция отправлена успешно');
-      }
+      await sendDnsTransaction(tonConnectUI, data, isTestnet, 'set_next_resolver_record');
 
       return data;
     } catch (error: any) {
@@ -374,8 +382,8 @@ export const setNextResolverRecord = createAsyncThunk(
 export const deleteWalletRecord = createAsyncThunk(
   'dns/deleteWalletRecord',
   async (
-    { dnsItemAddress, queryId = 0, tonConnectUI }: 
-    { dnsItemAddress: string; queryId?: number; tonConnectUI: any },
+    { dnsItemAddress, queryId = 0, tonConnectUI, isTestnet = false }:
+    { dnsItemAddress: string; queryId?: number; tonConnectUI: any; isTestnet?: boolean },
     { rejectWithValue }
   ) => {
     try {
@@ -395,15 +403,7 @@ export const deleteWalletRecord = createAsyncThunk(
       const data: APIResponse = await response.json();
       console.log('✅ API Response:', data);
 
-      // ✅ Отправляем транзакцию через tonConnect
-      if (data.messages && data.messages.length > 0) {
-        console.log('📤 Отправляем транзакцию с messages:', data.messages);
-        await tonConnectUI.sendTransaction({
-          validUntil: data.validUntil || Math.floor(Date.now() / 1000) + 360,
-          messages: data.messages
-        });
-        console.log('✅ Транзакция отправлена успешно');
-      }
+      await sendDnsTransaction(tonConnectUI, data, isTestnet, 'delete_wallet_record');
 
       return data;
     } catch (error: any) {
@@ -417,8 +417,8 @@ export const deleteWalletRecord = createAsyncThunk(
 export const deleteSiteRecord = createAsyncThunk(
   'dns/deleteSiteRecord',
   async (
-    { dnsItemAddress, queryId = 0, tonConnectUI }: 
-    { dnsItemAddress: string; queryId?: number; tonConnectUI: any },
+    { dnsItemAddress, queryId = 0, tonConnectUI, isTestnet = false }:
+    { dnsItemAddress: string; queryId?: number; tonConnectUI: any; isTestnet?: boolean },
     { rejectWithValue }
   ) => {
     try {
@@ -438,15 +438,7 @@ export const deleteSiteRecord = createAsyncThunk(
       const data: APIResponse = await response.json();
       console.log('✅ API Response:', data);
 
-      // ✅ Отправляем транзакцию через tonConnect
-      if (data.messages && data.messages.length > 0) {
-        console.log('📤 Отправляем транзакцию с messages:', data.messages);
-        await tonConnectUI.sendTransaction({
-          validUntil: data.validUntil || Math.floor(Date.now() / 1000) + 360,
-          messages: data.messages
-        });
-        console.log('✅ Транзакция отправлена успешно');
-      }
+      await sendDnsTransaction(tonConnectUI, data, isTestnet, 'delete_site_record');
 
       return data;
     } catch (error: any) {
@@ -460,8 +452,8 @@ export const deleteSiteRecord = createAsyncThunk(
 export const deleteStorageRecord = createAsyncThunk(
   'dns/deleteStorageRecord',
   async (
-    { dnsItemAddress, queryId = 0, tonConnectUI }: 
-    { dnsItemAddress: string; queryId?: number; tonConnectUI: any },
+    { dnsItemAddress, queryId = 0, tonConnectUI, isTestnet = false }:
+    { dnsItemAddress: string; queryId?: number; tonConnectUI: any; isTestnet?: boolean },
     { rejectWithValue }
   ) => {
     try {
@@ -481,15 +473,7 @@ export const deleteStorageRecord = createAsyncThunk(
       const data: APIResponse = await response.json();
       console.log('✅ API Response:', data);
 
-      // ✅ Отправляем транзакцию через tonConnect
-      if (data.messages && data.messages.length > 0) {
-        console.log('📤 Отправляем транзакцию с messages:', data.messages);
-        await tonConnectUI.sendTransaction({
-          validUntil: data.validUntil || Math.floor(Date.now() / 1000) + 360,
-          messages: data.messages
-        });
-        console.log('✅ Транзакция отправлена успешно');
-      }
+      await sendDnsTransaction(tonConnectUI, data, isTestnet, 'delete_storage_record');
 
       return data;
     } catch (error: any) {
@@ -503,8 +487,8 @@ export const deleteStorageRecord = createAsyncThunk(
 export const deleteNextResolverRecord = createAsyncThunk(
   'dns/deleteNextResolverRecord',
   async (
-    { dnsItemAddress, queryId = 0, tonConnectUI }: 
-    { dnsItemAddress: string; queryId?: number; tonConnectUI: any },
+    { dnsItemAddress, queryId = 0, tonConnectUI, isTestnet = false }:
+    { dnsItemAddress: string; queryId?: number; tonConnectUI: any; isTestnet?: boolean },
     { rejectWithValue }
   ) => {
     try {
@@ -524,15 +508,7 @@ export const deleteNextResolverRecord = createAsyncThunk(
       const data: APIResponse = await response.json();
       console.log('✅ API Response:', data);
 
-      // ✅ Отправляем транзакцию через tonConnect
-      if (data.messages && data.messages.length > 0) {
-        console.log('📤 Отправляем транзакцию с messages:', data.messages);
-        await tonConnectUI.sendTransaction({
-          validUntil: data.validUntil || Math.floor(Date.now() / 1000) + 360,
-          messages: data.messages
-        });
-        console.log('✅ Транзакция отправлена успешно');
-      }
+      await sendDnsTransaction(tonConnectUI, data, isTestnet, 'delete_next_resolver_record');
 
       return data;
     } catch (error: any) {

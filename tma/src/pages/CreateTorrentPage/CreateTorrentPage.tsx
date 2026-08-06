@@ -29,6 +29,8 @@ import {
 import { Address } from '@ton/core';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
+import { TransactionService } from '@/services/transactionService';
+import { track } from '@/utils/analytics';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -419,6 +421,7 @@ const CreateTorrentPage: React.FC = () => {
       }
       const data = await res.json();
       setBagId(data.bagId);
+      track('torrent_created');
       if (tutorial.active && !tutorial.isStepDone('torrent_created')) {
         tutorial.recordStep('torrent_created');
       }
@@ -430,6 +433,7 @@ const CreateTorrentPage: React.FC = () => {
         await handleBind(data.bagId);
       }
     } catch (e: any) {
+      track('torrent_creation_failed', { reason: String(e?.message || 'unknown').slice(0, 120) });
       setCreateError(e?.message || 'Ошибка создания bag');
     } finally {
       setCreating(false);
@@ -468,6 +472,7 @@ const CreateTorrentPage: React.FC = () => {
           dnsItemAddress: nftAddress,
           bagIdHex: id,
           tonConnectUI,
+          isTestnet,
         })
       ).unwrap();
       setBindResult('success');
@@ -507,12 +512,29 @@ const CreateTorrentPage: React.FC = () => {
       );
       setDealContractAddress(deal.contractAddress);
 
-      await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 360,
-        messages: [toTonConnectMessage(deal, isTestnet)],
-      });
+      const result = await TransactionService.sendTransaction(
+        tonConnectUI,
+        {
+          validUntil: Math.floor(Date.now() / 1000) + 360,
+          messages: [toTonConnectMessage(deal, isTestnet)],
+        },
+        {
+          network: isTestnet ? 'testnet' : 'mainnet',
+          verifyBlockchain: true,
+          action: 'deploy_storage_deal',
+        }
+      );
+
+      if (!result.success) {
+        track('torrent_deal_failed', { reason: (result.error || 'not_confirmed').slice(0, 120) });
+        setDealError(result.error || 'Транзакция не подтверждена в блокчейне');
+        return;
+      }
+
+      track('torrent_deal_sent');
       setDealSent(true);
     } catch (e: any) {
+      track('torrent_deal_failed', { reason: String(e?.message || 'unknown').slice(0, 120) });
       setDealError(e?.message || 'Ошибка отправки транзакции');
     } finally {
       setDealPreparing(false);
