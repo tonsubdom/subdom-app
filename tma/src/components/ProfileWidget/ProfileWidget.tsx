@@ -2263,7 +2263,7 @@
 //
 // ⚠️ Импорты useZones / apiService сохранены ради info-блока — НЕ УДАЛЯТЬ.
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   useTonAddress,
@@ -2845,8 +2845,12 @@ const ProfileWidget: React.FC = () => {
   // медленный старый запрос мог применить свой результат (в т.ч. null) поверх
   // уже актуального, только что записанного domain, и профиль на секунду
   // показывал "нет данных", хотя домен на самом деле уже был найден.
-  const fetchDomain = async (isStale?: () => boolean) => {
-    if (!wallet || !address) return;
+  // Возвращает резолвнутый домен напрямую (не только пишет в state) — так
+  // вызывающий код (основной эффект загрузки ниже) может использовать
+  // реальное значение сразу же, не читая обратно ещё не применившийся
+  // state сразу после setDomain (React batching).
+  const fetchDomain = async (isStale?: () => boolean): Promise<string | null> => {
+    if (!wallet || !address) return null;
     try {
       const hexAddress = wallet.account.address;
       const modeFetchDomainUrl = isTestnet
@@ -2859,13 +2863,13 @@ const ProfileWidget: React.FC = () => {
       url.searchParams.append("offset", "0");
       if (apiKey) url.searchParams.append("api_key", apiKey);
       const response = await fetch(url.toString());
-      if (isStale?.()) return;
+      if (isStale?.()) return null;
       if (!response.ok) {
         setDomain(null);
-        return;
+        return null;
       }
       const data = await response.json();
-      if (isStale?.()) return;
+      if (isStale?.()) return null;
       const domainFromRecords = data.records?.find(
         (record: any) => record.nft_item_owner === hexAddress
       )?.domain;
@@ -2875,9 +2879,12 @@ const ProfileWidget: React.FC = () => {
           { user_friendly: string; domain?: string }
         >
       ).find((entry: any) => entry.user_friendly === address)?.domain;
-      setDomain(domainFromRecords || domainFromAddressBook || null);
+      const resolved = domainFromRecords || domainFromAddressBook || null;
+      setDomain(resolved);
+      return resolved;
     } catch {
       if (!isStale?.()) setDomain(null);
+      return null;
     }
   };
 
@@ -3299,7 +3306,15 @@ const ProfileWidget: React.FC = () => {
   useEffect(() => {
     let cancelled = false;
     const loadAvatarPicture = async () => {
-      if (!domain) {
+      // Защитная проверка: домен всегда содержит точку (напр. "name.ton"),
+      // сырой TON-адрес (48-симв. friendly base64) или bagID/ADNL (64-hex)
+      // — нет. Не должно случаться, раз domain приходит только из fetchDomain
+      // (см. её комментарий выше), но дёшево подстраховаться прямо в точке
+      // использования, а не полагаться на то, что апстрим всегда корректен.
+      const looksLikeAddressOrBagId = !!domain && (
+        /^[A-Za-z0-9_-]{48}$/.test(domain) || /^[a-fA-F0-9]{64}$/.test(domain)
+      );
+      if (!domain || looksLikeAddressOrBagId) {
         setAvatarPictureUrl(null);
         setProfileDnsText(null);
         return;
@@ -3358,15 +3373,18 @@ const ProfileWidget: React.FC = () => {
   };
   const showSetupPrompt = needsProfileSetup && !setupPromptDismissed;
 
-  // Основной эффект загрузки ниже стартует только при наличии address —
-  // при дисконнекте он просто не запускается и НЕ чистит то, что уже
-  // подтянул (domain, аватар и т.д.), поэтому картинка/домен зависали в
-  // Гость-режиме после отключения кошелька. domain — единственный кусок
-  // состояния, который стоит явно сбросить: avatarPictureUrl уже сам
-  // обнуляется вслед за ним (см. loadAvatarPicture выше, ветка !domain).
+  // Сбрасываем domain при КАЖДОЙ смене address — не только на дисконнект
+  // (!address), но и при переключении между двумя уже подключёнными
+  // аккаунтами (TonConnect это позволяет без полного disconnect). Раньше
+  // domain от предыдущего адреса продолжал использоваться (и его картинка
+  // показывалась) до тех пор, пока не отработает fetchDomain для нового
+  // адреса — окно "чужой" аватарки/домена на экране. avatarPictureUrl сам
+  // обнуляется вслед за domain (см. loadAvatarPicture выше, ветка !domain).
+  const prevAddressRef = useRef<string | undefined>(address);
   useEffect(() => {
-    if (!address) {
+    if (prevAddressRef.current !== address) {
       setDomain(null);
+      prevAddressRef.current = address;
     }
   }, [address]);
 
@@ -3378,10 +3396,16 @@ const ProfileWidget: React.FC = () => {
       if (!address) return;
       try {
         apiService.setNetwork(isTestnet);
-        await connectWallet(address, domain || "", isTestnet);
-        if (cancelled) return;
         console.log("🔄 Начинаем загрузку данных профиля...");
-        await fetchDomain(() => cancelled);
+        // fetchDomain — ПЕРЕД connectWallet (раньше было наоборот): connectWallet
+        // передаёт домен дальше на бэкенд (registerOrGetUserWithMeta), и до этой
+        // правки он всегда получал пустую строку или домен ПРЕДЫДУЩЕГО адреса —
+        // fetchDomain стартовал уже ПОСЛЕ него и просто не успевал. Теперь ждём
+        // реальный резолв домена и передаём его значение напрямую (не через
+        // domain-state, которое обновится только на следующем рендере).
+        const resolvedDomain = await fetchDomain(() => cancelled);
+        if (cancelled) return;
+        await connectWallet(address, resolvedDomain || "", isTestnet);
         if (cancelled) return;
         await new Promise((r) => setTimeout(r, 500));
         if (cancelled) return;
