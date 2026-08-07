@@ -56,6 +56,10 @@ import { TonUtilsEnhanced } from '@/utils/tonUtilsEnhanced';
 import { track } from '@/utils/analytics';
 import { StepIndicator } from '@/components/StepIndicator/StepIndicator';
 import { createAuctionUrl } from '@/utils/urlParams';
+import { useTutorial } from '@/contexts/TutorialContext';
+import { addOptimisticCollection } from '@/services/blockchainItems/blockchain-items-slice';
+import { upsertPlatformCacheEntity } from '@/services/blockchainItems/platformCacheClient';
+import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 
 // Тип для активной вкладки
 type ActiveTab = 'proxy' | 'sbt';
@@ -253,6 +257,7 @@ const partnerAddress = isTestnet
   const domainInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
+  const tutorial = useTutorial();
 
   // Переход сюда из промо-модалки (PromoRevealModal, "Создать SBT-зону" после
   // подарка при регистрации) — ?promo=sbt: убеждаемся, что открыта именно
@@ -1096,6 +1101,26 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
 
             await createZoneInDatabase(zoneData);
 
+            // Кэш платформы (бэкенд) обновляется кроулером раз в 15 мин — без
+            // этого только что созданная зона не видна в селекторе на странице
+            // создания субдомена, пока не пройдёт следующий цикл. Апсертим
+            // сразу (fire-and-forget) + кладём в Redux оптимистично, чтобы
+            // селектор увидел зону немедленно, без ожидания даже этого запроса.
+            dispatch(addOptimisticCollection({
+              address: collectionAddr,
+              name: `${domainName}.ton`,
+              type: 'proxy',
+              owner_address: address,
+              creator_address: address,
+            }));
+            upsertPlatformCacheEntity('zones', isTestnet, {
+              collectionAddress: collectionAddr,
+              name: `${domainName}.ton`,
+              isProxy: 1,
+              wrapperAddress: null,
+              ownerAddress: address,
+            });
+
             // СПИСЫВАЕМ оплаченную попытку ПОСЛЕ успешного деплоя
             const lengthKey = getZoneLengthKey(domainLength);
             if (lengthKey) {
@@ -1238,6 +1263,29 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
             };
 
             await createZoneInDatabase(zoneData);
+
+            // См. аналогичный комментарий в Proxy-ветке выше — апсерт в
+            // бэкенд-кэш + оптимистичная вставка в Redux сразу после деплоя.
+            dispatch(addOptimisticCollection({
+              address: sbtCollectionAddr,
+              name: `${domainName}.ton`,
+              type: 'sbt',
+              owner_address: address,
+              creator_address: address,
+            }));
+            upsertPlatformCacheEntity('zones', isTestnet, {
+              collectionAddress: sbtCollectionAddr,
+              name: `${domainName}.ton`,
+              isProxy: 0,
+              wrapperAddress: null,
+              ownerAddress: address,
+            });
+
+            // Шаг обучалки "создать зону" (Блок 2, использует бесплатную
+            // промо-попытку) — засчитывается по факту успешного деплоя.
+            if (tutorial.active && !tutorial.isStepDone('zone_selected')) {
+              tutorial.recordStep('zone_selected');
+            }
 
             // СПИСЫВАЕМ оплаченную попытку ПОСЛЕ успешного создания зоны
             const lengthKey = getZoneLengthKey(domainLength);
@@ -1464,6 +1512,16 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
             <Typography variant="body2" sx={{ mb: 2, color: '#999' }}>
               {steps[0].description}
             </Typography>
+
+            {tutorial.active && tutorial.isStepDone('domain_answered') && !tutorial.isStepDone('zone_selected') && (
+              <TutorialTooltip
+                blockLabel={t('tutorialBlock2Label') || 'Блок 2'}
+                stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
+                text={t('tutorialCreateZoneIntro') || 'Здесь вы создадите SBT-зону на своём домене, потратив бесплатную попытку.'}
+                buttons={[]}
+                style={{ position: 'static', width: '100%', maxWidth: 'none', marginBottom: '14px' }}
+              />
+            )}
 
             <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
               <Input

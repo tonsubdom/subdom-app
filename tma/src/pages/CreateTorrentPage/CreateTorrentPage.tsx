@@ -796,7 +796,7 @@ const CreateTorrentPage: React.FC = () => {
 
             {tutorial.active && !tutorial.isStepDone('torrent_created') && (
               <TutorialTooltip
-                blockLabel={t('tutorialBlock3Label') || 'Блок 3'}
+                blockLabel={t('tutorialBlock4Label') || 'Блок 4'}
                 stepLabel={t('tutorialStep2Label') || 'Шаг 2'}
                 text={t('tutorialCreateTorrentHint') || 'Загрузите файл и создайте торрент — так ваш сайт можно будет раздавать через TON Storage.'}
                 buttons={[]}

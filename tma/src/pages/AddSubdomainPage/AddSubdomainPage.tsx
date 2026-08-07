@@ -12597,17 +12597,15 @@ export const AuctionPage: React.FC<{}> = () => {
   // реальные действия страницы пишут прогресс.
   const [tutorialBlock2Intro, setTutorialBlock2Intro] = useState<'sbt' | 'proxy' | null>('sbt');
 
+  // zone_selected теперь засчитывается на CreateCollectionPage (по факту
+  // создания зоны, шаг блока 2 "создать зону") — к моменту, когда юзер
+  // попадает на эту страницу в туре, шаг уже пройден. Здесь просто
+  // фокусируем инпут имени субдомена, как только зона определена в URL.
   const tutorialBlock2Active =
     tutorial.active && tutorial.isStepDone('domain_answered') && !tutorial.isStepDone('subdomain_created');
 
   useEffect(() => {
-    if (
-      tutorialBlock2Active &&
-      tutorialBlock2Intro === null &&
-      selectedDomainZone &&
-      !tutorial.isStepDone('zone_selected')
-    ) {
-      tutorial.recordStep('zone_selected');
+    if (tutorialBlock2Active && tutorialBlock2Intro === null && selectedDomainZone) {
       window.setTimeout(() => subdomainNameInputRef.current?.focus(), 200);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -13640,13 +13638,7 @@ export const AuctionPage: React.FC<{}> = () => {
           paddingBottom: "150px",
         }}
       >
-        <div
-          style={
-            tutorialBlock2Active && tutorialBlock2Intro === null && !tutorial.isStepDone('zone_selected')
-              ? { border: `2px solid ${isDark ? '#FFD700' : '#3B82F6'}`, borderRadius: '12px', padding: '8px' }
-              : undefined
-          }
-        >
+        <div>
           <AuctionCollectionSelector
             activeTab={activeTab}
             selectedDomainZone={selectedDomainZone}
@@ -13659,19 +13651,6 @@ export const AuctionPage: React.FC<{}> = () => {
             activeSbtZones={activeSbtZones}
             proxyZones={allProxyZones}
           />
-          {tutorialBlock2Active && tutorialBlock2Intro === null && !tutorial.isStepDone('zone_selected') && (
-            <TutorialTooltip
-              blockLabel={t('tutorialBlock2Label') || 'Блок 2'}
-              stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
-              text={
-                selectedDomainZone
-                  ? (t('tutorialZoneConfirmed') || 'Мы выбрали зону: {zone}').replace('{zone}', selectedDomainZone)
-                  : (t('tutorialZonePickHint') || 'Выберите зону из списка для создания субдомена.')
-              }
-              buttons={[]}
-              style={{ position: 'static', width: '280px', marginTop: '8px' }}
-            />
-          )}
         </div>
 
         {selectedDomainZone && (
@@ -14411,7 +14390,7 @@ export const AuctionPage: React.FC<{}> = () => {
             </a>
             {tutorial.active && !tutorial.isStepDone('site_visited') && (
               <TutorialTooltip
-                blockLabel={t('tutorialBlock3Label') || 'Блок 3'}
+                blockLabel={t('tutorialBlock4Label') || 'Блок 4'}
                 stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
                 text={t('tutorialCreateSiteHint') || 'Создайте первый сайт — это займёт несколько минут.'}
                 buttons={[]}

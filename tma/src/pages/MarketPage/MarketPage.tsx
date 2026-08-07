@@ -1530,7 +1530,7 @@ const MarketPage: React.FC = () => {
       {tutorial.active && tutorial.isStepDone('torrent_created') && !tutorial.isStepDone('market_toured') && (
         <div style={{ position: 'fixed', left: 0, right: 0, bottom: '80px', display: 'flex', justifyContent: 'center', zIndex: 1002, padding: '0 16px' }}>
           <TutorialTooltip
-            blockLabel={t('tutorialBlock4Label') || 'Блок 4'}
+            blockLabel={t('tutorialBlock5Label') || 'Блок 5'}
             stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
             text={t('tutorialMarketTourText') || 'Здесь маркет: вкладка "Субдомены" — покупка/продажа готовых субдоменов, вкладка "NFT-обёртки" — площадка для Proxy-доменов, разыгранных на аукционе.'}
             buttons={[{ label: t('tutorialNext') || 'Далее', primary: true, onClick: async () => { await tutorial.recordStep('market_toured'); tutorial.resumeStep(); } }]}

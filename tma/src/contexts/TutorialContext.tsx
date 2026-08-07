@@ -14,12 +14,17 @@ import { useTonWallet } from '@tonconnect/ui-react';
 import { apiService } from '@/services/api';
 import { OPEN_PROFILE_WIDGET_EVENT } from '@/components/SearchWidget/SearchWidget';
 
+// Порядок пересмотрен: сначала домен → зона → субдомен (воронка, которую
+// отслеживаем в Plausible), заполнение профиля/аватарки — после, не первым
+// шагом. Массив должен 1-в-1 совпадать с TUTORIAL_STEPS на бэкенде
+// (server-sqlite.ts) — порядок там менять синхронно.
 export const TUTORIAL_STEPS = [
-  'profile_saved', 'domain_answered', // блок 1 — профиль
-  'zone_selected', 'subdomain_created', // блок 2 — sbt-зона/субдомен
-  'site_visited', 'torrent_created', // блок 3 — сайт + торрент
-  'market_toured', 'catalog_focused', // блок 4 — маркет
-  'profile_tabs_toured', // блок 5 — вкладки профиля
+  'domain_answered', // блок 1 — есть ли домен?
+  'zone_selected', 'subdomain_created', // блок 2 — создание зоны (промо-попытка) + субдомена
+  'profile_saved', // блок 3 — профиль/аватарка
+  'site_visited', 'torrent_created', // блок 4 — сайт + торрент
+  'market_toured', 'catalog_focused', // блок 5 — маркет
+  'profile_tabs_toured', // блок 6 — вкладки профиля
 ] as const;
 export type TutorialStepId = typeof TUTORIAL_STEPS[number];
 
@@ -113,17 +118,23 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
   // Единая точка "куда вести юзера дальше" — по первому незавершённому
   // шагу. Часть шагов живёт на конкретном роуте, часть — в виджете профиля
   // (открываем тем же событием, что и SearchWidget для пункта "Профиль").
+  // Порядок здесь обязан 1-в-1 совпадать с TUTORIAL_STEPS выше: сначала
+  // домен → зона → субдомен (воронка Plausible), профиль — после.
   const resumeStep = useCallback(() => {
-    if (!completedSteps.includes('profile_saved')) {
-      window.dispatchEvent(new Event(OPEN_PROFILE_WIDGET_EVENT));
-      return;
-    }
     if (!completedSteps.includes('domain_answered')) {
       navigate('/avatar-secret');
       return;
     }
-    if (!completedSteps.includes('zone_selected') || !completedSteps.includes('subdomain_created')) {
+    if (!completedSteps.includes('zone_selected')) {
+      navigate('/create-collection');
+      return;
+    }
+    if (!completedSteps.includes('subdomain_created')) {
       navigate('/add-subdomain');
+      return;
+    }
+    if (!completedSteps.includes('profile_saved')) {
+      window.dispatchEvent(new Event(OPEN_PROFILE_WIDGET_EVENT));
       return;
     }
     if (!completedSteps.includes('site_visited')) {
@@ -176,9 +187,9 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     setActive(true);
     setShowIntroModal(false);
     // Свежий старт — completedSteps ещё пуст, первый незавершённый шаг
-    // всегда "профиль", открываем виджет напрямую.
-    window.dispatchEvent(new Event(OPEN_PROFILE_WIDGET_EVENT));
-  }, [walletAddress, isTestnet]);
+    // всегда "есть ли домен?" на AvatarSecretPage.
+    navigate('/avatar-secret');
+  }, [walletAddress, isTestnet, navigate]);
 
   const exitTutorial = useCallback(() => {
     setActive(false);

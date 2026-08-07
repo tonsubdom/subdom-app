@@ -613,15 +613,19 @@ export const AvatarSecretPage: React.FC = () => {
               {t('avatarSetupIntro') || 'Загрузите картинку до 45кБ в png формате в качестве ончейн-аватарки вашего домена. Добавьте описание, чтобы другие пользователи могли найти ваш сайт в тонбраузере.'}
             </Typography>
 
-            {tutorial.active && !tutorial.isStepDone('profile_saved') && (
-              <TutorialTooltip
-                blockLabel={t('tutorialBlock1Label') || 'Блок 1'}
-                stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
-                text={t('tutorialStep1Text') || 'Настройте on-chain профиль. Этот аватар и имя с описанием будет видно в других dApp-приложениях.'}
-                buttons={[]}
-                style={{ position: 'static', width: '100%', maxWidth: 'none', marginBottom: '14px' }}
-              />
-            )}
+            {tutorial.active &&
+              tutorial.isStepDone('domain_answered') &&
+              tutorial.isStepDone('zone_selected') &&
+              tutorial.isStepDone('subdomain_created') &&
+              !tutorial.isStepDone('profile_saved') && (
+                <TutorialTooltip
+                  blockLabel={t('tutorialBlock3Label') || 'Блок 3'}
+                  stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
+                  text={t('tutorialStep1Text') || 'Настройте on-chain профиль. Этот аватар и имя с описанием будет видно в других dApp-приложениях.'}
+                  buttons={[]}
+                  style={{ position: 'static', width: '100%', maxWidth: 'none', marginBottom: '14px' }}
+                />
+              )}
 
             <StepIndicator
               current={2}
@@ -796,9 +800,10 @@ export const AvatarSecretPage: React.FC = () => {
         )}
       </Box>
 
-      {/* Блок 1 обучалки: как только профиль сохранён, спрашиваем "есть ли
-          домен" — оверлей внизу экрана, не завязан на скролл формы выше. */}
-      {tutorial.active && tutorial.isStepDone('profile_saved') && !tutorial.isStepDone('domain_answered') && (
+      {/* Блок 1 обучалки: первый шаг тура — спрашиваем "есть ли домен" сразу,
+          до заполнения аватарки (которая теперь в блоке 4) — оверлей внизу
+          экрана, не завязан на скролл формы выше. */}
+      {tutorial.active && !tutorial.isStepDone('domain_answered') && (
         <Box sx={{ position: 'fixed', left: 0, right: 0, bottom: '80px', display: 'flex', justifyContent: 'center', zIndex: 1002, px: 2 }}>
           {tutorialDomainAnswer === null && (
             <TutorialTooltip

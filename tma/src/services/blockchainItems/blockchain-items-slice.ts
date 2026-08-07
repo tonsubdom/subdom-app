@@ -503,15 +503,30 @@ const blockchainItemsSlice = createSlice({
     
     filterByZone: (state, action: PayloadAction<string>) => {
       const zone = action.payload;
-      
+
       state.proxySubdomains = state.allItems.filter(
         item => item.type === 'proxy_subdomain' && item.zone === zone
       );
-      
+
       state.sbtSubdomains = state.allItems.filter(
         item => item.type === 'sbt_subdomain' && item.zone === zone
       );
-    }
+    },
+
+    // Сразу после успешного деплоя зоны на фронте — не ждать 15-мин цикл
+    // кроулера/TTL стора, иначе селектор зоны на странице создания
+    // субдомена окажется пустым сразу после того, как юзер только что
+    // создал зону (upsert на бэкенд — отдельно, см. platformCacheClient).
+    addOptimisticCollection: (state, action: PayloadAction<SimpleCollection>) => {
+      const collection = action.payload;
+      if (state.allCollections.some((c) => c.address === collection.address)) return;
+      state.allCollections.push(collection);
+      if (collection.type === 'proxy') {
+        state.proxyCollections.push(collection);
+      } else if (collection.type === 'sbt') {
+        state.sbtCollections.push(collection);
+      }
+    },
   },
   extraReducers: (builder) => {
     // ==================== INITIALIZE SERVICE ====================
@@ -883,7 +898,8 @@ export const {
   updateSBTSubdomains,
   updateNFTWrappers,
   filterByCollection,
-  filterByZone
+  filterByZone,
+  addOptimisticCollection
 } = blockchainItemsSlice.actions;
 
 export default blockchainItemsSlice.reducer;

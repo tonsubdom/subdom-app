@@ -563,9 +563,9 @@ export const IndexPage: React.FC = () => {
                   cardRef={isTutorialTarget ? tutorialCardRef : undefined}
                   tutorialBlockLabel={
                     card.tutorialId === 'site'
-                      ? t('tutorialBlock3Label') || 'Блок 3'
-                      : card.tutorialId === 'catalog'
                       ? t('tutorialBlock4Label') || 'Блок 4'
+                      : card.tutorialId === 'catalog'
+                      ? t('tutorialBlock5Label') || 'Блок 5'
                       : undefined
                   }
                   tutorialStepLabel={

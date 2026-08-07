@@ -2741,7 +2741,14 @@ const ProfileWidget: React.FC = () => {
   const navigate = useNavigate();
   const navigateHash = (hashUrl: string) => navigate(hashUrl.replace(/^\/?#/, ""));
   const tutorial = useTutorial();
-  const tutorialStep1Active = tutorial.active && !tutorial.isStepDone('profile_saved');
+  // profile_saved теперь блок 3 (после domain_answered/zone_selected/
+  // subdomain_created) — реордер обучалки, см. TutorialContext.tsx.
+  const tutorialStep1Active =
+    tutorial.active &&
+    tutorial.isStepDone('domain_answered') &&
+    tutorial.isStepDone('zone_selected') &&
+    tutorial.isStepDone('subdomain_created') &&
+    !tutorial.isStepDone('profile_saved');
 
   // Блок 5 обучалки: тур по 4 вкладкам (индексы 0-3) + финальная подсказка
   // про чат (индекс 4) — на последнем шаге "Далее" закрывает блок и
@@ -4994,7 +5001,7 @@ const ProfileWidget: React.FC = () => {
               {tutorialStep1Active && (
                 <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 6 }}>
                   <TutorialTooltip
-                    blockLabel={t('tutorialBlock1Label') || 'Блок 1'}
+                    blockLabel={t('tutorialBlock3Label') || 'Блок 3'}
                     stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
                     text={t('tutorialStep1Text') || 'Настройте on-chain профиль. Этот аватар и имя с описанием будет видно в других dApp-приложениях.'}
                     buttons={[{
@@ -5210,7 +5217,7 @@ const ProfileWidget: React.FC = () => {
 
               {tutorialBlock5Active && (
                 <TutorialTooltip
-                  blockLabel={t('tutorialBlock5Label') || 'Блок 5'}
+                  blockLabel={t('tutorialBlock6Label') || 'Блок 6'}
                   stepLabel={t(`tutorialStep${Math.min(tutorialTourStep + 1, 5)}Label`) || `Шаг ${Math.min(tutorialTourStep + 1, 5)}`}
                   text={
                     tutorialTourStep === 0

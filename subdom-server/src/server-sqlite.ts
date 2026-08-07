@@ -577,12 +577,15 @@ const migratePlatformCacheColumns = (db: SqliteDatabase) => {
 // потому что для награды важен сам факт прохождения ветки, а не какая
 // именно). Блоки 2-5 пока не подключены на фронте (следующие сессии), но
 // список объявлен целиком сразу, чтобы /api/tutorial/complete не переписывать.
+// Порядок пересмотрен (см. TutorialContext.tsx на фронте — оба массива
+// обязаны совпадать 1-в-1): сначала домен → зона → субдомен, профиль — после.
 const TUTORIAL_STEPS = [
-  'profile_saved', 'domain_answered', // блок 1 — профиль
-  'zone_selected', 'subdomain_created', // блок 2 — sbt-зона/субдомен
-  'site_visited', 'torrent_created', // блок 3 — сайт + торрент
-  'market_toured', 'catalog_focused', // блок 4 — маркет
-  'profile_tabs_toured', // блок 5 — вкладки профиля
+  'domain_answered', // блок 1 — есть ли домен?
+  'zone_selected', 'subdomain_created', // блок 2 — создание зоны (промо-попытка) + субдомена
+  'profile_saved', // блок 3 — профиль/аватарка
+  'site_visited', 'torrent_created', // блок 4 — сайт + торрент
+  'market_toured', 'catalog_focused', // блок 5 — маркет
+  'profile_tabs_toured', // блок 6 — вкладки профиля
 ] as const;
 type TutorialStep = typeof TUTORIAL_STEPS[number];
 
