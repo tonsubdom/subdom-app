@@ -12625,9 +12625,20 @@ export const AuctionPage: React.FC<{}> = () => {
     proxyCollections,
     sbtCollections,
     loadAllData,
+    ensureData,
     isLoading: zonesLoading,
     error: zonesError,
   } = useBlockchainItems();
+
+  // Эта страница раньше сама никогда не инициировала загрузку — полагалась
+  // на то, что данные уже загрузила другая страница до неё. Если юзер
+  // открывал создание субдомена первым за сессию (или сразу после создания
+  // зоны в новой вкладке/после релоада), селектор зон был пуст. См. тот же
+  // паттерн в CreateCollectionPage.tsx.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    ensureData();
+  }, []);
 
   // ====== ВСЕ PROXY КОЛЛЕКЦИИ (для селекта) + ФИЛЬТР ПУСТЫХ/WILDCARD/PSEUDONYM ======
   const allProxyZones: Zone[] = useMemo(
