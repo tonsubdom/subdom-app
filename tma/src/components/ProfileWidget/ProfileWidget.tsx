@@ -3378,7 +3378,7 @@ const ProfileWidget: React.FC = () => {
       if (!address) return;
       try {
         apiService.setNetwork(isTestnet);
-        await connectWallet(address, domain || "");
+        await connectWallet(address, domain || "", isTestnet);
         if (cancelled) return;
         console.log("🔄 Начинаем загрузку данных профиля...");
         await fetchDomain(() => cancelled);

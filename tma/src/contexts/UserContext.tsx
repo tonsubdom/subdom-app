@@ -23,7 +23,13 @@ interface UserContextType {
   subdomains: Subdomain[];
   loading: boolean;
   error: string | null;
-  connectWallet: (walletAddress: string, domainName: string) => Promise<void>;
+  // isTestnet передаётся явно вызывающим кодом, а не читается из
+  // собственной подписки этого контекста на useTonWallet() — два
+  // независимых экземпляра useTonWallet() (здесь и в вызывающем компоненте)
+  // могут обновиться на разных рендерах, и apiService.setNetwork() внутри
+  // мог получить протухшее значение (баг: уведомление о регистрации на
+  // тестнете показывало "Сеть mainnet").
+  connectWallet: (walletAddress: string, domainName: string, isTestnetOverride?: boolean) => Promise<void>;
   disconnectWallet: () => void;
   createZone: (zoneData: {
     name: string;
@@ -207,13 +213,16 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
 }, [isTestnet]);
 
 
-  // Подключение кошелька
-  const connectWallet = async (walletAddress: string, name: string) => {
+  // Подключение кошелька. isTestnetOverride — см. комментарий у типа в
+  // UserContextType: вызывающий компонент передаёт своё, гарантированно
+  // свежее на момент вызова значение, вместо isTestnet этого контекста.
+  const connectWallet = async (walletAddress: string, name: string, isTestnetOverride?: boolean) => {
     setLoading(true);
     setError(null);
-    
+    const effectiveIsTestnet = isTestnetOverride ?? isTestnet;
+
     try {
-      apiService.setNetwork(isTestnet);
+      apiService.setNetwork(effectiveIsTestnet);
       // Регистрируем/получаем пользователя на бэкенде
       const { user: apiUser, isNewUser } = await apiService.registerOrGetUserWithMeta(walletAddress, name);
       const transformedUser = parseUserFields(apiUser);
