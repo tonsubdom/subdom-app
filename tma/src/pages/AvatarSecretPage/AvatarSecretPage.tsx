@@ -160,6 +160,10 @@ export const AvatarSecretPage: React.FC = () => {
     picture: false,
     icon: false,
   });
+  // Значения title/description/category, прочитанные ончейн ДО правки —
+  // чтобы на save понять, что из этого реально изменилось (для уведомления
+  // боту, см. handleSave/notifyContentUpdated).
+  const previousValuesRef = useRef({ title: '', description: '', category: '' });
   const [saving, setSaving] = useState(false);
   const [snackbar, setSnackbar] = useState<React.ReactElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -199,6 +203,7 @@ export const AvatarSecretPage: React.FC = () => {
     setIconBytes(null);
     setIconPreview(null);
     setHasExisting({ title: false, description: false, category: false, picture: false, icon: false });
+    previousValuesRef.current = { title: '', description: '', category: '' };
   };
 
   const resolveDomain = async (rawDomain: string) => {
@@ -288,6 +293,11 @@ export const AvatarSecretPage: React.FC = () => {
         picture: !!existingPicture,
         icon: !!existingIcon,
       });
+      previousValuesRef.current = {
+        title: existingTitle || '',
+        description: existingDescription || '',
+        category: existingCategory || '',
+      };
     } catch {
       // Тихо игнорируем — форма просто останется пустой, юзер заполнит с нуля.
     } finally {
@@ -437,7 +447,13 @@ export const AvatarSecretPage: React.FC = () => {
       showSnackbar(t('avatarSaved') || 'Сохранено онchain', 'success');
       if (domainName) {
         apiService.setNetwork(isTestnet);
-        apiService.notifyContentUpdated(domainName);
+        const prev = previousValuesRef.current;
+        apiService.notifyContentUpdated(domainName, {
+          pictureUrl: pictureUrl.trim() || undefined,
+          title: title.trim() && title.trim() !== prev.title ? title.trim() : undefined,
+          description: description.trim() && description.trim() !== prev.description ? description.trim() : undefined,
+          category: category.trim() && category.trim() !== prev.category ? category.trim() : undefined,
+        });
       }
       if (tutorial.active && !tutorial.isStepDone('profile_saved')) {
         tutorial.recordStep('profile_saved');

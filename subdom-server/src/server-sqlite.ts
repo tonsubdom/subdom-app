@@ -3602,11 +3602,13 @@ app.post('/api/notifications/dns-record', (req, res) => {
 });
 
 // Relay-only: сообщает боту факт обновления ончейн-контента домена (title/
-// description/picture, см. AvatarSecretPage) — ничего не пишет в БД, значения
-// полей не публикуются (те же соображения, что и у dns-record выше).
+// description/category/picture, см. AvatarSecretPage) — ничего не пишет в БД.
+// В отличие от dns-record выше (там значение осознанно скрыто — это то, что
+// юзер прячет за доменом), title/description/category — публичный профиль,
+// и так видимый в dApp-приложениях, поэтому изменившиеся значения передаются.
 app.post('/api/notifications/content-updated', (req, res) => {
   try {
-    const { domain } = req.body;
+    const { domain, pictureUrl, title, description, category } = req.body;
     const isTestnet = req.isTestnet;
 
     if (!domain) {
@@ -3616,7 +3618,7 @@ app.post('/api/notifications/content-updated', (req, res) => {
       });
     }
 
-    telegramBot.sendContentUpdatedNotification(domain, isTestnet);
+    telegramBot.sendContentUpdatedNotification(domain, isTestnet, pictureUrl, { title, description, category });
 
     return res.json({ success: true });
   } catch (error) {
@@ -3721,7 +3723,7 @@ app.post('/api/notifications/bid', (req, res) => {
 // on-chain auctionInfo.maxBid — бэкенду тут искать/обновлять нечего.
 app.post('/api/notifications/auction-ended', (req, res) => {
   try {
-    const { domain, winner, finalPrice, itemAddress } = req.body;
+    const { domain, winner, finalPrice, itemAddress, collectionAddress } = req.body;
     const isTestnet = req.isTestnet;
 
     if (!domain || !winner || finalPrice === undefined) {
@@ -3731,7 +3733,7 @@ app.post('/api/notifications/auction-ended', (req, res) => {
       });
     }
 
-    telegramBot.sendAuctionEndedNotification(domain, winner, finalPrice, isTestnet, itemAddress);
+    telegramBot.sendAuctionEndedNotification(domain, winner, finalPrice, isTestnet, itemAddress, collectionAddress);
 
     return res.json({ success: true });
   } catch (error) {

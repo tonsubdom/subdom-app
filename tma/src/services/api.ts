@@ -842,14 +842,22 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
   }
 
   // Relay-only: сообщает боту факт обновления ончейн-контента домена
-  // (title/description/picture) — ничего не пишет в БД, сами значения полей
-  // не передаются (см. AvatarSecretPage).
-  async notifyContentUpdated(domain: string): Promise<void> {
+  // (title/description/category/picture) — ничего не пишет в БД. pictureUrl —
+  // реальная текущая аватарка (не сгенерированный плейсхолдер); title/
+  // description/category передаются, только если реально изменились
+  // (сравнение — на стороне AvatarSecretPage, с тем что было прочитано ончейн
+  // до правки).
+  async notifyContentUpdated(domain: string, extra?: {
+    pictureUrl?: string;
+    title?: string;
+    description?: string;
+    category?: string;
+  }): Promise<void> {
     try {
       await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/content-updated`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain }),
+        body: JSON.stringify({ domain, ...extra }),
       });
     } catch (error) {
       console.error('Error notifying about content update:', error);
@@ -924,6 +932,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     winner: string;
     finalPrice: number;
     itemAddress?: string;
+    collectionAddress?: string;
   }): Promise<void> {
     try {
       await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/auction-ended`), {

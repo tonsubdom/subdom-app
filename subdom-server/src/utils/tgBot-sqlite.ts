@@ -1737,6 +1737,7 @@
 import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import Database from 'better-sqlite3';
+import { Address } from '@ton/core';
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -1884,12 +1885,15 @@ const LANG = {
     paymentError: '❌ <b>ОШИБКА ПРИ ОПЛАТЕ ПОПЫТКИ!</b>',
     dnsRecordSet: '🔗 <b>DNS-ЗАПИСЬ ПРИВЯЗАНА!</b>',
     dnsRecordDeleted: '🔓 <b>DNS-ЗАПИСЬ ОТВЯЗАНА!</b>',
-    contentUpdated: '🖼️ <b>ОБНОВЛЁН КОНТЕНТ ДОМЕНА!</b>',
+    contentUpdated: '🖼️ Юзер {domain} обновил данные в ончейн-профиле {domain}',
     deactivationRequested: '⏳ <b>ЗАПРОС НА ДЕАКТИВАЦИЮ ЗОНЫ!</b>',
 
     // Поля уведомлений
     fieldName: '🏷️ Название',
     fieldDomain: '🌐 Домен',
+    fieldTitle: '📝 Заголовок',
+    fieldDescription: '📄 Описание',
+    fieldCategory: '🏷️ Категория',
     fieldRecordType: '📋 Тип записи',
     recordFormatAddress: 'Address',
     recordFormatAdnl: 'ADNL',
@@ -1942,7 +1946,8 @@ const LANG = {
     // Кнопки уведомлений
     btnCreateSubdomain: '🔗 Создать субдомен',
     btnPlaceBid: '💰 Сделать ставку',
-    btnViewMarket: '💰 Посмотреть в маркете',
+    btnViewMarket: '💰 Посмотреть в subdom',
+    btnViewGetGems: '💎 Посмотреть на getgems.io',
     btnReply: '↩️ Ответить',
 
     // Техподдержка
@@ -2043,12 +2048,15 @@ const LANG = {
     paymentError: '❌ <b>PAYMENT ATTEMPT ERROR!</b>',
     dnsRecordSet: '🔗 <b>DNS RECORD LINKED!</b>',
     dnsRecordDeleted: '🔓 <b>DNS RECORD UNLINKED!</b>',
-    contentUpdated: '🖼️ <b>DOMAIN CONTENT UPDATED!</b>',
+    contentUpdated: '🖼️ User {domain} updated their on-chain profile data {domain}',
     deactivationRequested: '⏳ <b>ZONE DEACTIVATION REQUESTED!</b>',
 
     // Поля уведомлений
     fieldName: '🏷️ Name',
     fieldDomain: '🌐 Domain',
+    fieldTitle: '📝 Title',
+    fieldDescription: '📄 Description',
+    fieldCategory: '🏷️ Category',
     fieldRecordType: '📋 Record Type',
     recordFormatAddress: 'Address',
     recordFormatAdnl: 'ADNL',
@@ -2101,7 +2109,8 @@ const LANG = {
     // Кнопки уведомлений
     btnCreateSubdomain: '🔗 Create Subdomain',
     btnPlaceBid: '💰 Place Bid',
-    btnViewMarket: '💰 View in Market',
+    btnViewMarket: '💰 View on subdom',
+    btnViewGetGems: '💎 View on getgems.io',
     btnReply: '↩️ Reply',
 
     // Техподдержка
@@ -2512,6 +2521,20 @@ class TelegramBotService {
     return `<a href="${base}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
   }
 
+  /** Портировано из MarketPage.tsx createGetGemsLink — тот же формат ссылки на карточку итема. */
+  private getGetGemsLink(collectionAddress: string, nftAddress: string, isTestnet: boolean): string | null {
+    if (!collectionAddress || !nftAddress) return null;
+    try {
+      const convertedCollection = Address.parse(collectionAddress).toString({ testOnly: isTestnet, urlSafe: true, bounceable: false });
+      const convertedNft = Address.parse(nftAddress).toString({ testOnly: isTestnet, urlSafe: true, bounceable: false });
+      const base = isTestnet ? 'https://testnet.getgems.io' : 'https://getgems.io';
+      return `${base}/collection/${convertedCollection}/${convertedNft}`;
+    } catch (error) {
+      console.error('❌ Ошибка создания ссылки GetGems:', error);
+      return null;
+    }
+  }
+
   /** URL сгенерированной картинки зоны/субдомена (builder-api generator.py), либо null если имя не распознано. */
   private getNotificationImageUrl(name: string, isProxy: boolean): string | null {
     if (!name) return null;
@@ -2537,7 +2560,18 @@ class TelegramBotService {
       : `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${effectiveZone}/${subName}.png`;
   }
 
-  /** Отправляет фото с подписью одному чату. Если фото не отправилось (или его нет) — fallback на текст. */
+  /**
+   * Отправляет фото с подписью одному чату. Если фото не отправилось (или
+   * его нет) — fallback на текст.
+   *
+   * Раньше передавали photoUrl напрямую строкой — в этом режиме Telegram
+   * сам идёт скачивать картинку с нашего сервера, и это молча падало (catch
+   * глотал причину без e.message) без единой строки диагностики почему;
+   * юзер вместо картинки видел обычный текст с телеграмным веб-превью по
+   * первой ссылке в тексте (на tonviewer). Сами скачиваем картинку и шлём
+   * её как Buffer — так Telegram не ходит на наш сервер сам, устраняет
+   * целый класс непрозрачных сетевых причин отказа с их стороны.
+   */
   private async sendPhotoWithCaption(
     chatId: string,
     photoUrl: string | null,
@@ -2551,10 +2585,19 @@ class TelegramBotService {
 
     if (photoUrl) {
       try {
-        await (this.bot! as any).sendPhoto(chatId, photoUrl, { caption, ...options });
+        const response = await fetch(photoUrl, { signal: AbortSignal.timeout(10000) });
+        if (!response.ok) throw new Error(`image fetch failed: HTTP ${response.status}`);
+        const buffer = Buffer.from(await response.arrayBuffer());
+
+        await (this.bot! as any).sendPhoto(
+          chatId,
+          buffer,
+          { caption, ...options },
+          { filename: 'preview.png', contentType: response.headers.get('content-type') || 'image/png' }
+        );
         return;
-      } catch (e) {
-        console.warn(`⚠️ Не удалось отправить фото (${photoUrl}) в чат ${chatId}, fallback на текст`);
+      } catch (e: any) {
+        console.warn(`⚠️ Не удалось отправить фото (${photoUrl}) в чат ${chatId}, fallback на текст:`, e?.message || e);
       }
     }
 
@@ -3134,9 +3177,9 @@ ${$.hintProxyZone}
   async sendPublicSBTZoneCreatedNotification(name: string, address: string, owner: string, price: number, bundleAddress: string, currentID: number, isTestnet: boolean = true): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
-      const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(name);
-      const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
-      const inlineKeyboard = [[{ text: LANG.ru.btnCreateSubdomain, url: miniAppLink }]];
+      // Без кнопки "Создать субдомен" — SBT-зона личная, субдомен на ней
+      // может создать только её владелец, показывать эту кнопку всей
+      // публичной аудитории вводит в заблуждение.
 
       return await this.sendGroupNotification((lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
@@ -3153,7 +3196,7 @@ ${$.fieldType}: ${$.fieldTypeSBT}
 
 ${currentID + 1} ${$.hintZoneNumber}
         `.trim();
-      }, inlineKeyboard, this.getNotificationImageUrl(name, false));
+      }, undefined, this.getNotificationImageUrl(name, false));
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления о SBT зоне:', error);
       return false;
@@ -3258,28 +3301,48 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
   // Сами title/description/picture не публикуются (могут быть большими/
   // непубличными) — уведомление сообщает только сам факт обновления
   // ончейн-контента домена, по аналогии с sendDnsRecordUpdatedNotification.
-  async sendContentUpdatedNotification(domain: string, isTestnet: boolean = true): Promise<void> {
+  async sendContentUpdatedNotification(
+    domain: string,
+    isTestnet: boolean = true,
+    pictureUrl?: string | null,
+    changedFields?: { title?: string; description?: string; category?: string }
+  ): Promise<void> {
     if (!this.isBotAvailable()) return;
 
     try {
       const $ = LANG.ru;
       const network = this.formatNetwork(isTestnet);
+      const domainLink = `<a href="tonsite://${domain}">${domain}</a>`;
+
+      // Только реально изменившиеся поля (фронт сравнивает с тем, что было
+      // прочитано ончейн до правки, см. AvatarSecretPage.tsx) — не все три
+      // безусловно, чтобы не шуметь пустыми строками, если юзер поменял
+      // только картинку.
+      const changedLines = [
+        changedFields?.title ? `${$.fieldTitle}: ${changedFields.title}` : null,
+        changedFields?.description ? `${$.fieldDescription}: ${changedFields.description}` : null,
+        changedFields?.category ? `${$.fieldCategory}: ${changedFields.category}` : null,
+      ].filter(Boolean);
 
       const message = `
-${$.contentUpdated}
+${$.contentUpdated.split('{domain}').join(domainLink)}
 
 ${network}
-${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
-
+${changedLines.length ? changedLines.join('\n') + '\n' : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
       const inlineKeyboard = [[{ text: $.btnViewCatalog, url: 'https://tonsitecatalog.ton' }]];
 
-      await this.bot!.sendMessage(this.ownerId, message, {
-        parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: inlineKeyboard }
-      });
+      // Реальная текущая аватарка (пришла с клиента в момент сохранения),
+      // не сгенерированная плейсхолдер-картинка — фолбэк на генератор, если
+      // юзер аватарку не задавал (только текстовые поля профиля поменял).
+      await this.sendPhotoWithCaption(
+        this.ownerId,
+        pictureUrl || this.getNotificationImageUrl(domain, false),
+        message,
+        inlineKeyboard
+      );
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления об обновлении аватарки/контента:', error);
     }
@@ -3359,7 +3422,7 @@ ${$.fieldBidTime}: ${new Date().toLocaleString('ru-RU')}
 ${$.sbtSubdomainMinted}
 
 ${network}
-${$.fieldDomain}: <code>${domain}</code>
+${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
 ${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldOwner}: ${this.formatTonviewerLink(owner, isTestnet)}
 ${$.fieldPrice}: ${price} TON
@@ -3376,11 +3439,18 @@ ${$.hintCongrats}
   }
 
   // --- АУКЦИОН ЗАВЕРШЕН ---
-  async sendPublicAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true, itemAddress?: string): Promise<boolean> {
+  async sendPublicAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true, itemAddress?: string, collectionAddress?: string): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
       const miniAppLink = DeeplinkUtils.generateMarketLink(domain);
       const inlineKeyboard = [[{ text: LANG.ru.btnViewMarket, url: miniAppLink }]];
+      // Вторая кнопка — на getgems.io, только если знаем оба адреса (нужны
+      // и коллекция, и сам итем). Тот же URL-формат, что уже строит фронт
+      // (MarketPage.tsx createGetGemsLink) для карточек в маркете.
+      if (itemAddress && collectionAddress) {
+        const getGemsUrl = this.getGetGemsLink(collectionAddress, itemAddress, isTestnet);
+        if (getGemsUrl) inlineKeyboard[0]!.push({ text: LANG.ru.btnViewGetGems, url: getGemsUrl });
+      }
 
       return await this.sendGroupNotification((lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
@@ -3534,7 +3604,6 @@ ${$.hintProxyZone}
     try {
       const $ = LANG.ru;
       const network = this.formatNetwork(isTestnet);
-      const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(name);
 
       const message = `
 ${$.sbtZoneCreated}
@@ -3552,14 +3621,13 @@ ${currentID + 1} ${$.hintZoneNumber}
 ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
-      const inlineKeyboard = [[{ text: $.btnCreateSubdomain, url: miniAppLink }]];
-
+      // Без кнопки "Создать субдомен" — получатель этого уведомления не
+      // владелец зоны (это платформенный админ-чат/паблик), кнопка вела бы
+      // на страницу, где реально ничего создать нельзя.
       await this.sendPhotoWithCaption(
         this.ownerId,
         this.getNotificationImageUrl(name, false),
-        message,
-        inlineKeyboard
+        message
       );
 
       await this.sendPublicSBTZoneCreatedNotification(name, address, owner, price, bundleAddress, currentID, isTestnet);
@@ -3656,7 +3724,7 @@ ${$.fieldBidTime}: ${new Date().toLocaleString('ru-RU')}
 ${$.sbtSubdomainMinted}
 
 ${network}
-${$.fieldDomain}: <code>${domain}</code>
+${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
 ${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldOwner}: ${this.formatTonviewerLink(owner, isTestnet)}
 ${$.fieldPrice}: ${price} TON
@@ -3676,7 +3744,7 @@ ${$.fieldMintTime}: ${new Date().toLocaleString('ru-RU')}
     }
   }
 
-  async sendAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true, itemAddress?: string): Promise<void> {
+  async sendAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true, itemAddress?: string, collectionAddress?: string): Promise<void> {
     if (!this.isBotAvailable()) return;
 
     try {
@@ -3696,6 +3764,10 @@ ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
 
       const miniAppLink = DeeplinkUtils.generateMarketLink(domain);
       const inlineKeyboard = [[{ text: $.btnViewMarket, url: miniAppLink }]];
+      if (itemAddress && collectionAddress) {
+        const getGemsUrl = this.getGetGemsLink(collectionAddress, itemAddress, isTestnet);
+        if (getGemsUrl) inlineKeyboard[0]!.push({ text: $.btnViewGetGems, url: getGemsUrl });
+      }
 
       await this.sendPhotoWithCaption(
         this.ownerId,
@@ -3704,7 +3776,7 @@ ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
         inlineKeyboard
       );
 
-      await this.sendPublicAuctionEndedNotification(domain, winner, finalPrice, isTestnet, itemAddress);
+      await this.sendPublicAuctionEndedNotification(domain, winner, finalPrice, isTestnet, itemAddress, collectionAddress);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления о завершении аукциона:', error);
     }

@@ -13384,6 +13384,7 @@ export const AuctionPage: React.FC<{}> = () => {
           winner: userAddress,
           finalPrice: auctionInfo ? Number(auctionInfo.maxBid) / 1_000_000_000 : 0,
           itemAddress: nftAddress,
+          collectionAddress,
         });
       } catch (e) {
         console.error("Notify claim error:", e);
