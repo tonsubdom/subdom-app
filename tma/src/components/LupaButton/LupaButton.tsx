@@ -40,10 +40,13 @@ interface LupaButtonProps {
   size?: number;
   corner?: 'top-right' | 'bottom-right';
   offset?: number;
-  // undefined/null = кроулер ещё не проверял этот домен — показываем
-  // оптимистично (как раньше, до этой проверки). false = кроулер
-  // подтвердил, что сайт не отвечает через *.ton.run — прячем кнопку
-  // целиком, чтобы не вести юзера на несуществующую страницу.
+  // Кнопка сети показывается ВСЕГДА (адрес есть у любого итема, "Открыть
+  // кошелек" в тонвьювере работает безусловно) — не гейтится этим пропом.
+  // Используется только как быстрый шорткат для "Открыть как сайт": если
+  // кроулер уже подтвердил false (сайт не отвечает через *.ton.run),
+  // сразу показываем "не найдено" без повторного живого запроса. Если
+  // undefined/null (кроулер ещё не проверял) или true — делаем обычный
+  // живой ончейн-чек (fetchSiteAndStorageRecords), как и раньше.
   siteResolves?: boolean | null;
 }
 
@@ -65,6 +68,11 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
   const { currentTheme } = useTheme();
   const isDark = currentTheme === 'dark';
   const { t } = useLanguage();
+
+  // "sub.zone.ton" (3+ части) — субдомен, "zone.ton" (2 части) — домен/зона.
+  // Для формулировки "не найдено": юзер попросил различать домен/субдомен
+  // в тексте, не одну общую фразу на оба случая.
+  const isSubdomainItem = domain.split('.').filter(Boolean).length >= 3;
 
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -131,6 +139,12 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
 
   const handleOpenAsSite = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    // Бэкенд-кроулер уже точечно пинговал этот домен и получил явный отказ —
+    // не дублируем живой ончейн-запрос, сразу показываем результат.
+    if (siteResolves === false) {
+      setResult({ kind: 'site-not-found' });
+      return;
+    }
     setBusy('site');
     setResult(null);
     try {
@@ -256,12 +270,16 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
 
       {result?.kind === 'site-not-found' && (
         <div style={{ padding: '12px 16px', fontSize: '12px', color: colors.error }}>
-          {t('lupaSiteNotFound') || 'ADNL-запись сайта не найдена'}
+          {isSubdomainItem
+            ? (t('lupaSiteNotFoundSubdomain') || 'На субдомене ещё нет сайта')
+            : (t('lupaSiteNotFoundDomain') || 'На домене ещё нет сайта')}
         </div>
       )}
       {result?.kind === 'torrent-not-found' && (
         <div style={{ padding: '12px 16px', fontSize: '12px', color: colors.error }}>
-          {t('lupaTorrentNotFound') || 'bagID-запись не найдена'}
+          {isSubdomainItem
+            ? (t('lupaTorrentNotFoundSubdomain') || 'На субдомене ещё нет торрента')
+            : (t('lupaTorrentNotFoundDomain') || 'На домене ещё нет торрента')}
         </div>
       )}
       {result?.kind === 'torrent-found' && (
@@ -277,8 +295,6 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
       )}
     </div>
   ) : null;
-
-  if (siteResolves === false) return null;
 
   return (
     <>
