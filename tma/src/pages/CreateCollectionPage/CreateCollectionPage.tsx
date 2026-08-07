@@ -59,6 +59,7 @@ import { createAuctionUrl } from '@/utils/urlParams';
 import { sanitizeDomainLabelInput, encodeDomainLabel } from '@/utils/domainPunycode';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { addOptimisticCollection } from '@/services/blockchainItems/blockchain-items-slice';
+import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-items-utils';
 import { upsertPlatformCacheEntity } from '@/services/blockchainItems/platformCacheClient';
 import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 
@@ -1386,7 +1387,15 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
     const domainParam = params.get('domain');
 
     if (domainParam) {
-      setDomainName(domainParam.replace('.ton', ''));
+      // domainParam может прийти "грязным" (например, из уже зарезолвленного
+      // on-chain имени коллекции вида "4044 DNS Domains") — .replace('.ton', '')
+      // такой суффикс не ловит, и грязное имя намертво прошивалось в suffix_uri
+      // новой коллекции (баг от 2026-08-08: картинки/id зоны показывали
+      // "... DNS Domains" вместо "....ton"). cleanZoneDisplayName — та же
+      // очистка, что уже применяется при отображении имени в карточке.
+      const cleanedDomainParam = cleanZoneDisplayName(domainParam).replace(/\.ton$/i, '');
+      console.log('[CreateCollectionPage] domainParam prefill:', { raw: domainParam, cleaned: cleanedDomainParam });
+      setDomainName(cleanedDomainParam);
     }
   }, [activeTab]);
 

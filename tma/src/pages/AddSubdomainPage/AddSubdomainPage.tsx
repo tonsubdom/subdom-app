@@ -12446,6 +12446,7 @@ import { calculateProxyNFTAddress } from "./CalculateProxyNFTAddress";
 // ====== ONCHAIN ======
 import { useBlockchainItems } from "@/services/blockchainItems/blockchain-items-context.tsx";
 import { SimpleCollection } from "@/services/blockchainItems/blockchain-items-types";
+import { cleanZoneDisplayName } from "@/services/blockchainItems/blockchain-items-utils";
 
 import ActiveAuctions from "@/components/ActiveAuctions/ActiveAuctions";
 import { useAuctionIntegration } from "@/hooks/useAuctionIntegration";
@@ -12750,7 +12751,22 @@ export const AuctionPage: React.FC<{}> = () => {
 
   const domainZoneName = useMemo(() => {
     if (!selectedDomainZone) return "";
-    return selectedDomainZone.split(".")[0];
+    // selectedDomainZone === zone.name с ончейна. Для "чистых" зон это
+    // "4044.ton" и .split(".")[0] честно даёт "4044" — но у зон, чьё имя
+    // зарезолвилось "грязным" (например "4044 DNS Domains", без единой
+    // точки), split(".")[0] возвращал ВЕСЬ грязный текст без изменений,
+    // и он летел в URL картинки/метадаты сабдомена
+    // (.../metadata/ton/${domainZoneName}/${subDomainName}.png) при
+    // каждом добавлении/проверке сабдомена под такой зоной. cleanZoneDisplayName —
+    // та же очистка, что уже применяется к тексту в карточке зоны.
+    const cleaned = cleanZoneDisplayName(selectedDomainZone).replace(/\.ton$/i, "");
+    if (cleaned !== selectedDomainZone.split(".")[0]) {
+      console.warn("[AddSubdomainPage] domainZoneName: cleaned dirty zone name", {
+        raw: selectedDomainZone,
+        cleaned,
+      });
+    }
+    return cleaned;
   }, [selectedDomainZone]);
 
   const calculateDomainPrice = useMemo(() => {
