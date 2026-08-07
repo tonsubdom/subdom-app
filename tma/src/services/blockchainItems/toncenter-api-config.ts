@@ -5,7 +5,7 @@
  * Только PLATFORM_OWNER и NFT_WRAPPER_COLLECTION как исходные данные
  */
 
-// ==================== КОНФИГУРАЦИЯ СЕТЕЙ ====================
+// =================== КОНФИГУРАЦИЯ СЕТЕЙ ====================
 
 export interface NetworkConfig {
   API_URL: string;
