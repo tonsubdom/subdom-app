@@ -622,6 +622,7 @@ attention: 'Внимание!',
   
   // Сообщения о пустых состояниях
   noZones: 'У вас пока нет зон',
+  filters: 'Фильтры',
   noZonesMatchingFilters: 'Нет зон, соответствующих фильтрам',
   noSubdomains: 'У вас пока нет субдоменов',
   noSubdomainsMatchingFilters: 'Нет субдоменов, соответствующих фильтрам',

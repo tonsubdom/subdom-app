@@ -499,6 +499,7 @@ attention: 'انتباه!',
   
   // رسائل الحالة الفارغة
   noZones: 'ليس لديك مناطق بعد',
+  filters: 'الفلاتر',
   noZonesMatchingFilters: 'لا توجد مناطق تطابق الفلاتر',
   noSubdomains: 'ليس لديك نطاقات فرعية بعد',
   noSubdomainsMatchingFilters: 'لا توجد نطاقات فرعية تطابق الفلاتر',

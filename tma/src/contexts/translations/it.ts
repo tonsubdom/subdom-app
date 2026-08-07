@@ -491,6 +491,7 @@ attention: 'Atenção!',
   
   // Messaggi di stato vuoto
   noZones: 'Non hai ancora zone',
+  filters: 'Filtri',
   noZonesMatchingFilters: 'Nessuna zona corrisponde ai filtri',
   noSubdomains: 'Non hai ancora sottodomini',
   noSubdomainsMatchingFilters: 'Nessun sottodominio corrisponde ai filtri',

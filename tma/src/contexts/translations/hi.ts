@@ -500,6 +500,7 @@ paymentAttemptsHint: '💡 भुगतान किए गए प्रया�
   
   // खाली स्थिति संदेश
   noZones: 'आपके पास अभी कोई ज़ोन नहीं है',
+  filters: 'फ़िल्टर',
   noZonesMatchingFilters: 'फ़िल्टर से मेल खाने वाला कोई ज़ोन नहीं',
   noSubdomains: 'आपके पास अभी कोई सबडोमेन नहीं है',
   noSubdomainsMatchingFilters: 'फ़िल्टर से मेल खाने वाला कोई सबडोमेन नहीं',

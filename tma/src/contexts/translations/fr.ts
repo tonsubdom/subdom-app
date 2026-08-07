@@ -499,6 +499,7 @@ attention: 'Attention !',
   
   // Messages d'état vide
   noZones: 'Vous n\'avez pas encore de zones',
+  filters: 'Filtres',
   noZonesMatchingFilters: 'Aucune zone ne correspond aux filtres',
   noSubdomains: 'Vous n\'avez pas encore de sous-domaines',
   noSubdomainsMatchingFilters: 'Aucun sous-domaine ne correspond aux filtres',

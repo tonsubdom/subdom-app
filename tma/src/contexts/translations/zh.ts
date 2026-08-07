@@ -465,6 +465,7 @@ createCollectionPayNow: '立即支付',
   
   // 空状态消息
   noZones: '您还没有区域',
+  filters: '筛选',
   noZonesMatchingFilters: '没有符合筛选条件的区域',
   noSubdomains: '您还没有子域名',
   noSubdomainsMatchingFilters: '没有符合筛选条件的子域名',

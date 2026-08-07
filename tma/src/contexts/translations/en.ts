@@ -532,6 +532,7 @@ attention: 'Attention!',
   
   // Empty state messages
   noZones: 'You have no zones yet',
+  filters: 'Filters',
   noZonesMatchingFilters: 'No zones matching filters',
   noSubdomains: 'You have no subdomains yet',
   noSubdomainsMatchingFilters: 'No subdomains matching filters',

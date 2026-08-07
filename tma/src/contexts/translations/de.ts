@@ -502,6 +502,7 @@ attention: 'Achtung!',
   
   // Leere Zustands-Nachrichten
   noZones: 'Sie haben noch keine Zonen',
+  filters: 'Filter',
   noZonesMatchingFilters: 'Keine Zonen entsprechen den Filtern',
   noSubdomains: 'Sie haben noch keine Subdomains',
   noSubdomainsMatchingFilters: 'Keine Subdomains entsprechen den Filtern',

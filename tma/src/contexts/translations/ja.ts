@@ -500,6 +500,7 @@ attention: '注意！',
   
   // 空状態メッセージ
   noZones: 'まだゾーンがありません',
+  filters: 'フィルター',
   noZonesMatchingFilters: 'フィルターに一致するゾーンがありません',
   noSubdomains: 'まだサブドメインがありません',
   noSubdomainsMatchingFilters: 'フィルターに一致するサブドメインがありません',
