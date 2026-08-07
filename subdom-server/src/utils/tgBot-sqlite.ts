@@ -3187,7 +3187,7 @@ ${$.hintProxyZone}
 ${$.sbtZoneCreated}
 
 ${network}
-${$.fieldName}: <code>${name}</code>
+${$.fieldName}: <a href="tonsite://${name}">.${name}</a>
 ${$.fieldCollectionAddress}: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
 ${$.fieldDomainAddress}: ${this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldOwner}: ${this.formatTonviewerLink(owner, isTestnet)}
@@ -3609,7 +3609,7 @@ ${$.hintProxyZone}
 ${$.sbtZoneCreated}
 
 ${network}
-${$.fieldName}: <code>${name}</code>
+${$.fieldName}: <a href="tonsite://${name}">.${name}</a>
 ${$.fieldCollectionAddress}: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
 ${$.fieldDomainAddress}: ${this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldOwner}: ${this.formatTonviewerLink(owner, isTestnet)}
