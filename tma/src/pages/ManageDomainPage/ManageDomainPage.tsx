@@ -4559,7 +4559,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { convertRawToUserFriendlyTest } from "@/utils/tonUtils";
-import { decodeDomainForDisplay } from "@/utils/domainPunycode";
+import { decodeDomainForDisplay, isPunycodeEncoded } from "@/utils/domainPunycode";
 import { apiService } from "@/services/api";
 
 import { DomainExpirationInfo } from "@/utils/domainExpiredAtFetchConvert";
@@ -5608,6 +5608,15 @@ export const ManageDomainPage: FC = () => {
       });
     }
 
+    // Тумблер "punycode" — фильтр, не просто форма отображения: показывает
+    // только реально punycode-закодированные имена, скрывая обычные ASCII.
+    if (showPunycode) {
+      items = items.filter((item: any) => {
+        const rawName = item.title || item.dns || item.metadata?.name || item.name || "";
+        return isPunycodeEncoded(rawName);
+      });
+    }
+
     items = items.filter((item: any) => {
       const length = (
         item.title ||
@@ -5664,6 +5673,7 @@ export const ManageDomainPage: FC = () => {
     userSBTSubdomains,
     userNFTWrappers,
     enrichedItemToDisplayItem,
+    showPunycode,
   ]);
 
   // ====== ПАГИНАЦИЯ ======
@@ -5747,6 +5757,19 @@ export const ManageDomainPage: FC = () => {
             color: isDark ? "white" : "black",
           }}
         />
+        {showPunycode && (
+          <div style={{
+            background: isDark ? "rgba(239, 68, 68, 0.15)" : "rgba(239, 68, 68, 0.1)",
+            border: "1px solid #ef4444",
+            borderRadius: "8px",
+            padding: "8px 12px",
+            marginBottom: "8px",
+            fontSize: "12px",
+            color: isDark ? "white" : "black",
+          }}>
+            ⚠️ {t("marketPunycodeWarning") || "Punycode (xn--...) официально не поддерживается большинством сервисов и отображается в нечитаемом формате — здесь показаны только домены с реальным punycode-именем."}
+          </div>
+        )}
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <Button
             onClick={() => setSortOrder("asc")}

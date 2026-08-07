@@ -60,3 +60,12 @@ export function encodeDomainForChain(fullName: string): string {
   if (!fullName) return fullName;
   return fullName.split('.').map(encodeDomainLabel).join('.');
 }
+
+// Реально ли имя (любой из его лейблов) закодировано в punycode — "xn--..."
+// префикс это ACE-маркер IDNA, обычные ASCII-домены его никогда не содержат.
+// Для тумблера "punycode" в списках/фильтрах: включённый тумблер показывает
+// ТОЛЬКО такие домены (а не просто меняет форму отображения всех подряд).
+export function isPunycodeEncoded(fullName: string): boolean {
+  if (!fullName) return false;
+  return fullName.split('.').some((label) => label.toLowerCase().startsWith('xn--'));
+}

@@ -306,6 +306,7 @@ export const ruTranslations = {
     marketSortSubdomainLengthAsc: 'Длина субдомена (короткие → длинные)',
     marketSortSubdomainLengthDesc: 'Длина субдомена (длинные → короткие)',
     marketClearFilters: 'Очистить',
+    marketPunycodeWarning: 'Punycode (xn--...) официально не поддерживается большинством сервисов и отображается в нечитаемом формате — здесь показаны только домены с реальным punycode-именем.',
     marketTotal: 'Всего',
     marketFiltered: 'Отфильтровано',
     marketZones: 'Зон',

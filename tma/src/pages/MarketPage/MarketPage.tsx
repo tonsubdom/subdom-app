@@ -16,7 +16,7 @@ import { LupaButton } from '@/components/LupaButton/LupaButton';
 import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { track } from '@/utils/analytics';
-import { decodeDomainForDisplay } from '@/utils/domainPunycode';
+import { decodeDomainForDisplay, isPunycodeEncoded } from '@/utils/domainPunycode';
 
 // Типы для табов
 type TabType = 'subdomains' | 'nft-wrappers';
@@ -490,6 +490,14 @@ const MarketPage: React.FC = () => {
       });
     }
     
+    // Тумблер "punycode" — не просто форма отображения, а фильтр: показывает
+    // только реально punycode-закодированные домены (xn--...), скрывая
+    // обычные ASCII. Сейчас на платформе таких доменов, скорее всего, нет —
+    // тогда список корректно окажется пустым при включённом тумблере.
+    if (showPunycode) {
+      filtered = filtered.filter(item => isPunycodeEncoded(item.name));
+    }
+
     // Фильтрация по длине зоны
     if (filters.zoneLengths.length > 0) {
       filtered = filtered.filter(item => {
@@ -552,7 +560,7 @@ const MarketPage: React.FC = () => {
     
     setFilteredItems(filtered);
     setMarketCurrentPage(0);
-  }, [searchQuery, filters, sortBy, marketItems]);
+  }, [searchQuery, filters, sortBy, marketItems, showPunycode]);
 
   const MARKET_ITEMS_PER_PAGE = 10;
   const marketTotalPages = Math.ceil(filteredItems.length / MARKET_ITEMS_PER_PAGE);
@@ -832,7 +840,8 @@ const MarketPage: React.FC = () => {
               gap: '8px',
               flexWrap: 'wrap'
             }}>
-              {/* Тумблер: показывать сырой punycode вместо юникода в карточках */}
+              {/* Тумблер-фильтр: показывает ТОЛЬКО реально punycode-закодированные
+                  домены (xn--...), в сыром виде — не просто форма отображения. */}
               <button
                 onClick={() => setShowPunycode(!showPunycode)}
                 title="punycode"
@@ -1039,12 +1048,15 @@ const MarketPage: React.FC = () => {
                   <span>↕️ {getSortText(sortBy)}</span>
                 </button>
                 
-                {/* Дропдаун сортировки */}
+                {/* Дропдаун сортировки — раньше был right:0, кнопка стоит
+                    ближе к левому краю ряда фильтров, дропдаун (min-width
+                    220px) вылезал за левый край экрана и обрезался. left:0
+                    держит его в пределах видимой области. */}
                 {showSortDropdown && (
                   <div style={{
                     position: 'absolute',
                     top: '100%',
-                    right: 0,
+                    left: 0,
                     marginTop: '4px',
                     background: colors.dropdownBg,
                     border: `1px solid ${colors.dropdownBorder}`,
@@ -1123,9 +1135,23 @@ const MarketPage: React.FC = () => {
                 </button>
               )}
 
-             
+
             </div>
           </div>
+
+          {showPunycode && (
+            <div style={{
+              background: colors.error + '1A',
+              border: `1px solid ${colors.error}`,
+              borderRadius: '8px',
+              padding: '10px 14px',
+              marginBottom: '16px',
+              fontSize: '12px',
+              color: colors.text,
+            }}>
+              ⚠️ {t('marketPunycodeWarning') || 'Punycode (xn--...) официально не поддерживается большинством сервисов и отображается в нечитаемом формате — здесь показаны только домены с реальным punycode-именем.'}
+            </div>
+          )}
 
           {/* Статистика */}
           <div style={{
