@@ -45,6 +45,26 @@ services:
       # 2026-08-06). PLATFORM_OWNER_* этот же баг не задел, они уже были
       # прописаны ниже.
       - TONCENTER_API_KEY=${TONCENTER_API_KEY:-}
+      # Тот же класс бага, что и с TONCENTER_API_KEY выше: deploy.yml
+      # экспортирует эти HASH_*-переменные на хосте, но без явного
+      # проброса сюда SubdomainClassifier (crawler.ts/toncenter-api-config.ts)
+      # получал пустые CODE_HASHES и не признавал НИ ОДНУ реальную
+      # коллекцию "нашей" зоной — кроулер стабильно находил 0 зон при
+      # рабочем toncenter API (диагностировано 2026-08-08).
+      - HASH_PROXY_COLLECTION_TESTNET=${HASH_PROXY_COLLECTION_TESTNET:-}
+      - HASH_SBT_COLLECTION_TESTNET=${HASH_SBT_COLLECTION_TESTNET:-}
+      - HASH_NFT_WRAPPER_COLLECTION_TESTNET=${HASH_NFT_WRAPPER_COLLECTION_TESTNET:-}
+      - HASH_PROXY_SUBDOMAIN_TESTNET=${HASH_PROXY_SUBDOMAIN_TESTNET:-}
+      - HASH_PROXY_SUBDOMAIN_NEW_TESTNET=${HASH_PROXY_SUBDOMAIN_NEW_TESTNET:-}
+      - HASH_SBT_SUBDOMAIN_TESTNET=${HASH_SBT_SUBDOMAIN_TESTNET:-}
+      - HASH_NFT_WRAPPER_TESTNET=${HASH_NFT_WRAPPER_TESTNET:-}
+      - HASH_PROXY_COLLECTION_MAINNET=${HASH_PROXY_COLLECTION_MAINNET:-}
+      - HASH_SBT_COLLECTION_MAINNET=${HASH_SBT_COLLECTION_MAINNET:-}
+      - HASH_NFT_WRAPPER_COLLECTION_MAINNET=${HASH_NFT_WRAPPER_COLLECTION_MAINNET:-}
+      - HASH_PROXY_SUBDOMAIN_MAINNET=${HASH_PROXY_SUBDOMAIN_MAINNET:-}
+      - HASH_PROXY_SUBDOMAIN_NEW_MAINNET=${HASH_PROXY_SUBDOMAIN_NEW_MAINNET:-}
+      - HASH_SBT_SUBDOMAIN_MAINNET=${HASH_SBT_SUBDOMAIN_MAINNET:-}
+      - HASH_NFT_WRAPPER_MAINNET=${HASH_NFT_WRAPPER_MAINNET:-}
       # tonutils-storage (см. storage-daemon/) — POST /api/v1/create читает
       # файлы с диска по пути, не по телу запроса, поэтому backend и storage
       # должны видеть один и тот же volume storage_uploads.
