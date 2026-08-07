@@ -1116,15 +1116,23 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
               address: collectionAddr,
               name: `${domainName}.ton`,
               type: 'proxy',
-              owner_address: address,
-              creator_address: address,
+              // Реальные (пришедшие с ончейна) записи хранят creator_address в
+              // raw-формате (из in_msg.source тонцентра) — если положить сюда
+              // friendly-адрес из useTonAddress(), фильтр по владельцу (сравнение
+              // с convertUserFriendlyToRaw(userAddress)) никогда не совпадёт и
+              // только что созданная зона не найдётся в селекторе.
+              owner_address: convertUserFriendlyToRaw(address),
+              creator_address: convertUserFriendlyToRaw(address),
             }));
             upsertPlatformCacheEntity('zones', isTestnet, {
               collectionAddress: collectionAddr,
               name: `${domainName}.ton`,
               isProxy: 1,
               wrapperAddress: null,
-              ownerAddress: address,
+              // Бэкенд-кэш при чтении маппит creator_address = ownerAddress
+              // (platformCacheClient.ts) — та же raw/friendly нестыковка, что и
+              // в оптимистичной Redux-вставке выше, поэтому конвертируем и тут.
+              ownerAddress: convertUserFriendlyToRaw(address),
             });
 
             // СПИСЫВАЕМ оплаченную попытку ПОСЛЕ успешного деплоя
@@ -1276,15 +1284,20 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
               address: sbtCollectionAddr,
               name: `${domainName}.ton`,
               type: 'sbt',
-              owner_address: address,
-              creator_address: address,
+              // См. аналогичный комментарий в Proxy-ветке выше — creator_address
+              // должен быть в raw-формате, как у реальных ончейн-записей.
+              owner_address: convertUserFriendlyToRaw(address),
+              creator_address: convertUserFriendlyToRaw(address),
             }));
             upsertPlatformCacheEntity('zones', isTestnet, {
               collectionAddress: sbtCollectionAddr,
               name: `${domainName}.ton`,
               isProxy: 0,
               wrapperAddress: null,
-              ownerAddress: address,
+              // Бэкенд-кэш при чтении маппит creator_address = ownerAddress
+              // (platformCacheClient.ts) — та же raw/friendly нестыковка, что и
+              // в оптимистичной Redux-вставке выше, поэтому конвертируем и тут.
+              ownerAddress: convertUserFriendlyToRaw(address),
             });
 
             // Шаг обучалки "создать зону" (Блок 2, использует бесплатную

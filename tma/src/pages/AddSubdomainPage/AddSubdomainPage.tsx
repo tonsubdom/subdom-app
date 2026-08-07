@@ -12964,9 +12964,14 @@ export const AuctionPage: React.FC<{}> = () => {
   const selectZoneFromParams = useCallback(
     (zoneName: string) => {
       const zone = allZones.find((z) => z.name === zoneName);
-      setActiveTab(zone?.proxy === 0 ? "sbt" : "proxy");
+      // Если зона ещё не попала в allZones (гонка кэша/редакса), не трогаем
+      // таб и не подставляем имя в селект — иначе селект показывает значение,
+      // которого нет в списке опций, а таб молча уезжает на proxy по умолчанию
+      // ternary-фолбэка ниже.
+      if (!zone) return;
+      setActiveTab(zone.proxy === 0 ? "sbt" : "proxy");
       setSelectedDomainZone(zoneName);
-      if (zone?.collectionAddress) setCollectionAddress(zone.collectionAddress);
+      if (zone.collectionAddress) setCollectionAddress(zone.collectionAddress);
       setTimeout(() => subdomainNameInputRef.current?.focus(), 300);
     },
     [allZones]
