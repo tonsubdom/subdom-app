@@ -4681,7 +4681,18 @@ export const ManageDomainPage: FC = () => {
     userSBTSubdomains,
     userNFTWrappers,
     isLoading: blockchainLoading,
+    ensureData,
   } = useBlockchainItems();
+
+  // Вкладки Zones/Subdomains этой страницы читают userProxySubdomains/
+  // userSBTSubdomains/userNFTWrappers напрямую из общего стора, но страница
+  // сама никогда не инициировала его загрузку — как и AddSubdomainPage до
+  // этого, полагалась на то, что данные уже загрузила другая страница. На
+  // холодном заходе сразу в менеджер эти вкладки были пусты.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    ensureData();
+  }, []);
 
   // Детект дублей зон (пересозданные onchain с тем же именем) — чисто по
   // ончейн last_transaction_lt, не по backend-статусу (см. A5' в плане).
