@@ -44,7 +44,7 @@ const ChatWidget: React.FC = () => {
   const isDark = currentTheme === 'dark';
 
   // Получаем язык и переводы
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   // Используем хук пользователя
   const { user } = useUser();
@@ -116,15 +116,15 @@ const ChatWidget: React.FC = () => {
     
     try {
       const chatIdentifier = getChatIdentifier();
-      const chat = await apiService.getChat(chatIdentifier, address);
-      
+      const chat = await apiService.getChat(chatIdentifier, address, language);
+
       if (chat && chat.messages) {
         setChatMessages(chat.messages as Message[]);
         lastMessageCountRef.current = chat.messages.length;
       }
     } catch (error) {
       console.error(t('error') + ' загрузки чата:', error);
-      
+
       // Если чата нет, пытаемся создать его
       try {
         const chatIdentifier = getChatIdentifier();
@@ -135,7 +135,7 @@ const ChatWidget: React.FC = () => {
         console.error(t('error') + ' создания чата:', createError);
       }
     }
-  }, [address, currentDomain, getChatIdentifier, t]);
+  }, [address, currentDomain, getChatIdentifier, t, language]);
 
   // Функция для отправки сообщения в бэкенд через apiService
   const sendMessageToBackend = useCallback(async (messageText: string) => {

@@ -13167,6 +13167,9 @@ export const AuctionPage: React.FC<{}> = () => {
         });
         loadAllData(true);
         track('subdomain_created', { type: 'proxy_auction_started' });
+        if (tutorial.active && !tutorial.isStepDone('subdomain_created')) {
+          tutorial.recordStep('subdomain_created');
+        }
         showSnackbar(t("startAuction"), "success");
       } catch (dbError: any) {
         console.error("Notify error:", dbError);

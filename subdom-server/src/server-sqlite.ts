@@ -3495,14 +3495,29 @@ app.post('/api/chats/:domain/messages', (req, res) => {
   }
 });
 
+// Приветственное сообщение оператора при автосоздании чата — на языке юзера
+// (иначе юзер получал текст только на русском, независимо от выбранного в апке языка).
+const CHAT_WELCOME_MESSAGES: Record<string, string> = {
+  ru: 'Здравствуйте! 👋 Чем могу помочь?',
+  en: 'Hello! 👋 How can I help you?',
+  zh: '您好！👋 有什么可以帮您的吗？',
+  ja: 'こんにちは！👋 どのようなご用件でしょうか？',
+  hi: 'नमस्ते! 👋 मैं आपकी क्या मदद कर सकता हूँ?',
+  ar: 'مرحبًا! 👋 كيف يمكنني مساعدتك؟',
+  es: '¡Hola! 👋 ¿En qué puedo ayudarte?',
+  it: 'Ciao! 👋 Come posso aiutarti?',
+  de: 'Hallo! 👋 Wie kann ich Ihnen helfen?',
+  fr: 'Bonjour ! 👋 Comment puis-je vous aider ?',
+};
+
 // Получить чат по домену и адресу пользователя
 app.get('/api/chats/domain/:domain', (req, res) => {
   try {
     const { domain } = req.params;
-    const { userAddress } = req.query as { userAddress: string };
+    const { userAddress, lang } = req.query as { userAddress: string; lang?: string };
     const db = req.db;
     const isTestnet = req.isTestnet;
-    
+
     if (!domain || !userAddress) {
       return res.status(400).json({
         success: false,
@@ -3512,15 +3527,16 @@ app.get('/api/chats/domain/:domain', (req, res) => {
 
     let stmt = db.prepare('SELECT * FROM chats WHERE domain = ? AND userAddress = ?');
     let chat = stmt.get(domain, userAddress) as Chat;
-    
+
     if (!chat) {
       stmt = db.prepare('INSERT INTO chats (domain, userAddress) VALUES (?, ?) RETURNING *');
       chat = stmt.get(domain, userAddress) as Chat;
-      
+
       // Добавляем приветственное сообщение
+      const welcomeText = CHAT_WELCOME_MESSAGES[lang || ''] || CHAT_WELCOME_MESSAGES.ru;
       const messageId = Math.random().toString(36).substring(2, 15);
       db.prepare('INSERT INTO messages (id, chatId, sender, text) VALUES (?, ?, ?, ?)')
-        .run(messageId, chat.id, 'operator', 'Здравствуйте! 👋 Чем могу помочь?');
+        .run(messageId, chat.id, 'operator', welcomeText);
       
       // Отправляем уведомление в Telegram о новом чате
       telegramBot.sendNewChatNotification(domain, userAddress, isTestnet);

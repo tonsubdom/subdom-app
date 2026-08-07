@@ -2,7 +2,7 @@
 // Обновленная версия с интегрированным сервисом проверки транзакций
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ScanProgressLoader } from '@/components/ScanProgressLoader';
 import {
   Banner,
@@ -55,6 +55,7 @@ import { TransactionService, TransactionResult } from '@/services/transactionSer
 import { TonUtilsEnhanced } from '@/utils/tonUtilsEnhanced';
 import { track } from '@/utils/analytics';
 import { StepIndicator } from '@/components/StepIndicator/StepIndicator';
+import { createAuctionUrl } from '@/utils/urlParams';
 
 // Тип для активной вкладки
 type ActiveTab = 'proxy' | 'sbt';
@@ -251,6 +252,7 @@ const partnerAddress = isTestnet
   const [domainName, setDomainName] = useState('');
   const domainInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Переход сюда из промо-модалки (PromoRevealModal, "Создать SBT-зону" после
   // подарка при регистрации) — ?promo=sbt: убеждаемся, что открыта именно
@@ -1300,6 +1302,11 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
     dispatch(resetAllDeployments());
   };
 
+  const handleGoToCreateSubdomain = () => {
+    const hashUrl = createAuctionUrl({ zone: `${domainName}.ton` }).replace(/^\/?#/, '');
+    navigate(hashUrl);
+  };
+
   const handleTabChange = (_event: React.SyntheticEvent, newValue: ActiveTab) => {
     setActiveTab(newValue);
     handleReset();
@@ -1953,20 +1960,36 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
                 </Card>
               )}
 
-              <Button
-                onClick={handleReset}
-                sx={{
-                  borderRadius: '25px',
-                  textTransform: 'none',
-                  background: '#4ade80',
-                  color: '#000',
-                  '&:hover': {
-                    background: '#3ec970'
-                  }
-                }}
-              >
-                {t('startOver')}
-              </Button>
+              <Box sx={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <Button
+                  onClick={handleGoToCreateSubdomain}
+                  sx={{
+                    borderRadius: '25px',
+                    textTransform: 'none',
+                    background: '#4ade80',
+                    color: '#000',
+                    '&:hover': {
+                      background: '#3ec970'
+                    }
+                  }}
+                >
+                  {t('createSubdomain')}
+                </Button>
+                <Button
+                  onClick={handleReset}
+                  sx={{
+                    borderRadius: '25px',
+                    textTransform: 'none',
+                    border: '1px solid #4ade80',
+                    color: '#4ade80',
+                    '&:hover': {
+                      background: 'rgba(74, 222, 128, 0.1)'
+                    }
+                  }}
+                >
+                  {t('startOver')}
+                </Button>
+              </Box>
             </Paper>
           )}
         </Box>

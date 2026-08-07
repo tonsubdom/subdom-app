@@ -676,9 +676,10 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
   }
 
   // ========== ЧАТЫ ==========
-  async getChat(domain: string, userAddress: string): Promise<Chat> {
+  async getChat(domain: string, userAddress: string, lang?: string): Promise<Chat> {
+    const langParam = lang ? `&lang=${encodeURIComponent(lang)}` : '';
     const response = await fetch(
-      this.addNetworkParam(`${this.baseUrl}/api/chats/domain/${domain}?userAddress=${userAddress}`)
+      this.addNetworkParam(`${this.baseUrl}/api/chats/domain/${domain}?userAddress=${userAddress}${langParam}`)
     );
     const data = await response.json();
     if (!data.success) throw new Error(data.message);
