@@ -27,6 +27,8 @@ import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
 import { TransactionService } from '@/services/transactionService';
 import { track } from '@/utils/analytics';
 import { encodeDomainForChain, decodeDomainForDisplay } from '@/utils/domainPunycode';
+import { isRealTelegramEnv } from '@/mockEnv';
+import { tonsiteToGatewayUrl } from '@/utils/tonUtils';
 import webdomLogo from '@/assets/webdom_logo.svg';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -853,7 +855,10 @@ export const AvatarSecretPage: React.FC = () => {
                   label: t('tutorialNext') || 'Далее',
                   primary: true,
                   onClick: async () => {
-                    window.open('tonsite://domain.minter.ton', '_blank');
+                    window.open(
+                      isRealTelegramEnv ? 'tonsite://domain.minter.ton' : tonsiteToGatewayUrl('tonsite://domain.minter.ton'),
+                      '_blank'
+                    );
                     await tutorial.recordStep('domain_answered');
                     tutorial.resumeStep();
                     setTutorialDomainAnswer(null);

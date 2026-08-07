@@ -2388,6 +2388,7 @@ const collectionToZone = (col: SimpleCollection): Zone => {
     image: col.metadata?.token_info?.[0]?.image || col.image,
     description: col.metadata?.token_info?.[0]?.description || col.description,
     zoneLength: zoneName.length,
+    siteResolves: col.siteResolves,
   } as any as Zone;
 };
 
@@ -2415,6 +2416,7 @@ const enrichedItemToSubdomain = (item: SimpleEnrichedItem): Subdomain => {
     metadata: item.metadata,
     subdomainLength: subName.length, // <-- NEW
     zoneLength: item.zone.replace(".ton", "").length, // <-- NEW
+    siteResolves: item.siteResolves,
   } as any as Subdomain;
 };
 
@@ -3705,7 +3707,7 @@ const ProfileWidget: React.FC = () => {
         }}
       >
         {!(zone as any).image && (
-          <LupaButton domain={zone.name} address={zone.address} isTestnet={isTestnet} />
+          <LupaButton domain={zone.name} address={zone.address} isTestnet={isTestnet} siteResolves={zone.siteResolves} />
         )}
 
         {/* КАРТИНКА СЛЕВА + КОНТЕНТ СПРАВА */}
@@ -3725,6 +3727,8 @@ const ProfileWidget: React.FC = () => {
               <img
                 src={(zone as any).image}
                 alt={zone.name}
+                loading="lazy"
+                decoding="async"
                 style={{
                   width: "100%",
                   height: "100%",
@@ -3742,6 +3746,7 @@ const ProfileWidget: React.FC = () => {
                 size={32}
                 offset={4}
                 corner="bottom-right"
+                siteResolves={zone.siteResolves}
               />
             </div>
           )}
@@ -4046,7 +4051,7 @@ const ProfileWidget: React.FC = () => {
         }}
       >
         {!imgUri && (
-          <LupaButton domain={subdomain.name} address={subdomain.address} isTestnet={isTestnet} />
+          <LupaButton domain={subdomain.name} address={subdomain.address} isTestnet={isTestnet} siteResolves={subdomain.siteResolves} />
         )}
 
         {/* КАРТИНКА + КОНТЕНТ */}
@@ -4066,6 +4071,8 @@ const ProfileWidget: React.FC = () => {
               <img
                 src={imgUri}
                 alt={subdomain.name}
+                loading="lazy"
+                decoding="async"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -4078,6 +4085,7 @@ const ProfileWidget: React.FC = () => {
                 size={32}
                 offset={4}
                 corner="bottom-right"
+                siteResolves={subdomain.siteResolves}
               />
             </div>
           )}
@@ -4386,6 +4394,8 @@ const ProfileWidget: React.FC = () => {
               <img
                 src={getSubdomainImage(auction.subdomain)}
                 alt={auction.name}
+                loading="lazy"
+                decoding="async"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";

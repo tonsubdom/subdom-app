@@ -325,6 +325,19 @@ export function isSbtZone(zone: any): boolean {
     const lowerValue = proxyValue.toLowerCase();
     return lowerValue === 'sbt' || lowerValue === '0';
   }
-  
+
   return false;
+}
+
+/**
+ * tonsite://name.ton -> https://name.ton.run (публичный HTTP-шлюз для
+ * обычного браузера — он не понимает кастомную схему tonsite:// напрямую).
+ * Домен БЕЗ ".ton" на конце перед ".ton.run" — проверено вживую curl'ом:
+ * https://foundation.ton.run отвечает 200, https://foundation.ton.ton.run
+ * падает с TLS-ошибкой (см. server/services/platformCache/crawler.ts,
+ * тот же трансформ там для пинга живости сайтов).
+ */
+export function tonsiteToGatewayUrl(tonsiteUrl: string): string {
+  const name = tonsiteUrl.replace(/^tonsite:\/\//i, '').replace(/\.ton$/i, '');
+  return `https://${name}.ton.run`;
 }

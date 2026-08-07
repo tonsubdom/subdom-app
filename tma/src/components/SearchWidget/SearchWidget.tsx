@@ -11,6 +11,8 @@ import { useNavigate } from 'react-router-dom';
 import { openLink } from '@telegram-apps/sdk-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { isRealTelegramEnv } from '@/mockEnv';
+import { tonsiteToGatewayUrl } from '@/utils/tonUtils';
 
 // Событие, которым SearchWidget просит ProfileWidget открыться — сам
 // ProfileWidget держит isExpanded как локальный стейт, лезть в его (и без
@@ -172,6 +174,20 @@ export const SearchWidget: React.FC = () => {
       return;
     }
     if (entry.kind === 'external') {
+      // openLink() (Telegram SDK) молча ничего не делает для кастомных схем
+      // вроде tonsite:// на Android (см. components/Link/Link.tsx) — для них
+      // клик по настоящему <a href>, вне Telegram вдобавок подменяем на
+      // гейтвей *.ton.run (браузер саму схему не понимает).
+      if (entry.to!.startsWith('tonsite://')) {
+        const link = document.createElement('a');
+        link.href = isRealTelegramEnv ? entry.to! : tonsiteToGatewayUrl(entry.to!);
+        if (!isRealTelegramEnv) link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        return;
+      }
       openLink(entry.to!);
       return;
     }

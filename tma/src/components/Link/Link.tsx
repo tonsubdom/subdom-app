@@ -1,6 +1,8 @@
 import { classNames, openLink } from '@telegram-apps/sdk-react';
 import { type FC, type MouseEventHandler, useCallback } from 'react';
 import { Link as RouterLink, type LinkProps } from 'react-router-dom';
+import { isRealTelegramEnv } from '@/mockEnv';
+import { tonsiteToGatewayUrl } from '@/utils/tonUtils';
 
 import './Link.css';
 
@@ -35,6 +37,15 @@ export const Link: FC<LinkProps> = ({
     if (isExternal && (targetUrl.protocol === 'http:' || targetUrl.protocol === 'https:')) {
       e.preventDefault();
       openLink(targetUrl.toString());
+      return;
+    }
+
+    // tonsite:// вне Telegram (сайт открыт в обычном браузере, см. mockEnv.ts)
+    // подменяем на гейтвей *.ton.run — браузер сам по себе кастомную схему
+    // не понимает и просто ничего не сделает по клику.
+    if (isExternal && targetUrl.protocol === 'tonsite:' && !isRealTelegramEnv) {
+      e.preventDefault();
+      window.open(tonsiteToGatewayUrl(targetUrl.toString()), '_blank', 'noopener,noreferrer');
     }
   }, [to, propsOnClick]);
 

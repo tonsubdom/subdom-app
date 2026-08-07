@@ -28,6 +28,7 @@ export interface PlatformZoneCacheRow {
   totalItems: number;
   status: string;
   lastSyncedAt: string;
+  siteResolves?: number | null;
 }
 
 export interface PlatformSubdomainCacheRow {
@@ -44,6 +45,7 @@ export interface PlatformSubdomainCacheRow {
   lastTransactionLt: string | null;
   status: string;
   lastSyncedAt: string;
+  siteResolves?: number | null;
 }
 
 export interface PlatformWrapperCacheRow {
@@ -128,6 +130,7 @@ export function platformZoneToSimpleCollection(row: PlatformZoneCacheRow): Simpl
     owner_address: row.ownerAddress ?? '',
     creator_address: row.ownerAddress ?? undefined,
     lastUpdated: row.lastSyncedAt,
+    siteResolves: row.siteResolves == null ? null : !!row.siteResolves,
   };
 }
 
@@ -142,6 +145,7 @@ export function platformSubdomainToSimpleEnrichedItem(row: PlatformSubdomainCach
     on_sale: !!row.onSale,
     lastUpdated: row.lastSyncedAt,
     last_transaction_lt: row.lastTransactionLt ?? '',
+    siteResolves: row.siteResolves == null ? null : !!row.siteResolves,
     metadata: {
       image: row.image ?? undefined,
       token_info: [

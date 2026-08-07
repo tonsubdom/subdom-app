@@ -35,6 +35,9 @@ export interface Zone {
   updatedAt: string;
   zoneLength?: number;
   status?: string;
+  // undefined/null = кроулер ещё не проверял, true/false = результат
+  // последнего пинга через *.ton.run (см. LupaButton).
+  siteResolves?: boolean | null;
 }
 
 export interface Subdomain {
@@ -56,6 +59,7 @@ export interface Subdomain {
   zone?: Zone;
   zoneLength?: number;
   subdomainLength?: number;
+  siteResolves?: boolean | null;
 }
 
 export interface Auction {

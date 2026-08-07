@@ -699,7 +699,7 @@ const ActiveAuctions: React.FC<ActiveAuctionsProps> = ({
 
   const { t } = useLanguage();
   const userAddress = useTonAddress();
-  const { proxySubdomains, ensureData, isLoading: blockchainLoading } = useBlockchainItems();
+  const { proxySubdomains, ensureData, loadAllData, isLoading: blockchainLoading } = useBlockchainItems();
   const baseUrlTonsenter = isTestnet ? 'https://testnet.tonviewer.com' : 'https://tonviewer.com';
 
   
@@ -1004,6 +1004,20 @@ const loadActiveAuctions = useCallback(async () => {
   const loadActiveAuctionsRef = useRef<() => Promise<void>>();
 loadActiveAuctionsRef.current = loadActiveAuctions;
 
+  // Кнопка "обновить" раньше просто перезапускала loadActiveAuctions над
+  // ТЕКУЩИМ proxySubdomains — если сам этот список оказался неполным/устаревшим
+  // (напр. platform-кэш на бэкенде ещё не успел прогнать первый обход),
+  // повторный скан аукционов сканировал тот же неполный список и повторял
+  // тот же результат. Юзер вживую подтвердил: "через раз показывает, через
+  // пару нажатий подтягивает" — то самое поведение. Теперь сначала форсируем
+  // реальный ончейн-рефетч (loadAllData(true), в обход TTL-кэша), и только
+  // когда он применится (новый рендер — новый loadActiveAuctionsRef.current с
+  // актуальным proxySubdomains в замыкании), пересканируем аукционы.
+  const handleManualRefresh = useCallback(async () => {
+    await loadAllData(true);
+    await loadActiveAuctionsRef.current?.();
+  }, [loadAllData]);
+
   // Обработчик клика по аукциону
   // const handleAuctionClick = (auction: ActiveAuction) => {
   //   if (onAuctionClick && auction.zoneName && auction.subdomainName) {
@@ -1135,7 +1149,7 @@ useEffect(() => {
                 {isTestnet ? 'TESTNET' : 'MAINNET'}
               </span>
               <button
-                onClick={loadActiveAuctions}
+                onClick={handleManualRefresh}
                 disabled={loading}
                 style={{
                   color: '#FFFFFF',
@@ -1383,7 +1397,7 @@ useEffect(() => {
               <div style={{ color: colors.error, marginBottom: '8px' }}>❌</div>
               <div style={{ color: colors.error, fontSize: '12px', marginBottom: '12px' }}>{error}</div>
               <button
-                onClick={loadActiveAuctions}
+                onClick={handleManualRefresh}
                 style={{
                   background: colors.primary,
                   color: '#FFFFFF',

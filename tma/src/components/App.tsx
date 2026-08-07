@@ -6,7 +6,7 @@
 import React from 'react';
 import { useLaunchParams, miniApp, useSignal } from '@telegram-apps/sdk-react';
 import { AppRoot } from "@telegram-apps/telegram-ui";
-import { Navigate, Route, Routes, HashRouter } from 'react-router-dom';
+import { Navigate, Route, Routes, HashRouter, useLocation } from 'react-router-dom';
 
 import { routes } from '@/navigation/routes.tsx';
 import DeeplinkHandler from '@/components/DeeplinkHandler/DeeplinkHandler'; // Импортируем обработчик
@@ -36,6 +36,21 @@ import { useAlphaAccessModal } from '@/hooks/useAlphaAccess';
 
 // Импортируем BlockchainItemsProvider
 import { BlockchainItemsProvider } from '@/services/blockchainItems/blockchain-items-context.tsx';
+
+// SearchWidget/TutorialEntryWidget рендерились на КАЖДОЙ странице (z-index
+// выше ProfileWidget/табов) — перекрывали аватар/кнопку TonConnect, когда
+// открыт ProfileWidget, и названия табов на CreateCollectionPage/
+// AddSubdomainPage. Юзер попросил показывать их только на IndexPage.
+const IndexOnlyWidgets: React.FC = () => {
+  const location = useLocation();
+  if (location.pathname !== '/') return null;
+  return (
+    <>
+      <SearchWidget />
+      <TutorialEntryWidget />
+    </>
+  );
+};
 
 export const App: React.FC = () => {
   const lp = useLaunchParams();
@@ -96,8 +111,7 @@ export const App: React.FC = () => {
                     {/* Виджеты в углах экрана */}
                     <ChatWidget />
                     <ProfileWidget />
-                    <SearchWidget />
-                    <TutorialEntryWidget />
+                    <IndexOnlyWidgets />
                     <PromoRevealModal />
 
                     {/* Модальное окно для альфа-тестирования */}

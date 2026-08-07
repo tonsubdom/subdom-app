@@ -55,6 +55,7 @@ interface MarketItem {
   type: 'proxy_subdomain' | 'nft_wrapper';
   address: string;
   collection_address: string;
+  siteResolves?: boolean | null;
   metadata?: {
     price?: string;
     sale?: {
@@ -284,7 +285,8 @@ let { zoneLength, subdomainLength } = extractLengths(item.domain);
     type: itemType, // Теперь точно 'proxy_subdomain' | 'nft_wrapper'
     address: item.address,
     collection_address: item.collection_address,
-    metadata: item.metadata
+    metadata: item.metadata,
+    siteResolves: item.siteResolves,
   };
   
   console.log('✅ Результат MarketItem:', {
@@ -1229,6 +1231,8 @@ const MarketPage: React.FC = () => {
                       <img
                         src={item.imgUri}
                         alt={item.name}
+                        loading="lazy"
+                        decoding="async"
                         style={{
                           width: '140px',
                           height: '140px',
@@ -1248,6 +1252,7 @@ const MarketPage: React.FC = () => {
                           size={32}
                           offset={4}
                           corner="bottom-right"
+                          siteResolves={item.siteResolves}
                         />
                       )}
                     </div>

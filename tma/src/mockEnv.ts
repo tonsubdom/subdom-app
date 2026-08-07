@@ -15,8 +15,17 @@ import {
 // (chrome87/es2020/safari14 и т.д. в vite.config.ts) top-level await не
 // поддерживает. index.tsx дожидается этого промиса внутри своей собственной
 // async-обёртки перед init(), await там не на верхнем уровне модуля.
+// Флаг для мест, где поведение реально должно отличаться внутри Telegram и
+// в обычном браузере (напр. LupaButton — какую ссылку на сайт открывать:
+// tonsite:// внутри Telegram, гейтвей *.ton.run снаружи, т.к. браузер не
+// понимает кастомную схему напрямую). По умолчанию false — если код успеет
+// прочитать флаг до того, как mockEnvReady разрешится, безопаснее считать
+// окружение браузером (более широкая совместимость ссылки).
+export let isRealTelegramEnv = false;
+
 export const mockEnvReady: Promise<void> = (async () => {
     if (await isTMA()) {
+      isRealTelegramEnv = true;
       return;
     }
 

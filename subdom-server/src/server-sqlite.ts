@@ -578,6 +578,11 @@ const migratePlatformCacheColumns = (db: SqliteDatabase) => {
   addColumnIfMissing('platform_zones_cache', 'image', 'image TEXT');
   addColumnIfMissing('platform_zones_cache', 'description', 'description TEXT');
   addColumnIfMissing('platform_zones_cache', 'totalItems', 'totalItems INTEGER DEFAULT 0');
+  // siteResolves: NULL = кроулер ещё не проверял (не скрываем 🌐-иконку —
+  // оптимистично, как раньше), 1/0 = реально запинговали через *.ton.run
+  // gateway на последнем проходе. См. services/platformCache/crawler.ts.
+  addColumnIfMissing('platform_zones_cache', 'siteResolves', 'siteResolves INTEGER');
+  addColumnIfMissing('platform_zones_cache', 'siteCheckedAt', 'siteCheckedAt TEXT');
 
   addColumnIfMissing('platform_subdomains_cache', 'zoneName', 'zoneName TEXT');
   addColumnIfMissing('platform_subdomains_cache', 'itemType', 'itemType TEXT');
@@ -585,6 +590,8 @@ const migratePlatformCacheColumns = (db: SqliteDatabase) => {
   addColumnIfMissing('platform_subdomains_cache', 'description', 'description TEXT');
   addColumnIfMissing('platform_subdomains_cache', 'onSale', 'onSale INTEGER DEFAULT 0');
   addColumnIfMissing('platform_subdomains_cache', 'lastTransactionLt', 'lastTransactionLt TEXT');
+  addColumnIfMissing('platform_subdomains_cache', 'siteResolves', 'siteResolves INTEGER');
+  addColumnIfMissing('platform_subdomains_cache', 'siteCheckedAt', 'siteCheckedAt TEXT');
 
   addColumnIfMissing('platform_wrappers_cache', 'image', 'image TEXT');
   addColumnIfMissing('platform_wrappers_cache', 'description', 'description TEXT');

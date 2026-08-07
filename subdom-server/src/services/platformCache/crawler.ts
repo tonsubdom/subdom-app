@@ -33,8 +33,24 @@ type SqliteDatabase = typeof Database.prototype;
 const CRAWL_INTERVAL_MS = 15 * 60 * 1000;
 const COLLECTION_BATCH_CONCURRENCY = 5;
 const BATCH_DELAY_MS = 500;
+const SITE_PING_CONCURRENCY = 10;
+const SITE_PING_TIMEOUT_MS = 3000;
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Пул воркеров без внешней зависимости — тот же принцип, что и
+// mapWithConcurrency на фронте (tma/src/utils/concurrency.ts), но бэкенду
+// незачем тянуть фронтовый модуль ради одного применения здесь.
+async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T) => Promise<void>): Promise<void> {
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      await worker(items[index]!);
+    }
+  });
+  await Promise.all(runners);
+}
 
 const nowIso = () => new Date().toISOString();
 
@@ -238,9 +254,66 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
     }
 
     console.log(`[platformCache] ${label}: обход завершён.`);
+
+    await pingAllSites(db, label);
   } catch (err) {
     console.error(`[platformCache] ${label}: обход не удался`, err);
   }
+}
+
+/**
+ * Проверяет, отвечает ли сайт на домене через публичный шлюз *.ton.run —
+ * тот же гейтвей, что теперь используется для открытия tonsite:// вне
+ * Telegram (браузер не понимает кастомную схему напрямую). Успешный ответ
+ * шлюза И ЕСТЬ проверка "есть ли реально сайт" — отдельно резолвить
+ * DNS site-запись не нужно, шлюз сам вернёт ошибку/таймаут, если сайта нет.
+ */
+async function pingSiteResolves(name: string): Promise<boolean> {
+  if (!name) return false;
+  // Гейтвей ton.run ожидает домен БЕЗ ".ton" на конце — "foo.ton" -> "foo.ton.run",
+  // не "foo.ton.ton.run" (проверено вживую: последнее падает с TLS-ошибкой,
+  // первое отвечает 200). Тот же трансформ нужен и на фронте при построении
+  // ссылки для браузера вне Telegram (см. LupaButton.tsx).
+  const gatewayLabel = name.replace(/\.ton$/i, '');
+  if (!gatewayLabel) return false;
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SITE_PING_TIMEOUT_MS);
+    const response = await fetch(`https://${gatewayLabel}.ton.run`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return response.status >= 200 && response.status < 400;
+  } catch {
+    return false;
+  }
+}
+
+async function pingAllSites(db: SqliteDatabase, label: string): Promise<void> {
+  const updateZoneSite = db.prepare(
+    `UPDATE platform_zones_cache SET siteResolves = @siteResolves, siteCheckedAt = @siteCheckedAt WHERE collectionAddress = @collectionAddress`
+  );
+  const updateSubdomainSite = db.prepare(
+    `UPDATE platform_subdomains_cache SET siteResolves = @siteResolves, siteCheckedAt = @siteCheckedAt WHERE itemAddress = @itemAddress`
+  );
+
+  const zones = db.prepare(`SELECT collectionAddress, name FROM platform_zones_cache WHERE status = 'active'`).all() as
+    Array<{ collectionAddress: string; name: string }>;
+  const subdomains = db
+    .prepare(`SELECT itemAddress, name FROM platform_subdomains_cache WHERE status = 'active'`)
+    .all() as Array<{ itemAddress: string; name: string }>;
+
+  console.log(`[platformCache] ${label}: проверка живости сайтов — зон=${zones.length}, субдоменов=${subdomains.length}`);
+
+  await runWithConcurrency(zones, SITE_PING_CONCURRENCY, async (zone) => {
+    const siteResolves = await pingSiteResolves(zone.name);
+    updateZoneSite.run({ collectionAddress: zone.collectionAddress, siteResolves: siteResolves ? 1 : 0, siteCheckedAt: nowIso() });
+  });
+
+  await runWithConcurrency(subdomains, SITE_PING_CONCURRENCY, async (subdomain) => {
+    const siteResolves = await pingSiteResolves(subdomain.name);
+    updateSubdomainSite.run({ itemAddress: subdomain.itemAddress, siteResolves: siteResolves ? 1 : 0, siteCheckedAt: nowIso() });
+  });
+
+  console.log(`[platformCache] ${label}: проверка живости сайтов завершена.`);
 }
 
 export function startPlatformCacheCrawler(testnetDb: SqliteDatabase, mainnetDb: SqliteDatabase): void {

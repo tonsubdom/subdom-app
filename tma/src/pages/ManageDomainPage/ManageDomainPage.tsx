@@ -4610,6 +4610,7 @@ interface DisplayItem {
   wrapperAddress?: string;
   type?: string;
   isInactiveDuplicate?: boolean;
+  siteResolves?: boolean | null;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -4814,6 +4815,7 @@ export const ManageDomainPage: FC = () => {
         metadata: item.metadata,
         type: item.type,
         isInactiveDuplicate: isZone && inactiveZoneAddresses.has(item.address),
+        siteResolves: item.siteResolves,
       };
     },
     [inactiveZoneAddresses, showPunycode]
@@ -6131,6 +6133,8 @@ export const ManageDomainPage: FC = () => {
                   <img
                     src={getItemImageUrl(item)}
                     alt={item.title}
+                    loading="lazy"
+                    decoding="async"
                     style={{
                       width: "100%",
                       height: "100%",
@@ -6166,6 +6170,7 @@ export const ManageDomainPage: FC = () => {
                     size={32}
                     offset={4}
                     corner="bottom-right"
+                    siteResolves={item.siteResolves}
                   />
                 </div>
                 {/* Колонка 2: текст + кнопка */}

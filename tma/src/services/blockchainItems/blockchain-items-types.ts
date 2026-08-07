@@ -89,6 +89,9 @@ export interface SimpleEnrichedItem {
   on_sale: boolean;
   lastUpdated: string;
   last_transaction_lt: string,
+  // undefined/null = ещё не проверено кроулером (не скрываем 🌐-иконку),
+  // true/false = реальный результат последнего пинга через *.ton.run.
+  siteResolves?: boolean | null;
   metadata?: {
     price?: string;
     sale?: {
@@ -132,7 +135,10 @@ export interface SimpleCollection {
   lastUpdated?: string;         // NEW опционально
   item_count?: number;          // NEW опционально
   metadata?: any;               // NEW опционально
-  created_at?: string; 
+  created_at?: string;
+  // undefined/null = ещё не проверено кроулером (не скрываем 🌐-иконку),
+  // true/false = реальный результат последнего пинга через *.ton.run.
+  siteResolves?: boolean | null;
 }
 
 // Данные для разных страниц приложения

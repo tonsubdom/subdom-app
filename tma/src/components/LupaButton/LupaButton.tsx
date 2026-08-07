@@ -18,6 +18,8 @@ import { createPortal } from 'react-dom';
 import { fetchSiteAndStorageRecords } from '@/services/ownerMetaService';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { isRealTelegramEnv } from '@/mockEnv';
+import { tonsiteToGatewayUrl } from '@/utils/tonUtils';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const MENU_WIDTH = 240;
@@ -38,6 +40,11 @@ interface LupaButtonProps {
   size?: number;
   corner?: 'top-right' | 'bottom-right';
   offset?: number;
+  // undefined/null = кроулер ещё не проверял этот домен — показываем
+  // оптимистично (как раньше, до этой проверки). false = кроулер
+  // подтвердил, что сайт не отвечает через *.ton.run — прячем кнопку
+  // целиком, чтобы не вести юзера на несуществующую страницу.
+  siteResolves?: boolean | null;
 }
 
 type InlineResult =
@@ -53,6 +60,7 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
   size = 60,
   corner = 'top-right',
   offset = 8,
+  siteResolves,
 }) => {
   const { currentTheme } = useTheme();
   const isDark = currentTheme === 'dark';
@@ -132,8 +140,16 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
         // вместо отдельной — кастомные URI-схемы браузеры обрабатывают через
         // window.open ненадёжно. Клик по настоящему <a href> — тот же
         // паттерн, что уже работает в ManageDomainPage/AvatarSecretPage.
+        // Вне Telegram (обычный браузер) — гейтвей *.ton.run вместо
+        // tonsite://, браузер кастомную схему не понимает и просто ничего
+        // не сделает по клику.
         const link = document.createElement('a');
-        link.href = `tonsite://${domain}`;
+        if (isRealTelegramEnv) {
+          link.href = `tonsite://${domain}`;
+        } else {
+          link.href = tonsiteToGatewayUrl(`tonsite://${domain}`);
+          link.target = '_blank';
+        }
         link.rel = 'noopener noreferrer';
         document.body.appendChild(link);
         link.click();
@@ -261,6 +277,8 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
       )}
     </div>
   ) : null;
+
+  if (siteResolves === false) return null;
 
   return (
     <>
