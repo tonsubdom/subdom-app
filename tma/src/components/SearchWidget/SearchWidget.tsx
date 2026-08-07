@@ -208,7 +208,9 @@ export const SearchWidget: React.FC = () => {
         position: 'fixed',
         top: '64px',
         right: '20px',
-        zIndex: 1000,
+        // Ниже ProfileWidget (панель — 999, кнопка-аватар — 998), чтобы
+        // раскрытый профиль не перекрывался этим виджетом сверху.
+        zIndex: 900,
       }}
     >
       <div

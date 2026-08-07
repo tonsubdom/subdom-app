@@ -52,7 +52,11 @@ export const TutorialEntryWidget: React.FC = () => {
   };
 
   return (
-    <div style={{ position: 'fixed', top: '64px', left: '20px', zIndex: 1000 }}>
+    // Ниже ProfileWidget (панель — 999, кнопка-аватар — 998), чтобы
+    // раскрытый профиль не перекрывался этим виджетом сверху. Внутренний
+    // intro-модал (zIndex 1001 ниже) остаётся выше всего — это полноэкранный
+    // оверлей, открывается явным кликом, а не пассивно висит поверх профиля.
+    <div style={{ position: 'fixed', top: '64px', left: '20px', zIndex: 900 }}>
       <button
         onClick={handleWidgetClick}
         title={t('tutorialWidgetTitle') || 'Пройти обучение'}
