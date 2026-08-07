@@ -2298,6 +2298,7 @@ import {
   ItemType,
 } from "@/services/blockchainItems/blockchain-items-types";
 import { cleanZoneDisplayName } from "@/services/blockchainItems/blockchain-items-utils";
+import { decodeDomainForDisplay } from "@/utils/domainPunycode";
 import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInfo";
 import { getAuctionBidHistory } from "@/pages/AddSubdomainPage/flipTimer/getAuctionBidHistory";
 import { mapWithConcurrency } from "@/utils/concurrency";
@@ -3762,7 +3763,7 @@ const ProfileWidget: React.FC = () => {
                 wordBreak: "break-word",
               }}
             >
-              .{zone.name}
+              .{decodeDomainForDisplay(zone.name)}
             </div>
 
             <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
@@ -4098,7 +4099,7 @@ const ProfileWidget: React.FC = () => {
                 wordBreak: "break-word",
               }}
             >
-              {subdomain.name}
+              {decodeDomainForDisplay(subdomain.name)}
             </div>
 
             <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
@@ -4745,11 +4746,11 @@ const ProfileWidget: React.FC = () => {
             </p>
 
             <StepIndicator
-              current={2}
+              current={3}
               labels={[
                 t("onboardingStepWallet") || "Кошелёк",
-                t("onboardingStepAvatar") || "Аватарка",
                 t("onboardingStepZone") || "Зона",
+                t("onboardingStepAvatar") || "Аватарка",
               ]}
               accentColor={colors.cyberpunk}
               mutedColor={colors.border}

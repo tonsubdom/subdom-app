@@ -273,6 +273,16 @@ class ApiService {
     return user;
   }
 
+  // Admin-only (requireAdminAuth на бэкенде) — список всех юзеров.
+  async getAllUsers(): Promise<User[]> {
+    const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/users`), {
+      headers: this.getHeaders(),
+    });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message);
+    return data.data;
+  }
+
   async deleteUser(id: number): Promise<{ success: boolean; message?: string; data?: any; }> {
     try {
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/users/${id}`), {

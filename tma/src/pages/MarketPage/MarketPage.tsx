@@ -16,6 +16,7 @@ import { LupaButton } from '@/components/LupaButton/LupaButton';
 import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { track } from '@/utils/analytics';
+import { decodeDomainForDisplay } from '@/utils/domainPunycode';
 
 // Типы для табов
 type TabType = 'subdomains' | 'nft-wrappers';
@@ -328,6 +329,10 @@ const MarketPage: React.FC = () => {
   const [filteredItems, setFilteredItems] = useState<MarketItem[]>([]);
   const [marketCurrentPage, setMarketCurrentPage] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  // Тумблер "показывать сырой punycode вместо юникода" — для карточек в
+  // этом списке (не влияет на поиск, он и так матчит обе формы).
+  const [showPunycode, setShowPunycode] = useState(false);
+  const displayDomainName = (name: string) => (showPunycode ? name : decodeDomainForDisplay(name));
   const [sortBy, setSortBy] = useState<SortOption>('name_asc');
   const [filters, setFilters] = useState<FilterState>({
     zoneLengths: [],
@@ -466,15 +471,21 @@ const MarketPage: React.FC = () => {
   useEffect(() => {
     let filtered = [...marketItems];
     
-    // Поиск по тексту
+    // Поиск по тексту — сравниваем и с сырым (punycode) именем, и с
+    // декодированным юникодом, чтобы юзер мог искать и как "xn--...", и
+    // как реальное написание (кириллица/китайский и т.д.).
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(item => 
-        item.name.toLowerCase().includes(query) ||
-        (item.owner && item.owner.toLowerCase().includes(query)) ||
-        item.mintPrice.toLowerCase().includes(query) ||
-        (item.zoneName && item.zoneName.toLowerCase().includes(query))
-      );
+      filtered = filtered.filter(item => {
+        const decodedName = decodeDomainForDisplay(item.name).toLowerCase();
+        return (
+          item.name.toLowerCase().includes(query) ||
+          decodedName.includes(query) ||
+          (item.owner && item.owner.toLowerCase().includes(query)) ||
+          item.mintPrice.toLowerCase().includes(query) ||
+          (item.zoneName && item.zoneName.toLowerCase().includes(query))
+        );
+      });
     }
     
     // Фильтрация по длине зоны
@@ -819,6 +830,24 @@ const MarketPage: React.FC = () => {
               gap: '8px',
               flexWrap: 'wrap'
             }}>
+              {/* Тумблер: показывать сырой punycode вместо юникода в карточках */}
+              <button
+                onClick={() => setShowPunycode(!showPunycode)}
+                title="punycode"
+                style={{
+                  padding: '8px 12px',
+                  background: showPunycode ? colors.primary : colors.headerBg,
+                  color: showPunycode ? '#FFFFFF' : colors.text,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontFamily: 'monospace',
+                  cursor: 'pointer',
+                }}
+              >
+                punycode
+              </button>
+
               {/* Фильтр по длине зоны */}
               <div style={{ position: 'relative' }} ref={zoneFilterRef}>
                 <button
@@ -1235,7 +1264,7 @@ const MarketPage: React.FC = () => {
                       }}>
                         {/* {item.type === 'nft_wrapper' ?
                         `${item.name.split(' ')[1]}.${item.name.split(' ')[2]}` : `${item.name}`} */}
-                        {item.name}
+                        {displayDomainName(item.name)}
                       </div>
                       
                       {/* Тип итема */}

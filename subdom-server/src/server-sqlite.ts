@@ -9,6 +9,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import Joi from 'joi';
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -26,6 +27,27 @@ import { startPlatformCacheCrawler } from './services/platformCache/crawler';
 // ships with the backend deploy) — imported (not fs.readFileSync'd) so
 // resolveJsonModule makes tsc copy it into dist/ automatically.
 import subdomToolsManifest from './mcp/subdom-tools.json';
+
+// Валидация имени зоны/субдомена на роутах создания и notify-релеях.
+// К моменту, когда имя доходит сюда, фронт уже punycode-кодирует не-ASCII
+// лейблы (см. tma/src/utils/domainPunycode.ts) — оно всегда чистый ASCII
+// вида "label" или "label.label(.label...)". Отклоняем всё остальное:
+// защита от HTML/скрипт-инъекции в текст telegram-уведомлений (домен
+// интерполируется без экранирования в <a href="tonsite://${domain}">) и от
+// мусора в БД. domainNameSchema — просто required().pattern(...), без max()
+// на длину лейбла — платформенные лимиты по длине зоны проверяются в другом
+// месте (ценообразование), тут только защита от небезопасных символов.
+const domainNameSchema = Joi.string()
+  .pattern(/^[a-z0-9-]+(\.[a-z0-9-]+)*$/)
+  .required();
+
+function validateDomainName(name: unknown): { valid: true } | { valid: false; message: string } {
+  const { error } = domainNameSchema.validate(name);
+  if (error) {
+    return { valid: false, message: `Некорректное имя домена: ${error.message}` };
+  }
+  return { valid: true };
+}
 
 const APP_DOMAIN = 'subdom.zone';
 const STORAGE_UPLOADS_PATH = process.env.STORAGE_UPLOADS_PATH || '/app/storage-uploads';
@@ -1475,6 +1497,26 @@ app.delete('/api/users/:id', requireAdminAuth, (req, res) => {
   }
 });
 
+// Список всех юзеров — только для админки (тот же паттерн защиты, что и
+// deleteUser ниже: список адресов/промо-данных чувствителен).
+app.get('/api/users', requireAdminAuth, (req, res) => {
+  try {
+    const db = req.db;
+    const users = db.prepare('SELECT * FROM users ORDER BY registrationDate DESC').all() as User[];
+
+    return res.json({
+      success: true,
+      data: users.map(parseUser)
+    });
+  } catch (error) {
+    console.error('❌ Ошибка при получении списка пользователей:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
 app.get('/api/users/:address', (req, res) => {
   try {
     const { address } = req.params;
@@ -1525,6 +1567,11 @@ app.post('/api/zones', (req, res) => {
         success: false,
         message: 'Название зоны, владелец и адрес обязательны'
       });
+    }
+
+    const nameCheck = validateDomainName(name);
+    if (!nameCheck.valid) {
+      return res.status(400).json({ success: false, message: nameCheck.message });
     }
 
     // Проверяем, существует ли уже зона с таким именем и активным статусом
@@ -2252,6 +2299,11 @@ app.post('/api/subdomains', (req, res) => {
         success: false,
         message: 'Название субдомена, адрес и цена обязательны'
       });
+    }
+
+    const nameCheck = validateDomainName(name);
+    if (!nameCheck.valid) {
+      return res.status(400).json({ success: false, message: nameCheck.message });
     }
 
     // Если передан zoneId, получаем collectionAddress из зоны
@@ -3646,6 +3698,11 @@ app.post('/api/notifications/zone-created', (req, res) => {
       });
     }
 
+    const nameCheck = validateDomainName(name);
+    if (!nameCheck.valid) {
+      return res.status(400).json({ success: false, message: nameCheck.message });
+    }
+
     if (proxy) {
       telegramBot.sendProxyZoneCreatedNotification(name, address, owner, zonePrice, isTestnet);
     } else {
@@ -3674,6 +3731,11 @@ app.post('/api/notifications/subdomain-created', (req, res) => {
         success: false,
         message: 'Некорректные параметры уведомления'
       });
+    }
+
+    const nameCheck = validateDomainName(name);
+    if (!nameCheck.valid) {
+      return res.status(400).json({ success: false, message: nameCheck.message });
     }
 
     if (status === 'auction') {

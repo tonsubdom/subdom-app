@@ -2129,6 +2129,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/punycode@npm:^2":
+  version: 2.1.4
+  resolution: "@types/punycode@npm:2.1.4"
+  checksum: 10c0/0472cc871783a22859ad83fe7cb62d23226ff78694b9807d2a3ec37571d46b05409ca9282c8ccedfb59e58e4a4561b27463623ce95bcfd6bd9c11ac1ef3cd0d1
+  languageName: node
+  linkType: hard
+
 "@types/react-dom@npm:^18.2.0":
   version: 18.3.7
   resolution: "@types/react-dom@npm:18.3.7"
@@ -5881,7 +5888,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"punycode@npm:^2.1.0":
+"punycode@npm:^2.1.0, punycode@npm:^2.3.1":
   version: 2.3.1
   resolution: "punycode@npm:2.3.1"
   checksum: 10c0/14f76a8206bc3464f794fb2e3d3cc665ae416c01893ad7a02b23766eb07159144ee612ad67af5e84fa4479ccfe67678c4feb126b0485651b302babf66f04f9e9
@@ -7526,6 +7533,7 @@ __metadata:
     "@tonconnect/sdk": "npm:^3.3.1"
     "@tonconnect/ui-react": "npm:^2.3.1"
     "@types/node": "npm:^20.12.11"
+    "@types/punycode": "npm:^2"
     "@types/react": "npm:^18.2.0"
     "@types/react-dom": "npm:^18.2.0"
     "@types/react-redux": "npm:^7.1.34"
@@ -7548,6 +7556,7 @@ __metadata:
     lottie-react: "npm:^2.4.1"
     lucide-react: "npm:^0.545.0"
     process: "npm:^0.11.10"
+    punycode: "npm:^2.3.1"
     querystring: "npm:^0.2.1"
     react: "npm:^18.2.0"
     react-dom: "npm:^18.2.0"

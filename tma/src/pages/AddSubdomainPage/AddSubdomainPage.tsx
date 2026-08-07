@@ -12466,6 +12466,7 @@ import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
 import { useTutorial } from "@/contexts/TutorialContext";
 import { track } from "@/utils/analytics";
+import { sanitizeDomainLabelInput, encodeDomainLabel, decodeDomainLabel } from "@/utils/domainPunycode";
 
 // ====== ТИПЫ ======
 
@@ -12573,7 +12574,11 @@ export const AuctionPage: React.FC<{}> = () => {
   // тыкающий не глядя, не попал сразу на Proxy-аукцион.
   const [activeTab, setActiveTab] = useState<ActiveTab>("sbt");
   const [selectedDomainZone, setSelectedDomainZone] = useState("");
+  // subDomainName остаётся punycode/ASCII-формой (её же используют payload'ы
+  // минта/ставки и URL); subDomainNameDisplay — то, что видит и печатает
+  // юзер (юникод), только для value инпута.
   const [subDomainName, setSubDomainName] = useState("");
+  const [subDomainNameDisplay, setSubDomainNameDisplay] = useState("");
   const [collectionAddress, setCollectionAddress] = useState("");
   const [snackbar, setSnackbar] = useState<JSX.Element | null>(null);
   const [auctionInfo, setAuctionInfo] = useState<ParsedAuctionInfo | null>(
@@ -12943,6 +12948,7 @@ export const AuctionPage: React.FC<{}> = () => {
       setActiveTab("proxy");
       setSelectedDomainZone(zoneName);
       setSubDomainName(subdomainName);
+      setSubDomainNameDisplay(decodeDomainLabel(subdomainName));
       const zone = allZones.find((z) => z.name === zoneName);
       if (zone?.collectionAddress) setCollectionAddress(zone.collectionAddress);
       updateUrlWithCurrentAuction();
@@ -12973,6 +12979,7 @@ export const AuctionPage: React.FC<{}> = () => {
     setActiveTab(newValue);
     setSelectedDomainZone("");
     setSubDomainName("");
+    setSubDomainNameDisplay("");
     setCollectionAddress("");
     setAuctionInfo(null);
     setNftAddress("");
@@ -12996,6 +13003,7 @@ export const AuctionPage: React.FC<{}> = () => {
       setSbtPurchaseCompleted(false);
       setSelectedDomainZone(zoneName);
       setSubDomainName(subdomain);
+      setSubDomainNameDisplay(decodeDomainLabel(subdomain));
       const zone = allZones.find((z) => z.name === zoneName);
       setCollectionAddress(zone?.collectionAddress || "");
       await new Promise((r) => setTimeout(r, 100));
@@ -13060,8 +13068,10 @@ export const AuctionPage: React.FC<{}> = () => {
 
   const handleSubDomainNameChange = useCallback(
     (value: string) => {
-      setSubDomainName(value.toLowerCase());
-      setSubdomainName(value.toLowerCase());
+      const encoded = encodeDomainLabel(value.toLowerCase());
+      setSubDomainNameDisplay(value.toLowerCase());
+      setSubDomainName(encoded);
+      setSubdomainName(encoded);
       setAuctionInfo(null);
       setNftAddress("");
       setHasChecked(false);
@@ -13732,12 +13742,9 @@ export const AuctionPage: React.FC<{}> = () => {
           <Input
             ref={subdomainNameInputRef}
             placeholder={t("enterSubdomainName")}
-            value={subDomainName}
+            value={subDomainNameDisplay}
             onChange={(e) => {
-              const val = e.target.value
-                .trim()
-                .toLowerCase()
-                .replace(/[^a-z0-9-]/g, "");
+              const val = sanitizeDomainLabelInput(e.target.value);
               handleSubDomainNameChange(val);
             }}
             style={{

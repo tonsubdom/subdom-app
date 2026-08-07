@@ -120,7 +120,7 @@ export const routes: RouteType[] = [
   {
     path: '/avatar-secret',
     Component: ProtectedAvatarSecretPage,
-    title: 'Аватар / Секрет',
+    title: 'Блокчейн-Профиль',
     protected: true
   },
   {

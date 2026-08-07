@@ -44,6 +44,7 @@
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.545.0",
     "process": "^0.11.10",
+    "punycode": "^2.3.1",
     "querystring": "^0.2.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -63,6 +64,7 @@
   "devDependencies": {
     "@eslint/js": "^9.2.0",
     "@types/node": "^20.12.11",
+    "@types/punycode": "^2",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@typescript-eslint/eslint-plugin": "^7.8.0",

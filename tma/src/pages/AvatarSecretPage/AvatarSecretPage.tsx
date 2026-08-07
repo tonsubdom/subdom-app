@@ -26,6 +26,7 @@ import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-item
 import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
 import { TransactionService } from '@/services/transactionService';
 import { track } from '@/utils/analytics';
+import { encodeDomainForChain, decodeDomainForDisplay } from '@/utils/domainPunycode';
 import webdomLogo from '@/assets/webdom_logo.svg';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -219,10 +220,13 @@ export const AvatarSecretPage: React.FC = () => {
       // TLD пробуем ввод как есть (покрывает t.me/.gram/уже полный ".ton"-
       // домен/поддомен), и только если это не нашлось — пробуем с ".ton" на
       // конце (удобство: можно писать "7707" или "sub.zone" без суффикса).
-      let resolved = await resolveDomainNftAddress(trimmed, isTestnet);
-      let matchedName = trimmed;
-      if (!resolved && !trimmed.endsWith('.ton')) {
-        matchedName = `${trimmed}.ton`;
+      // Юзер может печатать юникодом (кириллица, китайский и т.д.) — ончейн
+      // резолвер знает только punycode-форму лейблов, кодируем перед поиском.
+      const encoded = encodeDomainForChain(trimmed);
+      let resolved = await resolveDomainNftAddress(encoded, isTestnet);
+      let matchedName = encoded;
+      if (!resolved && !encoded.endsWith('.ton')) {
+        matchedName = `${encoded}.ton`;
         resolved = await resolveDomainNftAddress(matchedName, isTestnet);
       }
       if (!resolved) {
@@ -445,10 +449,14 @@ export const AvatarSecretPage: React.FC = () => {
 
       track('avatar_saved');
       showSnackbar(t('avatarSaved') || 'Сохранено онchain', 'success');
-      if (domainName) {
+      // resolvedDomainName — уже punycode-кодированная и дополненная (.ton)
+      // форма, реально сматченная резолвером; domainName — сырой ввод
+      // юзера, фолбэк только для пути "резолв по адресу" (там имя не сматчено).
+      const notifyDomain = resolvedDomainName || domainName;
+      if (notifyDomain) {
         apiService.setNetwork(isTestnet);
         const prev = previousValuesRef.current;
-        apiService.notifyContentUpdated(domainName, {
+        apiService.notifyContentUpdated(notifyDomain, {
           pictureUrl: pictureUrl.trim() || undefined,
           title: title.trim() && title.trim() !== prev.title ? title.trim() : undefined,
           description: description.trim() && description.trim() !== prev.description ? description.trim() : undefined,
@@ -520,7 +528,7 @@ export const AvatarSecretPage: React.FC = () => {
             textShadow: `0 0 12px ${colors.shadow}`,
           }}
         >
-          🎭 {t('avatarSecretTitle') || 'Аватар / Секрет'}
+          🎭 {t('avatarSecretTitle') || 'Блокчейн-Профиль'}
         </Typography>
         <Typography sx={{ fontSize: '13px', color: colors.textSecondary, mt: 0.5 }}>
           {t('avatarSecretDescription') || 'Avatar, title, description, category — теги для индексации в tonsitecatalog.ton. (Поддерживается: @ton_site_builder_bot, tonsitecatalog.ton, TONresistor, webdom.market)'}
@@ -530,11 +538,11 @@ export const AvatarSecretPage: React.FC = () => {
       <Box sx={{ maxWidth: 425, mx: 'auto', px: 2, pt: 1, pb: '180px' }}>
         <Box style={cardStyle}>
           <Typography variant="body2" sx={{ mb: 1, color: colors.textSecondary, fontFamily: 'monospace' }}>
-            {t('avatarEnterDomain') || 'Домен'}
+            {t('avatarEnterDomain') || 'Домен/Субдомен'}
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Input
-              placeholder="example.ton"
+              placeholder="nft.minter.ton"
               value={domainName}
               disabled={resolveByAddress}
               onChange={(e) => setDomainName(e.target.value)}
@@ -644,11 +652,11 @@ export const AvatarSecretPage: React.FC = () => {
               )}
 
             <StepIndicator
-              current={2}
+              current={3}
               labels={[
                 t('onboardingStepWallet') || 'Кошелёк',
-                t('onboardingStepAvatar') || 'Аватарка',
                 t('onboardingStepZone') || 'Зона',
+                t('onboardingStepAvatar') || 'Аватарка',
               ]}
               accentColor={colors.accent}
               mutedColor={colors.border}
@@ -866,7 +874,7 @@ export const AvatarSecretPage: React.FC = () => {
                   : t('tutorialDomainPickHint') || 'Выберите домен, чтобы привязать его к кошельку:'
               }
               buttons={tutorialUserDomains.slice(0, 5).map((d) => ({
-                label: d.name,
+                label: decodeDomainForDisplay(d.name),
                 onClick: () => navigate(`/manage?address=${d.address}`),
               }))}
               style={{ position: 'static' }}

@@ -4,6 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { apiService } from '@/services/api';
 import { TransactionSender } from '@/pages/CreateCollectionPage/TransactionSender';
 import { PendingActionsPanel } from './PendingActionsPanel';
+import { encodeDomainForChain } from '@/utils/domainPunycode';
 
 
 const renderUserDetails = (user: any, currentTheme: string) => {
@@ -39,7 +40,7 @@ const renderUserDetails = (user: any, currentTheme: string) => {
 // Константа с начальными значениями для API методов
 const INITIAL_API_INPUTS = { 
   // Пользователи 
-  getUser: { address: '' }, createUser: { address: '', name: '' }, registerOrGetUser: { address: '', name: '' }, deleteUser: { id: '' }, // НОВЫЙ
+  getUser: { address: '' }, getAllUsers: {}, createUser: { address: '', name: '' }, registerOrGetUser: { address: '', name: '' }, deleteUser: { id: '' }, // НОВЫЙ
 
 // Зоны 
 createZone: { name: '', address: '', collectionAddress: '', wrapperAddress: '', proxy: false, owner: '', status: 'active', zonePrice: 0 }, updateZoneStatusToInactive: { id: '' }, updateZoneCollection: { name: '', collectionAddress: '' }, updateZoneWrapper: { name: '', wrapperAddress: '' }, getUserZones: { address: '', isTestnet: false }, getAllZones: {}, getZoneByName: { name: '' }, getZoneById: { id: '' }, deleteZone: { id: '' }, updateZoneAddress: { id: '', address: '' }, updateZoneOwner: { id: '', owner: '' },
@@ -102,6 +103,9 @@ const AdminPanelPage: React.FC = () => {
         case 'getUser':
           result = await apiService.getUser(inputs.address);
           break;
+        case 'getAllUsers':
+          result = await apiService.getAllUsers();
+          break;
         case 'createUser':
           result = await apiService.createUser(inputs.address, inputs.name);
           break;
@@ -114,7 +118,7 @@ const AdminPanelPage: React.FC = () => {
         // Зоны
         case 'createZone':
           result = await apiService.createZone({
-            name: inputs.name,
+            name: encodeDomainForChain(inputs.name),
             address: inputs.address,
             collectionAddress: inputs.collectionAddress || undefined,
             wrapperAddress: inputs.wrapperAddress || undefined,
@@ -159,7 +163,7 @@ const AdminPanelPage: React.FC = () => {
         // Субдомены
         case 'createSubdomain':
           result = await apiService.createSubdomain({
-            name: inputs.name,
+            name: encodeDomainForChain(inputs.name),
             address: inputs.address,
             mintPrice: inputs.mintPrice,
             links: inputs.links ? JSON.parse(inputs.links) : undefined,
@@ -985,7 +989,7 @@ const AdminPanelPage: React.FC = () => {
         </h2>
         
         {/* Пользователи */}
-        {renderApiSection('Users', ['getUser', 'createUser', 'registerOrGetUser', 'deleteUser'])}
+        {renderApiSection('Users', ['getUser', 'getAllUsers', 'createUser', 'registerOrGetUser', 'deleteUser'])}
         
         {/* Зоны */}
         {renderApiSection('Zones', [

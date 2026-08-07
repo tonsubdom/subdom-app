@@ -4559,6 +4559,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { convertRawToUserFriendlyTest } from "@/utils/tonUtils";
+import { decodeDomainForDisplay } from "@/utils/domainPunycode";
 import { apiService } from "@/services/api";
 
 import { DomainExpirationInfo } from "@/utils/domainExpiredAtFetchConvert";
@@ -4726,6 +4727,9 @@ export const ManageDomainPage: FC = () => {
   const [showInfoBlock, setShowInfoBlock] = useState(false);
   const [showDNSBlock, setShowDNSBlock] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // Тумблер "показывать сырой punycode вместо юникода" — влияет только на
+  // отображение title карточек (enrichedItemToDisplayItem ниже), не на поиск.
+  const [showPunycode, setShowPunycode] = useState(false);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [minLength, setMinLength] = useState<number>(0);
   const [maxLength, setMaxLength] = useState<number>(100);
@@ -4792,7 +4796,10 @@ export const ManageDomainPage: FC = () => {
         item.metadata?.token_info?.[0]?.name || item.domain || "Без названия";
       // Только у зон сырое имя коллекции бывает замусорено "Proxy .../Domain" —
       // у субдоменов такого не встречается, чистка не нужна и не трогает их.
-      const name = isZone ? cleanZoneDisplayName(rawName) : rawName;
+      const cleaned = isZone ? cleanZoneDisplayName(rawName) : rawName;
+      // xn--... -> юникод (если не включён тумблер "punycode") — единая
+      // точка для всех карточек этой страницы.
+      const name = showPunycode ? cleaned : decodeDomainForDisplay(cleaned);
       const image =
         item.metadata?.image ||
         item.metadata?.token_info?.[0]?.image ||
@@ -4809,7 +4816,7 @@ export const ManageDomainPage: FC = () => {
         isInactiveDuplicate: isZone && inactiveZoneAddresses.has(item.address),
       };
     },
-    [inactiveZoneAddresses]
+    [inactiveZoneAddresses, showPunycode]
   );
 
   // ====== КАРТИНКИ ======
@@ -5591,11 +5598,12 @@ export const ManageDomainPage: FC = () => {
 
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase();
-      items = items.filter((item: any) =>
-        (item.title || item.dns || item.metadata?.name || item.name || "")
-          .toLowerCase()
-          .includes(q)
-      );
+      items = items.filter((item: any) => {
+        const rawName = (item.title || item.dns || item.metadata?.name || item.name || "").toLowerCase();
+        // Сравниваем и с сырым (punycode) именем, и с декодированным юникодом
+        // — юзер может искать и как "xn--...", и как реальное написание.
+        return rawName.includes(q) || decodeDomainForDisplay(rawName).includes(q);
+      });
     }
 
     items = items.filter((item: any) => {
@@ -5708,6 +5716,14 @@ export const ManageDomainPage: FC = () => {
               {t("searchAndFilter")}
             </span>
           </div>
+          <Button
+            size="s"
+            mode={showPunycode ? "filled" : "outline"}
+            onClick={() => setShowPunycode(!showPunycode)}
+            style={{ padding: "6px 12px", fontSize: "12px", fontFamily: "monospace", marginRight: "8px" }}
+          >
+            punycode
+          </Button>
           <Button
             size="s"
             mode="outline"

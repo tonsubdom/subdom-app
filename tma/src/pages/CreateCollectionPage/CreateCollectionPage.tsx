@@ -56,6 +56,7 @@ import { TonUtilsEnhanced } from '@/utils/tonUtilsEnhanced';
 import { track } from '@/utils/analytics';
 import { StepIndicator } from '@/components/StepIndicator/StepIndicator';
 import { createAuctionUrl } from '@/utils/urlParams';
+import { sanitizeDomainLabelInput, encodeDomainLabel } from '@/utils/domainPunycode';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { addOptimisticCollection } from '@/services/blockchainItems/blockchain-items-slice';
 import { upsertPlatformCacheEntity } from '@/services/blockchainItems/platformCacheClient';
@@ -253,7 +254,12 @@ const partnerAddress = isTestnet
   // не попал сразу на необратимый Proxy.
   const [activeTab, setActiveTab] = useState<ActiveTab>('sbt');
   const [activeStep, setActiveStep] = useState(0);
+  // domainName остаётся punycode/ASCII-формой — так его используют все
+  // остальные места этого файла (ончейн-лукапы, payload'ы, metadata URI).
+  // domainNameDisplay — то, что реально видит и печатает юзер (юникод),
+  // отдельное состояние только для value инпута.
   const [domainName, setDomainName] = useState('');
+  const [domainNameDisplay, setDomainNameDisplay] = useState('');
   const domainInputRef = useRef<HTMLInputElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -1338,6 +1344,7 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
   const handleReset = () => {
     setActiveStep(0);
     setDomainName('');
+    setDomainNameDisplay('');
     setDnsMainDomainAddress('');
     setPaymentCompleted(false);
     setCreatedZoneId(null);
@@ -1527,11 +1534,11 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
               <Input
                 ref={domainInputRef}
                 placeholder={t('enterDomainName')}
-                value={domainName}
+                value={domainNameDisplay}
                 onChange={(e) => {
-                  const value = e.target.value.trim().toLowerCase();
-                  const filtered = value.replace(/[^a-z0-9-]/g, '');
-                  setDomainName(filtered);
+                  const sanitized = sanitizeDomainLabelInput(e.target.value);
+                  setDomainNameDisplay(sanitized);
+                  setDomainName(encodeDomainLabel(sanitized));
                 }}
                 style={{
                   width: '280px',
@@ -1743,11 +1750,11 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
       />
 
       <StepIndicator
-        current={3}
+        current={2}
         labels={[
           t('onboardingStepWallet') || 'Кошелёк',
-          t('onboardingStepAvatar') || 'Аватарка',
           t('onboardingStepZone') || 'Зона',
+          t('onboardingStepAvatar') || 'Аватарка',
         ]}
         accentColor={isDark ? '#FFD700' : '#3B82F6'}
         mutedColor={isDark ? '#555555' : '#cccccc'}
