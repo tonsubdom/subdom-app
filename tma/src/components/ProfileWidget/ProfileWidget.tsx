@@ -4190,7 +4190,13 @@ const ProfileWidget: React.FC = () => {
                     fontSize: "11px",
                   }}
                 >
-                  {t("zoneId")}: {subdomain.zoneId}
+                  {t("zoneId")}: {(() => {
+                    // subdomain.zoneId — сырое имя коллекции с ончейна, по
+                    // дизайну содержит суффикс вида "Worker DNS Domains"
+                    // (см. Log.md 2026-08-09, тот же баг что и в картинке).
+                    const cleaned = cleanZoneDisplayName(String(subdomain.zoneId)).toLowerCase();
+                    return cleaned.endsWith(".ton") ? cleaned : `${cleaned}.ton`;
+                  })()}
                 </p>
               )}
               {subdomain.address && (

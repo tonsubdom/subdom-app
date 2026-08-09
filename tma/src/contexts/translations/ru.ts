@@ -341,6 +341,8 @@ export const ruTranslations = {
     marketActiveFilters: 'Активные фильтры',
     marketLinksAvailable: 'Ссылки доступны для',
     marketOf: 'из',
+    marketPrev: 'Назад',
+    marketNext: 'Вперёд',
     marketSubdomains: 'субдоменов',
     marketZoneLengthLabel: 'Длина зоны:',
     marketSubdomainLengthLabel: 'Длина субдомена:',
