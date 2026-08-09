@@ -832,4 +832,22 @@ failedToCalculateNFTAddress: 'NFT पता गणना विफल',
   avatarSaved: 'ऑनचेन सेव हो गया',
   avatarSaveError: 'सेव करने में त्रुटि',
 
+  // Footer
+  footerBasedOn: 'आधारित',
+  footerDns: 'DNS',
+  footerTonDnsLine: 'TON DNS',
+  footerSubdomainsLine: 'सबडोमेन',
+  footerMenuAria: 'मेनू',
+  footerCloseAria: 'बंद करें',
+  footerDevelopers: 'डेवलपर्स के लिए',
+  footerCommunityDapps: 'TON DNS Community dapps',
+  footerRepository: 'GitHub रिपॉज़िटरी',
+  footerTelegramChannel: 'Telegram चैनल',
+
+  // CustomDomainSelector (CreateCollectionPage)
+  domainSelectorPlaceholder: 'अपने डोमेन में से चुनें...',
+  domainSelectorSearchPlaceholder: 'डोमेन खोजें...',
+  domainSelectorLoadError: 'डोमेन लोड नहीं हो सके',
+  domainSelectorNoDomains: 'इस वॉलेट में कोई .ton डोमेन नहीं है',
+  domainSelectorNoMatches: 'कुछ नहीं मिला',
 };

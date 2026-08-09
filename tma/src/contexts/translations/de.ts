@@ -841,4 +841,22 @@ failedToCalculateNFTAddress: 'NFT-Adresse konnte nicht berechnet werden',
   zoneInactivatingProcess: 'DEAKTIVIERUNG LÄUFT',
   zoneToggleNoCollectionAddress: 'Diese Zone hat keine Collection-Adresse',
 
+  // Footer
+  footerBasedOn: 'BASIEREND AUF',
+  footerDns: 'DNS',
+  footerTonDnsLine: 'TON DNS',
+  footerSubdomainsLine: 'Subdomains',
+  footerMenuAria: 'Menü',
+  footerCloseAria: 'Schließen',
+  footerDevelopers: 'Für Entwickler',
+  footerCommunityDapps: 'TON DNS Community dapps',
+  footerRepository: 'GitHub-Repository',
+  footerTelegramChannel: 'Telegram-Kanal',
+
+  // CustomDomainSelector (CreateCollectionPage)
+  domainSelectorPlaceholder: 'Aus deinen Domains wählen...',
+  domainSelectorSearchPlaceholder: 'Domain suchen...',
+  domainSelectorLoadError: 'Domains konnten nicht geladen werden',
+  domainSelectorNoDomains: 'Du hast keine .ton-Domains in diesem Wallet',
+  domainSelectorNoMatches: 'Nichts gefunden',
 };

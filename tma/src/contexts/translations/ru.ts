@@ -1043,4 +1043,24 @@ itemFoundSuccessfully: 'Элемент успешно найден',
   zoneInactivatingProcess: 'ДЕАКТИВАЦИЯ В ПРОЦЕССЕ',
   zoneToggleNoCollectionAddress: 'У зоны нет адреса коллекции',
 
-  }
+  
+
+  // Footer
+  footerBasedOn: 'ОСНОВАНО НА',
+  footerDns: 'DNS',
+  footerTonDnsLine: 'TON DNS',
+  footerSubdomainsLine: 'Субдомены',
+  footerMenuAria: 'Меню',
+  footerCloseAria: 'Закрыть',
+  footerDevelopers: 'Разработчикам',
+  footerCommunityDapps: 'TON DNS Community dapps',
+  footerRepository: 'Репозиторий на GitHub',
+  footerTelegramChannel: 'Канал в Telegram',
+
+  // CustomDomainSelector (CreateCollectionPage)
+  domainSelectorPlaceholder: 'Выбрать из своих доменов...',
+  domainSelectorSearchPlaceholder: 'Поиск домена...',
+  domainSelectorLoadError: 'Не удалось загрузить домены',
+  domainSelectorNoDomains: 'У вас нет .ton доменов на этом кошельке',
+  domainSelectorNoMatches: 'Ничего не найдено',
+}

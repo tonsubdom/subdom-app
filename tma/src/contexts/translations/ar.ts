@@ -832,4 +832,22 @@ failedToCalculateNFTAddress: 'فشل في حساب عنوان NFT',
   avatarSaved: 'تم الحفظ على السلسلة',
   avatarSaveError: 'خطأ في الحفظ',
 
+  // Footer
+  footerBasedOn: 'مبني على',
+  footerDns: 'DNS',
+  footerTonDnsLine: 'TON DNS',
+  footerSubdomainsLine: 'نطاقات فرعية',
+  footerMenuAria: 'القائمة',
+  footerCloseAria: 'إغلاق',
+  footerDevelopers: 'للمطورين',
+  footerCommunityDapps: 'TON DNS Community dapps',
+  footerRepository: 'مستودع GitHub',
+  footerTelegramChannel: 'قناة تيليجرام',
+
+  // CustomDomainSelector (CreateCollectionPage)
+  domainSelectorPlaceholder: 'اختر من نطاقاتك...',
+  domainSelectorSearchPlaceholder: 'ابحث عن نطاق...',
+  domainSelectorLoadError: 'تعذر تحميل النطاقات',
+  domainSelectorNoDomains: 'لا توجد نطاقات .ton في هذه المحفظة',
+  domainSelectorNoMatches: 'لم يتم العثور على شيء',
 };

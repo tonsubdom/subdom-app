@@ -830,4 +830,22 @@ failedToCalculateNFTAddress: 'Error al calcular dirección NFT',
   avatarSaved: 'Guardado onchain',
   avatarSaveError: 'Error al guardar',
 
+  // Footer
+  footerBasedOn: 'BASADO EN',
+  footerDns: 'DNS',
+  footerTonDnsLine: 'TON DNS',
+  footerSubdomainsLine: 'Subdominios',
+  footerMenuAria: 'Menú',
+  footerCloseAria: 'Cerrar',
+  footerDevelopers: 'Para desarrolladores',
+  footerCommunityDapps: 'TON DNS Community dapps',
+  footerRepository: 'Repositorio de GitHub',
+  footerTelegramChannel: 'Canal de Telegram',
+
+  // CustomDomainSelector (CreateCollectionPage)
+  domainSelectorPlaceholder: 'Elegir entre tus dominios...',
+  domainSelectorSearchPlaceholder: 'Buscar dominio...',
+  domainSelectorLoadError: 'No se pudieron cargar los dominios',
+  domainSelectorNoDomains: 'No tienes dominios .ton en esta wallet',
+  domainSelectorNoMatches: 'No se encontró nada',
 };

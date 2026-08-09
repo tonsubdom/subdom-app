@@ -828,5 +828,25 @@ failedToCalculateNFTAddress: '计算NFT地址失败',
   avatarSaved: '已保存到链上',
   avatarSaveError: '保存出错',
 
-  }
+  
+
+  // Footer
+  footerBasedOn: '基于',
+  footerDns: 'DNS',
+  footerTonDnsLine: 'TON DNS',
+  footerSubdomainsLine: '子域名',
+  footerMenuAria: '菜单',
+  footerCloseAria: '关闭',
+  footerDevelopers: '开发者',
+  footerCommunityDapps: 'TON DNS Community dapps',
+  footerRepository: 'GitHub 仓库',
+  footerTelegramChannel: 'Telegram 频道',
+
+  // CustomDomainSelector (CreateCollectionPage)
+  domainSelectorPlaceholder: '从您的域名中选择...',
+  domainSelectorSearchPlaceholder: '搜索域名...',
+  domainSelectorLoadError: '加载域名失败',
+  domainSelectorNoDomains: '此钱包中没有 .ton 域名',
+  domainSelectorNoMatches: '未找到结果',
+}
   

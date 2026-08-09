@@ -895,4 +895,24 @@ itemFoundSuccessfully: 'Item found successfully',
   zoneDeactivationQueued: 'Deactivation request sent — the platform will execute it manually',
   zoneInactivatingProcess: 'DEACTIVATING PROCESS',
   zoneToggleNoCollectionAddress: 'This zone has no collection address',
-  }
+  
+
+  // Footer
+  footerBasedOn: 'BASED ON',
+  footerDns: 'DNS',
+  footerTonDnsLine: 'TON DNS',
+  footerSubdomainsLine: 'Subdomains',
+  footerMenuAria: 'Menu',
+  footerCloseAria: 'Close',
+  footerDevelopers: 'For developers',
+  footerCommunityDapps: 'TON DNS Community dapps',
+  footerRepository: 'GitHub repository',
+  footerTelegramChannel: 'Telegram channel',
+
+  // CustomDomainSelector (CreateCollectionPage)
+  domainSelectorPlaceholder: 'Choose from your domains...',
+  domainSelectorSearchPlaceholder: 'Search domain...',
+  domainSelectorLoadError: 'Failed to load domains',
+  domainSelectorNoDomains: 'You have no .ton domains in this wallet',
+  domainSelectorNoMatches: 'Nothing found',
+}

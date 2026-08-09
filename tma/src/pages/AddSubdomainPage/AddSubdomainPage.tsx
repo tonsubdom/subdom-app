@@ -12468,6 +12468,7 @@ import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
 import { useTutorial } from "@/contexts/TutorialContext";
 import { track } from "@/utils/analytics";
 import { sanitizeDomainLabelInput, encodeDomainLabel, decodeDomainLabel } from "@/utils/domainPunycode";
+import { CopyLinkIcon, ShareArrowIcon } from "@/components/icons/CopyShareIcons";
 
 // ====== ТИПЫ ======
 
@@ -13982,9 +13983,12 @@ export const AuctionPage: React.FC<{}> = () => {
                         color: "white",
                         padding: "4px 8px",
                         fontSize: "10px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
-                      📋
+                      <CopyLinkIcon />
                     </IconButton>
                     <IconButton
                       size="s"
@@ -13997,9 +14001,12 @@ export const AuctionPage: React.FC<{}> = () => {
                         color: "white",
                         padding: "4px 8px",
                         fontSize: "10px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
-                      🔗
+                      <ShareArrowIcon />
                     </IconButton>
                   </div>
                 )}
@@ -14216,9 +14223,12 @@ export const AuctionPage: React.FC<{}> = () => {
                         color: "white",
                         padding: "4px 8px",
                         fontSize: "10px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
-                      📋
+                      <CopyLinkIcon />
                     </IconButton>
                     <IconButton
                       size="s"
@@ -14231,9 +14241,12 @@ export const AuctionPage: React.FC<{}> = () => {
                         color: "white",
                         padding: "4px 8px",
                         fontSize: "10px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                       }}
                     >
-                      🔗
+                      <ShareArrowIcon />
                     </IconButton>
                   </div>
                 )}

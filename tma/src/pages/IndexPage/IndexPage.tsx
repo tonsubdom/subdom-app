@@ -13,6 +13,7 @@ import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 import ConnectWalletPrompt from '@/components/ConnectWalletPrompt/ConnectWalletPrompt';
 import {FormattedHeaderDescription} from "../IndexPage/acentHeaderFrases"
 import tsbLogo from "./img/tsb_logo.png";
+import resistorLogo from "./img/resistor_logo.png";
 
 // Блок 3/4 обучалки: какие карточки на этой странице участвуют в туре и
 // какой шаг они закрывают по клику на настоящую кнопку карточки.
@@ -435,14 +436,7 @@ export const IndexPage: React.FC = () => {
       description: t('avatarSecretSubtitle') || 'Заголовок, описание, картинка домена — прямо в DNS',
       icon: (
         <IconWrapper bgColor={isDark ? "#000000" : "#DBEAFE"} isDark={isDark}>
-          <p style={{
-            color: isDark ? '#FFD700' : '#3B82F6',
-            fontFamily: 'monospace',
-            fontSize: '28px',
-            fontWeight: '600'
-          }}>
-            🎭
-          </p>
+          <img src={resistorLogo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         </IconWrapper>
       ),
       cornerIcon: "gear",

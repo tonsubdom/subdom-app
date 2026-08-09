@@ -833,4 +833,22 @@ failedToCalculateNFTAddress: 'NFTアドレスの計算に失敗しました',
   avatarSaved: 'オンチェーンに保存しました',
   avatarSaveError: '保存エラー',
 
+  // Footer
+  footerBasedOn: '基盤',
+  footerDns: 'DNS',
+  footerTonDnsLine: 'TON DNS',
+  footerSubdomainsLine: 'サブドメイン',
+  footerMenuAria: 'メニュー',
+  footerCloseAria: '閉じる',
+  footerDevelopers: '開発者向け',
+  footerCommunityDapps: 'TON DNS Community dapps',
+  footerRepository: 'GitHub リポジトリ',
+  footerTelegramChannel: 'Telegram チャンネル',
+
+  // CustomDomainSelector (CreateCollectionPage)
+  domainSelectorPlaceholder: '自分のドメインから選択...',
+  domainSelectorSearchPlaceholder: 'ドメインを検索...',
+  domainSelectorLoadError: 'ドメインの読み込みに失敗しました',
+  domainSelectorNoDomains: 'このウォレットに .ton ドメインがありません',
+  domainSelectorNoMatches: '見つかりませんでした',
 };

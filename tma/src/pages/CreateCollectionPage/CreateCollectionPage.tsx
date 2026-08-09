@@ -56,6 +56,7 @@ import { TonUtilsEnhanced } from '@/utils/tonUtilsEnhanced';
 import { track } from '@/utils/analytics';
 import { createAuctionUrl } from '@/utils/urlParams';
 import { sanitizeDomainLabelInput, encodeDomainLabel } from '@/utils/domainPunycode';
+import { CustomDomainSelector } from './CustomDomainSelector';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { addOptimisticCollection } from '@/services/blockchainItems/blockchain-items-slice';
 import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-items-utils';
@@ -246,6 +247,9 @@ const partnerAddress = isTestnet
   const { currentTheme } = useTheme();
   const isDark = currentTheme === 'dark';
   const { t } = useLanguage();
+
+  // Переключатель "ввести домен вручную" / "выбрать из своих доменов" на шаге 1
+  const [domainInputMode, setDomainInputMode] = useState<'manual' | 'select'>('manual');
 
   const API_PAYLOAD_URL=import.meta.env.VITE_API_SC_PAYLOAD_URL;
 
@@ -1564,22 +1568,67 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
               />
             )}
 
-            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
-              <Input
-                ref={domainInputRef}
-                placeholder={t('enterDomainName')}
-                value={domainNameDisplay}
-                onChange={(e) => {
-                  const sanitized = sanitizeDomainLabelInput(e.target.value);
-                  setDomainNameDisplay(sanitized);
-                  setDomainName(encodeDomainLabel(sanitized));
-                }}
-                style={{
-                  width: '280px',
-                  borderRadius: '25px',
-                  padding: '10px 15px'
-                }}
-              />
+            <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              {/* Ручной ввод */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', width: '280px' }}>
+                <span
+                  style={{
+                    flexShrink: 0,
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    border: `2px solid ${isDark ? '#FFD700' : '#3B82F6'}`,
+                    background: domainInputMode === 'manual' ? (isDark ? '#FFD700' : '#3B82F6') : 'transparent',
+                    transition: 'background 0.15s ease',
+                  }}
+                />
+                <Input
+                  ref={domainInputRef}
+                  placeholder={t('enterDomainName')}
+                  value={domainNameDisplay}
+                  readOnly={domainInputMode !== 'manual'}
+                  onClick={() => setDomainInputMode('manual')}
+                  onChange={(e) => {
+                    const sanitized = sanitizeDomainLabelInput(e.target.value);
+                    setDomainNameDisplay(sanitized);
+                    setDomainName(encodeDomainLabel(sanitized));
+                  }}
+                  style={{
+                    width: '100%',
+                    borderRadius: '25px',
+                    padding: '10px 15px',
+                    opacity: domainInputMode === 'manual' ? 1 : 0.5,
+                  }}
+                />
+              </Box>
+
+              {/* Выбор из своих доменов */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: '10px', width: '280px' }}>
+                <span
+                  style={{
+                    flexShrink: 0,
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    border: `2px solid ${isDark ? '#FFD700' : '#3B82F6'}`,
+                    background: domainInputMode === 'select' ? (isDark ? '#FFD700' : '#3B82F6') : 'transparent',
+                    transition: 'background 0.15s ease',
+                  }}
+                />
+                <CustomDomainSelector
+                  dnsCollectionAddress={TonDnsAddress}
+                  ownerAddress={address || null}
+                  isTestnet={isTestnet}
+                  selectedDomain={domainInputMode === 'select' ? domainNameDisplay : ''}
+                  onDomainChange={(name) => {
+                    setDomainNameDisplay(name);
+                    setDomainName(encodeDomainLabel(name));
+                  }}
+                  isDark={isDark}
+                  disabled={domainInputMode !== 'select'}
+                  onActivate={() => setDomainInputMode('select')}
+                />
+              </Box>
             </Box>
 
             {/* Отображение цены */}
@@ -2027,7 +2076,7 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
       <Box sx={{
         display: 'flex',
         justifyContent: 'center',
-        py: 4,
+        py: 2,
         px: 2,
         marginBottom: '120px'
       }}>

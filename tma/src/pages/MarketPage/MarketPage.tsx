@@ -779,7 +779,7 @@ const MarketPage: React.FC = () => {
               transition: 'all 0.2s ease'
             }}
           >
-            🎨 {t('marketTabZones')}
+            🔒 {t('marketTabZones')}
           </button>
         </div>
 
@@ -828,9 +828,10 @@ const MarketPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Единая кнопка "Фильтры" — раньше punycode/зона/субдомен/сортировка
-                стояли отдельными кнопками в ряд и съедали высоту, из-за
-                которой картинка NFT в карточке обрезалась снизу. */}
+            {/* Кнопка "Фильтры" + компактная статистика в одну строку —
+                раньше статистика была отдельной широкой полосой ниже,
+                съедала вертикальное место. */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative' }} ref={filtersPanelRef}>
               <button
                 onClick={() => setShowFiltersPanel(!showFiltersPanel)}
@@ -1006,6 +1007,23 @@ const MarketPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Компактная статистика */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '9px', color: colors.textSecondary }}>{t('marketTotal')}</div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text }}>{marketItems.length}</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '9px', color: colors.textSecondary }}>{t('marketFiltered')}</div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: colors.primary }}>{filteredItems.length}</div>
+              </div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '9px', color: colors.textSecondary }}>{t('marketOnSale')}</div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: colors.success }}>{marketItems.filter(item => item.status === 'On Sale').length}</div>
+              </div>
+            </div>
+          </div>
           </div>
 
           {showPunycode && (
@@ -1022,41 +1040,6 @@ const MarketPage: React.FC = () => {
             </div>
           )}
 
-          {/* Статистика */}
-          <div style={{
-            background: colors.cardBg,
-            border: `1px solid ${colors.border}`,
-            borderRadius: '8px',
-            padding: '12px 16px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <div>
-              <div style={{ fontSize: '12px', color: colors.textSecondary }}>
-                {activeTab === 'subdomains' ? t('marketTotal') : t('marketTotal')}
-              </div>
-              <div style={{ fontSize: '20px', fontWeight: '600', color: colors.text }}>
-                {marketItems.length}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: colors.textSecondary }}>
-                {t('marketFiltered')}
-              </div>
-              <div style={{ fontSize: '20px', fontWeight: '600', color: colors.primary }}>
-                {filteredItems.length}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: colors.textSecondary }}>
-                {t('marketOnSale')}
-              </div>
-              <div style={{ fontSize: '20px', fontWeight: '600', color: colors.success }}>
-                {marketItems.filter(item => item.status === 'On Sale').length}
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Контент */}

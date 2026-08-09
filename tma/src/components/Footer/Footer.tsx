@@ -2,25 +2,27 @@ import { useState } from "react";
 import { List, Text } from "@telegram-apps/telegram-ui";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { openLink } from '@telegram-apps/sdk-react';
 import tonFooterSvg from "./ton.svg";
+import tsbLogo from "./logos/tsb_logo.png";
+import tonsiteCatalogLogo from "./logos/tonsitecatalog_logo.png";
+import webdomLogo from "@/assets/webdom_logo.svg";
+import resistorLogo from "./logos/resistor_logo.png";
+import tenKClubLogo from "./logos/10kclub_logo.png";
 
-// Логотипы Community dapps — юзер пришлёт картинки позже (2026-08-09,
-// см. Log.md), пока плейсхолдеры-инициалы того же размера (48px, как
-// иконки в ServiceTabs.tsx менеджера — юзер попросил "не совсем уж
-// маленькие").
 interface CommunityDapp {
   label: string;
   href: string;
-  initials: string;
+  logo: string;
 }
 
 const COMMUNITY_DAPPS: CommunityDapp[] = [
-  { label: 'TonSite Builder', href: 'https://t.me/Ton_site_builder_bot', initials: 'TSB' },
-  { label: 'TonSite Catalog', href: 'tonsite://tonsitecatalog.ton', initials: 'TSC' },
-  { label: 'Webdom', href: 'https://webdom.market', initials: 'WD' },
-  { label: 'Resistance Tools', href: 'https://app.resistance.dog', initials: 'RT' },
-  { label: '10K Club', href: 'https://10kclub.com/', initials: '10K' },
+  { label: 'TonSite Builder', href: 'https://t.me/Ton_site_builder_bot', logo: tsbLogo },
+  { label: 'TonSite Catalog', href: 'tonsite://tonsitecatalog.ton', logo: tonsiteCatalogLogo },
+  { label: 'Webdom', href: 'https://webdom.market', logo: webdomLogo },
+  { label: 'Resistance Tools', href: 'https://app.resistance.dog', logo: resistorLogo },
+  { label: '10K Club', href: 'https://10kclub.com/', logo: tenKClubLogo },
 ];
 
 const GITHUB_REPO_URL = 'https://github.com/tonsubdom/subdom-app';
@@ -28,6 +30,7 @@ const TELEGRAM_CHANNEL_URL = 'https://t.me/subdom_blog';
 
 const Footer = () => {
   const { currentTheme } = useTheme();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const isDark = currentTheme === 'dark';
@@ -86,7 +89,7 @@ const Footer = () => {
               background: isDark ? '#1F2937' : '#FFFFFF',
               border: `1px solid ${accent}`,
               borderRadius: '14px',
-              padding: '16px',
+              padding: '16px 16px calc(16px + env(safe-area-inset-bottom, 0px)) 16px',
               boxShadow: '0 8px 28px rgba(0,0,0,0.4)',
               maxHeight: '70vh',
               overflowY: 'auto',
@@ -96,7 +99,7 @@ const Footer = () => {
                 (затемнённая подложка тоже закрывает по клику). */}
             <button
               onClick={() => setMenuOpen(false)}
-              aria-label="Закрыть"
+              aria-label={t('footerCloseAria')}
               style={{
                 position: 'absolute',
                 top: '10px',
@@ -129,6 +132,7 @@ const Footer = () => {
                 cursor: 'pointer',
                 fontSize: '14px',
                 fontWeight: 600,
+                marginTop: '18px',
                 marginBottom: '14px',
               }}
             >
@@ -139,7 +143,7 @@ const Footer = () => {
             {/* Разработчикам */}
             <div style={{ marginBottom: '14px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: colors.hint, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '6px' }}>
-                Разработчикам
+                {t('footerDevelopers')}
               </div>
               <button
                 onClick={() => handleExternalLink('https://api.subdom.zone/docs')}
@@ -155,12 +159,15 @@ const Footer = () => {
                 <span>@subdom/sdk (npm)</span>
                 <span style={{ color: colors.hint }}>↗</span>
               </button>
+              <div style={{ padding: '0 10px', fontSize: '11px', fontFamily: 'monospace', color: colors.hint, lineHeight: 1.6 }}>
+                yarn add @subdom/sdk<br />npm install @subdom/sdk
+              </div>
             </div>
 
             {/* TON DNS Community dapps */}
             <div style={{ marginBottom: '14px' }}>
               <div style={{ fontSize: '11px', fontWeight: 700, color: colors.hint, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '8px' }}>
-                TON DNS Community dapps
+                {t('footerCommunityDapps')}
               </div>
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-between' }}>
                 {COMMUNITY_DAPPS.map((dapp) => (
@@ -179,8 +186,6 @@ const Footer = () => {
                       minWidth: 0,
                     }}
                   >
-                    {/* Плейсхолдер-инициалы вместо картинки — юзер пришлёт
-                        реальные логотипы отдельно. */}
                     <div
                       style={{
                         width: '48px',
@@ -193,12 +198,10 @@ const Footer = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '13px',
-                        fontWeight: 700,
-                        color: accent,
+                        overflow: 'hidden',
                       }}
                     >
-                      {dapp.initials}
+                      <img src={dapp.logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     </div>
                     <span style={{ fontSize: '10px', color: colors.text, textAlign: 'center', lineHeight: 1.2 }}>{dapp.label}</span>
                   </button>
@@ -211,14 +214,14 @@ const Footer = () => {
               onClick={() => handleExternalLink(GITHUB_REPO_URL)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: 'none', background: 'transparent', color: colors.text, cursor: 'pointer', fontSize: '13px' }}
             >
-              <span>Репозиторий на GitHub</span>
+              <span>{t('footerRepository')}</span>
               <span style={{ color: colors.hint }}>↗</span>
             </button>
             <button
               onClick={() => handleExternalLink(TELEGRAM_CHANNEL_URL)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: 'none', background: 'transparent', color: colors.text, cursor: 'pointer', fontSize: '13px' }}
             >
-              <span>Канал в Telegram — @subdom_blog</span>
+              <span>{t('footerTelegramChannel')} — @subdom_blog</span>
               <span style={{ color: colors.hint }}>↗</span>
             </button>
           </div>
@@ -241,7 +244,7 @@ const Footer = () => {
               color: colors.hint,
               fontWeight: "bold"
             }}>
-              BASED ON
+              {t('footerBasedOn')}
             </Text>
             <img src={tonFooterSvg} alt="TON Logo" style={{ width: "24px", height: "24px" }} />
             <Text style={{
@@ -249,21 +252,21 @@ const Footer = () => {
               color: colors.hint,
               fontWeight: "bold"
             }}>
-              DNS
+              {t('footerDns')}
             </Text>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.1 }}>
             <Text style={{ fontSize: "9px", color: colors.hint }}>{new Date().getFullYear()} ©</Text>
-            <Text style={{ fontSize: "9px", color: colors.hint }}>TON DNS</Text>
-            <Text style={{ fontSize: "9px", color: colors.hint }}>Subdomains</Text>
+            <Text style={{ fontSize: "9px", color: colors.hint }}>{t('footerTonDnsLine')}</Text>
+            <Text style={{ fontSize: "9px", color: colors.hint }}>{t('footerSubdomainsLine')}</Text>
           </div>
 
           {/* Бургер-меню — FAQ, ссылки для разработчиков, Community dapps,
               GitHub, Telegram-канал. */}
           <button
             onClick={() => setMenuOpen((v) => !v)}
-            aria-label="Меню"
+            aria-label={t('footerMenuAria')}
             style={{
               display: 'flex',
               flexDirection: 'column',
