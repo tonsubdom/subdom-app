@@ -344,6 +344,7 @@ export const ruTranslations = {
     marketPrev: 'Назад',
     marketNext: 'Вперёд',
     marketFilters: 'Фильтры',
+    loadingItemsList: 'Загружаем список итемов...',
     marketSortLabel: 'Сортировка',
     marketSubdomains: 'субдоменов',
     marketZoneLengthLabel: 'Длина зоны:',
