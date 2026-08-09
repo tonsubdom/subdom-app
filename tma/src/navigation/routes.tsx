@@ -35,6 +35,7 @@ import { CreateCollectionPage } from '@/pages/CreateCollectionPage/CreateCollect
 import MarketPage from '@/pages/MarketPage/MarketPage';
 import AvatarSecretPage from '@/pages/AvatarSecretPage/AvatarSecretPage';
 import CreateTorrentPage from '@/pages/CreateTorrentPage/CreateTorrentPage';
+import FaqPage from '@/pages/FaqPage/FaqPage';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ProtectedAdminPanel from '@/pages/AdminPanelPage';
 
@@ -119,6 +120,11 @@ export const routes: RouteType[] = [
     Component: ProtectedCreateTorrentPage,
     title: 'Создать торрент',
     protected: true
+  },
+  {
+    path: '/faq',
+    Component: FaqPage,
+    title: 'FAQ'
   },
   {
     path: 'admin',
