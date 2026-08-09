@@ -52,7 +52,7 @@ interface LanguageProviderProps {
 }
 
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('ru');
+  const [language, setLanguage] = useState<Language>('en');
 
   // Загружаем язык из localStorage при инициализации
   useEffect(() => {

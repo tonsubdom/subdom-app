@@ -3247,8 +3247,16 @@ const ProfileWidget: React.FC = () => {
         async (item) => {
           try {
             const bids = await getAuctionBidHistory(item.address, isTestnet);
-            const lastBid = bids[0]?.amount;
-            return lastBid ? Number(lastBid) / 1_000_000_000 : 0;
+            if (bids.length === 0) return 0;
+            // Не bids[0] (последняя по времени) — для уже заклеймленного
+            // субдомена после победной ставки в истории транзакций айтема
+            // идёт ещё claim-транзакция (см. handleClaimSubdomain), которая
+            // становится "последней" и подменяла собой реальную выигрышную
+            // сумму. Берём максимум по сумме среди всех входящих — контракт
+            // по дизайну принимает только растущие ставки, так что максимум
+            // и есть победная ставка независимо от того, что пришло позже.
+            const maxBid = Math.max(...bids.map((b) => Number(b.amount) || 0));
+            return maxBid / 1_000_000_000;
           } catch {
             return 0;
           }
