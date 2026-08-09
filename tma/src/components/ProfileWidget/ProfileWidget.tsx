@@ -2556,7 +2556,13 @@ const loadAuctionsFromBlockchain = async (
 const getSubdomainImage = (subdomain: Subdomain): string | undefined => {
   if (!subdomain.name || !subdomain.zoneId) return undefined;
 
-  const zoneName = String(subdomain.zoneId).replace(".ton", "");
+  // subdomain.zoneId — сырое имя коллекции с ончейна (row.zoneName из
+  // краулера), по дизайну содержит суффикс вида "Worker DNS Domains" (см.
+  // builder-api-master metadata-роуты) — голый .replace(".ton", "") его не
+  // трогал, и грязная строка летела прямо в URL генерации картинки.
+  const zoneName = cleanZoneDisplayName(String(subdomain.zoneId))
+    .toLowerCase()
+    .replace(/\.ton$/i, "");
   const subName = subdomain.name.split(".")[0];
   const itemType: ItemType = (subdomain as any).type || "proxy_subdomain";
 

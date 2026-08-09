@@ -17,6 +17,7 @@ import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { track } from '@/utils/analytics';
 import { decodeDomainForDisplay, isPunycodeEncoded } from '@/utils/domainPunycode';
+import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-items-utils';
 
 // Типы для табов
 type TabType = 'subdomains' | 'nft-wrappers';
@@ -238,7 +239,11 @@ const convertToMarketItem = (item: SimpleEnrichedItem, _isTestnet: boolean): Mar
   }
   // Для субдоменов используем стандартный URL
   else if (itemType === 'proxy_subdomain' && zoneName !== 'unknown' && subdomainName) {
-    imgUri = `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zoneName.slice(0,-4)}/${subdomainName}.png`;
+    // .slice(0,-4) только резал ".ton" — на "грязных" именах вида
+    // "Worker DNS Domains" (сырое имя коллекции с ончейна, без точки)
+    // резало последние 4 символа текста, а не суффикс, оставляя мусор в URL.
+    const cleanZone = cleanZoneDisplayName(zoneName).toLowerCase().replace(/\.ton$/i, '');
+    imgUri = `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${cleanZone}/${subdomainName}.png`;
     console.log('✅ Изображение из API субдоменов:', imgUri);
   } // Для NFT wrapper используем API прокси-метаданных e
 else if (itemType === 'nft_wrapper' && item.domain) {
