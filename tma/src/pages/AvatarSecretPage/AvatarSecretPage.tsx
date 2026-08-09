@@ -18,7 +18,6 @@ import Typography from '@mui/material/Typography';
 import { Page } from '@/components/Page';
 import { ShowSnackbar } from '@/components/ShowSnackbar';
 import { apiService } from '@/services/api';
-import { StepIndicator } from '@/components/StepIndicator/StepIndicator';
 import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-context.tsx';
@@ -652,18 +651,6 @@ export const AvatarSecretPage: React.FC = () => {
                   style={{ position: 'static', width: '100%', maxWidth: 'none', marginBottom: '14px' }}
                 />
               )}
-
-            <StepIndicator
-              current={3}
-              labels={[
-                t('onboardingStepWallet') || 'Кошелёк',
-                t('onboardingStepZone') || 'Зона',
-                t('onboardingStepAvatar') || 'Аватарка',
-              ]}
-              accentColor={colors.accent}
-              mutedColor={colors.border}
-              textColor={colors.text}
-            />
 
             {/* Круглый аватар — видно с первого взгляда, что запись уже есть, до того как что-то менять */}
             <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>

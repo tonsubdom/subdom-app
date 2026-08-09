@@ -54,7 +54,6 @@ import { convertUserFriendlyToRaw, getNftOwnerAddress } from '@/utils/tonUtils';
 import { TransactionService, TransactionResult } from '@/services/transactionService';
 import { TonUtilsEnhanced } from '@/utils/tonUtilsEnhanced';
 import { track } from '@/utils/analytics';
-import { StepIndicator } from '@/components/StepIndicator/StepIndicator';
 import { createAuctionUrl } from '@/utils/urlParams';
 import { sanitizeDomainLabelInput, encodeDomainLabel } from '@/utils/domainPunycode';
 import { useTutorial } from '@/contexts/TutorialContext';
@@ -1776,18 +1775,6 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
         subheader={t('updateTONDNSUtility')}
         description={t('enterDomainNameSteps')}
         style={{ textAlign: 'center', marginRight: '20px', marginLeft: '20px' }}
-      />
-
-      <StepIndicator
-        current={2}
-        labels={[
-          t('onboardingStepWallet') || 'Кошелёк',
-          t('onboardingStepZone') || 'Зона',
-          t('onboardingStepAvatar') || 'Аватарка',
-        ]}
-        accentColor={isDark ? '#FFD700' : '#3B82F6'}
-        mutedColor={isDark ? '#555555' : '#cccccc'}
-        textColor={isDark ? '#ffffff' : '#333333'}
       />
 
       {/* Tabs для выбора режима */}

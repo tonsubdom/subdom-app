@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { miniApp, useSignal } from '@telegram-apps/sdk-react';
+import { isRealTelegramEnv } from '@/mockEnv';
 
 type Theme = 'light' | 'dark';
 
@@ -11,6 +12,17 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+// Ручной выбор темы (кнопка в Header) раньше нигде не персистился — при
+// каждом перезаходе тема пересчитывалась заново из сигнала Telegram/дефолта,
+// игнорируя то, что юзер мог явно переключить в прошлый раз.
+const MANUAL_THEME_STORAGE_KEY = 'subdom:manualTheme';
+
+const getManualTheme = (): Theme | null => {
+  if (typeof window === 'undefined') return null;
+  const stored = localStorage.getItem(MANUAL_THEME_STORAGE_KEY);
+  return stored === 'light' || stored === 'dark' ? stored : null;
+};
+
 interface ThemeProviderProps {
   children: ReactNode;
 }
@@ -19,18 +31,22 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   // Получаем сигнал темы из Telegram Mini App
   const isDarkSignal = useSignal(miniApp.isDark);
 
-  // Определяем начальную тему из Telegram Mini App и класса на documentElement
+  // Определяем начальную тему: ручной выбор юзера (если был) > реальный
+  // Telegram-сигнал (внутри настоящего Telegram доверяем isDarkSignal
+  // полностью — и light, и dark, это подлинная тема юзера) > дефолт dark.
+  // isDarkSignal сам по себе false и "юзер в Telegram выбрал светлую", и
+  // "мы вообще не в Telegram, сигнала нет" — различить это можно только
+  // через isRealTelegramEnv (mockEnv.ts, к этому моменту уже разрешён).
+  // Раньше вне настоящего Telegram-клиента (браузер) статично открывалась
+  // светлая тема просто потому, что isDarkSignal там всегда false.
   const getInitialTheme = (): Theme => {
-    if (typeof window !== 'undefined') {
-      // Приоритет у Telegram Mini App темы
-      if (isDarkSignal) return 'dark';
-      
-      // Затем проверяем класс на documentElement
-      if (document.documentElement.classList.contains('telegram-comments-widget')) {
-        return 'dark';
-      }
+    const manual = getManualTheme();
+    if (manual) return manual;
+
+    if (isRealTelegramEnv) {
+      return isDarkSignal ? 'dark' : 'light';
     }
-    return 'light';
+    return 'dark';
   };
 
   const [currentTheme, setCurrentTheme] = useState<Theme>(getInitialTheme);
@@ -77,8 +93,15 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     return () => observer.disconnect();
   }, []);
 
-  // Слушаем изменения темы в Telegram Mini App
+  // Слушаем изменения темы в Telegram Mini App — только вне ручного
+  // override и только внутри настоящего Telegram (см. getInitialTheme).
+  // Раньше это безусловно применяло isDarkSignal, поэтому даже ручной
+  // toggleTheme/сохранённый выбор тут же перетирался следующим срабатыванием
+  // сигнала (в браузере — тем самым false-дефолтом, откуда и бралась
+  // статично светлая тема).
   useEffect(() => {
+    if (getManualTheme()) return;
+    if (!isRealTelegramEnv) return;
     const newTheme = isDarkSignal ? 'dark' : 'light';
     setCurrentTheme(newTheme);
     applyThemeToDocument(newTheme);
@@ -88,11 +111,17 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
     setCurrentTheme(newTheme);
     applyThemeToDocument(newTheme);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(MANUAL_THEME_STORAGE_KEY, newTheme);
+    }
   };
 
   const setTheme = (theme: Theme) => {
     setCurrentTheme(theme);
     applyThemeToDocument(theme);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(MANUAL_THEME_STORAGE_KEY, theme);
+    }
   };
 
   // Применяем тему при изменении

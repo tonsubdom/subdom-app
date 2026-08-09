@@ -2319,7 +2319,6 @@ import {
 } from "@/services/ownerMetaService";
 import { ShowSnackbar } from "@/components/ShowSnackbar";
 import { LupaButton } from "@/components/LupaButton/LupaButton";
-import { StepIndicator } from "@/components/StepIndicator/StepIndicator";
 import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
 import { useTutorial } from "@/contexts/TutorialContext";
 import { OPEN_PROFILE_WIDGET_EVENT } from "@/components/SearchWidget/SearchWidget";
@@ -4782,18 +4781,6 @@ const ProfileWidget: React.FC = () => {
             >
               {t("onchainProfilePreviewHint") || "Данные из dns_text-записей этого домена"}
             </p>
-
-            <StepIndicator
-              current={3}
-              labels={[
-                t("onboardingStepWallet") || "Кошелёк",
-                t("onboardingStepZone") || "Зона",
-                t("onboardingStepAvatar") || "Аватарка",
-              ]}
-              accentColor={colors.cyberpunk}
-              mutedColor={colors.border}
-              textColor={colors.text}
-            />
 
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
               {[
