@@ -343,6 +343,8 @@ export const ruTranslations = {
     marketOf: 'из',
     marketPrev: 'Назад',
     marketNext: 'Вперёд',
+    marketFilters: 'Фильтры',
+    marketSortLabel: 'Сортировка',
     marketSubdomains: 'субдоменов',
     marketZoneLengthLabel: 'Длина зоны:',
     marketSubdomainLengthLabel: 'Длина субдомена:',

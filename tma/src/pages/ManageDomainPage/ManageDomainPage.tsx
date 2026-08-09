@@ -4730,6 +4730,15 @@ export const ManageDomainPage: FC = () => {
   // Тумблер "показывать сырой punycode вместо юникода" — влияет только на
   // отображение title карточек (enrichedItemToDisplayItem ниже), не на поиск.
   const [showPunycode, setShowPunycode] = useState(false);
+  // Раньше это было useState ВНУТРИ SearchAndFilterSection — вложенная
+  // функция-компонент, объявленная прямо в теле рендера ManageDomainPage,
+  // получает новую identity на каждый ре-рендер родителя (например, клик по
+  // punycode выше), React считает её другим компонентом и полностью
+  // перемонтирует, стирая внутренний showAdvancedFilter в false — снаружи
+  // это выглядело как "при выборе punycode блок фильтров исчезает, помогает
+  // только перезагрузка страницы". Подняли стейт на уровень родителя, где
+  // он переживает любые ре-рендеры.
+  const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [minLength, setMinLength] = useState<number>(0);
   const [maxLength, setMaxLength] = useState<number>(100);
@@ -5686,7 +5695,6 @@ export const ManageDomainPage: FC = () => {
 
   // ====== SEARCH & FILTER ======
   const SearchAndFilterSection = () => {
-    const [showAdvancedFilter, setShowAdvancedFilter] = useState(false);
     return (
       <div
         style={{
@@ -5793,36 +5801,52 @@ export const ManageDomainPage: FC = () => {
             >
               <button
                 onClick={() => setSortOrder("asc")}
+                title={t("shortToLong")}
                 style={{
                   flex: 1,
-                  padding: "8px 10px",
+                  padding: "9px 10px",
                   border: "none",
-                  fontSize: "12px",
-                  fontWeight: "700",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   cursor: "pointer",
                   background: sortOrder === "asc" ? (isDark ? "#FFD700" : "#3B82F6") : "transparent",
-                  color: sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6"),
                   transition: "all 0.2s ease",
                 }}
               >
-                ↑ {t("shortToLong")}
+                {/* Столбики по возрастанию — компактная замена длинному
+                    переводному тексту ("Короткие → Длинные" не влезал в
+                    узкую кнопку ни на одном языке). Перевод остался в title. */}
+                <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                  <rect x="0" y="9" width="4" height="5" rx="1" fill={sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                  <rect x="6" y="6" width="4" height="8" rx="1" fill={sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                  <rect x="12" y="3" width="4" height="11" rx="1" fill={sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                  <path d="M17 1 L20 4 L14 4 Z" fill={sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                </svg>
               </button>
               <button
                 onClick={() => setSortOrder("desc")}
+                title={t("longToShort")}
                 style={{
                   flex: 1,
-                  padding: "8px 10px",
+                  padding: "9px 10px",
                   border: "none",
                   borderLeft: `1px solid ${isDark ? "#FFD700" : "#3B82F6"}`,
-                  fontSize: "12px",
-                  fontWeight: "700",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   cursor: "pointer",
                   background: sortOrder === "desc" ? (isDark ? "#FFD700" : "#3B82F6") : "transparent",
-                  color: sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6"),
                   transition: "all 0.2s ease",
                 }}
               >
-                ↓ {t("longToShort")}
+                {/* Столбики по убыванию — зеркало иконки выше. */}
+                <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                  <rect x="0" y="3" width="4" height="11" rx="1" fill={sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                  <rect x="6" y="6" width="4" height="8" rx="1" fill={sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                  <rect x="12" y="9" width="4" height="5" rx="1" fill={sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                  <path d="M17 13 L20 10 L14 10 Z" fill={sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                </svg>
               </button>
             </div>
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
