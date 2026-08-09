@@ -44,7 +44,15 @@ async function tryLoadFromPlatformCache(
   // упал молча (например опечатка в env). Отдавать пустой Market/селектор
   // зоны реальным юзерам хуже, чем один раз пойти медленным ончейн-путём —
   // считаем это тем же "кэш не готов", что и null/таймаут.
-  if (zoneRows.length === 0) return null;
+  //
+  // wrapperRows проверяем ТОЛЬКО когда zoneRows уже не пуст — секция обёрток
+  // в crawler.ts обёрнута в собственный try/catch отдельно от зон, поэтому
+  // может транзиентно упасть/ещё не пройти первый раз, даже когда зоны уже
+  // давно нашлись. Раньше пустые wrapperRows молча принимались как "правда
+  // 0 обёрток", результат кэшировался на 20 мин (CACHE_TTL_MS) в localStorage,
+  // и живой ончейн-фолбэк (который находит реальные айтемы корректно) не
+  // вызывался вовсе — см. Log.md 2026-08-09.
+  if (zoneRows.length === 0 || wrapperRows.length === 0) return null;
 
   const allCollections = zoneRows.map(platformZoneToSimpleCollection);
   const proxyCollections = allCollections.filter((c) => c.type === 'proxy');

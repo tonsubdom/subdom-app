@@ -345,17 +345,14 @@ const MarketPage: React.FC = () => {
     zoneLengths: [],
     subdomainLengths: []
   });
-  
-  // Состояния для дропдаунов
-  const [showZoneFilter, setShowZoneFilter] = useState<boolean>(false);
-  const [showSubdomainFilter, setShowSubdomainFilter] = useState<boolean>(false);
-  const [showSortDropdown, setShowSortDropdown] = useState<boolean>(false);
-  
-  // Refs для кликов вне дропдаунов
-  const zoneFilterRef = useRef<HTMLDivElement>(null);
-  const subdomainFilterRef = useRef<HTMLDivElement>(null);
-  const sortDropdownRef = useRef<HTMLDivElement>(null);
-  
+  const activeFiltersCount = filters.zoneLengths.length + filters.subdomainLengths.length + (showPunycode ? 1 : 0);
+
+  // Раньше punycode/зона/субдомен/сортировка были отдельными кнопками в ряд —
+  // занимали столько высоты, что картинка NFT в карточке ниже обрезалась
+  // снизу. Свёрнуты в одну кнопку "Фильтры" с общей выпадающей панелью.
+  const [showFiltersPanel, setShowFiltersPanel] = useState<boolean>(false);
+  const filtersPanelRef = useRef<HTMLDivElement>(null);
+
   // Ref для верхнего блока
   const headerRef = useRef<HTMLDivElement>(null);
   
@@ -577,14 +574,8 @@ const MarketPage: React.FC = () => {
   // Обработчик кликов вне дропдаунов
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (zoneFilterRef.current && !zoneFilterRef.current.contains(event.target as Node)) {
-        setShowZoneFilter(false);
-      }
-      if (subdomainFilterRef.current && !subdomainFilterRef.current.contains(event.target as Node)) {
-        setShowSubdomainFilter(false);
-      }
-      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
-        setShowSortDropdown(false);
+      if (filtersPanelRef.current && !filtersPanelRef.current.contains(event.target as Node)) {
+        setShowFiltersPanel(false);
       }
     };
 
@@ -676,23 +667,6 @@ const MarketPage: React.FC = () => {
   //   }
   // };
 
-  // Получение текста для сортировки
-  const getSortText = (sortOption: SortOption): string => {
-    switch (sortOption) {
-      case 'name_asc': return t('marketSortNameAsc');
-      case 'name_desc': return t('marketSortNameDesc');
-      case 'price_asc': return t('marketSortPriceAsc');
-      case 'price_desc': return t('marketSortPriceDesc');
-      case 'date_asc': return t('marketSortDateAsc');
-      case 'date_desc': return t('marketSortDateDesc');
-      case 'zoneLength_asc': return t('marketSortZoneLengthAsc');
-      case 'zoneLength_desc': return t('marketSortZoneLengthDesc');
-      case 'subdomainLength_asc': return t('marketSortSubdomainLengthAsc');
-      case 'subdomainLength_desc': return t('marketSortSubdomainLengthDesc');
-      default: return t('marketSort');
-    }
-  };
-
   // Функция для обновления данных
   const handleRefresh = async () => {
     setLoading(true);
@@ -720,28 +694,28 @@ const MarketPage: React.FC = () => {
       >
         {/* Заголовок - фиксированный вверху */}
         <div style={{ 
-          marginBottom: '24px',
+          marginBottom: '12px',
           // position: 'sticky',
           top: '0',
           zIndex: 100,
           background: colors.background,
-          paddingTop: '10px',
-          paddingBottom: '10px'
+          paddingTop: '4px',
+          paddingBottom: '4px'
         }}>
-          <h1 
+          <h1
             style={{
-              fontSize: '28px',
+              fontSize: '20px',
               fontWeight: '700',
               color: colors.text,
-              margin: '0 0 8px 0',
+              margin: '0 0 2px 0',
               textAlign: 'center',
             }}
           >
             {t('marketTitle')}
           </h1>
-          <p 
+          <p
             style={{
-              fontSize: '16px',
+              fontSize: '13px',
               color: colors.textSecondary,
               textAlign: 'center',
               margin: 0,
@@ -839,308 +813,180 @@ const MarketPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Кнопки фильтров и сортировки */}
-            <div style={{
-              display: 'flex',
-              gap: '8px',
-              flexWrap: 'wrap'
-            }}>
-              {/* Тумблер-фильтр: показывает ТОЛЬКО реально punycode-закодированные
-                  домены (xn--...), в сыром виде — не просто форма отображения. */}
+            {/* Единая кнопка "Фильтры" — раньше punycode/зона/субдомен/сортировка
+                стояли отдельными кнопками в ряд и съедали высоту, из-за
+                которой картинка NFT в карточке обрезалась снизу. */}
+            <div style={{ position: 'relative' }} ref={filtersPanelRef}>
               <button
-                onClick={() => setShowPunycode(!showPunycode)}
-                title="punycode"
+                onClick={() => setShowFiltersPanel(!showFiltersPanel)}
                 style={{
                   padding: '8px 12px',
-                  background: showPunycode ? colors.primary : colors.headerBg,
-                  color: showPunycode ? '#FFFFFF' : colors.text,
+                  background: activeFiltersCount > 0 ? colors.primary : colors.headerBg,
+                  color: activeFiltersCount > 0 ? '#FFFFFF' : colors.text,
                   border: `1px solid ${colors.border}`,
                   borderRadius: '6px',
                   fontSize: '12px',
-                  fontFamily: 'monospace',
                   cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
                 }}
               >
-                punycode
-              </button>
-
-              {/* Фильтр по длине зоны */}
-              <div style={{ position: 'relative' }} ref={zoneFilterRef}>
-                <button
-                  onClick={() => setShowZoneFilter(!showZoneFilter)}
-                  style={{
-                    padding: '8px 12px',
-                    background: filters.zoneLengths.length > 0 ? colors.primary : colors.headerBg,
-                    color: filters.zoneLengths.length > 0 ? '#FFFFFF' : colors.text,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    cursor: 'pointer',
+                <span>🔧 {t('marketFilters') || 'Фильтры'}</span>
+                {activeFiltersCount > 0 && (
+                  <span style={{
+                    background: '#FFFFFF',
+                    color: colors.primary,
+                    borderRadius: '50%',
+                    width: '16px',
+                    height: '16px',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <span>{t('marketZoneFilter')}</span>
-                  {filters.zoneLengths.length > 0 && (
-                    <span style={{
-                      background: '#FFFFFF',
-                      color: colors.primary,
-                      borderRadius: '50%',
-                      width: '16px',
-                      height: '16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '10px',
-                      fontWeight: '600'
-                    }}>
-                      {filters.zoneLengths.length}
-                    </span>
-                  )}
-                </button>
-                
-                {/* Дропдаун фильтра зоны */}
-                {showZoneFilter && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    marginTop: '4px',
-                    background: colors.dropdownBg,
-                    border: `1px solid ${colors.dropdownBorder}`,
-                    borderRadius: '8px',
-                    padding: '12px',
-                    zIndex: 1000,
-                    minWidth: '180px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+                    justifyContent: 'center',
+                    fontSize: '10px',
+                    fontWeight: '600'
                   }}>
-                    <div style={{ 
-                      fontSize: '12px', 
-                      fontWeight: '600', 
-                      marginBottom: '8px',
-                      color: colors.text 
-                    }}>
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+
+              {showFiltersPanel && (
+                <div style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: '4px',
+                  background: colors.dropdownBg,
+                  border: `1px solid ${colors.dropdownBorder}`,
+                  borderRadius: '8px',
+                  padding: '12px',
+                  zIndex: 1000,
+                  minWidth: '240px',
+                  maxHeight: '60vh',
+                  overflowY: 'auto',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '14px'
+                }}>
+                  {/* punycode */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: colors.text, fontFamily: 'monospace' }}>
+                    <input
+                      type="checkbox"
+                      checked={showPunycode}
+                      onChange={() => setShowPunycode(!showPunycode)}
+                      style={{ accentColor: colors.primary }}
+                    />
+                    <span>punycode</span>
+                  </label>
+
+                  {/* Длина зоны */}
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: '600', marginBottom: '8px', color: colors.text }}>
                       {t('marketZoneLengthLabel')}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {[4, 5, 6, 7, 8, 9].map(length => (
-                        <label key={length} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          color: colors.text
-                        }}>
+                        <label key={length} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: colors.text }}>
                           <input
                             type="checkbox"
                             checked={filters.zoneLengths.includes(length)}
                             onChange={() => toggleZoneLengthFilter(length)}
-                            style={{
-                              accentColor: colors.primary
-                            }}
+                            style={{ accentColor: colors.primary }}
                           />
                           <span>{length} {length === 9 ? t('marketCharsPlus') : t('marketChars')}</span>
                         </label>
                       ))}
                     </div>
                   </div>
-                )}
-              </div>
-              {/* Фильтр по длине субдомена */}
-              <div style={{ position: 'relative' }} ref={subdomainFilterRef}>
-                <button
-                  onClick={() => setShowSubdomainFilter(!showSubdomainFilter)}
-                  style={{
-                    padding: '8px 12px',
-                    background: filters.subdomainLengths.length > 0 ? colors.primary : colors.headerBg,
-                    color: filters.subdomainLengths.length > 0 ? '#FFFFFF' : colors.text,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <span>{t('marketSubdomainFilter')}</span>
-                  {filters.subdomainLengths.length > 0 && (
-                    <span style={{
-                      background: '#FFFFFF',
-                      color: colors.primary,
-                      borderRadius: '50%',
-                      width: '16px',
-                      height: '16px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '10px',
-                      fontWeight: '600'
-                    }}>
-                      {filters.subdomainLengths.length}
-                    </span>
-                  )}
-                </button>
-                
-                {/* Дропдаун фильтра субдомена */}
-                {showSubdomainFilter && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    marginTop: '4px',
-                    background: colors.dropdownBg,
-                    border: `1px solid ${colors.dropdownBorder}`,
-                    borderRadius: '8px',
-                    padding: '12px',
-                    zIndex: 1000,
-                    minWidth: '180px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-                  }}>
-                    <div style={{ 
-                      fontSize: '12px', 
-                      fontWeight: '600', 
-                      marginBottom: '8px',
-                      color: colors.text 
-                    }}>
+
+                  {/* Длина субдомена */}
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: '600', marginBottom: '8px', color: colors.text }}>
                       {t('marketSubdomainLengthLabel')}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       {[1, 2, 3, 4, 5, 6].map(length => (
-                        <label key={length} style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          color: colors.text
-                        }}>
+                        <label key={length} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px', color: colors.text }}>
                           <input
                             type="checkbox"
                             checked={filters.subdomainLengths.includes(length)}
                             onChange={() => toggleSubdomainLengthFilter(length)}
-                            style={{
-                              accentColor: colors.primary
-                            }}
+                            style={{ accentColor: colors.primary }}
                           />
                           <span>{length} {length === 6 ? t('marketCharsPlus') : t('marketChars')}</span>
                         </label>
                       ))}
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* Сортировка */}
-              <div style={{ position: 'relative' }} ref={sortDropdownRef}>
-                <button
-                  onClick={() => setShowSortDropdown(!showSortDropdown)}
-                  style={{
-                    padding: '8px 12px',
-                    background: colors.headerBg,
-                    color: colors.text,
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <span>↕️ {getSortText(sortBy)}</span>
-                </button>
-                
-                {/* Дропдаун сортировки — раньше был right:0, кнопка стоит
-                    ближе к левому краю ряда фильтров, дропдаун (min-width
-                    220px) вылезал за левый край экрана и обрезался. left:0
-                    держит его в пределах видимой области. */}
-                {showSortDropdown && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '100%',
-                    left: 0,
-                    marginTop: '4px',
-                    background: colors.dropdownBg,
-                    border: `1px solid ${colors.dropdownBorder}`,
-                    borderRadius: '8px',
-                    padding: '8px 0',
-                    zIndex: 1000,
-                    minWidth: '220px',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
-                  }}>
-                    {[
-                      { value: 'name_asc', label: t('marketSortNameAsc') },
-                      { value: 'name_desc', label: t('marketSortNameDesc') },
-                      { value: 'price_asc', label: t('marketSortPriceAsc') },
-                      { value: 'price_desc', label: t('marketSortPriceDesc') },
-                      { value: 'date_asc', label: t('marketSortDateAsc') },
-                      { value: 'date_desc', label: t('marketSortDateDesc') },
-                      { value: 'zoneLength_asc', label: t('marketSortZoneLengthAsc') },
-                      { value: 'zoneLength_desc', label: t('marketSortZoneLengthDesc') },
-                      { value: 'subdomainLength_asc', label: t('marketSortSubdomainLengthAsc') },
-                      { value: 'subdomainLength_desc', label: t('marketSortSubdomainLengthDesc') }
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => {
-                          setSortBy(option.value as SortOption);
-                          setShowSortDropdown(false);
-                        }}
-                        style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          background: 'transparent',
-                                                    border: 'none',
-                          textAlign: 'left',
-                          fontSize: '12px',
-                          color: sortBy === option.value ? colors.primary : colors.text,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = colors.hover;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        {sortBy === option.value && (
-                          <span style={{ color: colors.primary }}>✓</span>
-                        )}
-                        <span>{option.label}</span>
-                      </button>
-                    ))}
+                  {/* Сортировка */}
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: '600', marginBottom: '8px', color: colors.text }}>
+                      ↕️ {t('marketSortLabel') || 'Сортировка'}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      {[
+                        { value: 'name_asc', label: t('marketSortNameAsc') },
+                        { value: 'name_desc', label: t('marketSortNameDesc') },
+                        { value: 'price_asc', label: t('marketSortPriceAsc') },
+                        { value: 'price_desc', label: t('marketSortPriceDesc') },
+                        { value: 'date_asc', label: t('marketSortDateAsc') },
+                        { value: 'date_desc', label: t('marketSortDateDesc') },
+                        { value: 'zoneLength_asc', label: t('marketSortZoneLengthAsc') },
+                        { value: 'zoneLength_desc', label: t('marketSortZoneLengthDesc') },
+                        { value: 'subdomainLength_asc', label: t('marketSortSubdomainLengthAsc') },
+                        { value: 'subdomainLength_desc', label: t('marketSortSubdomainLengthDesc') }
+                      ].map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setSortBy(option.value as SortOption)}
+                          style={{
+                            width: '100%',
+                            padding: '6px 4px',
+                            background: 'transparent',
+                            border: 'none',
+                            textAlign: 'left',
+                            fontSize: '12px',
+                            color: sortBy === option.value ? colors.primary : colors.text,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                          }}
+                        >
+                          {sortBy === option.value && (
+                            <span style={{ color: colors.primary }}>✓</span>
+                          )}
+                          <span>{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                )}
-              </div>
 
-              {/* Кнопка очистки фильтров */}
-              {(filters.zoneLengths.length > 0 || filters.subdomainLengths.length > 0 || searchQuery) && (
-                <button
-                  onClick={clearFilters}
-                  style={{
-                    padding: '8px 12px',
-                    background: colors.error,
-                    color: '#FFFFFF',
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <span>🗑️ {t('marketClearFilters')}</span>
-                </button>
+                  {(filters.zoneLengths.length > 0 || filters.subdomainLengths.length > 0 || searchQuery) && (
+                    <button
+                      onClick={clearFilters}
+                      style={{
+                        padding: '8px 12px',
+                        background: colors.error,
+                        color: '#FFFFFF',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <span>🗑️ {t('marketClearFilters')}</span>
+                    </button>
+                  )}
+                </div>
               )}
-
-
             </div>
           </div>
 
