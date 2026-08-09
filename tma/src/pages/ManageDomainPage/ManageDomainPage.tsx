@@ -4524,7 +4524,6 @@ import { getNFTCollections, CollectionKey } from "../../store/nft/constants";
 import { RootState } from "../../store/rootReducer";
 
 import {
-  Banner,
   Button,
   Image,
   Input,
@@ -5873,16 +5872,31 @@ export const ManageDomainPage: FC = () => {
   return (
     <Page>
       <div style={{ padding: "10px 10px 180px 10px" }}>
-        {/* Баннер */}
-        <Banner
-          header={isTestnet ? "Testnet" : "Mainnet"}
-          subheader={isTestnet ? "Вы в тестовой сети" : "Вы в основной сети"}
+        {/* Неоновая метка сети — раньше здесь был большой Banner на всю
+            ширину с тем же самым фактом (mainnet/testnet), который занимал
+            место, но не несёт действия. */}
+        <div
           style={{
-            marginBottom: "10px",
-            background: isDark ? "#2d2d2d" : "#f0f0f0",
-            color: isDark ? "white" : "black",
+            position: "fixed",
+            top: "64px",
+            left: "20px",
+            zIndex: 850,
+            padding: "3px 10px",
+            borderRadius: "8px",
+            fontSize: "10px",
+            fontWeight: 700,
+            letterSpacing: "0.5px",
+            textTransform: "uppercase",
+            fontFamily: "monospace",
+            pointerEvents: "none",
+            color: isDark ? "#FFD700" : "#3B82F6",
+            textShadow: isDark
+              ? "0 0 6px rgba(255, 215, 0, 0.8), 0 0 12px rgba(255, 215, 0, 0.4)"
+              : "0 0 6px rgba(59, 130, 246, 0.6), 0 0 12px rgba(59, 130, 246, 0.3)",
           }}
-        />
+        >
+          {isTestnet ? "Testnet" : "Mainnet"}
+        </div>
 
         {/* ModeTabs */}
         <ModeTabs
