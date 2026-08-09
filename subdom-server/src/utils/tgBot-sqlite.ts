@@ -3297,10 +3297,44 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     }
   }
 
-  // --- ОБНОВЛЕНИЕ АВАТАРКИ/КОНТЕНТА ДОМЕНА ---
-  // Сами title/description/picture не публикуются (могут быть большими/
-  // непубличными) — уведомление сообщает только сам факт обновления
-  // ончейн-контента домена, по аналогии с sendDnsRecordUpdatedNotification.
+  // --- ОБНОВЛЕНИЕ АВАТАРКИ/КОНТЕНТА ДОМЕНА (публично) ---
+  // В отличие от sendDnsRecordUpdatedNotification (там значение записи
+  // сознательно скрыто) — title/description/category это публичный профиль,
+  // и так видимый в dApp (см. комментарий у роута /api/notifications/content-updated
+  // в server-sqlite.ts), поэтому наравне с личкой владельцу шлём и в паблик-чаты.
+  async sendPublicContentUpdatedNotification(
+    domain: string,
+    isTestnet: boolean = true,
+    pictureUrl?: string | null,
+    changedFields?: { title?: string; description?: string; category?: string }
+  ): Promise<boolean> {
+    try {
+      const network = this.formatNetwork(isTestnet);
+
+      return await this.sendGroupNotification((lang) => {
+        const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
+        const domainLink = `<a href="tonsite://${domain}">${domain}</a>`;
+        const changedLines = [
+          changedFields?.title ? `${$.fieldTitle}: ${changedFields.title}` : null,
+          changedFields?.description ? `${$.fieldDescription}: ${changedFields.description}` : null,
+          changedFields?.category ? `${$.fieldCategory}: ${changedFields.category}` : null,
+        ].filter(Boolean);
+
+        return `
+${$.contentUpdated.split('{domain}').join(domainLink)}
+
+${network}
+${changedLines.length ? changedLines.join('\n') + '\n' : ''}
+${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
+        `.trim();
+      }, undefined, pictureUrl || this.getNotificationImageUrl(domain, false));
+    } catch (error) {
+      console.error('❌ Ошибка при отправке публичного уведомления об обновлении аватарки/контента:', error);
+      return false;
+    }
+  }
+
+  // --- ОБНОВЛЕНИЕ АВАТАРКИ/КОНТЕНТА ДОМЕНА (в личку владельцу) ---
   async sendContentUpdatedNotification(
     domain: string,
     isTestnet: boolean = true,
@@ -3343,6 +3377,8 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         message,
         inlineKeyboard
       );
+
+      await this.sendPublicContentUpdatedNotification(domain, isTestnet, pictureUrl, changedFields);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления об обновлении аватарки/контента:', error);
     }
