@@ -69,18 +69,11 @@ const ProtectedManageDomainPage = () => (
   </ProtectedRoute>
 );
 
-const ProtectedMarketPage = () => (
-  <ProtectedRoute>
-    <MarketPage />
-  </ProtectedRoute>
-);
-
-const ProtectedAvatarSecretPage = () => (
-  <ProtectedRoute>
-    <AvatarSecretPage />
-  </ProtectedRoute>
-);
-
+// Market и Блокчейн-Профиль сознательно БЕЗ ProtectedRoute — обе страницы
+// read-only без кошелька (Market: список + переход на Getgems, AvatarSecretPage:
+// резолв домена и чтение DNS-текст-записей, гейт на кошелёк уже стоит внутри
+// самого handleSave). Открыты неподключенным юзерам, чтобы был смысл заходить
+// и смотреть, не коннектясь заранее — см. Log.md 2026-08-09.
 const ProtectedCreateTorrentPage = () => (
   <ProtectedRoute>
     <CreateTorrentPage />
@@ -113,15 +106,13 @@ export const routes: RouteType[] = [
   },
   {
     path: '/market',
-    Component: ProtectedMarketPage,
-    title: 'Маркет',
-    protected: true
+    Component: MarketPage,
+    title: 'Маркет'
   },
   {
     path: '/avatar-secret',
-    Component: ProtectedAvatarSecretPage,
-    title: 'Блокчейн-Профиль',
-    protected: true
+    Component: AvatarSecretPage,
+    title: 'Блокчейн-Профиль'
   },
   {
     path: '/create-torrent',
