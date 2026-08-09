@@ -2767,6 +2767,13 @@ const ProfileWidget: React.FC = () => {
   const [tutorialTourStep, setTutorialTourStep] = useState(0);
   const TUTORIAL_TAB_ORDER: Array<'zones' | 'subdomains' | 'auctions' | 'info'> = ['zones', 'subdomains', 'auctions', 'info'];
 
+  // ProfileWidget персистентный (не размонтируется при смене аккаунта) —
+  // без этого сброса локальный индекс суб-тура "вкладки профиля" переживал
+  // переключение кошелька и стартовал новый тур не с первой вкладки.
+  useEffect(() => {
+    setTutorialTourStep(0);
+  }, [address]);
+
   useEffect(() => {
     if (tutorialBlock5Active && tutorialTourStep < TUTORIAL_TAB_ORDER.length) {
       setActiveTab(TUTORIAL_TAB_ORDER[tutorialTourStep]);

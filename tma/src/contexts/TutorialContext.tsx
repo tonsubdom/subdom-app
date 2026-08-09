@@ -81,14 +81,18 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
   const [showRewardReveal, setShowRewardReveal] = useState(false);
 
   useEffect(() => {
-    if (!walletAddress) {
-      setStarted(false);
-      setCompletedSteps([]);
-      setRewardGranted(false);
-      setRewardLength(null);
-      setActive(false);
-      return;
-    }
+    // Сброс синхронно и БЕЗ условия на !walletAddress — раньше при переходе
+    // с адреса A на адрес B прогресс A оставался в стейте до того, как
+    // резолвится fetch для B (гонка), и любой клик/рендер в этом окне видел
+    // чужой прогресс (например, "Пройти обучение" уводило в шаг с профиля
+    // предыдущего аккаунта). См. Log.md 2026-08-09.
+    setStarted(false);
+    setCompletedSteps([]);
+    setRewardGranted(false);
+    setRewardLength(null);
+    setActive(false);
+
+    if (!walletAddress) return;
 
     apiService.setNetwork(isTestnet);
     apiService.getTutorialProgress(walletAddress).then((progress) => {
