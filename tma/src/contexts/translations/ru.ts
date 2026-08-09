@@ -1063,4 +1063,6 @@ itemFoundSuccessfully: 'Элемент успешно найден',
   domainSelectorLoadError: 'Не удалось загрузить домены',
   domainSelectorNoDomains: 'У вас нет .ton доменов на этом кошельке',
   domainSelectorNoMatches: 'Ничего не найдено',
+
+  footerAgentManifest: 'Manifest для AI-агентов',
 }

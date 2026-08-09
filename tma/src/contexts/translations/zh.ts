@@ -848,5 +848,7 @@ failedToCalculateNFTAddress: '计算NFT地址失败',
   domainSelectorLoadError: '加载域名失败',
   domainSelectorNoDomains: '此钱包中没有 .ton 域名',
   domainSelectorNoMatches: '未找到结果',
+
+  footerAgentManifest: 'AI 代理清单',
 }
   

@@ -915,4 +915,6 @@ itemFoundSuccessfully: 'Item found successfully',
   domainSelectorLoadError: 'Failed to load domains',
   domainSelectorNoDomains: 'You have no .ton domains in this wallet',
   domainSelectorNoMatches: 'Nothing found',
+
+  footerAgentManifest: 'AI agent manifest',
 }

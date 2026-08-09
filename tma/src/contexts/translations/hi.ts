@@ -850,4 +850,6 @@ failedToCalculateNFTAddress: 'NFT पता गणना विफल',
   domainSelectorLoadError: 'डोमेन लोड नहीं हो सके',
   domainSelectorNoDomains: 'इस वॉलेट में कोई .ton डोमेन नहीं है',
   domainSelectorNoMatches: 'कुछ नहीं मिला',
+
+  footerAgentManifest: 'AI एजेंट मैनिफ़ेस्ट',
 };

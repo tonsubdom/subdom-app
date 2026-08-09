@@ -850,4 +850,6 @@ failedToCalculateNFTAddress: 'فشل في حساب عنوان NFT',
   domainSelectorLoadError: 'تعذر تحميل النطاقات',
   domainSelectorNoDomains: 'لا توجد نطاقات .ton في هذه المحفظة',
   domainSelectorNoMatches: 'لم يتم العثور على شيء',
+
+  footerAgentManifest: 'بيان وكلاء الذكاء الاصطناعي',
 };

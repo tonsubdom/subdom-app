@@ -601,6 +601,13 @@ const migratePlatformCacheColumns = (db: SqliteDatabase) => {
   addColumnIfMissing('platform_wrappers_cache', 'image', 'image TEXT');
   addColumnIfMissing('platform_wrappers_cache', 'description', 'description TEXT');
   addColumnIfMissing('platform_wrappers_cache', 'lastTransactionLt', 'lastTransactionLt TEXT');
+  // wrapperHolderAddress/dividendOwnerAddress добавлены в CREATE TABLE позже,
+  // чем таблица могла быть впервые создана на проде (volume с nft-domains*.db
+  // переживает редеплой) — crawler.ts ссылается на них в upsertWrapper без
+  // этой миграции, из-за чего апсерт молча падал на "no such column" и
+  // platform_wrappers_cache никогда не наполнялась.
+  addColumnIfMissing('platform_wrappers_cache', 'wrapperHolderAddress', 'wrapperHolderAddress TEXT');
+  addColumnIfMissing('platform_wrappers_cache', 'dividendOwnerAddress', 'dividendOwnerAddress TEXT');
 };
 
 // Все шаги обучалки по всем 5 блокам (см. Log.md/подраздел "обучалка" —

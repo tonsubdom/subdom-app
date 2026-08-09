@@ -848,4 +848,6 @@ failedToCalculateNFTAddress: 'Error al calcular dirección NFT',
   domainSelectorLoadError: 'No se pudieron cargar los dominios',
   domainSelectorNoDomains: 'No tienes dominios .ton en esta wallet',
   domainSelectorNoMatches: 'No se encontró nada',
+
+  footerAgentManifest: 'Manifest para agentes IA',
 };

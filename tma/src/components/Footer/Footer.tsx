@@ -162,6 +162,24 @@ const Footer = () => {
               <div style={{ padding: '0 10px', fontSize: '11px', fontFamily: 'monospace', color: colors.hint, lineHeight: 1.6 }}>
                 yarn add @subdom/sdk<br />npm install @subdom/sdk
               </div>
+              {/* Отдельного ai-plugin.json/manifest-файла для автообнаружения
+                  агентами пока нет — OpenAPI-схема FastAPI (дефолтный путь
+                  /openapi.json) уже описывает все доступные функции и
+                  используется как её замена (см. FaqPage, вопрос про AI-агентов). */}
+              <button
+                onClick={() => handleExternalLink('https://api.subdom.zone/openapi.json')}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: 'none', background: 'transparent', color: colors.text, cursor: 'pointer', fontSize: '13px' }}
+              >
+                <span>{t('footerAgentManifest')}</span>
+                <span style={{ color: colors.hint }}>↗</span>
+              </button>
+              <button
+                onClick={() => handleExternalLink(GITHUB_REPO_URL)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: 'none', background: 'transparent', color: colors.text, cursor: 'pointer', fontSize: '13px' }}
+              >
+                <span>{t('footerRepository')}</span>
+                <span style={{ color: colors.hint }}>↗</span>
+              </button>
             </div>
 
             {/* TON DNS Community dapps */}
@@ -209,14 +227,7 @@ const Footer = () => {
               </div>
             </div>
 
-            {/* GitHub + Telegram канал */}
-            <button
-              onClick={() => handleExternalLink(GITHUB_REPO_URL)}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: 'none', background: 'transparent', color: colors.text, cursor: 'pointer', fontSize: '13px' }}
-            >
-              <span>{t('footerRepository')}</span>
-              <span style={{ color: colors.hint }}>↗</span>
-            </button>
+            {/* Telegram канал */}
             <button
               onClick={() => handleExternalLink(TELEGRAM_CHANNEL_URL)}
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: 'none', background: 'transparent', color: colors.text, cursor: 'pointer', fontSize: '13px' }}
