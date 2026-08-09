@@ -2381,7 +2381,7 @@ const collectionToZone = (col: SimpleCollection): Zone => {
     address: col.address,
     owner: col.creator_address || col.owner_address,
     collectionAddress: col.address,
-    createdAt: col.lastUpdated || new Date().toISOString(),
+    createdAt: col.created_at || col.lastUpdated || new Date().toISOString(),
     subdomainsAmount: col.item_count || 0,
     proxy: col.type === "proxy" ? 1 : 0,
     status: "active",

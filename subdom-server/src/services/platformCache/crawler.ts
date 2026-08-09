@@ -74,13 +74,18 @@ const metaFor = (metadataByAddress: Record<string, any>, address: string) =>
  * оффер-механизм появится ончейн — эту эвристику надо будет заменить на
  * реальное чтение состояния контракта, это отдельная будущая задача.
  */
-async function getCreatorAddress(api: TonCenterAPI, address: string): Promise<string | null> {
+async function getCollectionCreatorAndTime(
+  api: TonCenterAPI,
+  address: string
+): Promise<{ creator: string | null; chainCreatedAt: string | null }> {
   try {
     const response = await api.getFirstTransaction(address);
     const firstTx = response.transactions?.[0];
-    return firstTx?.in_msg?.source ?? null;
+    const creator = firstTx?.in_msg?.source ?? null;
+    const chainCreatedAt = firstTx?.now ? new Date(firstTx.now * 1000).toISOString() : null;
+    return { creator, chainCreatedAt };
   } catch {
-    return null;
+    return { creator: null, chainCreatedAt: null };
   }
 }
 
@@ -102,8 +107,8 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
 
   const upsertZone = db.prepare(`
     INSERT INTO platform_zones_cache
-      (collectionAddress, name, isProxy, wrapperAddress, ownerAddress, image, description, totalItems, status, lastSyncedAt, source)
-    VALUES (@collectionAddress, @name, @isProxy, @wrapperAddress, @ownerAddress, @image, @description, @totalItems, 'active', @lastSyncedAt, 'crawler')
+      (collectionAddress, name, isProxy, wrapperAddress, ownerAddress, image, description, totalItems, status, lastSyncedAt, chainCreatedAt, source)
+    VALUES (@collectionAddress, @name, @isProxy, @wrapperAddress, @ownerAddress, @image, @description, @totalItems, 'active', @lastSyncedAt, @chainCreatedAt, 'crawler')
     ON CONFLICT(collectionAddress) DO UPDATE SET
       name = excluded.name,
       isProxy = excluded.isProxy,
@@ -112,7 +117,8 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
       description = excluded.description,
       totalItems = excluded.totalItems,
       status = 'active',
-      lastSyncedAt = excluded.lastSyncedAt
+      lastSyncedAt = excluded.lastSyncedAt,
+      chainCreatedAt = COALESCE(platform_zones_cache.chainCreatedAt, excluded.chainCreatedAt)
   `);
 
   const upsertSubdomain = db.prepare(`
@@ -168,7 +174,7 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
       await Promise.all(
         batch.map(async (col) => {
           const isProxy = classifier.isProxyCollection(col);
-          const creator = await getCreatorAddress(api, col.address);
+          const { creator, chainCreatedAt } = await getCollectionCreatorAndTime(api, col.address);
           const ownerAddress = creator || col.owner_address || null;
           const colMeta = metaFor(collectionsMetadata, col.address);
           const zoneName: string = colMeta?.name || '';
@@ -210,6 +216,7 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
             description: colMeta?.description || null,
             totalItems: itemsCount,
             lastSyncedAt: nowIso(),
+            chainCreatedAt,
           });
         })
       );

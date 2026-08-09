@@ -28,6 +28,7 @@ export interface PlatformZoneCacheRow {
   totalItems: number;
   status: string;
   lastSyncedAt: string;
+  chainCreatedAt?: string | null;
   siteResolves?: number | null;
 }
 
@@ -130,6 +131,9 @@ export function platformZoneToSimpleCollection(row: PlatformZoneCacheRow): Simpl
     owner_address: row.ownerAddress ?? '',
     creator_address: row.ownerAddress ?? undefined,
     lastUpdated: row.lastSyncedAt,
+    // Реальное время deploy-транзакции коллекции, а не lastSyncedAt (тот
+    // "ползёт" с каждым проходом кроулера) — см. Log.md 2026-08-09.
+    created_at: row.chainCreatedAt ?? undefined,
     siteResolves: row.siteResolves == null ? null : !!row.siteResolves,
   };
 }

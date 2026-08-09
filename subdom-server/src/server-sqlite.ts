@@ -509,6 +509,7 @@ const initializeDatabase = (db: SqliteDatabase) => {
       status TEXT DEFAULT 'active',
       firstSeenAt TEXT DEFAULT CURRENT_TIMESTAMP,
       lastSyncedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      chainCreatedAt TEXT,
       source TEXT DEFAULT 'crawler'
     );
     CREATE INDEX IF NOT EXISTS idx_platform_zones_owner ON platform_zones_cache(ownerAddress);
@@ -583,6 +584,10 @@ const migratePlatformCacheColumns = (db: SqliteDatabase) => {
   // gateway на последнем проходе. См. services/platformCache/crawler.ts.
   addColumnIfMissing('platform_zones_cache', 'siteResolves', 'siteResolves INTEGER');
   addColumnIfMissing('platform_zones_cache', 'siteCheckedAt', 'siteCheckedAt TEXT');
+  // Реальное время создания зоны (timestamp первой/deploy-транзакции коллекции
+  // в toncenter, поле `now`) — отдельно от firstSeenAt (момент INSERT в SQLite)
+  // и lastSyncedAt (обновляется каждый краул). См. Log.md 2026-08-09.
+  addColumnIfMissing('platform_zones_cache', 'chainCreatedAt', 'chainCreatedAt TEXT');
 
   addColumnIfMissing('platform_subdomains_cache', 'zoneName', 'zoneName TEXT');
   addColumnIfMissing('platform_subdomains_cache', 'itemType', 'itemType TEXT');
