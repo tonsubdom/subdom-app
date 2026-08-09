@@ -4123,10 +4123,18 @@ app.post('/api/tutorial/complete', (req, res) => {
       return res.status(404).json({ success: false, message: 'Пользователь не найден' });
     }
 
-    const rewardLengthNum = (4 + Math.floor(Math.random() * 6)) as ZoneLength; // 4..9
-    const rewardLength = String(rewardLengthNum);
     const nftAccessAmount = parseNftAccessAmount(user.nftAccessAmount);
     const totalPaidAttempts = parsePaymentAttemptsCount(user.totalPaidAttempts);
+
+    // Рандомная длина не должна выдавать то, что у юзера уже есть (сознательно
+    // не делаем стек из 2 попыток одной длины) — выбираем среди ещё не занятых
+    // длин, и только если заняты вообще все 6 (маловероятный крайний случай) —
+    // откатываемся на полностью случайный выбор.
+    const ALL_ZONE_LENGTHS: ZoneLength[] = [4, 5, 6, 7, 8, 9];
+    const availableLengths = ALL_ZONE_LENGTHS.filter((len) => !nftAccessAmount.sbt[len]);
+    const candidateLengths = availableLengths.length > 0 ? availableLengths : ALL_ZONE_LENGTHS;
+    const rewardLengthNum = candidateLengths[Math.floor(Math.random() * candidateLengths.length)] as ZoneLength;
+    const rewardLength = String(rewardLengthNum);
     nftAccessAmount.sbt[rewardLengthNum] = true;
     totalPaidAttempts.sbt[rewardLengthNum] = (totalPaidAttempts.sbt[rewardLengthNum] || 0) + 1;
 
