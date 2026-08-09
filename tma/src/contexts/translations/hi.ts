@@ -98,7 +98,7 @@ export const hiTranslations = {
   noNFTsFound: 'इस संग्रह में कोई NFT नहीं मिला',
   manageDNSRecords: 'DNS रिकॉर्ड प्रबंधित करें',
   serviceTabAny: 'सभी',
-  serviceTabZones: 'ज़ोन',
+  serviceTabZones: 'Proxy डोमेन',
   serviceTabSubdomains: 'सबडोमेन',
   name: 'नाम',
   collection: 'संग्रह',

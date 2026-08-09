@@ -98,7 +98,7 @@ export const enTranslations = {
     noNFTsFound: 'No NFTs found in this collection',
     manageDNSRecords: 'Manage DNS Records',
     serviceTabAny: 'Any',
-    serviceTabZones: 'Zones',
+    serviceTabZones: 'Proxy domains',
     serviceTabSubdomains: 'Subdomains',
     name: 'Name',
     collection: 'Collection',

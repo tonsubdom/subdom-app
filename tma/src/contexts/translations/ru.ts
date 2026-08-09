@@ -98,7 +98,7 @@ export const ruTranslations = {
     noNFTsFound: 'NFT не найдены в этой коллекции',
     manageDNSRecords: 'Управление DNS записями',
     serviceTabAny: 'Любые',
-    serviceTabZones: 'Зоны',
+    serviceTabZones: 'Proxy-домены',
     serviceTabSubdomains: 'Субдомены',
     name: 'Имя',
     collection: 'Коллекция',

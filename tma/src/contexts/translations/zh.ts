@@ -98,7 +98,7 @@ export const zhTranslations = {
     noNFTsFound: '在此集合中未找到 NFT',
     manageDNSRecords: '管理 DNS 记录',
     serviceTabAny: '全部',
-    serviceTabZones: '区域',
+    serviceTabZones: 'Proxy 域名',
     serviceTabSubdomains: '子域名',
     name: '名称',
     collection: '集合',

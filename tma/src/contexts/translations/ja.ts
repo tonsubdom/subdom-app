@@ -98,7 +98,7 @@ export const jaTranslations = {
   noNFTsFound: 'このコレクションにNFTが見つかりません',
   manageDNSRecords: 'DNSレコードを管理',
   serviceTabAny: 'すべて',
-  serviceTabZones: 'ゾーン',
+  serviceTabZones: 'Proxyドメイン',
   serviceTabSubdomains: 'サブドメイン',
   name: '名前',
   collection: 'コレクション',

@@ -98,7 +98,7 @@ export const arTranslations = {
   noNFTsFound: 'لم يتم العثور على NFTs في هذه المجموعة',
   manageDNSRecords: 'إدارة سجلات DNS',
   serviceTabAny: 'الكل',
-  serviceTabZones: 'المناطق',
+  serviceTabZones: 'نطاقات Proxy',
   serviceTabSubdomains: 'النطاقات الفرعية',
   name: 'الاسم',
   collection: 'المجموعة',

@@ -340,7 +340,14 @@ const MarketPage: React.FC = () => {
   // этом списке (не влияет на поиск, он и так матчит обе формы).
   const [showPunycode, setShowPunycode] = useState(false);
   const displayDomainName = (name: string) => (showPunycode ? name : decodeDomainForDisplay(name));
-  const [sortBy, setSortBy] = useState<SortOption>('name_asc');
+  // Дефолт — самые короткие сверху (честно к продавцам: короткие имена самые
+  // ценные, они должны быть на виду, а не теряться в алфавитной сортировке).
+  // Субдомены tab сортируем по длине субдомена (это и есть продаваемый
+  // товар), NFT-обёртки — по длине зоны (там продаётся сам домен).
+  const [sortBy, setSortBy] = useState<SortOption>('subdomainLength_asc');
+  // true после того, как юзер САМ выбрал сортировку — тогда не перетираем
+  // его выбор дефолтом при переключении вкладок.
+  const sortManuallyChanged = useRef(false);
   const [filters, setFilters] = useState<FilterState>({
     zoneLengths: [],
     subdomainLengths: []
@@ -417,6 +424,14 @@ const MarketPage: React.FC = () => {
       setSearchQuery(domain);
     }
   }, [launchParams.startParam]);
+
+  // Дефолтная сортировка "самые короткие сверху" зависит от вкладки — на
+  // "Субдомены" короче субдомен ценнее, на "NFT-обёртки" короче сама зона.
+  // Не трогаем, если юзер уже выбрал сортировку сам.
+  useEffect(() => {
+    if (sortManuallyChanged.current) return;
+    setSortBy(activeTab === 'nft-wrappers' ? 'zoneLength_asc' : 'subdomainLength_asc');
+  }, [activeTab]);
 
   // Загрузка данных из blockchain items
   useEffect(() => {
@@ -941,7 +956,10 @@ const MarketPage: React.FC = () => {
                       ].map((option) => (
                         <button
                           key={option.value}
-                          onClick={() => setSortBy(option.value as SortOption)}
+                          onClick={() => {
+                            sortManuallyChanged.current = true;
+                            setSortBy(option.value as SortOption);
+                          }}
                           style={{
                             width: '100%',
                             padding: '6px 4px',

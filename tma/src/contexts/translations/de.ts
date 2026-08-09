@@ -98,7 +98,7 @@ export const deTranslations = {
   noNFTsFound: 'Keine NFTs in dieser Sammlung gefunden',
   manageDNSRecords: 'DNS-Einträge verwalten',
   serviceTabAny: 'Alle',
-  serviceTabZones: 'Zonen',
+  serviceTabZones: 'Proxy-Domains',
   serviceTabSubdomains: 'Subdomains',
   name: 'Name',
   collection: 'Sammlung',
