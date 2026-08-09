@@ -29,7 +29,13 @@ interface TutorialTooltipProps {
   icon?: ReactNode;
 }
 
-export const TutorialTooltip: React.FC<TutorialTooltipProps> = ({ text, buttons, blockLabel, stepLabel, style, icon }) => {
+// blockLabel/stepLabel приняты, но сознательно не рендерятся — 2026-08-09
+// решили упразднить локальные "Блок N/Шаг N" индикаторы у каждого тултипа
+// по коду (они никогда не были синхронизированы друг с другом и с реальным
+// прогрессом — см. TutorialProgressPanel, единственный теперь источник
+// "на каком я шаге"). Пропсы оставлены в типе, чтобы не трогать полтора
+// десятка call site по всему коду ради чисто косметической правки.
+export const TutorialTooltip: React.FC<TutorialTooltipProps> = ({ text, buttons, style, icon }) => {
   const { currentTheme } = useTheme();
   const isDark = currentTheme === 'dark';
 
@@ -62,20 +68,6 @@ export const TutorialTooltip: React.FC<TutorialTooltipProps> = ({ text, buttons,
         ...style,
       }}
     >
-      {(blockLabel || stepLabel) && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
-          {blockLabel && (
-            <span style={{ fontSize: '10px', fontWeight: 700, color: colors.accent, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-              {blockLabel}
-            </span>
-          )}
-          {stepLabel && (
-            <span style={{ fontSize: '11px', fontWeight: 700, color: colors.text, opacity: 0.7 }}>
-              {stepLabel}
-            </span>
-          )}
-        </div>
-      )}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
         {icon}
         <span>{text}</span>
