@@ -12595,6 +12595,10 @@ export const AuctionPage: React.FC<{}> = () => {
   const [manualBidValue, setManualBidValue] = useState("");
   const [sbtPurchaseCompleted, setSbtPurchaseCompleted] = useState(false);
   const [sbtLoading, setSbtLoading] = useState(false);
+  // Блок "Особенности" сворачивается по умолчанию — см. аналогичный фикс
+  // в CreateCollectionPage.tsx, важный контент ниже должен быть виден сразу.
+  const [proxyFeaturesExpanded, setProxyFeaturesExpanded] = useState(false);
+  const [sbtFeaturesExpanded, setSbtFeaturesExpanded] = useState(false);
 
   const tutorial = useTutorial();
   // Блок 2 обучалки: сначала два информационных слайда (что такое SBT-
@@ -13566,23 +13570,32 @@ export const AuctionPage: React.FC<{}> = () => {
               }}
             >
               <div
+                onClick={() => setProxyFeaturesExpanded((v) => !v)}
                 style={{
                   fontWeight: "bold",
                   marginBottom: "10px",
                   textAlign: "center",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
                 }}
               >
                 {t("proxyFeatures")}
+                <span style={{ fontSize: "18px", lineHeight: 1 }}>{proxyFeaturesExpanded ? "−" : "+"}</span>
               </div>
-              <ul style={{ paddingLeft: "20px", margin: 0 }}>
-                <li style={{ marginBottom: "8px" }}>{t("proxyFeature1")}</li>
-                <li style={{ marginBottom: "8px" }}>{t("proxyFeature2")}</li>
-                <li style={{ marginBottom: "8px" }}>{t("proxyFeature3")}</li>
-                <li style={{ marginBottom: "8px" }}>{t("proxyFeature4")}</li>
-                <li style={{ marginBottom: "8px" }}>{t("proxyFeature5")}</li>
-                <li style={{ marginBottom: "8px" }}>{t("proxyFeature6")}</li>
-                <li style={{ marginBottom: "8px" }}>{t("proxyFeature7")}</li>
-              </ul>
+              {proxyFeaturesExpanded && (
+                <ul style={{ paddingLeft: "20px", margin: 0 }}>
+                  <li style={{ marginBottom: "8px" }}>{t("proxyFeature1")}</li>
+                  <li style={{ marginBottom: "8px" }}>{t("proxyFeature2")}</li>
+                  <li style={{ marginBottom: "8px" }}>{t("proxyFeature3")}</li>
+                  <li style={{ marginBottom: "8px" }}>{t("proxyFeature4")}</li>
+                  <li style={{ marginBottom: "8px" }}>{t("proxyFeature5")}</li>
+                  <li style={{ marginBottom: "8px" }}>{t("proxyFeature6")}</li>
+                  <li style={{ marginBottom: "8px" }}>{t("proxyFeature7")}</li>
+                </ul>
+              )}
             </div>
           </Banner>
         </div>
@@ -13625,23 +13638,32 @@ export const AuctionPage: React.FC<{}> = () => {
               }}
             >
               <div
+                onClick={() => setSbtFeaturesExpanded((v) => !v)}
                 style={{
                   fontWeight: "bold",
                   marginBottom: "10px",
                   textAlign: "center",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
                 }}
               >
                 {t("sbtFeatures")}
+                <span style={{ fontSize: "18px", lineHeight: 1 }}>{sbtFeaturesExpanded ? "−" : "+"}</span>
               </div>
-              <ul style={{ paddingLeft: "20px", margin: 0 }}>
-                <li style={{ marginBottom: "8px" }}>{t("sbtFeature1")}</li>
-                <li style={{ marginBottom: "8px" }}>{t("sbtFeature2")}</li>
-                <li style={{ marginBottom: "8px" }}>{t("sbtFeature3")}</li>
-                <li style={{ marginBottom: "8px" }}>{t("sbtFeature4")}</li>
-                <li style={{ marginBottom: "8px" }}>{t("sbtFeature5")}</li>
-                <li style={{ marginBottom: "8px" }}>{t("sbtFeature6")}</li>
-                <li style={{ marginBottom: "8px" }}>{t("sbtFeature7")}</li>
-              </ul>
+              {sbtFeaturesExpanded && (
+                <ul style={{ paddingLeft: "20px", margin: 0 }}>
+                  <li style={{ marginBottom: "8px" }}>{t("sbtFeature1")}</li>
+                  <li style={{ marginBottom: "8px" }}>{t("sbtFeature2")}</li>
+                  <li style={{ marginBottom: "8px" }}>{t("sbtFeature3")}</li>
+                  <li style={{ marginBottom: "8px" }}>{t("sbtFeature4")}</li>
+                  <li style={{ marginBottom: "8px" }}>{t("sbtFeature5")}</li>
+                  <li style={{ marginBottom: "8px" }}>{t("sbtFeature6")}</li>
+                  <li style={{ marginBottom: "8px" }}>{t("sbtFeature7")}</li>
+                </ul>
+              )}
             </div>
           </Banner>
         </div>

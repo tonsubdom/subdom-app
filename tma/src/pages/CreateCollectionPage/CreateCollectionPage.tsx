@@ -254,6 +254,11 @@ const partnerAddress = isTestnet
   // не попал сразу на необратимый Proxy.
   const [activeTab, setActiveTab] = useState<ActiveTab>('sbt');
   const [activeStep, setActiveStep] = useState(0);
+  // Блок "Особенности" сворачивается по умолчанию — раньше длинный список
+  // из 12 пунктов занимал весь экран, и важный контент ниже (форма ввода
+  // домена и т.д.) был виден только после скролла мимо него.
+  const [proxyFeaturesExpanded, setProxyFeaturesExpanded] = useState(false);
+  const [sbtFeaturesExpanded, setSbtFeaturesExpanded] = useState(false);
   // domainName остаётся punycode/ASCII-формой — так его используют все
   // остальные места этого файла (ончейн-лукапы, payload'ы, metadata URI).
   // domainNameDisplay — то, что реально видит и печатает юзер (юникод),
@@ -1814,39 +1819,50 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
               fontSize: '14px',
               textAlign: 'left'
             }}>
-              <div style={{
-                fontWeight: 'bold',
-                marginBottom: '15px',
-                textAlign: 'center',
-                color: isDark ? '2px solid #FFD700' : '2px solid #3B82F6',
-                fontSize: '16px'
-              }}>
+              <div
+                onClick={() => setProxyFeaturesExpanded((v) => !v)}
+                style={{
+                  fontWeight: 'bold',
+                  marginBottom: proxyFeaturesExpanded ? '15px' : 0,
+                  textAlign: 'center',
+                  color: isDark ? '2px solid #FFD700' : '2px solid #3B82F6',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                }}
+              >
                 {t('proxyZoneFeatures')}
+                <span style={{ fontSize: '18px', lineHeight: 1 }}>{proxyFeaturesExpanded ? '−' : '+'}</span>
               </div>
-              <div style={{
-                maxHeight: '300px',
-                overflowY: 'auto',
-                paddingRight: '10px'
-              }}>
-                <ul style={{
-                  paddingLeft: '20px',
-                  margin: 0,
-                  listStyleType: 'decimal'
+              {proxyFeaturesExpanded && (
+                <div style={{
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  paddingRight: '10px'
                 }}>
-                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature9')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature7')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature5')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature6')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature8')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature11')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature12')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature1')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature2')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature3')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature4')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature10')}</li>
-                </ul>
-              </div>
+                  <ul style={{
+                    paddingLeft: '20px',
+                    margin: 0,
+                    listStyleType: 'decimal'
+                  }}>
+                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature9')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature7')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature5')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature6')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature8')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature11')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature12')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature1')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature2')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature3')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature4')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature10')}</li>
+                  </ul>
+                </div>
+              )}
             </div>
           </Card>
           <div className="bannerWrapper" style={{ display: 'flex', width: '100%', justifyContent: 'center', alignItems: 'center' }}>
@@ -1888,39 +1904,50 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
               fontSize: '14px',
               textAlign: 'left'
             }}>
-              <div style={{
-                fontWeight: 'bold',
-                marginBottom: '15px',
-                textAlign: 'center',
-                color: isDark ? '2px solid #FFD700' : '2px solid #3B82F6',
-                fontSize: '16px'
-              }}>
+              <div
+                onClick={() => setSbtFeaturesExpanded((v) => !v)}
+                style={{
+                  fontWeight: 'bold',
+                  marginBottom: sbtFeaturesExpanded ? '15px' : 0,
+                  textAlign: 'center',
+                  color: isDark ? '2px solid #FFD700' : '2px solid #3B82F6',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                }}
+              >
                 {t('sbtZoneFeatures')}
+                <span style={{ fontSize: '18px', lineHeight: 1 }}>{sbtFeaturesExpanded ? '−' : '+'}</span>
               </div>
-              <div style={{
-                maxHeight: '300px',
-                overflowY: 'auto',
-                paddingRight: '10px'
-              }}>
-                <ul style={{
-                  paddingLeft: '20px',
-                  margin: 0,
-                  listStyleType: 'decimal'
+              {sbtFeaturesExpanded && (
+                <div style={{
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  paddingRight: '10px'
                 }}>
-                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature9')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature8')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature6')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature7')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature11')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature12')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature1')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature3')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature2')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature5')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature4')}</li>
-                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature10')}</li>
-                </ul>
-              </div>
+                  <ul style={{
+                    paddingLeft: '20px',
+                    margin: 0,
+                    listStyleType: 'decimal'
+                  }}>
+                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature9')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature8')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature6')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature7')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature11')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature12')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature1')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature3')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature2')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature5')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature4')}</li>
+                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature10')}</li>
+                  </ul>
+                </div>
+              )}
             </div>
           </Card>
           <div className="bannerWrapper" style={{ display: 'flex', width: '100%', justifyContent: 'center', alignItems: 'center' }}>
