@@ -21,45 +21,46 @@ interface StepCopy {
 
 // Отдельно от текстов подсказок над инпутами (те завязаны на конкретный
 // элемент интерфейса) — здесь нужен более общий пересказ "что за шаг", не
-// заточенный под один конкретный виджет на странице.
-const STEP_COPY: Record<TutorialStepId, StepCopy> = {
+// заточенный под один конкретный виджет на странице. Функция (не константа) —
+// нужен доступ к t() для переводов на все языки LanguageContext.
+const getStepCopy = (t: (key: string) => string): Record<TutorialStepId, StepCopy> => ({
   domain_answered: {
-    title: 'Указать домен',
-    description: 'Ответьте, есть ли у вас .ton домен — от этого зависит, с чего начнётся тур.',
+    title: t('tutorialStepTitleDomain') || 'Указать домен',
+    description: t('tutorialStepDescDomain') || 'Ответьте, есть ли у вас .ton домен — от этого зависит, с чего начнётся тур.',
   },
   zone_selected: {
-    title: 'Создать зону',
-    description: 'Задеплойте свою субдоменную .ton-зону — бесплатная попытка уже начислена.',
+    title: t('tutorialStepTitleZone') || 'Создать зону',
+    description: t('tutorialStepDescZone') || 'Задеплойте свою субдоменную .ton-зону — бесплатная попытка уже начислена.',
   },
   subdomain_created: {
-    title: 'Создать субдомен',
-    description: 'Зарегистрируйте первый субдомен внутри только что созданной зоны.',
+    title: t('tutorialStepTitleSubdomain') || 'Создать субдомен',
+    description: t('tutorialStepDescSubdomain') || 'Зарегистрируйте первый субдомен внутри только что созданной зоны.',
   },
   profile_saved: {
-    title: 'Настроить блокчейн-профиль',
-    description: 'Заполните аватар, описание и категорию — это видно в других dApp-приложениях.',
+    title: t('tutorialStepTitleProfile') || 'Настроить блокчейн-профиль',
+    description: t('tutorialStepDescProfile') || 'Заполните аватар, описание и категорию — это видно в других dApp-приложениях.',
   },
   site_visited: {
-    title: 'Создать сайт',
-    description: 'Оформите свой tonsite через конструктор сайтов — пара кликов через бота.',
+    title: t('tutorialStepTitleSite') || 'Создать сайт',
+    description: t('tutorialStepDescSite') || 'Оформите свой tonsite через конструктор сайтов — пара кликов через бота.',
   },
   torrent_created: {
-    title: 'Создать торрент',
-    description: 'Загрузите файлы и получите bagID через TON Storage.',
+    title: t('tutorialStepTitleTorrent') || 'Создать торрент',
+    description: t('tutorialStepDescTorrent') || 'Загрузите файлы и получите bagID через TON Storage.',
   },
   market_toured: {
-    title: 'Посмотреть Маркет',
-    description: 'Загляните на витрину всех зон и субдоменов платформы.',
+    title: t('tutorialStepTitleMarket') || 'Посмотреть Маркет',
+    description: t('tutorialStepDescMarket') || 'Загляните на витрину всех зон и субдоменов платформы.',
   },
   catalog_focused: {
-    title: 'Открыть каталог сайтов',
-    description: 'Откройте TonSite Catalog — каталог всех .ton-сайтов с превью.',
+    title: t('tutorialStepTitleCatalog') || 'Открыть каталог сайтов',
+    description: t('tutorialStepDescCatalog') || 'Откройте TonSite Catalog — каталог всех .ton-сайтов с превью.',
   },
   profile_tabs_toured: {
-    title: 'Изучить вкладки профиля',
-    description: 'Короткий тур по вкладкам виджета профиля: зоны, субдомены, аукционы, инфо.',
+    title: t('tutorialStepTitleProfileTabs') || 'Изучить вкладки профиля',
+    description: t('tutorialStepDescProfileTabs') || 'Короткий тур по вкладкам виджета профиля: зоны, субдомены, аукционы, инфо.',
   },
-};
+});
 
 export const TutorialProgressPanel: React.FC = () => {
   const { currentTheme } = useTheme();
@@ -94,8 +95,9 @@ export const TutorialProgressPanel: React.FC = () => {
     locked: isDark ? '#374151' : '#E5E7EB',
   };
 
+  const stepCopy = getStepCopy(t);
   const viewedStep = TUTORIAL_STEPS[viewedIndex];
-  const copy = STEP_COPY[viewedStep];
+  const copy = stepCopy[viewedStep];
   const remaining = TUTORIAL_STEPS.length - tutorial.completedSteps.length;
 
   const handleExecute = () => {
@@ -127,7 +129,7 @@ export const TutorialProgressPanel: React.FC = () => {
         <span style={{ fontSize: '13px', fontWeight: 700, color: colors.text, lineHeight: 1.3 }}>
           {allDone
             ? (t('tutorialAllStepsDone') || 'Все шаги пройдены 🎉')
-            : (t('tutorialStepsRemaining') || `Ещё ${remaining} ${remaining === 1 ? 'шаг' : 'шагов'} до +1 SBT попытки`)}
+            : `${remaining} ${t('tutorialStepsUntilReward') || 'шагов до +1 SBT попытки'}`}
         </span>
         <button
           onClick={tutorial.closeProgressPanel}
@@ -161,7 +163,7 @@ export const TutorialProgressPanel: React.FC = () => {
               <button
                 onClick={() => clickable && setViewedIndex(i)}
                 disabled={!clickable}
-                title={STEP_COPY[step].title}
+                title={stepCopy[step].title}
                 style={{
                   width: '26px',
                   height: '26px',
@@ -187,7 +189,7 @@ export const TutorialProgressPanel: React.FC = () => {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         <span style={{ fontSize: '13px', fontWeight: 700, color: colors.text }}>
-          {t('step') || 'Шаг'} {viewedIndex + 1}: {copy.title}
+          {t('tutorialStepWord') || 'Шаг'} {viewedIndex + 1}: {copy.title}
         </span>
         <span style={{ fontSize: '12px', lineHeight: 1.5, color: colors.textSecondary }}>
           {copy.description}
