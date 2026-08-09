@@ -831,8 +831,8 @@ const MarketPage: React.FC = () => {
             {/* Кнопка "Фильтры" + компактная статистика в одну строку —
                 раньше статистика была отдельной широкой полосой ниже,
                 съедала вертикальное место. */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative' }} ref={filtersPanelRef}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', padding: '0 4px' }}>
+            <div style={{ position: 'relative', flexShrink: 0 }} ref={filtersPanelRef}>
               <button
                 onClick={() => setShowFiltersPanel(!showFiltersPanel)}
                 style={{
@@ -1008,19 +1008,22 @@ const MarketPage: React.FC = () => {
               )}
             </div>
 
-            {/* Компактная статистика */}
-            <div style={{ display: 'flex', gap: '10px' }}>
+            {/* Статистика — сразу после кнопки "Фильтры", растянута
+                равномерно на всё оставшееся место до правого края (раньше
+                была компактным кластером с большим пустым зазором после
+                кнопки и мелким текстом). */}
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', minWidth: '180px' }}>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '9px', color: colors.textSecondary }}>{t('marketTotal')}</div>
-                <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text }}>{marketItems.length}</div>
+                <div style={{ fontSize: '11px', color: colors.textSecondary }}>{t('marketTotal')}</div>
+                <div style={{ fontSize: '16px', fontWeight: '600', color: colors.text }}>{marketItems.length}</div>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '9px', color: colors.textSecondary }}>{t('marketFiltered')}</div>
-                <div style={{ fontSize: '14px', fontWeight: '600', color: colors.primary }}>{filteredItems.length}</div>
+                <div style={{ fontSize: '11px', color: colors.textSecondary }}>{t('marketFiltered')}</div>
+                <div style={{ fontSize: '16px', fontWeight: '600', color: colors.primary }}>{filteredItems.length}</div>
               </div>
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '9px', color: colors.textSecondary }}>{t('marketOnSale')}</div>
-                <div style={{ fontSize: '14px', fontWeight: '600', color: colors.success }}>{marketItems.filter(item => item.status === 'On Sale').length}</div>
+                <div style={{ fontSize: '11px', color: colors.textSecondary }}>{t('marketOnSale')}</div>
+                <div style={{ fontSize: '16px', fontWeight: '600', color: colors.success }}>{marketItems.filter(item => item.status === 'On Sale').length}</div>
               </div>
             </div>
           </div>

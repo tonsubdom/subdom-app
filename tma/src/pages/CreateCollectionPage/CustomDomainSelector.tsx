@@ -42,6 +42,7 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
   const [domains, setDomains] = useState<OwnedDomain[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
   const loadedForRef = useRef<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,17 +84,31 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
     setIsLoading(true);
     setError(null);
     const api = new TonCenterAPI(isTestnet);
-    api
-      .getItemsByCollectionAndOwner(dnsCollectionAddress, ownerAddress, 200)
-      .then((res) => {
+    const PAGE_SIZE = 200;
+
+    // toncenter отдаёт максимум PAGE_SIZE итемов за раз независимо от того,
+    // сколько реально есть у кошелька (у юзера бывает 520+ доменов) —
+    // догружаем страницы, пока очередная не вернула меньше PAGE_SIZE.
+    const loadAllPages = async (): Promise<OwnedDomain[]> => {
+      const all: OwnedDomain[] = [];
+      let offset = 0;
+      for (;;) {
+        const res = await api.getItemsByCollectionAndOwner(dnsCollectionAddress, ownerAddress, PAGE_SIZE, offset);
         const items = (res?.nft_items || [])
           .map((item: any) => ({
             name: item?.content?.domain as string | undefined,
             address: item?.address as string,
           }))
           .filter((d): d is OwnedDomain => !!d.name);
-        setDomains(items);
-      })
+        all.push(...items);
+        if (items.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
+      }
+      return all;
+    };
+
+    loadAllPages()
+      .then(setDomains)
       .catch((err) => {
         console.error("Не удалось загрузить домены кошелька:", err);
         setError(t("domainSelectorLoadError") || "Не удалось загрузить домены");
@@ -104,10 +119,18 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
   const formatDomainLabel = (fullName: string) => fullName.replace(/\.ton$/i, "");
 
   const filteredDomains = useMemo(() => {
-    if (!searchQuery.trim()) return domains;
     const query = searchQuery.toLowerCase().replace(/^\./, "");
-    return domains.filter((d) => d.name.toLowerCase().includes(query));
-  }, [domains, searchQuery]);
+    const filtered = query.trim()
+      ? domains.filter((d) => d.name.toLowerCase().includes(query))
+      : domains;
+    if (!sortOrder) return filtered;
+    const sorted = [...filtered].sort((a, b) => a.name.length - b.name.length);
+    return sortOrder === "asc" ? sorted : sorted.reverse();
+  }, [domains, searchQuery, sortOrder]);
+
+  const cycleSortOrder = () => {
+    setSortOrder((prev) => (prev === null ? "asc" : prev === "asc" ? "desc" : null));
+  };
 
   const handleSelect = (domainFullName: string) => {
     onDomainChange(formatDomainLabel(domainFullName));
@@ -182,7 +205,7 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
             flexDirection: "column",
           }}
         >
-          <div style={{ padding: "10px", borderBottom: `1px solid ${isDark ? "#333" : "#f0f0f0"}`, background: colors.primary }}>
+          <div style={{ padding: "10px", borderBottom: `1px solid ${isDark ? "#333" : "#f0f0f0"}`, background: colors.primary, display: "flex", gap: "8px" }}>
             <input
               ref={inputRef}
               type="text"
@@ -190,7 +213,8 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t("domainSelectorSearchPlaceholder") || "Поиск домена..."}
               style={{
-                width: "100%",
+                flex: 1,
+                minWidth: 0,
                 padding: "8px 10px",
                 borderRadius: "6px",
                 border: "1px solid #ddd",
@@ -202,6 +226,32 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
               }}
               onClick={(e) => e.stopPropagation()}
             />
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); cycleSortOrder(); }}
+              title={
+                sortOrder === "asc"
+                  ? (t("domainSelectorSortAsc") || "Сначала короткие")
+                  : sortOrder === "desc"
+                  ? (t("domainSelectorSortDesc") || "Сначала длинные")
+                  : (t("domainSelectorSortDefault") || "Без сортировки")
+              }
+              style={{
+                flexShrink: 0,
+                width: "36px",
+                height: "36px",
+                borderRadius: "6px",
+                border: "1px solid #ddd",
+                background: sortOrder ? "rgba(255,255,255,0.85)" : "white",
+                cursor: "pointer",
+                fontSize: "15px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {sortOrder === "asc" ? "↑" : sortOrder === "desc" ? "↓" : "↕"}
+            </button>
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", maxHeight: "260px", background: isDark ? "#1A1A1A" : "white" }}>
