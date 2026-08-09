@@ -6,11 +6,13 @@
 // места остановки (см. TutorialContext.openEntry).
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTonWallet } from '@tonconnect/ui-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { LengthRevealCard } from '@/components/PromoRevealModal/LengthRevealCard';
 import { TutorialProgressPanel } from '@/components/Tutorial/TutorialProgressPanel';
+import ConnectWalletPrompt from '@/components/ConnectWalletPrompt/ConnectWalletPrompt';
 
 const WIDGET_SIZE = 60;
 
@@ -20,7 +22,9 @@ export const TutorialEntryWidget: React.FC = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const tutorial = useTutorial();
+  const wallet = useTonWallet();
   const [showCompletedHint, setShowCompletedHint] = useState(false);
+  const [showConnectPrompt, setShowConnectPrompt] = useState(false);
 
   const colors = {
     text: isDark ? '#F9FAFB' : '#1F2937',
@@ -33,6 +37,13 @@ export const TutorialEntryWidget: React.FC = () => {
   };
 
   const handleStart = async () => {
+    // startTutorial() молча return'ится без кошелька (нет walletAddress) —
+    // раньше клик по "Старт" без коннекта просто ничего не делал.
+    if (!wallet) {
+      tutorial.closeIntroModal();
+      setShowConnectPrompt(true);
+      return;
+    }
     // startTutorial() сам открывает виджет профиля (первый незавершённый
     // шаг всегда "профиль" при свежем старте) — навигация не нужна здесь.
     await tutorial.startTutorial();
@@ -170,6 +181,36 @@ export const TutorialEntryWidget: React.FC = () => {
       )}
 
       <TutorialProgressPanel />
+
+      {showConnectPrompt && (
+        <div
+          onClick={() => setShowConnectPrompt(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 1001,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: colors.panelBg,
+              border: `1px solid ${colors.border}`,
+              borderRadius: '16px',
+              maxWidth: '320px',
+              width: '100%',
+              boxShadow: '0 8px 28px rgba(0,0,0,0.4)',
+            }}
+          >
+            <ConnectWalletPrompt subtitle={t('connectWalletFirstFromIndexSubtitle') || 'Этот раздел доступен только подключённым пользователям — подключите кошелёк, чтобы продолжить.'} />
+          </div>
+        </div>
+      )}
 
       {tutorial.showRewardReveal && tutorial.rewardLength && (
         <LengthRevealCard

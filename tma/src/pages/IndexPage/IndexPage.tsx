@@ -470,6 +470,7 @@ export const IndexPage: React.FC = () => {
       actionText: t('open'),
       to: "https://t.me/Ton_site_builder_bot",
       tutorialId: 'site',
+      exemptFromWalletGate: true,
     },
     {
       title: t('createTorrentTitle') || 'Создать торрент',
@@ -520,6 +521,7 @@ export const IndexPage: React.FC = () => {
       actionText: t('open'),
       to: "tonsite://tonsitecatalog.ton",
       tutorialId: 'catalog',
+      exemptFromWalletGate: true,
     },
     {
       title: t('marketTitle'),
