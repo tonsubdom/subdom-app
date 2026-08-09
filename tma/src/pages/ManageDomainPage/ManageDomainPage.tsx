@@ -5769,46 +5769,9 @@ export const ManageDomainPage: FC = () => {
             ⚠️ {t("marketPunycodeWarning") || "Punycode (xn--...) официально не поддерживается большинством сервисов и отображается в нечитаемом формате — здесь показаны только домены с реальным punycode-именем."}
           </div>
         )}
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          <Button
-            onClick={() => setSortOrder("asc")}
-            style={{
-              padding: "8px 12px",
-              borderRadius: "8px",
-              fontSize: "12px",
-              fontWeight: "600",
-              background:
-                sortOrder === "asc"
-                  ? "#4CAF50"
-                  : isDark
-                  ? "#3d3d3d"
-                  : "#e0e0e0",
-              color:
-                sortOrder === "asc" ? "white" : isDark ? "#cccccc" : "#666666",
-            }}
-          >
-            {t("shortToLong")}
-          </Button>
-          <Button
-            onClick={() => setSortOrder("desc")}
-            style={{
-              padding: "8px 12px",
-              borderRadius: "8px",
-              fontSize: "12px",
-              fontWeight: "600",
-              background:
-                sortOrder === "desc"
-                  ? "#4CAF50"
-                  : isDark
-                  ? "#3d3d3d"
-                  : "#e0e0e0",
-              color:
-                sortOrder === "desc" ? "white" : isDark ? "#cccccc" : "#666666",
-            }}
-          >
-            {t("longToShort")}
-          </Button>
-        </div>
+        {/* Сортировка + мин/макс длина раньше были отдельным всегда-видимым
+            рядом кнопок над картой NFT — первая карточка списка обрезалась
+            снизу. Свёрнуты внутрь той же панели "Фильтры", что и было. */}
         {showAdvancedFilter && (
           <div
             style={{
@@ -5820,6 +5783,48 @@ export const ManageDomainPage: FC = () => {
               borderRadius: "8px",
             }}
           >
+            <div
+              style={{
+                display: "flex",
+                borderRadius: "8px",
+                overflow: "hidden",
+                border: `1px solid ${isDark ? "#FFD700" : "#3B82F6"}`,
+              }}
+            >
+              <button
+                onClick={() => setSortOrder("asc")}
+                style={{
+                  flex: 1,
+                  padding: "8px 10px",
+                  border: "none",
+                  fontSize: "12px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  background: sortOrder === "asc" ? (isDark ? "#FFD700" : "#3B82F6") : "transparent",
+                  color: sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6"),
+                  transition: "all 0.2s ease",
+                }}
+              >
+                ↑ {t("shortToLong")}
+              </button>
+              <button
+                onClick={() => setSortOrder("desc")}
+                style={{
+                  flex: 1,
+                  padding: "8px 10px",
+                  border: "none",
+                  borderLeft: `1px solid ${isDark ? "#FFD700" : "#3B82F6"}`,
+                  fontSize: "12px",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  background: sortOrder === "desc" ? (isDark ? "#FFD700" : "#3B82F6") : "transparent",
+                  color: sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6"),
+                  transition: "all 0.2s ease",
+                }}
+              >
+                ↓ {t("longToShort")}
+              </button>
+            </div>
             <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
               <span
                 style={{
