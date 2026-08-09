@@ -14,7 +14,7 @@ export const deTranslations = {
 
   // IndexPage
   mint: 'Prägen',
-  addSubdomZone: 'Subdom-Zone hinzufügen',
+  addSubdomZone: 'Zone hinzufügen',
   createSubdomain: 'Subdomain erstellen',
   createCollection: 'Eine Sammlung von Subdomains erstellen',
   addSubdomainToCollection: 'Eine Subdomain zu einer Sammlung hinzufügen',
@@ -719,6 +719,7 @@ failedToCalculateNFTAddress: 'NFT-Adresse konnte nicht berechnet werden',
   tutorialChatHint: 'Bei Problemen — schreib in den Chat, dort wird dir geholfen.',
   close: 'Schließen',
   createSiteButton: 'Website erstellen',
+  tonsiteCatalogTitle: '.ton-Website-Katalog',
   tonsiteCatalogSubtitle: 'Alle TON-Sites an einem Ort — nach Kategorie, mit Vorschau',
   createSiteCardSubtitle: 'Website-Baukasten für Domains — erstelle deine tonsite in wenigen Klicks',
   createTorrentTitle: 'Torrent erstellen',

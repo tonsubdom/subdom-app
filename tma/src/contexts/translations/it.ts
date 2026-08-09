@@ -14,7 +14,7 @@ export const itTranslations = {
 
   // IndexPage
   mint: 'Conia',
-  addSubdomZone: 'Aggiungi zona Subdom',
+  addSubdomZone: 'Aggiungi zona',
   createSubdomain: 'Crea sottodominio',
   createCollection: 'Crea una collezione di sottodomini',
   addSubdomainToCollection: 'Aggiungi un sottodominio a una collezione',
@@ -707,6 +707,7 @@ failedToCalculateNFTAddress: 'Errore calcolo indirizzo NFT',
   tutorialChatHint: 'In caso di problemi — scrivi in chat, qualcuno ti aiuterà.',
   close: 'Chiudi',
   createSiteButton: 'Crea sito',
+  tonsiteCatalogTitle: 'Catalogo dei siti .ton',
   tonsiteCatalogSubtitle: 'Tutti i siti TON in un unico posto — per categoria, con anteprime',
   createSiteCardSubtitle: 'Costruttore di siti per domini — crea il tuo tonsite in pochi clic',
   createTorrentTitle: 'Crea torrent',

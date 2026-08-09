@@ -510,7 +510,7 @@ export const IndexPage: React.FC = () => {
       to: "/create-torrent",
     },
     {
-      title: "TonSite Catalog",
+      title: t('tonsiteCatalogTitle') || "Каталог .ton-сайтов",
       description: t('tonsiteCatalogSubtitle') || "Все TON-сайты в одном месте — по категориям и с превью",
       icon: (
         <IconWrapper bgColor={isDark ? "#374151" : "#DBEAFE"} isDark={isDark}>

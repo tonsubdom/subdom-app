@@ -14,7 +14,7 @@ export const hiTranslations = {
 
   // IndexPage
   mint: 'मिंट',
-  addSubdomZone: 'सबडोम जोन जोड़ें',
+  addSubdomZone: 'ज़ोन जोड़ें',
   createSubdomain: 'सबडोमेन बनाएं',
   createCollection: 'सबडोमेन का संग्रह बनाएं',
   addSubdomainToCollection: 'संग्रह में सबडोमेन जोड़ें',
@@ -717,6 +717,7 @@ failedToCalculateNFTAddress: 'NFT पता गणना विफल',
   tutorialChatHint: 'यदि कोई समस्या हो — चैट में लिखें, आपकी मदद की जाएगी।',
   close: 'बंद करें',
   createSiteButton: 'साइट बनाएं',
+  tonsiteCatalogTitle: '.ton साइट कैटलॉग',
   tonsiteCatalogSubtitle: 'सभी TON साइटें एक जगह — श्रेणी अनुसार, प्रीव्यू के साथ',
   createSiteCardSubtitle: 'डोमेन के लिए साइट बिल्डर — कुछ ही क्लिक में अपनी tonsite बनाएं',
   createTorrentTitle: 'टॉरेंट बनाएं',

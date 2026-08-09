@@ -14,7 +14,7 @@ export const ruTranslations = {
 
     // IndexPage
     mint: 'Минт',
-    addSubdomZone: 'Добавить Subdom Zone',
+    addSubdomZone: 'Добавить зону',
     createSubdomain: 'Создать субдомен',
     createCollection: 'Создать коллекцию субдоменов',
     addSubdomainToCollection: 'Добавить субдомен в коллекцию',
@@ -919,7 +919,8 @@ itemFoundSuccessfully: 'Элемент успешно найден',
   tutorialRewardSubtitle: 'В награду тебе подарена ещё одна бесплатная попытка создать SBT-зону:',
   close: 'Закрыть',
   createSiteButton: 'Создать сайт',
-  tonsiteCatalogSubtitle: 'Все TON-сайты в одном месте — по категориям и с превью',
+  tonsiteCatalogTitle: 'Каталог .ton-сайтов',
+  tonsiteCatalogSubtitle: 'Все TON-сайты в одном месте — по категориям и с предпросмотром',
   createSiteCardSubtitle: 'Конструктор сайтов для доменов — оформи свой tonsite за пару кликов',
   createTorrentTitle: 'Создать торрент',
   createTorrentCardSubtitle: 'Загрузи файлы, выбери провайдера TON Storage — получи bagID',

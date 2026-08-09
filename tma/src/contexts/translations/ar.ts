@@ -14,7 +14,7 @@ export const arTranslations = {
 
   // IndexPage
   mint: 'سك',
-  addSubdomZone: 'إضافة منطقة Subdom',
+  addSubdomZone: 'إضافة منطقة',
   createSubdomain: 'إنشاء نطاق فرعي',
   createCollection: 'إنشاء مجموعة من النطاقات الفرعية',
   addSubdomainToCollection: 'إضافة نطاق فرعي إلى المجموعة',
@@ -717,6 +717,7 @@ failedToCalculateNFTAddress: 'فشل في حساب عنوان NFT',
   tutorialChatHint: 'إذا واجهت أي مشكلة — اكتب في الدردشة وسيساعدك أحدهم.',
   close: 'إغلاق',
   createSiteButton: 'إنشاء موقع',
+  tonsiteCatalogTitle: 'كتالوج مواقع .ton',
   tonsiteCatalogSubtitle: 'كل مواقع TON في مكان واحد — حسب الفئة، مع معاينات',
   createSiteCardSubtitle: 'أداة إنشاء المواقع للنطاقات — أنشئ موقع tonsite الخاص بك بنقرات قليلة',
   createTorrentTitle: 'إنشاء تورنت',

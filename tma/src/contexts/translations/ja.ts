@@ -14,7 +14,7 @@ export const jaTranslations = {
 
   // IndexPage
   mint: 'ミント',
-  addSubdomZone: 'Subdom ゾーンを追加',
+  addSubdomZone: 'ゾーンを追加',
   createSubdomain: 'サブドメインを作成',
   createCollection: 'サブドメインのコレクションを作成',
   addSubdomainToCollection: 'コレクションにサブドメインを追加',
@@ -718,6 +718,7 @@ failedToCalculateNFTAddress: 'NFTアドレスの計算に失敗しました',
   tutorialChatHint: '問題が発生した場合はチャットにメッセージを送ってください。サポートが対応します。',
   close: '閉じる',
   createSiteButton: 'サイトを作成',
+  tonsiteCatalogTitle: '.tonサイトカタログ',
   tonsiteCatalogSubtitle: 'すべてのTONサイトが一箇所に — カテゴリー別、プレビュー付き',
   createSiteCardSubtitle: 'ドメイン用サイトビルダー — 数クリックで自分のtonsiteを作成',
   createTorrentTitle: 'トレントを作成',

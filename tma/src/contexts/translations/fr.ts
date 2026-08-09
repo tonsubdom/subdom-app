@@ -14,7 +14,7 @@ export const frTranslations = {
 
   // IndexPage
   mint: 'Frapper',
-  addSubdomZone: 'Ajouter une zone Subdom',
+  addSubdomZone: 'Ajouter une zone',
   createSubdomain: 'Créer un sous-domaine',
   createCollection: 'Créer une collection de sous-domaines',
   addSubdomainToCollection: 'Ajouter un sous-domaine à une collection',
@@ -716,6 +716,7 @@ failedToCalculateNFTAddress: 'Échec du calcul de l\'adresse NFT',
   tutorialChatHint: 'En cas de problème — écrivez dans le chat, on vous aidera.',
   close: 'Fermer',
   createSiteButton: 'Créer un site',
+  tonsiteCatalogTitle: 'Catalogue des sites .ton',
   tonsiteCatalogSubtitle: 'Tous les sites TON au même endroit — par catégorie, avec aperçus',
   createSiteCardSubtitle: 'Constructeur de sites pour domaines — crée ton tonsite en quelques clics',
   createTorrentTitle: 'Créer un torrent',

@@ -14,7 +14,7 @@ export const enTranslations = {
 
     // IndexPage
     mint: 'Mint',
-    addSubdomZone: 'Add Subdom Zone',
+    addSubdomZone: 'Add Zone',
     createSubdomain: 'Create Subdomain',
     createCollection: 'Create a collection of subdomains',
     addSubdomainToCollection: 'Add a subdomain to a collection',
@@ -773,6 +773,7 @@ itemFoundSuccessfully: 'Item found successfully',
   tutorialChatHint: 'If you run into any issues — write to the chat, someone will help you out.',
   close: 'Close',
   createSiteButton: 'Create site',
+  tonsiteCatalogTitle: '.ton Sites Catalog',
   tonsiteCatalogSubtitle: 'All TON sites in one place — by category, with previews',
   createSiteCardSubtitle: 'Site builder for domains — set up your tonsite in a couple of clicks',
   createTorrentTitle: 'Create torrent',

@@ -14,7 +14,7 @@ export const zhTranslations = {
 
     // IndexPage
     mint: '铸造',
-    addSubdomZone: '添加 Subdom 区域',
+    addSubdomZone: '添加区域',
     createSubdomain: '创建子域名',
     createCollection: '创建子域名集合',
     addSubdomainToCollection: '将子域名添加到集合',
@@ -713,6 +713,7 @@ failedToCalculateNFTAddress: '计算NFT地址失败',
   tutorialChatHint: '如遇到任何问题 — 请在聊天中留言，会有人为您提供帮助。',
   close: '关闭',
   createSiteButton: '创建网站',
+  tonsiteCatalogTitle: '.ton 网站目录',
   tonsiteCatalogSubtitle: '所有 TON 网站汇聚一处 — 按分类浏览，附预览图',
   createSiteCardSubtitle: '域名建站工具 — 几步即可搭建你的 tonsite',
   createTorrentTitle: '创建种子',
