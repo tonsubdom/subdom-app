@@ -1089,7 +1089,13 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
         });
 
         if (txResult.success && txResult.hash) {
-          const collectionAddr = result.messages[0]?.address || '';
+          // Raw-формат обязателен: platform_zones_cache ключуется по
+          // collectionAddress строкой "как есть" (ON CONFLICT), а краулер
+          // пишет туда адрес в raw-формате (in_msg.source тонцентра). Если
+          // сюда попадёт userfriendly-строка того же адреса — в кэше
+          // появится вторая "осиротевшая" строка для той же коллекции,
+          // которую краулер никогда не сможет domatch'ить и долечить.
+          const collectionAddr = convertUserFriendlyToRaw(result.messages[0]?.address || '');
           setCollectionAddress(collectionAddr);
           console.log(`Адрес бандла: ${collectionAddr}`);
 
@@ -1263,7 +1269,8 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
         if (txResult.success && txResult.hash) {
           try {
             // Создаем SBT зону в базе данных
-            const sbtCollectionAddr = result.messages[0]?.address || '';
+            // Raw-формат — см. аналогичный комментарий в Proxy-ветке выше.
+            const sbtCollectionAddr = convertUserFriendlyToRaw(result.messages[0]?.address || '');
             const zonePrice = calculateZonePrice(domainName, false);
 
             const zoneData = {

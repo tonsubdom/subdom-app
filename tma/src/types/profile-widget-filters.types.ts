@@ -38,6 +38,7 @@ export interface Zone {
   // undefined/null = кроулер ещё не проверял, true/false = результат
   // последнего пинга через *.ton.run (см. LupaButton).
   siteResolves?: boolean | null;
+  image?: string;
 }
 
 export interface Subdomain {

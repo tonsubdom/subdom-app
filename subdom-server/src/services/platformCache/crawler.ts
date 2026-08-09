@@ -22,6 +22,7 @@
  */
 
 import type Database from 'better-sqlite3';
+import { Address } from '@ton/core';
 import {
   NETWORK_CONFIGS,
   SubdomainClassifier,
@@ -53,6 +54,19 @@ async function runWithConcurrency<T>(items: T[], limit: number, worker: (item: T
 }
 
 const nowIso = () => new Date().toISOString();
+
+// Ключ конфликта в platform_*_cache — точное совпадение строки адреса.
+// Фронт может прислать адрес в userfriendly-формате (или в любом другом),
+// а кроулер всегда пишет raw (из in_msg.source/адреса тонцентра) — без этой
+// нормализации ON CONFLICT не срабатывает и для одной ончейн-сущности
+// заводится вторая "осиротевшая" строка (см. Log.md 2026-08-09).
+const toRawAddress = (address: string): string => {
+  try {
+    return Address.parse(address).toRawString();
+  } catch {
+    return address;
+  }
+};
 
 const metaFor = (metadataByAddress: Record<string, any>, address: string) =>
   metadataByAddress[address]?.token_info?.[0];
@@ -353,14 +367,25 @@ export function upsertSinglePlatformEntity(
        ON CONFLICT(collectionAddress) DO UPDATE SET
          name = excluded.name, isProxy = excluded.isProxy, wrapperAddress = excluded.wrapperAddress,
          ownerAddress = excluded.ownerAddress, status = 'active', lastSyncedAt = excluded.lastSyncedAt`
-    ).run({ ...payload, lastSyncedAt: timestamp });
+    ).run({
+      ...payload,
+      collectionAddress: toRawAddress(payload.collectionAddress),
+      ownerAddress: payload.ownerAddress ? toRawAddress(payload.ownerAddress) : payload.ownerAddress,
+      lastSyncedAt: timestamp,
+    });
   } else if (kind === 'subdomain') {
     db.prepare(
       `INSERT INTO platform_subdomains_cache (itemAddress, name, collectionAddress, isProxy, ownerAddress, status, lastSyncedAt, source)
        VALUES (@itemAddress, @name, @collectionAddress, @isProxy, @ownerAddress, 'active', @lastSyncedAt, 'create-trigger')
        ON CONFLICT(itemAddress) DO UPDATE SET
          name = excluded.name, ownerAddress = excluded.ownerAddress, status = 'active', lastSyncedAt = excluded.lastSyncedAt`
-    ).run({ ...payload, lastSyncedAt: timestamp });
+    ).run({
+      ...payload,
+      itemAddress: toRawAddress(payload.itemAddress),
+      collectionAddress: toRawAddress(payload.collectionAddress),
+      ownerAddress: payload.ownerAddress ? toRawAddress(payload.ownerAddress) : payload.ownerAddress,
+      lastSyncedAt: timestamp,
+    });
   } else {
     db.prepare(
       `INSERT INTO platform_wrappers_cache (wrapperAddress, domainName, collectionAddress, wrapperHolderAddress, dividendOwnerAddress, status, lastSyncedAt, source)
@@ -369,6 +394,13 @@ export function upsertSinglePlatformEntity(
          domainName = excluded.domainName, wrapperHolderAddress = excluded.wrapperHolderAddress,
          dividendOwnerAddress = COALESCE(excluded.dividendOwnerAddress, platform_wrappers_cache.dividendOwnerAddress),
          status = 'active', lastSyncedAt = excluded.lastSyncedAt`
-    ).run({ ...payload, lastSyncedAt: timestamp });
+    ).run({
+      ...payload,
+      wrapperAddress: toRawAddress(payload.wrapperAddress),
+      collectionAddress: payload.collectionAddress ? toRawAddress(payload.collectionAddress) : payload.collectionAddress,
+      wrapperHolderAddress: payload.wrapperHolderAddress ? toRawAddress(payload.wrapperHolderAddress) : payload.wrapperHolderAddress,
+      dividendOwnerAddress: payload.dividendOwnerAddress ? toRawAddress(payload.dividendOwnerAddress) : payload.dividendOwnerAddress,
+      lastSyncedAt: timestamp,
+    });
   }
 }

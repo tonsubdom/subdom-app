@@ -2989,10 +2989,19 @@ const ProfileWidget: React.FC = () => {
     const inactive = new Set<string>();
     for (const group of byName.values()) {
       if (group.length < 2) continue;
-      const sorted = [...group].sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+      // Сначала "полнота данных" (есть картинка — значит запись реально
+      // дошла до кроулера/ончейна), и только потом createdAt как тай-брейк.
+      // Без этого приоритета осиротевшая sparse-запись из create-trigger
+      // апсерта (см. Log.md 2026-08-09, баг с дублем адреса разного формата)
+      // побеждает по времени — у неё нет chainCreatedAt, и collectionToZone
+      // откатывается на lastSyncedAt (момент апсерта сразу после деплоя),
+      // который всегда позже настоящего времени ончейн-создания.
+      const sorted = [...group].sort((a, b) => {
+        const aRich = a.image ? 1 : 0;
+        const bRich = b.image ? 1 : 0;
+        if (aRich !== bRich) return bRich - aRich;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
       for (const stale of sorted.slice(1)) inactive.add(stale.address);
     }
     return inactive;
@@ -3784,18 +3793,24 @@ const ProfileWidget: React.FC = () => {
               >
                 {zoneType.label}
               </div>
-              <div
-                style={{
-                  padding: "3px 8px",
-                  borderRadius: "4px",
-                  backgroundColor: zoneStatus.color,
-                  color: "white",
-                  fontSize: "10px",
-                  fontWeight: "600",
-                }}
-              >
-                {zoneStatus.status}
-              </div>
+              {/* Взаимоисключающе с INACTIVE ниже — SBT-статус по умолчанию
+                  всегда "Active" (см. getZoneStatusInfo), а isInactiveDuplicate
+                  переопределяет его отдельным чипом; раньше оба рендерились
+                  одновременно на одной карточке. */}
+              {!isInactiveDuplicate && (
+                <div
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: "4px",
+                    backgroundColor: zoneStatus.color,
+                    color: "white",
+                    fontSize: "10px",
+                    fontWeight: "600",
+                  }}
+                >
+                  {zoneStatus.status}
+                </div>
+              )}
               {isInactiveDuplicate && (
                 <div
                   style={{
