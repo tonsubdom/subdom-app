@@ -16,7 +16,7 @@ export const arTranslations = {
   mint: 'سك',
   addSubdomZone: 'إضافة منطقة',
   createSubdomain: 'إنشاء نطاق فرعي',
-  createCollection: 'إنشاء مجموعة من النطاقات الفرعية',
+  createCollection: 'إنشاء مجموعة من النطاقات الفرعية من نطاقك',
   addSubdomainToCollection: 'إضافة نطاق فرعي إلى المجموعة',
   add: 'إضافة',
   create: 'إنشاء',

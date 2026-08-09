@@ -16,7 +16,7 @@ export const esTranslations = {
   mint: 'Acuñar',
   addSubdomZone: 'Agregar zona',
   createSubdomain: 'Crear subdominio',
-  createCollection: 'Crear una colección de subdominios',
+  createCollection: 'Crear una colección de subdominios de tu dominio',
   addSubdomainToCollection: 'Agregar un subdominio a una colección',
   add: 'Agregar',
   create: 'Crear',

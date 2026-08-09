@@ -16,7 +16,7 @@ export const zhTranslations = {
     mint: '铸造',
     addSubdomZone: '添加区域',
     createSubdomain: '创建子域名',
-    createCollection: '创建子域名集合',
+    createCollection: '基于您的域名创建子域名集合',
     addSubdomainToCollection: '将子域名添加到集合',
     add: '添加',
     create: '创建',

@@ -16,7 +16,7 @@ export const ruTranslations = {
     mint: 'Минт',
     addSubdomZone: 'Добавить зону',
     createSubdomain: 'Создать субдомен',
-    createCollection: 'Создать коллекцию субдоменов',
+    createCollection: 'Создать коллекцию субдоменов от вашего домена',
     addSubdomainToCollection: 'Добавить субдомен в коллекцию',
     add: 'Добавить',
     create: 'Создать',

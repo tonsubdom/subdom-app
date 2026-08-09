@@ -16,7 +16,7 @@ export const deTranslations = {
   mint: 'Prägen',
   addSubdomZone: 'Zone hinzufügen',
   createSubdomain: 'Subdomain erstellen',
-  createCollection: 'Eine Sammlung von Subdomains erstellen',
+  createCollection: 'Eine Sammlung von Subdomains für deine Domain erstellen',
   addSubdomainToCollection: 'Eine Subdomain zu einer Sammlung hinzufügen',
   add: 'Hinzufügen',
   create: 'Erstellen',

@@ -16,7 +16,7 @@ export const hiTranslations = {
   mint: 'मिंट',
   addSubdomZone: 'ज़ोन जोड़ें',
   createSubdomain: 'सबडोमेन बनाएं',
-  createCollection: 'सबडोमेन का संग्रह बनाएं',
+  createCollection: 'अपने डोमेन से सबडोमेन का संग्रह बनाएं',
   addSubdomainToCollection: 'संग्रह में सबडोमेन जोड़ें',
   add: 'जोड़ें',
   create: 'बनाएं',

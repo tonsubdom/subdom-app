@@ -16,7 +16,7 @@ export const jaTranslations = {
   mint: 'ミント',
   addSubdomZone: 'ゾーンを追加',
   createSubdomain: 'サブドメインを作成',
-  createCollection: 'サブドメインのコレクションを作成',
+  createCollection: 'あなたのドメインからサブドメインのコレクションを作成',
   addSubdomainToCollection: 'コレクションにサブドメインを追加',
   add: '追加',
   create: '作成',

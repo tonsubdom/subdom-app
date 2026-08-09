@@ -16,7 +16,7 @@ export const enTranslations = {
     mint: 'Mint',
     addSubdomZone: 'Add Zone',
     createSubdomain: 'Create Subdomain',
-    createCollection: 'Create a collection of subdomains',
+    createCollection: 'Create a collection of subdomains from your domain',
     addSubdomainToCollection: 'Add a subdomain to a collection',
     add: 'Add',
     create: 'Create',

@@ -16,7 +16,7 @@ export const frTranslations = {
   mint: 'Frapper',
   addSubdomZone: 'Ajouter une zone',
   createSubdomain: 'Créer un sous-domaine',
-  createCollection: 'Créer une collection de sous-domaines',
+  createCollection: 'Créer une collection de sous-domaines depuis votre domaine',
   addSubdomainToCollection: 'Ajouter un sous-domaine à une collection',
   add: 'Ajouter',
   create: 'Créer',

@@ -16,7 +16,7 @@ export const itTranslations = {
   mint: 'Conia',
   addSubdomZone: 'Aggiungi zona',
   createSubdomain: 'Crea sottodominio',
-  createCollection: 'Crea una collezione di sottodomini',
+  createCollection: 'Crea una collezione di sottodomini dal tuo dominio',
   addSubdomainToCollection: 'Aggiungi un sottodominio a una collezione',
   add: 'Aggiungi',
   create: 'Crea',
