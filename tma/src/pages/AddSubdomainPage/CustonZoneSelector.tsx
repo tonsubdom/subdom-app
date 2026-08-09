@@ -1105,6 +1105,7 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Zone } from "@/services/api";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
 
 interface CustomZoneSelectorProps {
   zones: Zone[];
@@ -1257,7 +1258,12 @@ export const CustomZoneSelector: React.FC<CustomZoneSelectorProps> = ({
     }
 
     if (showOnlyMyZones && userAddress) {
-      result = result.filter((zone) => zone.owner === userAddress);
+      // zone.owner — вычисленный реальный деплоер (creator_address ||
+      // owner_address из collectionToZone), всегда в raw-формате. userAddress
+      // приходит из useTonAddress() в userfriendly ("EQ.../UQ..."). Сравнение
+      // "как есть" никогда не совпадало — чекбокс прятал вообще все зоны.
+      const rawUserAddress = convertUserFriendlyToRaw(userAddress).toLowerCase();
+      result = result.filter((zone) => (zone.owner || "").toLowerCase() === rawUserAddress);
     }
 
     result = [...result].sort((a, b) => {
