@@ -92,7 +92,11 @@ function dedupeTable(db: SqliteDatabase, label: string, spec: TableSpec) {
       return bCanon - aCanon;
     });
 
-    const [keep, ...drop] = sorted;
+    // group.length >= 2 (проверено строкой выше) => sorted.length >= 2,
+    // keep гарантированно определён — но деструктуризация массива этого не
+    // выражает для tsc в контейнере (там включён noUncheckedIndexedAccess).
+    const keep = sorted[0]!;
+    const drop = sorted.slice(1);
     console.log(`\n🔎 [${label}/${spec.table}] дубль по адресу ${raw}:`);
     console.log(`   ✅ оставляю  ${spec.keyColumn}=${keep[spec.keyColumn]} (name=${keep.name ?? keep.domainName ?? '—'})`);
     for (const row of drop) {
