@@ -90,7 +90,10 @@ const IconWrapper: React.FC<{ children: React.ReactNode; bgColor: string; isDark
       width: 80,
       height: 80,
       borderRadius: 25,
-      backgroundColor: bgColor,
+      // background (не backgroundColor) — сюда можно передать и обычный
+      // hex, и градиентную строку (см. неоновые карточки "Добавить зону"/
+      // "Создать субдомен" ниже).
+      background: bgColor,
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -370,11 +373,18 @@ export const IndexPage: React.FC = () => {
       title: t('addSubdomZone'),
       description: t('createCollection'),
       icon: (
-        <IconWrapper bgColor={isDark ? "#374151" : "#000000ff"} isDark={isDark}>
+        // Раньше плоский чёрный/серый (#374151/#000000) — юзер прямо сказал
+        // "не хочется нажать", просил неон. Насыщенный акцентный градиент
+        // (тот же gold/blue, что и в остальном приложении) вместо плоской
+        // заливки.
+        <IconWrapper
+          bgColor={isDark ? "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)" : "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)"}
+          isDark={isDark}
+        >
           <p style={{
-            color: 'white', 
-            fontFamily: 'monospace', 
-            fontSize: '16px', 
+            color: isDark ? '#000000' : 'white',
+            fontFamily: 'monospace',
+            fontSize: '16px',
             fontWeight: '600'
           }}>
             .*.ton
@@ -389,9 +399,12 @@ export const IndexPage: React.FC = () => {
       title: t('createSubdomain'),
       description: t('addSubdomainToCollection'),
       icon: (
-        <IconWrapper bgColor={isDark ? "#4B5563" : "#DBEAFE"} isDark={isDark}>
+        <IconWrapper
+          bgColor={isDark ? "linear-gradient(135deg, #FFA500 0%, #FFD700 100%)" : "linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%)"}
+          isDark={isDark}
+        >
           <p style={{
-            color: isDark ? 'white' : 'black', 
+            color: isDark ? '#000000' : 'white',
             fontFamily: 'monospace', 
             fontSize: '14px', 
             fontWeight: '600'
