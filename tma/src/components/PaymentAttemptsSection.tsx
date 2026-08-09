@@ -23,6 +23,13 @@ interface PaymentAttemptsSectionProps {
   };
   isDark: boolean;
   onBeforeNavigate?: () => void;
+  // Позволяют внешнему родителю управлять разворачиванием (например, чтобы
+  // положить свой компактный заголовок-кнопку в общий ряд с соседним
+  // блоком — см. CreateCollectionPage.tsx "Особенности"/"Оплаченные
+  // попытки" в один ряд). По умолчанию (оба не заданы) компонент работает
+  // как раньше — сам себе рисует заголовок и управляет isExpanded.
+  hideHeader?: boolean;
+  forceExpanded?: boolean;
 }
 
 const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
@@ -30,6 +37,8 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
   colors,
   isDark,
   onBeforeNavigate,
+  hideHeader = false,
+  forceExpanded,
 }) => {
   const { t } = useLanguage();
   const navigate = useNavigate();
@@ -40,7 +49,8 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
   } | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [internalExpanded, setInternalExpanded] = useState<boolean>(false);
+  const isExpanded = forceExpanded ?? internalExpanded;
   const [contentHeight, setContentHeight] = useState<number>(0);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -108,7 +118,7 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
   }, [paymentData, isExpanded]);
 
   const toggleExpand = () => {
-    setIsExpanded(!isExpanded);
+    setInternalExpanded(!internalExpanded);
   };
 
   // Клик по неоплаченной ячейке — сразу отправляет транзакцию покупки
@@ -454,67 +464,70 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
           }}
         />
       )}
-      {/* Заголовок с кнопкой разворачивания */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          margin: "0 0 12px 0",
-          paddingBottom: "6px",
-          borderBottom: `2px solid ${colors.cyberpunk}`,
-          cursor: "pointer",
-          userSelect: "none",
-        }}
-        onClick={toggleExpand}
-      >
-        <h3
-          style={{
-            margin: 0,
-            fontSize: "14px",
-            fontWeight: "600",
-            color: colors.text,
-            fontFamily: "monospace",
-          }}
-        >
-          {t("paymentAttemptsTitle")}
-        </h3>
-
-        {/* Кнопка плюс/крест с анимацией */}
+      {/* Заголовок с кнопкой разворачивания — скрывается, если родитель сам
+          рисует компактный тогл-заголовок снаружи (hideHeader/forceExpanded). */}
+      {!hideHeader && (
         <div
           style={{
             display: "flex",
+            justifyContent: "space-between",
             alignItems: "center",
-            justifyContent: "center",
-            width: "24px",
-            height: "24px",
-            borderRadius: "4px",
-            backgroundColor: colors.secondaryBg,
-            border: `1px solid ${colors.border}`,
-            transition: "transform 0.2s ease",
-            transform: isExpanded ? "rotate(45deg)" : "rotate(0deg)",
+            margin: "0 0 12px 0",
+            paddingBottom: "6px",
+            borderBottom: `2px solid ${colors.cyberpunk}`,
+            cursor: "pointer",
+            userSelect: "none",
           }}
+          onClick={toggleExpand}
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
+          <h3
             style={{
-              transition: "transform 0.2s ease",
+              margin: 0,
+              fontSize: "14px",
+              fontWeight: "600",
+              color: colors.text,
+              fontFamily: "monospace",
             }}
           >
-            <path
-              d="M8 3V13M3 8H13"
-              stroke={colors.text}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+            {t("paymentAttemptsTitle")}
+          </h3>
+
+          {/* Кнопка плюс/крест с анимацией */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "24px",
+              height: "24px",
+              borderRadius: "4px",
+              backgroundColor: colors.secondaryBg,
+              border: `1px solid ${colors.border}`,
+              transition: "transform 0.2s ease",
+              transform: isExpanded ? "rotate(45deg)" : "rotate(0deg)",
+            }}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              style={{
+                transition: "transform 0.2s ease",
+              }}
+            >
+              <path
+                d="M8 3V13M3 8H13"
+                stroke={colors.text}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Контент с анимацией высоты */}
       <div
@@ -529,7 +542,7 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
       </div>
 
       {/* Дивайдер под заголовком (виден только когда свернуто) */}
-      {!isExpanded && (
+      {!hideHeader && !isExpanded && (
         <div
           style={{
             height: "4px",

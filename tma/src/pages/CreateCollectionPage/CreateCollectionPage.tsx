@@ -259,6 +259,7 @@ const partnerAddress = isTestnet
   // домена и т.д.) был виден только после скролла мимо него.
   const [proxyFeaturesExpanded, setProxyFeaturesExpanded] = useState(false);
   const [sbtFeaturesExpanded, setSbtFeaturesExpanded] = useState(false);
+  const [paymentAttemptsExpanded, setPaymentAttemptsExpanded] = useState(false);
   // domainName остаётся punycode/ASCII-формой — так его используют все
   // остальные места этого файла (ончейн-лукапы, payload'ы, metadata URI).
   // domainNameDisplay — то, что реально видит и печатает юзер (юникод),
@@ -1813,76 +1814,106 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
               : 'linear-gradient(to bottom, #f5f5f5, #e5e5e5)',
             border: isDark ? '2px solid #FFD700' : '2px solid #3B82F6',
             maxWidth: '425px',
+            width: '100%',
           }}>
-            <div style={{
-              color: isDark ? '#fff' : '#333',
-              fontSize: '14px',
-              textAlign: 'left'
-            }}>
-              <div
+            {/* Раньше "Особенности" и "Оплаченные попытки" были двумя
+                отдельными полноширинными карточками друг под другом —
+                вместе занимали много места ещё до того, как их открыли.
+                Теперь это ряд из двух компактных заголовков-кнопок; клик
+                разворачивает контент на всю ширину этой карточки, а не в
+                узкую половину. PaymentAttemptsSection получил hideHeader/
+                forceExpanded, чтобы её тогл управлялся отсюда же. */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
                 onClick={() => setProxyFeaturesExpanded((v) => !v)}
                 style={{
+                  flex: 1,
                   fontWeight: 'bold',
-                  marginBottom: proxyFeaturesExpanded ? '15px' : 0,
-                  textAlign: 'center',
-                  color: isDark ? '2px solid #FFD700' : '2px solid #3B82F6',
-                  fontSize: '16px',
+                  color: isDark ? '#fff' : '#333',
+                  fontSize: '13px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
+                  gap: '6px',
+                  padding: '8px 6px',
+                  borderRadius: '8px',
+                  border: `1px solid ${isDark ? '#FFD700' : '#3B82F6'}`,
+                  background: 'transparent',
+                  minWidth: 0,
                 }}
               >
-                {t('proxyZoneFeatures')}
-                <span style={{ fontSize: '18px', lineHeight: 1 }}>{proxyFeaturesExpanded ? '−' : '+'}</span>
-              </div>
-              {proxyFeaturesExpanded && (
-                <div style={{
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                  paddingRight: '10px'
-                }}>
-                  <ul style={{
-                    paddingLeft: '20px',
-                    margin: 0,
-                    listStyleType: 'decimal'
-                  }}>
-                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature9')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature7')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature5')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature6')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature8')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature11')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature12')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature1')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature2')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature3')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature4')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature10')}</li>
-                  </ul>
-                </div>
-              )}
+                <span style={{ textAlign: 'center', wordBreak: 'break-word', minWidth: 0 }}>{t('proxyZoneFeatures')}</span>
+                <span style={{ fontSize: '16px', lineHeight: 1, flexShrink: 0 }}>{proxyFeaturesExpanded ? '−' : '+'}</span>
+              </button>
+              <button
+                onClick={() => setPaymentAttemptsExpanded((v) => !v)}
+                style={{
+                  flex: 1,
+                  fontWeight: 'bold',
+                  color: isDark ? '#fff' : '#333',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '8px 6px',
+                  borderRadius: '8px',
+                  border: `1px solid ${isDark ? '#FFD700' : '#3B82F6'}`,
+                  background: 'transparent',
+                  minWidth: 0,
+                }}
+              >
+                {/* Длиннее, чем "Особенности" — без break-word текст толкал
+                    бы плюсик за границу узкой половины кнопки. */}
+                <span style={{ textAlign: 'center', wordBreak: 'break-word', minWidth: 0 }}>{t('paymentAttemptsTitle')}</span>
+                <span style={{ fontSize: '16px', lineHeight: 1, flexShrink: 0 }}>{paymentAttemptsExpanded ? '−' : '+'}</span>
+              </button>
             </div>
+
+            {proxyFeaturesExpanded && (
+              <div style={{
+                color: isDark ? '#fff' : '#333',
+                fontSize: '14px',
+                textAlign: 'left',
+                marginTop: '12px',
+                maxHeight: '300px',
+                overflowY: 'auto',
+                paddingRight: '10px'
+              }}>
+                <ul style={{
+                  paddingLeft: '20px',
+                  margin: 0,
+                  listStyleType: 'decimal'
+                }}>
+                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature9')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature7')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature5')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature6')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature8')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature11')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature12')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature1')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature2')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature3')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature4')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature10')}</li>
+                </ul>
+              </div>
+            )}
+            {paymentAttemptsExpanded && (
+              <div style={{ marginTop: '12px' }}>
+                <PaymentAttemptsSection
+                  address={address}
+                  colors={colors}
+                  isDark={isDark}
+                  hideHeader
+                  forceExpanded
+                />
+              </div>
+            )}
           </Card>
-          <div className="bannerWrapper" style={{ display: 'flex', width: '100%', justifyContent: 'center', alignItems: 'center' }}>
-            <Card style={{
-              margin: '10px',
-              padding: '15px',
-              borderRadius: '10px',
-              background: isDark
-                ? 'linear-gradient(to bottom, #1a1a1a, #2a2a2a)'
-                : 'linear-gradient(to bottom, #f5f5f5, #e5e5e5)',
-              border: isDark ? '2px solid #FFD700' : '2px solid #3B82F6',
-              maxWidth: '425px',
-            }}>
-              <PaymentAttemptsSection
-                address={address}
-                colors={colors}
-                isDark={isDark}
-              />
-            </Card>
-          </div>
         </div>
       )}
 
@@ -1897,77 +1928,98 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
               ? 'linear-gradient(to bottom, #1a1a1a, #2a2a2a)'
               : 'linear-gradient(to bottom, #f5f5f5, #e5e5e5)',
             border: isDark ? '2px solid #FFD700' : '2px solid #3B82F6',
-            maxWidth: '425px'
+            maxWidth: '425px',
+            width: '100%',
           }}>
-            <div style={{
-              color: isDark ? '#fff' : '#333',
-              fontSize: '14px',
-              textAlign: 'left'
-            }}>
-              <div
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
                 onClick={() => setSbtFeaturesExpanded((v) => !v)}
                 style={{
+                  flex: 1,
                   fontWeight: 'bold',
-                  marginBottom: sbtFeaturesExpanded ? '15px' : 0,
-                  textAlign: 'center',
-                  color: isDark ? '2px solid #FFD700' : '2px solid #3B82F6',
-                  fontSize: '16px',
+                  color: isDark ? '#fff' : '#333',
+                  fontSize: '13px',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
+                  gap: '6px',
+                  padding: '8px 6px',
+                  borderRadius: '8px',
+                  border: `1px solid ${isDark ? '#FFD700' : '#3B82F6'}`,
+                  background: 'transparent',
+                  minWidth: 0,
                 }}
               >
-                {t('sbtZoneFeatures')}
-                <span style={{ fontSize: '18px', lineHeight: 1 }}>{sbtFeaturesExpanded ? '−' : '+'}</span>
-              </div>
-              {sbtFeaturesExpanded && (
-                <div style={{
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                  paddingRight: '10px'
-                }}>
-                  <ul style={{
-                    paddingLeft: '20px',
-                    margin: 0,
-                    listStyleType: 'decimal'
-                  }}>
-                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature9')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature8')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature6')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature7')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature11')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature12')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature1')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature3')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature2')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature5')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature4')}</li>
-                    <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature10')}</li>
-                  </ul>
-                </div>
-              )}
+                <span style={{ textAlign: 'center', wordBreak: 'break-word', minWidth: 0 }}>{t('sbtZoneFeatures')}</span>
+                <span style={{ fontSize: '16px', lineHeight: 1, flexShrink: 0 }}>{sbtFeaturesExpanded ? '−' : '+'}</span>
+              </button>
+              <button
+                onClick={() => setPaymentAttemptsExpanded((v) => !v)}
+                style={{
+                  flex: 1,
+                  fontWeight: 'bold',
+                  color: isDark ? '#fff' : '#333',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '8px 6px',
+                  borderRadius: '8px',
+                  border: `1px solid ${isDark ? '#FFD700' : '#3B82F6'}`,
+                  background: 'transparent',
+                  minWidth: 0,
+                }}
+              >
+                <span style={{ textAlign: 'center', wordBreak: 'break-word', minWidth: 0 }}>{t('paymentAttemptsTitle')}</span>
+                <span style={{ fontSize: '16px', lineHeight: 1, flexShrink: 0 }}>{paymentAttemptsExpanded ? '−' : '+'}</span>
+              </button>
             </div>
+
+            {sbtFeaturesExpanded && (
+              <div style={{
+                color: isDark ? '#fff' : '#333',
+                fontSize: '14px',
+                textAlign: 'left',
+                marginTop: '12px',
+                maxHeight: '300px',
+                overflowY: 'auto',
+                paddingRight: '10px'
+              }}>
+                <ul style={{
+                  paddingLeft: '20px',
+                  margin: 0,
+                  listStyleType: 'decimal'
+                }}>
+                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature9')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature8')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature6')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature7')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature11')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature12')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature1')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature3')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature2')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature5')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature4')}</li>
+                  <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature10')}</li>
+                </ul>
+              </div>
+            )}
+            {paymentAttemptsExpanded && (
+              <div style={{ marginTop: '12px' }}>
+                <PaymentAttemptsSection
+                  address={address}
+                  colors={colors}
+                  isDark={isDark}
+                  hideHeader
+                  forceExpanded
+                />
+              </div>
+            )}
           </Card>
-          <div className="bannerWrapper" style={{ display: 'flex', width: '100%', justifyContent: 'center', alignItems: 'center' }}>
-            <Card style={{
-              margin: '10px',
-              padding: '0px 15px 15px 15px',
-              borderRadius: '10px',
-              background: isDark
-                ? 'linear-gradient(to bottom, #1a1a1a, #2a2a2a)'
-                : 'linear-gradient(to bottom, #f5f5f5, #e5e5e5)',
-              border: isDark ? '2px solid #FFD700' : '2px solid #3B82F6',
-              maxWidth: '425px',
-            }}>
-              <PaymentAttemptsSection
-                address={address}
-                colors={colors}
-                isDark={isDark}
-              />
-            </Card>
-          </div>
         </div>
       )}
 
