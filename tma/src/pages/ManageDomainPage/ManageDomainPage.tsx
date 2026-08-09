@@ -5522,7 +5522,7 @@ export const ManageDomainPage: FC = () => {
     dispatch(resetDNSState());
     setCurrentPage(0);
     hasLoadedData.current = false;
-    const defaultCollection = newMode === "service" ? "zones" : "ton";
+    const defaultCollection = newMode === "service" ? "any" : "ton";
     dispatch(
       setSelectedCollection({
         collectionKey: defaultCollection as CollectionKey,

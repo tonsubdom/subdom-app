@@ -190,6 +190,13 @@ export const ruTranslations = {
       other: 'other'
     },
 
+    // Переключатель режима в менеджере доменов (ModeTabs.tsx) — "Сервис"
+    // (свои зоны/субдомены платформы) vs "Другое" (внешние NFT-коллекции).
+    mode: {
+      service: 'Сервис',
+      other: 'Другое'
+    },
+
     infoAboutZone: 'Информация о зоне',
     countNFTs: 'Количество NFT',
     countHolders: 'Количество держателей',

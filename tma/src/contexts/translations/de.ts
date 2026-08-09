@@ -199,7 +199,11 @@ export const deTranslations = {
     other: 'other'
   },
 
-  infoAboutZone: 'Informationen über Zone',
+  mode: {
+  service: 'Service',
+  other: 'Andere'
+},
+infoAboutZone: 'Informationen über Zone',
   countNFTs: 'NFTs zählen',
   countHolders: 'Inhaber zählen',
   pricesTON: 'Preise (GRAM)',

@@ -198,7 +198,11 @@ export const enTranslations = {
       other: 'other'
     },
 
-    infoAboutZone: 'Info about zone',
+    mode: {
+  service: 'Service',
+  other: 'Other'
+},
+infoAboutZone: 'Info about zone',
     countNFTs: 'Count NFTs',
     countHolders: 'Count holders',
     pricesTON: 'Prices (GRAM)',

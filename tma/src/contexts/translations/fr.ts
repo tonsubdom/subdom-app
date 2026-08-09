@@ -198,7 +198,11 @@ export const frTranslations = {
     other: 'other'
   },
 
-  infoAboutZone: 'Informations sur la zone',
+  mode: {
+  service: 'Service',
+  other: 'Autre'
+},
+infoAboutZone: 'Informations sur la zone',
   countNFTs: 'Compter les NFTs',
   countHolders: 'Compter les détenteurs',
   pricesTON: 'Prix (GRAM)',

@@ -198,7 +198,11 @@ export const hiTranslations = {
     other: 'other'
   },
 
-  infoAboutZone: 'जोन के बारे में जानकारी',
+  mode: {
+  service: 'सेवा',
+  other: 'अन्य'
+},
+infoAboutZone: 'जोन के बारे में जानकारी',
   countNFTs: 'NFT गिनती',
   countHolders: 'धारक गिनती',
   pricesTON: 'मूल्य (GRAM)',

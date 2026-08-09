@@ -38,7 +38,7 @@ const initialNetworkData: NetworkData = {
   filteredItems: [],
   zones: [],
   subdomains: [],
-  selectedCollection: 'zones'
+  selectedCollection: 'any'
 };
 
 const initialState: NftState = {

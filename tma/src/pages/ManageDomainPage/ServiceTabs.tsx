@@ -24,7 +24,7 @@ export default function ServiceTabs({
   zonesCount = 0,
   subdomainsCount = 0,
 }: ServiceTabsProps) {
-  const [selectedTab, setSelectedTab] = useState<string>('zones');
+  const [selectedTab, setSelectedTab] = useState<string>('any');
   const { t } = useLanguage();
 
   // Конфигурация табов. "Any" — форма ручного ввода адреса, реальных элементов не хранит, счётчик всегда 0.

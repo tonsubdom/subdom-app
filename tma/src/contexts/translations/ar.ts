@@ -198,7 +198,11 @@ export const arTranslations = {
     other: 'other'
   },
 
-  infoAboutZone: 'معلومات حول المنطقة',
+  mode: {
+  service: 'الخدمة',
+  other: 'أخرى'
+},
+infoAboutZone: 'معلومات حول المنطقة',
   countNFTs: 'عدد NFTs',
   countHolders: 'عدد الحاملين',
   pricesTON: 'الأسعار (GRAM)',

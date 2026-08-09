@@ -199,7 +199,11 @@ export const zhTranslations = {
       other: 'other'
     },
 
-    infoAboutZone: '关于该区域的信息',
+    mode: {
+  service: '服务',
+  other: '其他'
+},
+infoAboutZone: '关于该区域的信息',
     countNFTs: 'NFT 数量',
     countHolders: '持有者数量',
     pricesTON: '价格 (GRAM)',

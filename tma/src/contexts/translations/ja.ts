@@ -198,7 +198,11 @@ export const jaTranslations = {
     other: 'other'
   },
 
-  infoAboutZone: 'ゾーン情報',
+  mode: {
+  service: 'サービス',
+  other: 'その他'
+},
+infoAboutZone: 'ゾーン情報',
   countNFTs: 'NFT数',
   countHolders: 'ホルダー数',
   pricesTON: '価格（GRAM）',
