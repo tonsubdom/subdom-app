@@ -38,6 +38,16 @@ services:
       - PLATFORM_OWNER_TESTNET=${PLATFORM_OWNER_TESTNET:-}
       - PLATFORM_OWNER_MAINNET=${PLATFORM_OWNER_MAINNET:-}
       - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET:-}
+      # Тот же класс бага, что и с TONCENTER_API_KEY/HASH_* ниже: deploy.yml
+      # экспортирует эти переменные на хосте (строки export
+      # NFT_WRAPPER_COLLECTION_*), но без явного проброса сюда crawler.ts
+      # искал wrapper-коллекцию ТОЛЬКО по code_hash — на mainnet у владельца
+      # накопилось несколько осиротевших коллекций с тем же хешем, и
+      # toncenter не гарантирует порядок выдачи, поэтому .find() иногда
+      # попадал не в настоящую, а в пустую (0 обёрток в Market вместо
+      # реальных, диагностировано 2026-08-09).
+      - NFT_WRAPPER_COLLECTION_TESTNET=${NFT_WRAPPER_COLLECTION_TESTNET:-}
+      - NFT_WRAPPER_COLLECTION_MAINNET=${NFT_WRAPPER_COLLECTION_MAINNET:-}
       # platformCache-кроулер (crawler.ts) читает именно эту переменную —
       # deploy.yml экспортировал её на хосте, но забыли прокинуть в сам
       # контейнер здесь, поэтому кроулер тихо пропускал обход оба раза за

@@ -175,7 +175,21 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
     );
 
     const zoneCollections = nft_collections.filter((c) => classifier.isSubdomainCollection(c));
-    const wrapperCollection = nft_collections.find((c) => classifier.isNFTWrapperCollection(c));
+    // Матч ТОЛЬКО по code_hash небезопасен — на mainnet у владельца платформы
+    // накопилось несколько осиротевших копий wrapper-коллекции с тем же
+    // code_hash (та же болезнь, что и OLD_WRAPPER_COLLECTION_MAINNET в .env,
+    // только по хешу, а не по адресу), и toncenter не гарантирует порядок
+    // выдачи owner-listing — .find() мог молча выбрать не ту (0 айтемов),
+    // из-за чего маркет показывал 0 обёрток вместо реальных. Сверяемся с
+    // явно сконфигурированным адресом (тем же, что уже использует фронтовый
+    // онлайн-фолбэк в universal-blockchain-service.ts), хеш — только как
+    // подстраховка, если адрес в env не задан.
+    const configuredWrapperAddress = config.DEFAULT_ADDRESSES.NFT_WRAPPER_COLLECTION
+      ? toRawAddress(config.DEFAULT_ADDRESSES.NFT_WRAPPER_COLLECTION)
+      : null;
+    const wrapperCollection = configuredWrapperAddress
+      ? nft_collections.find((c) => c.address === configuredWrapperAddress)
+      : nft_collections.find((c) => classifier.isNFTWrapperCollection(c));
 
     console.log(
       `[platformCache] ${label}: найдено зон=${zoneCollections.length}, wrapper-коллекция=${wrapperCollection ? 'да' : 'нет'}`
