@@ -20,6 +20,7 @@ const COMMUNITY_DAPPS: CommunityDapp[] = [
   { label: 'TonSite Catalog', href: 'tonsite://tonsitecatalog.ton', initials: 'TSC' },
   { label: 'Webdom', href: 'https://webdom.market', initials: 'WD' },
   { label: 'Resistance Tools', href: 'https://app.resistance.dog', initials: 'RT' },
+  { label: '10K Club', href: 'https://10kclub.com/', initials: '10K' },
 ];
 
 const GITHUB_REPO_URL = 'https://github.com/tonsubdom/subdom-app';
