@@ -2,6 +2,7 @@
 
 import React from "react";
 import Lottie from "lottie-react";
+import { useTonWallet } from '@tonconnect/ui-react';
 import { Link } from "@/components/Link/Link.tsx";
 import { Page } from "@/components/Page";
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -9,6 +10,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { TutorialDim } from '@/components/Tutorial/TutorialDim';
 import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
+import ConnectWalletPrompt from '@/components/ConnectWalletPrompt/ConnectWalletPrompt';
 import {FormattedHeaderDescription} from "../IndexPage/acentHeaderFrases"
 import tsbLogo from "./img/tsb_logo.png";
 
@@ -72,6 +74,10 @@ interface CardProps {
   actionText: string;
   to: string;
   tutorialId?: TutorialCardId;
+  // Market и Блокчейн-Профиль сознательно read-only без кошелька (см.
+  // routes.tsx, ProtectedRoute снят) — единственные две плитки, не
+  // подпадающие под гейт "подключите кошелёк" ниже.
+  exemptFromWalletGate?: boolean;
 }
 
 const IconWrapper: React.FC<{ children: React.ReactNode; bgColor: string; isDark: boolean }> = ({ 
@@ -174,11 +180,16 @@ interface CardTutorialProps {
   tutorialStepLabel?: string;
   onTutorialClick?: () => void;
   cardRef?: React.Ref<HTMLDivElement>;
+  // Неподключенный юзер жмёт на не-исключённую плитку — вместо навигации
+  // открываем модалку "подключите кошелёк" (см. IndexPage ниже).
+  disabledNoWallet?: boolean;
+  onDisabledClick?: () => void;
 }
 
 const Card: React.FC<CardProps & { isDark: boolean } & CardTutorialProps> = ({
   title, description, icon, cornerIcon, actionText, to, isDark,
   isTutorialTarget, tutorialText, tutorialBlockLabel, tutorialStepLabel, onTutorialClick, cardRef,
+  disabledNoWallet, onDisabledClick,
 }) => {
 
   const colors = {
@@ -265,34 +276,44 @@ const Card: React.FC<CardProps & { isDark: boolean } & CardTutorialProps> = ({
         />
       )}
 
-      <Link to={to} onClick={onTutorialClick}>
-        <button
-          style={{
-            width: "100%",
-            padding: "12px 16px",
-            background: theme.primary,
-            color: isDark ? 'black' : "white",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "14px",
-            fontWeight: "600",
-            cursor: "pointer",
-            transition: "all 0.3s ease",
-          }}
-          onMouseOver={(e) => {
+      {(() => {
+        const buttonStyle: React.CSSProperties = {
+          width: "100%",
+          padding: "12px 16px",
+          background: theme.primary,
+          color: isDark ? 'black' : "white",
+          border: "none",
+          borderRadius: "8px",
+          fontSize: "14px",
+          fontWeight: "600",
+          cursor: "pointer",
+          transition: "all 0.3s ease",
+        };
+        const hoverHandlers = {
+          onMouseOver: (e: React.MouseEvent<HTMLButtonElement>) => {
             e.currentTarget.style.transform = "translateY(-2px)";
             e.currentTarget.style.boxShadow = isDark
               ? "0 4px 12px rgba(255, 215, 0, 0.4)"
               : "0 4px 12px rgba(59, 130, 246, 0.4)";
-          }}
-          onMouseOut={(e) => {
+          },
+          onMouseOut: (e: React.MouseEvent<HTMLButtonElement>) => {
             e.currentTarget.style.transform = "translateY(0)";
             e.currentTarget.style.boxShadow = "none";
-          }}
-        >
-          {actionText}
-        </button>
-      </Link>
+          },
+        };
+
+        return disabledNoWallet ? (
+          <button style={buttonStyle} {...hoverHandlers} onClick={onDisabledClick}>
+            {actionText}
+          </button>
+        ) : (
+          <Link to={to} onClick={onTutorialClick}>
+            <button style={buttonStyle} {...hoverHandlers}>
+              {actionText}
+            </button>
+          </Link>
+        );
+      })()}
     </div>
   );
 };
@@ -304,6 +325,16 @@ export const IndexPage: React.FC = () => {
   
   // Получаем переводы из LanguageContext
   const { t } = useLanguage();
+
+  // Неподключенный юзер — все плитки, кроме Market/Блокчейн-Профиля
+  // (см. exemptFromWalletGate у card), задизейблены и по клику показывают
+  // эту модалку вместо навигации.
+  const wallet = useTonWallet();
+  const isWalletConnected = !!wallet;
+  const [showConnectPrompt, setShowConnectPrompt] = React.useState(false);
+  React.useEffect(() => {
+    if (isWalletConnected) setShowConnectPrompt(false);
+  }, [isWalletConnected]);
 
   // Блок 3/4 обучалки: "Создать сайт" идёт раньше "TonSite Catalog" в
   // TUTORIAL_STEPS — та же приоритетность здесь, чтобы не подсветить обе
@@ -391,6 +422,7 @@ export const IndexPage: React.FC = () => {
       cornerIcon: "gear",
       actionText: t('open'),
       to: "/avatar-secret",
+      exemptFromWalletGate: true,
     },
     {
       title: t('manageDNSRecords'),
@@ -505,6 +537,7 @@ export const IndexPage: React.FC = () => {
       cornerIcon: "search",
       actionText: t('open'),
       to: "/market",
+      exemptFromWalletGate: true,
     }
   ];
 
@@ -549,8 +582,9 @@ export const IndexPage: React.FC = () => {
         >
           {cards.map((card, index) => {
             const isTutorialTarget = !!card.tutorialId && card.tutorialId === tutorialTargetId;
+            const disabledNoWallet = !isWalletConnected && !card.exemptFromWalletGate;
             return (
-              <TutorialDim key={index} dimmed={!!tutorialTargetId && !isTutorialTarget}>
+              <TutorialDim key={index} dimmed={(!!tutorialTargetId && !isTutorialTarget) || disabledNoWallet}>
                 <Card
                   title={card.title}
                   description={card.description}
@@ -561,6 +595,8 @@ export const IndexPage: React.FC = () => {
                   isDark={isDark}
                   isTutorialTarget={isTutorialTarget}
                   cardRef={isTutorialTarget ? tutorialCardRef : undefined}
+                  disabledNoWallet={disabledNoWallet}
+                  onDisabledClick={() => setShowConnectPrompt(true)}
                   tutorialBlockLabel={
                     card.tutorialId === 'site'
                       ? t('tutorialBlock4Label') || 'Блок 4'
@@ -589,6 +625,36 @@ export const IndexPage: React.FC = () => {
           })}
         </div>
       </div>
+
+      {showConnectPrompt && (
+        <div
+          onClick={() => setShowConnectPrompt(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 1001,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: isDark ? '#1F2937' : '#FFFFFF',
+              border: `1px solid ${isDark ? '#374151' : '#E5E7EB'}`,
+              borderRadius: '16px',
+              maxWidth: '320px',
+              width: '100%',
+              boxShadow: '0 8px 28px rgba(0,0,0,0.4)',
+            }}
+          >
+            <ConnectWalletPrompt subtitle={t('connectWalletFirstFromIndexSubtitle') || 'Этот раздел доступен только подключённым пользователям — подключите кошелёк, чтобы продолжить.'} />
+          </div>
+        </div>
+      )}
     </Page>
   );
 };
