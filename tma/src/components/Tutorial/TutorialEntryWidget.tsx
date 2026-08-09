@@ -10,6 +10,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { LengthRevealCard } from '@/components/PromoRevealModal/LengthRevealCard';
+import { TutorialProgressPanel } from '@/components/Tutorial/TutorialProgressPanel';
 
 const WIDGET_SIZE = 60;
 
@@ -167,6 +168,8 @@ export const TutorialEntryWidget: React.FC = () => {
           </div>
         </div>
       )}
+
+      <TutorialProgressPanel />
 
       {tutorial.showRewardReveal && tutorial.rewardLength && (
         <LengthRevealCard

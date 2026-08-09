@@ -36,9 +36,16 @@ interface TutorialContextType {
   rewardLength: string | null;
   showIntroModal: boolean;
   showRewardReveal: boolean;
+  // Панель прогресса (степпер) — показывает ВСЕ шаги и текущий, вместо
+  // того чтобы сразу молча кидать юзера по resumeStep() на потенциально
+  // сбившуюся цепочку. Реальный переход происходит только по кнопке
+  // "Выполнить" внутри панели (см. TutorialProgressPanel.tsx).
+  showProgressPanel: boolean;
+  openProgressPanel: () => void;
+  closeProgressPanel: () => void;
   // Точка входа и с виджета, и с промо-карточки: если тур уже начинали —
-  // сразу продолжает с места остановки (resumeStep), без повторного вопроса
-  // "начать?" и без немоты — клик всегда куда-то ведёт.
+  // открывает панель прогресса (см. showProgressPanel выше), без повторного
+  // вопроса "начать?" и без немоты — клик всегда куда-то ведёт.
   openEntry: () => void;
   closeIntroModal: () => void;
   startTutorial: () => Promise<void>;
@@ -46,7 +53,7 @@ interface TutorialContextType {
   recordStep: (step: TutorialStepId) => Promise<void>;
   isStepDone: (step: TutorialStepId) => boolean;
   // Переходит на страницу/виджет, где живёт текущий незавершённый шаг —
-  // и с виджета (повторный клик), и сразу после старта, и после каждой
+  // вызывается кнопкой "Выполнить" в панели прогресса и после каждой
   // подтверждённой на бэкенде записи шага.
   resumeStep: () => void;
   dismissRewardReveal: () => void;
@@ -79,6 +86,7 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
   const [rewardLength, setRewardLength] = useState<string | null>(null);
   const [showIntroModal, setShowIntroModal] = useState(false);
   const [showRewardReveal, setShowRewardReveal] = useState(false);
+  const [showProgressPanel, setShowProgressPanel] = useState(false);
 
   useEffect(() => {
     // Сброс синхронно и БЕЗ условия на !walletAddress — раньше при переходе
@@ -175,13 +183,15 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     if (rewardGranted) return; // тур уже полностью пройден — виджет сам покажет короткое "уже пройдено"
     if (started) {
       setActive(true);
-      resumeStep();
+      setShowProgressPanel(true);
     } else {
       setShowIntroModal(true);
     }
-  }, [started, rewardGranted, resumeStep]);
+  }, [started, rewardGranted]);
 
   const closeIntroModal = useCallback(() => setShowIntroModal(false), []);
+  const openProgressPanel = useCallback(() => setShowProgressPanel(true), []);
+  const closeProgressPanel = useCallback(() => setShowProgressPanel(false), []);
 
   const startTutorial = useCallback(async () => {
     if (!walletAddress) return;
@@ -190,14 +200,16 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     setStarted(true);
     setActive(true);
     setShowIntroModal(false);
-    // Свежий старт — completedSteps ещё пуст, первый незавершённый шаг
-    // всегда "есть ли домен?" на AvatarSecretPage.
-    navigate('/avatar-secret');
-  }, [walletAddress, isTestnet, navigate]);
+    // Свежий старт — вместо немедленной навигации на AvatarSecretPage
+    // сначала показываем панель прогресса (шаг 1 из 9), переход по факту
+    // делает кнопка "Выполнить" внутри неё.
+    setShowProgressPanel(true);
+  }, [walletAddress, isTestnet]);
 
   const exitTutorial = useCallback(() => {
     setActive(false);
     setShowIntroModal(false);
+    setShowProgressPanel(false);
   }, []);
 
   const recordStep = useCallback(async (step: TutorialStepId) => {
@@ -219,6 +231,9 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     rewardLength,
     showIntroModal,
     showRewardReveal,
+    showProgressPanel,
+    openProgressPanel,
+    closeProgressPanel,
     openEntry,
     closeIntroModal,
     startTutorial,
