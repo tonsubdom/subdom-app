@@ -88,10 +88,10 @@ export default function ServiceTabs({
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
-                  minWidth: '85px',
+                  gap: '6px',
+                  minWidth: '75px',
                   height: 'min-content',
-                  padding: '10px 10px 5px 10px'
+                  padding: '8px 10px'
                 }}
               >
                 {/* Иконка */}
@@ -125,24 +125,6 @@ export default function ServiceTabs({
                 >
                   {config.label}
                 </motion.span>
-
-                {/* Процент - черный овал с белым текстом */}
-                <motion.div
-                  layout
-                  transition={{ duration: 0.3 }}
-                  style={{
-                    background: '#000000',
-                    color: 'white',
-                    fontSize: '12px',
-                    fontWeight: '700',
-                    padding: '6px 12px',
-                    borderRadius: '20px',
-                    minWidth: '50px',
-                    textAlign: 'center'
-                  }}
-                >
-                  {config.percentage.toFixed(1)}%
-                </motion.div>
               </motion.button>
             ))}
           </AnimatePresence>
