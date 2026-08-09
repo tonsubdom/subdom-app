@@ -5735,22 +5735,27 @@ export const ManageDomainPage: FC = () => {
               {t("searchAndFilter")}
             </span>
           </div>
-          <Button
-            size="s"
-            mode={showPunycode ? "filled" : "outline"}
-            onClick={() => setShowPunycode(!showPunycode)}
-            style={{ padding: "6px 12px", fontSize: "12px", fontFamily: "monospace", marginRight: "8px" }}
-          >
-            punycode
-          </Button>
-          <Button
-            size="s"
-            mode="outline"
+          {/* Раньше "punycode" и "Расширенный поиск" были двумя отдельными
+              кнопками с полным текстом — не помещались рядом с заголовком.
+              Одна кнопка-иконка, оба переключателя — внутри общей панели
+              (тот же приём, что и в MarketPage). */}
+          <button
             onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
-            style={{ padding: "6px 12px", fontSize: "12px" }}
+            title={t("showFilters")}
+            style={{
+              padding: "6px 10px",
+              borderRadius: "6px",
+              border: `1px solid ${isDark ? "#FFD700" : "#3B82F6"}`,
+              background: showAdvancedFilter ? (isDark ? "#FFD700" : "#3B82F6") : "transparent",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+            }}
           >
-            {showAdvancedFilter ? t("hideFilters") : t("showFilters")}
-          </Button>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showAdvancedFilter ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+          </button>
         </div>
         <Input
           placeholder={t("searchByName")}
@@ -5791,6 +5796,15 @@ export const ManageDomainPage: FC = () => {
               borderRadius: "8px",
             }}
           >
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", fontFamily: "monospace", color: isDark ? "white" : "black" }}>
+              <input
+                type="checkbox"
+                checked={showPunycode}
+                onChange={() => setShowPunycode(!showPunycode)}
+                style={{ cursor: "pointer" }}
+              />
+              <span>punycode</span>
+            </label>
             <div
               style={{
                 display: "flex",
