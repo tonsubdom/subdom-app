@@ -91,6 +91,27 @@ const Footer = () => {
               overflowY: 'auto',
             }}
           >
+            {/* Крестик — тот же способ свернуть, что и клик вне панели
+                (затемнённая подложка тоже закрывает по клику). */}
+            <button
+              onClick={() => setMenuOpen(false)}
+              aria-label="Закрыть"
+              style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                background: 'none',
+                border: 'none',
+                color: colors.hint,
+                fontSize: '18px',
+                lineHeight: 1,
+                cursor: 'pointer',
+                padding: '4px',
+              }}
+            >
+              ✕
+            </button>
+
             {/* FAQ */}
             <button
               onClick={() => { setMenuOpen(false); navigate('/faq'); }}
