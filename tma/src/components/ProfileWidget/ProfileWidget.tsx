@@ -5049,7 +5049,9 @@ const ProfileWidget: React.FC = () => {
               }}
             >
               {tutorialStep1Active && (
-                <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', bottom: 'calc(100% + 8px)', left: 0, zIndex: 6 }}>
+                // Под блоком, не над — виджет профиля обычно у самого верха
+                // экрана, а тултип над ним обрезался границей viewport.
+                <div onClick={(e) => e.stopPropagation()} style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, zIndex: 6 }}>
                   <TutorialTooltip
                     blockLabel={t('tutorialBlock3Label') || 'Блок 3'}
                     stepLabel={t('tutorialStep1Label') || 'Шаг 1'}
@@ -5068,7 +5070,8 @@ const ProfileWidget: React.FC = () => {
                   onClick={(e) => e.stopPropagation()}
                   style={{
                     position: "absolute",
-                    bottom: "calc(100% + 8px)",
+                    // Под блоком, не над — см. комментарий у tutorialStep1Active выше.
+                    top: "calc(100% + 8px)",
                     left: 0,
                     display: "flex",
                     alignItems: "center",
