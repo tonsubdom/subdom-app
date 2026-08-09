@@ -381,14 +381,22 @@ export const IndexPage: React.FC = () => {
           bgColor={isDark ? "linear-gradient(135deg, #FFD700 0%, #FFA500 100%)" : "linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)"}
           isDark={isDark}
         >
-          <p style={{
-            color: isDark ? '#000000' : 'white',
-            fontFamily: 'monospace',
-            fontSize: '16px',
-            fontWeight: '600'
-          }}>
-            .*.ton
-          </p>
+          {/* Табличка с примером домена, "лежащая" на поверхности под углом
+              (perspective + rotate) — CSS-имитация 3D-рендера, юзер просил
+              не плоский "*.*.ton", а живой пример вроде ".sender". */}
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.96)',
+              borderRadius: '5px',
+              padding: '5px 9px',
+              transform: 'perspective(140px) rotateX(38deg) rotateZ(-6deg)',
+              boxShadow: '0 8px 12px rgba(0,0,0,0.35)',
+            }}
+          >
+            <span style={{ color: '#111827', fontFamily: 'monospace', fontSize: '13px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+              .sender
+            </span>
+          </div>
         </IconWrapper>
       ),
       cornerIcon: "plus",
@@ -403,14 +411,19 @@ export const IndexPage: React.FC = () => {
           bgColor={isDark ? "linear-gradient(135deg, #FFA500 0%, #FFD700 100%)" : "linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%)"}
           isDark={isDark}
         >
-          <p style={{
-            color: isDark ? '#000000' : 'white',
-            fontFamily: 'monospace', 
-            fontSize: '14px', 
-            fontWeight: '600'
-          }}>
-            *.*.ton
-          </p>
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.96)',
+              borderRadius: '5px',
+              padding: '5px 9px',
+              transform: 'perspective(140px) rotateX(38deg) rotateZ(-6deg)',
+              boxShadow: '0 8px 12px rgba(0,0,0,0.35)',
+            }}
+          >
+            <span style={{ color: '#111827', fontFamily: 'monospace', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}>
+              nft.sender
+            </span>
+          </div>
         </IconWrapper>
       ),
       cornerIcon: "plus",
