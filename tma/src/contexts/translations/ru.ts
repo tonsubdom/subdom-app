@@ -833,7 +833,7 @@ itemFoundSuccessfully: 'Элемент успешно найден',
 
   // AvatarSecretPage
   avatarSecretTitle: 'Блокчейн-Профиль',
-  onchainProfileSetupHint: 'Настройте ончейн-профиль',
+  onchainProfileSetupHint: 'Настройте свой блокчейн-аккаунт: 1) привяжите адрес кошелька в домен — для отображения имени, 2) загрузите картинку и добавьте описание, щёлкнув «Редактировать»',
   onchainProfileNoDomain: 'Домен не определён',
   onchainProfilePreviewHint: 'Поставьте аватарку и название — так вас будет видно во всех dApps и TON-браузере, как обычный профиль',
   onchainProfileEmptyField: 'не заполнено',

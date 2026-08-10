@@ -5088,16 +5088,25 @@ const ProfileWidget: React.FC = () => {
                     top: "calc(100% + 8px)",
                     left: 0,
                     display: "flex",
-                    alignItems: "center",
+                    alignItems: "flex-start",
                     gap: "8px",
-                    padding: "8px 10px",
+                    padding: "10px 12px",
                     borderRadius: "10px",
                     background: colors.background,
                     border: `1px solid ${colors.cyberpunk}`,
                     boxShadow: `0 4px 12px ${colors.shadow}`,
                     fontSize: "11px",
+                    lineHeight: 1.4,
                     color: colors.text,
-                    whiteSpace: "nowrap",
+                    // Раньше nowrap + однострочная подсказка "Настройте
+                    // ончейн-профиль" — юзеры видели её как формальность и
+                    // заполняли только картинку через виджет-партнёр
+                    // (ton_site_builder_bot), пропуская привязку кошелька к
+                    // домену, без которой имя вообще не резолвится нигде.
+                    // Полный двухшаговый гайд, чтобы это было видно сразу,
+                    // без web3-бэкграунда у юзера.
+                    whiteSpace: "normal",
+                    width: "230px",
                     zIndex: 5,
                   }}
                 >
@@ -5108,6 +5117,7 @@ const ProfileWidget: React.FC = () => {
                       dismissSetupPrompt();
                     }}
                     style={{
+                      flexShrink: 0,
                       background: "none",
                       border: "none",
                       color: colors.text,
