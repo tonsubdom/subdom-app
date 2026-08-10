@@ -14,16 +14,24 @@ import { COLLECTIONS } from '../../store/nft/constants';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface IconLabelTabsProps {
+  selectedTab?: CollectionKey;
   onTabChange?: (collectionKey: CollectionKey) => void;
   initialSortKey?: keyof typeof COLLECTIONS['ton']['details'];
   onSortChange?: (key: keyof typeof COLLECTIONS['ton']['details']) => void;
 }
 
-export default function IconLabelTabs({ 
-  onTabChange, 
+export default function IconLabelTabs({
+  selectedTab: externalSelectedTab,
+  onTabChange,
   initialSortKey = 'AmountOfHolders' as keyof typeof COLLECTIONS['ton']['details']
 }: IconLabelTabsProps) {
-  const [selectedTab, setSelectedTab] = useState<CollectionKey>('ton');
+  // Управляемый через selectedTab (как mode в ModeTabs.tsx) — иначе при
+  // повторном входе подсветка таба (свой локальный стейт, всегда стартует с
+  // 'ton') расходится с реальным selectedCollection из Redux, который решает,
+  // какой контент показывать ниже (см. тот же фикс и объяснение в
+  // ServiceTabs.tsx, Log.md 2026-08-10).
+  const [internalSelectedTab, setInternalSelectedTab] = useState<CollectionKey>('ton');
+  const selectedTab = externalSelectedTab !== undefined ? externalSelectedTab : internalSelectedTab;
   const [selectedSortKey] = useState<keyof typeof COLLECTIONS['ton']['details']>(initialSortKey);
   const { t } = useLanguage();
 
@@ -66,7 +74,7 @@ export default function IconLabelTabs({
   }, [selectedSortKey]);
 
   const handleTabClick = (key: CollectionKey) => {
-    setSelectedTab(key);
+    setInternalSelectedTab(key);
     onTabChange?.(key);
   };
 

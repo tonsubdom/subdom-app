@@ -12,6 +12,7 @@ import subdomLogo from '/src/pages/ManageDomainPage/img/subdom_logo.png';
 import anyMode from '/src/pages/ManageDomainPage/img/question_mark.svg';
 
 interface ServiceTabsProps {
+  selectedTab?: string;
   onTabChange?: (collectionKey: string) => void;
   initialSortKey?: string;
   onSortChange?: (key: string) => void;
@@ -20,11 +21,22 @@ interface ServiceTabsProps {
 }
 
 export default function ServiceTabs({
+  selectedTab: externalSelectedTab,
   onTabChange,
   zonesCount = 0,
   subdomainsCount = 0,
 }: ServiceTabsProps) {
-  const [selectedTab, setSelectedTab] = useState<string>('any');
+  // Раньше этот таб-бар хранил активную вкладку только в собственном
+  // локальном стейте, всегда стартующем с 'any' — а реальный контент ниже
+  // рендерится по selectedCollection из Redux, которое при повторном входе
+  // в Manager (или после deep-link эффекта) могло уже быть другим. Из-за
+  // этого при первом рендере подсвечивалась "Любые", а контент ниже
+  // показывал прошлое значение (например "Прокси-обёртки") — до первого
+  // ручного клика по табу, который синхронизировал оба стейта разом (см.
+  // Log.md 2026-08-10). Теперь компонент управляемый через selectedTab —
+  // как mode в ModeTabs.tsx, локальный стейт остаётся только фолбэком.
+  const [internalSelectedTab, setInternalSelectedTab] = useState<string>('any');
+  const selectedTab = externalSelectedTab !== undefined ? externalSelectedTab : internalSelectedTab;
   const { t } = useLanguage();
 
   // Конфигурация табов. "Any" — форма ручного ввода адреса, реальных элементов не хранит, счётчик всегда 0.
@@ -47,7 +59,7 @@ export default function ServiceTabs({
   }, [zonesCount, subdomainsCount]);
 
   const handleTabClick = (key: string) => {
-    setSelectedTab(key);
+    setInternalSelectedTab(key);
     onTabChange?.(key);
   };
 

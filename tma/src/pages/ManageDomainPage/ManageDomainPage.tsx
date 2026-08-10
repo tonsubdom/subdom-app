@@ -5944,6 +5944,7 @@ export const ManageDomainPage: FC = () => {
         {/* ModeTabs */}
         <ModeTabs
           mode={mode}
+          selectedTab={selectedCollection}
           onModeChange={handleModeChange}
           onTabChange={handleTabChange}
           nftsCount={mode === "other" ? allNfts.length : 0}

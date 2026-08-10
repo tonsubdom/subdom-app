@@ -10,6 +10,7 @@ import { COLLECTIONS } from '../../store/nft/constants';
 
 interface ModeTabsProps {
   mode?: 'other' | 'service';
+  selectedTab?: string;
   onModeChange?: (newMode: 'other' | 'service') => void;
   onTabChange?: (collectionKey: string) => void;
   onSortChange?: (key: string) => void;
@@ -22,6 +23,7 @@ interface ModeTabsProps {
 
 export const ModeTabs: React.FC<ModeTabsProps> = ({
   mode: externalMode,
+  selectedTab,
   onModeChange,
   onTabChange,
   onSortChange,
@@ -137,12 +139,14 @@ export const ModeTabs: React.FC<ModeTabsProps> = ({
         {/* Второй уровень: табы в зависимости от режима */}
         {mode === 'other' ? (
           <IconLabelTabs
+            selectedTab={selectedTab as any}
             onTabChange={onTabChange}
             onSortChange={onSortChange}
             initialSortKey={initialSortKey as keyof typeof COLLECTIONS['ton']['details']} // Приведение типа
           />
         ) : (
           <ServiceTabs
+            selectedTab={selectedTab}
             onTabChange={onTabChange}
             zonesCount={zonesCount}
             subdomainsCount={subdomainsCount}
