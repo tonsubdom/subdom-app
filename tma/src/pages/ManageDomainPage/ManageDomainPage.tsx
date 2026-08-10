@@ -4663,10 +4663,6 @@ export const ManageDomainPage: FC = () => {
   const selectedCollection = isTestnet
     ? nftState.testnet.selectedCollection
     : nftState.mainnet.selectedCollection;
-  const zones = isTestnet ? nftState.testnet.zones : nftState.mainnet.zones;
-  const subdomains = isTestnet
-    ? nftState.testnet.subdomains
-    : nftState.mainnet.subdomains;
   const reduxLoading = nftState.loading || false;
 
   const dnsState = useSelector((state: RootState) => state.dnsRecords);
@@ -5993,8 +5989,18 @@ export const ManageDomainPage: FC = () => {
           onModeChange={handleModeChange}
           onTabChange={handleTabChange}
           nftsCount={mode === "other" ? allNfts.length : 0}
-          zonesCount={mode === "service" ? zones.length : 0}
-          subdomainsCount={mode === "service" ? subdomains.length : 0}
+          // zones/subdomains (nftState.*) — легаси-редакс, который не
+          // наполняется с 2026-08-01 (см. схему в server-sqlite.ts), всегда
+          // отдавал 0. Реальный список этой страницы (getFilteredItemsForMode
+          // выше) берёт userNFTWrappers как "зоны" и userProxySubdomains +
+          // userSBTSubdomains как "субдомены" — счётчик теперь смотрит туда
+          // же (см. Log.md 2026-08-11).
+          zonesCount={mode === "service" ? userNFTWrappers.length : 0}
+          subdomainsCount={
+            mode === "service"
+              ? userProxySubdomains.length + userSBTSubdomains.length
+              : 0
+          }
         />
 
         {/* Any tab */}
