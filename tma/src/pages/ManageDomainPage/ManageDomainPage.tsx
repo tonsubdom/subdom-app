@@ -5544,7 +5544,15 @@ export const ManageDomainPage: FC = () => {
         return;
       }
       const amountInNano = 0.05 * 1_000_000_000;
-      const userFriendlyAddress = convertRawToUserFriendlyTest(targetAddress);
+      // convertRawToUserFriendlyTest хардкодит testOnly:true независимо от
+      // реальной сети — на mainnet это давало адрес с testnet-флагом,
+      // кошелёк (MyTonWallet) справедливо отказывал "неверный адрес" (см.
+      // Log.md 2026-08-11). Конвертируем сами с настоящим isTestnet.
+      const userFriendlyAddress = Address.parse(targetAddress).toString({
+        urlSafe: true,
+        bounceable: false,
+        testOnly: isTestnet,
+      });
       const transaction = {
         validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
