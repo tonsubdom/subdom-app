@@ -4714,6 +4714,11 @@ export const ManageDomainPage: FC = () => {
   // ====== LOCAL STATE ======
   const [snackbar, setSnackbar] = useState<JSX.Element | null>(null);
   const [resolverAddress, setResolverAddress] = useState("");
+  // Картинка итема, на который реально уходят транзакции (домен для SBT-
+  // зоны, обёртка для proxy-зоны) — НЕ картинка самой зоны/коллекции,
+  // которую раньше молча показывал getItemImageUrl (см. Log.md 2026-08-11).
+  // Резолвится вместе с resolverAddress в handleManageClick.
+  const [resolvedItemImage, setResolvedItemImage] = useState("");
   const [isVerified, setIsVerified] = useState(false);
   const [checkingResolver, setCheckingResolver] = useState(false);
   const [isAutoCheckTriggered, setIsAutoCheckTriggered] = useState(false);
@@ -5173,6 +5178,27 @@ export const ManageDomainPage: FC = () => {
 
     setResolverAddress(itemAddress);
     setIsVerified(true);
+
+    // Картинка — итема, на который реально уходят транзакции (домен для
+    // SBT, обёртка для proxy), а не самой зоны/коллекции (см. комментарий
+    // у getItemImageUrl / Log.md 2026-08-11). Резолвим отдельным запросом,
+    // не блокируя остальной flow — если не получилось, просто остаёмся на
+    // старом фолбэке (getItemImageUrl(editingItem)).
+    setResolvedItemImage("");
+    if (mode !== "other" && editingItem.isZone && itemAddress) {
+      (async () => {
+        try {
+          const baseTONApiUri = isTestnet ? "testnet.tonapi.io" : "tonapi.io";
+          const resp = await fetch(`https://${baseTONApiUri}/v2/nfts/${itemAddress}`);
+          if (!resp.ok) return;
+          const nftData = await resp.json();
+          const image = nftData?.metadata?.image || nftData?.previews?.[nftData.previews.length - 1]?.url;
+          if (image) setResolvedItemImage(image);
+        } catch {
+          /* остаёмся на фолбэке */
+        }
+      })();
+    }
 
     const itemName =
       mode === "other"
@@ -6586,7 +6612,7 @@ export const ManageDomainPage: FC = () => {
                 style={{ display: "flex", alignItems: "center", gap: "10px" }}
               >
                 <Image
-                  src={getItemImageUrl(editingItem)}
+                  src={resolvedItemImage || getItemImageUrl(editingItem)}
                   style={{
                     width: "120px",
                     height: "120px",
