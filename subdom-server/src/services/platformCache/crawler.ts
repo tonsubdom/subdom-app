@@ -222,13 +222,13 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
               itemsCount++;
               const itemMeta = metaFor(itemsMetadata, item.address);
               upsertSubdomain.run({
-                itemAddress: item.address,
+                itemAddress: toRawAddress(item.address),
                 name: itemMeta?.name || '',
-                collectionAddress: col.address,
+                collectionAddress: toRawAddress(col.address),
                 zoneName,
                 isProxy: isProxy ? 1 : 0,
                 itemType: classifier.isProxySubdomain(item) ? 'proxy_subdomain' : 'sbt_subdomain',
-                ownerAddress: item.owner_address || null,
+                ownerAddress: item.owner_address ? toRawAddress(item.owner_address) : null,
                 image: itemMeta?.image || itemMeta?.extra?._image_medium || null,
                 description: itemMeta?.description || null,
                 onSale: item.on_sale ? 1 : 0,
@@ -241,11 +241,11 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
           }
 
           upsertZone.run({
-            collectionAddress: col.address,
+            collectionAddress: toRawAddress(col.address),
             name: zoneName,
             isProxy: isProxy ? 1 : 0,
             wrapperAddress: null,
-            ownerAddress,
+            ownerAddress: ownerAddress ? toRawAddress(ownerAddress) : null,
             image: colMeta?.image || colMeta?.extra?._image_medium || null,
             description: colMeta?.description || null,
             totalItems: itemsCount,
@@ -278,10 +278,10 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
             .get(domainName) as { ownerAddress: string | null } | undefined;
 
           upsertWrapper.run({
-            wrapperAddress: item.address,
+            wrapperAddress: toRawAddress(item.address),
             domainName,
-            collectionAddress: wrapperCollection.address,
-            wrapperHolderAddress: item.owner_address || null,
+            collectionAddress: toRawAddress(wrapperCollection.address),
+            wrapperHolderAddress: item.owner_address ? toRawAddress(item.owner_address) : null,
             dividendOwnerAddress: matchingZone?.ownerAddress ?? null,
             image: itemMeta?.image || itemMeta?.extra?._image_medium || null,
             description: itemMeta?.description || null,
