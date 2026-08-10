@@ -3192,6 +3192,21 @@ const ProfileWidget: React.FC = () => {
 
   // ====== [NEW] СУБДОМЕНЫ ПОЛЬЗОВАТЕЛЯ — ИЗ БЛОКЧЕЙНА ======
 
+  // Деактивация SBT-зоны в смартконтракте каскадно инактивирует и её
+  // сабдомены (не только метадату/картинку коллекции) — юзер подтвердил
+  // 2026-08-11. Матчим строго по collectionAddress (реальный уникальный
+  // идентификатор), НЕ по имени зоны — имя может повториться у другой
+  // зоны с другим id после редеплоя (см. autoInactiveSbtZoneAddresses чуть
+  // выше — та же причина, по которой там группировка тоже по имени, а не
+  // по адресу, отдельная история).
+  const inactiveZoneCollectionAddresses = useMemo(() => {
+    const set = new Set<string>();
+    getUserZones.forEach((z) => {
+      if (z.status === "inactive" && z.collectionAddress) set.add(z.collectionAddress);
+    });
+    return set;
+  }, [getUserZones]);
+
   const getUserSubdomainsFromBlockchain = useMemo((): Subdomain[] => {
     const proxySubs = userProxySubdomains.map((item) =>
       enrichedItemToSubdomain(item)
@@ -3199,8 +3214,12 @@ const ProfileWidget: React.FC = () => {
     const sbtSubs = userSBTSubdomains.map((item) =>
       enrichedItemToSubdomain(item)
     );
-    return [...proxySubs, ...sbtSubs];
-  }, [userProxySubdomains, userSBTSubdomains]);
+    return [...proxySubs, ...sbtSubs].map((s) =>
+      inactiveZoneCollectionAddresses.has((s as any).collectionAddress)
+        ? ({ ...s, status: "inactive" } as Subdomain)
+        : s
+    );
+  }, [userProxySubdomains, userSBTSubdomains, inactiveZoneCollectionAddresses]);
 
   // ====== [NEW] КАНДИДАТЫ ДЛЯ СКАНА АУКЦИОНОВ — ВСЕ PROXY-СУБДОМЕНЫ ПЛАТФОРМЫ ======
   // Вкладка "Аукционы" должна показывать все активные аукционы платформы (как
