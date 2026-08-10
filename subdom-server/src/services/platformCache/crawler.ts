@@ -68,6 +68,12 @@ const toRawAddress = (address: string): string => {
   }
 };
 
+// toRawAddress() (через TON SDK) отдаёт hex в нижнем регистре, а toncenter в
+// /nft/collections отдаёт адреса в ВЕРХНЕМ — при прямом === сравнении один и
+// тот же адрес не совпадал сам с собой из-за регистра (см. Log.md
+// 2026-08-10, MAINNET wrapper-коллекция). Сравнивать нужно только через это.
+const rawAddressEquals = (a: string, b: string): boolean => a.toUpperCase() === b.toUpperCase();
+
 const metaFor = (metadataByAddress: Record<string, any>, address: string) =>
   metadataByAddress[address]?.token_info?.[0];
 
@@ -188,7 +194,7 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
       ? toRawAddress(config.DEFAULT_ADDRESSES.NFT_WRAPPER_COLLECTION)
       : null;
     const wrapperCollection = configuredWrapperAddress
-      ? nft_collections.find((c) => c.address === configuredWrapperAddress)
+      ? nft_collections.find((c) => rawAddressEquals(c.address, configuredWrapperAddress))
       : nft_collections.find((c) => classifier.isNFTWrapperCollection(c));
 
     console.log(

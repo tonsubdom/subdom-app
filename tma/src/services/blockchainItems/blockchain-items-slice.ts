@@ -45,14 +45,17 @@ async function tryLoadFromPlatformCache(
   // зоны реальным юзерам хуже, чем один раз пойти медленным ончейн-путём —
   // считаем это тем же "кэш не готов", что и null/таймаут.
   //
-  // wrapperRows проверяем ТОЛЬКО когда zoneRows уже не пуст — секция обёрток
-  // в crawler.ts обёрнута в собственный try/catch отдельно от зон, поэтому
-  // может транзиентно упасть/ещё не пройти первый раз, даже когда зоны уже
-  // давно нашлись. Раньше пустые wrapperRows молча принимались как "правда
-  // 0 обёрток", результат кэшировался на 20 мин (CACHE_TTL_MS) в localStorage,
-  // и живой ончейн-фолбэк (который находит реальные айтемы корректно) не
-  // вызывался вовсе — см. Log.md 2026-08-09.
-  if (zoneRows.length === 0 || wrapperRows.length === 0) return null;
+  // wrapperRows НЕ гейтит зоны/субдомены — секция обёрток в crawler.ts
+  // обёрнута в собственный try/catch отдельно от зон и может транзиентно/
+  // постоянно не находить wrapper-коллекцию (см. Log.md 2026-08-10), даже
+  // когда зоны и субдомены давно и стабильно находятся. Раньше пустой
+  // wrapperRows обнулял вообще весь кэш-путь (включая рабочие зоны/
+  // субдомены) — из-за чего фронт вообще переставал пользоваться кэшем и
+  // всегда шёл в медленный полный ончейн-обход. Пустые обёртки сами по себе
+  // не мешают отдать зоны/субдомены из кэша; чтобы не закрепить "0 обёрток"
+  // в localStorage на 20 мин (CACHE_TTL_MS), персист этого случая отдельно
+  // пропускается в loadAllAppData — см. комментарий там.
+  if (zoneRows.length === 0) return null;
 
   const allCollections = zoneRows.map(platformZoneToSimpleCollection);
   const proxyCollections = allCollections.filter((c) => c.type === 'proxy');
@@ -301,7 +304,17 @@ export const loadAllAppData = createAsyncThunk(
       if (!forceRefresh) {
         const cached = await tryLoadFromPlatformCache(network === 'testnet', userAddress);
         if (cached) {
-          persistAppData(network, cached, userAddress ?? null);
+          // Обёртки в этом снимке кэша могут быть пустыми не потому что их
+          // реально 0, а потому что crawler.ts транзиентно/постоянно не
+          // находит wrapper-коллекцию (см. комментарий в
+          // tryLoadFromPlatformCache) — не закрепляем такой снимок в
+          // localStorage на CACHE_TTL_MS, иначе следующая жёсткая
+          // перезагрузка страницы покажет "0 обёрток" из устаревшего
+          // снапшота вместо повторной попытки. Зоны/субдомены при этом всё
+          // равно отдаются из кэша сейчас, только не персистятся длительно.
+          if (cached.nftWrappers.length > 0) {
+            persistAppData(network, cached, userAddress ?? null);
+          }
           return { data: cached, userAddress };
         }
       }
