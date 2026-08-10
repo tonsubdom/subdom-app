@@ -571,6 +571,9 @@ attention: 'Attention!',
   
   // Filters
   zoneTypeFilter: '🏷️ Zone type',
+  activeStatusFilter: '🟢 Status',
+  activeStatusActive: 'Active',
+  activeStatusInactive: 'Inactive',
   zoneLengthFilter: '🌐 Zone length',
   subdomainLengthFilter: '🔤 Subdomain length',
   

@@ -504,6 +504,9 @@ createCollectionPayNow: '立即支付',
   
   // 过滤器
   zoneTypeFilter: '🏷️ 区域类型',
+  activeStatusFilter: '🟢 状态',
+  activeStatusActive: '活跃',
+  activeStatusInactive: '不活跃',
   zoneLengthFilter: '🌐 区域长度',
   subdomainLengthFilter: '🔤 子域名长度',
   

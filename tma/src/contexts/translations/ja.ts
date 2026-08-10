@@ -539,6 +539,9 @@ attention: '注意！',
   
   // フィルター
   zoneTypeFilter: '🏷️ ゾーンタイプ',
+  activeStatusFilter: '🟢 ステータス',
+  activeStatusActive: 'アクティブ',
+  activeStatusInactive: '非アクティブ',
   zoneLengthFilter: '🌐 ゾーン長',
   subdomainLengthFilter: '🔤 サブドメイン長',
   

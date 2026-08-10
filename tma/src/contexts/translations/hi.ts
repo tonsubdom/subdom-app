@@ -539,6 +539,9 @@ paymentAttemptsHint: '💡 भुगतान किए गए प्रया�
   
   // फ़िल्टर
   zoneTypeFilter: '🏷️ ज़ोन प्रकार',
+  activeStatusFilter: '🟢 स्थिति',
+  activeStatusActive: 'सक्रिय',
+  activeStatusInactive: 'निष्क्रिय',
   zoneLengthFilter: '🌐 ज़ोन लंबाई',
   subdomainLengthFilter: '🔤 सबडोमेन लंबाई',
   

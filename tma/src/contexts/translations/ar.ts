@@ -540,6 +540,9 @@ attention: 'انتباه!',
   
   // المرشحات
   zoneTypeFilter: '🏷️ نوع المنطقة',
+  activeStatusFilter: '🟢 الحالة',
+  activeStatusActive: 'نشط',
+  activeStatusInactive: 'غير نشط',
   zoneLengthFilter: '🌐 طول المنطقة',
   subdomainLengthFilter: '🔤 طول النطاق الفرعي',
   

@@ -538,6 +538,9 @@ attention: 'Attention !',
   
   // Filtres
   zoneTypeFilter: '🏷️ Type de zone',
+  activeStatusFilter: '🟢 Statut',
+  activeStatusActive: 'Actifs',
+  activeStatusInactive: 'Inactifs',
   zoneLengthFilter: '🌐 Longueur de zone',
   subdomainLengthFilter: '🔤 Longueur de sous-domaine',
   
