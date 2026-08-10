@@ -1063,6 +1063,11 @@ itemFoundSuccessfully: 'Элемент успешно найден',
   domainSelectorLoadError: 'Не удалось загрузить домены',
   domainSelectorNoDomains: 'У вас нет .ton доменов на этом кошельке',
   domainSelectorNoMatches: 'Ничего не найдено',
+  domainSelectorSortAsc: 'Сначала короткие',
+  domainSelectorSortDesc: 'Сначала длинные',
+  domainSelectorSortDefault: 'Без сортировки',
+  domainSelectorFoundOf: 'Найдено',
+  domainSelectorLoadedCount: 'Загружено доменов',
 
   footerAgentManifest: 'Manifest для AI-агентов',
 }

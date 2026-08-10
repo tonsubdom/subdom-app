@@ -848,6 +848,11 @@ failedToCalculateNFTAddress: '计算NFT地址失败',
   domainSelectorLoadError: '加载域名失败',
   domainSelectorNoDomains: '此钱包中没有 .ton 域名',
   domainSelectorNoMatches: '未找到结果',
+  domainSelectorSortAsc: '从短到长',
+  domainSelectorSortDesc: '从长到短',
+  domainSelectorSortDefault: '不排序',
+  domainSelectorFoundOf: '已找到',
+  domainSelectorLoadedCount: '已加载域名数',
 
   footerAgentManifest: 'AI 代理清单',
 }

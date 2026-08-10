@@ -851,6 +851,11 @@ failedToCalculateNFTAddress: 'NFTアドレスの計算に失敗しました',
   domainSelectorLoadError: 'ドメインの読み込みに失敗しました',
   domainSelectorNoDomains: 'このウォレットに .ton ドメインがありません',
   domainSelectorNoMatches: '見つかりませんでした',
+  domainSelectorSortAsc: '短い順',
+  domainSelectorSortDesc: '長い順',
+  domainSelectorSortDefault: '並び替えなし',
+  domainSelectorFoundOf: '検索結果',
+  domainSelectorLoadedCount: '読み込み済みドメイン数',
 
   footerAgentManifest: 'AIエージェント用マニフェスト',
 };

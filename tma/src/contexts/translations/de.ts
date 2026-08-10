@@ -859,6 +859,11 @@ failedToCalculateNFTAddress: 'NFT-Adresse konnte nicht berechnet werden',
   domainSelectorLoadError: 'Domains konnten nicht geladen werden',
   domainSelectorNoDomains: 'Du hast keine .ton-Domains in diesem Wallet',
   domainSelectorNoMatches: 'Nichts gefunden',
+  domainSelectorSortAsc: 'Kürzeste zuerst',
+  domainSelectorSortDesc: 'Längste zuerst',
+  domainSelectorSortDefault: 'Keine Sortierung',
+  domainSelectorFoundOf: 'Gefunden',
+  domainSelectorLoadedCount: 'Domains geladen',
 
   footerAgentManifest: 'Manifest für KI-Agenten',
 };
