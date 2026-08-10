@@ -12,12 +12,14 @@ export type SortOption =
   | 'bid_asc' | 'bid_desc';
 
 export type ZoneTypeFilter = 'all' | 'proxy' | 'sbt' | 'unknown';
+export type ActiveStatusFilter = 'active' | 'inactive';
 
 export interface FilterState {
   zoneLengths: number[];        // Длины зон для фильтрации (4-9+)
   subdomainLengths: number[];   // Длины субдоменов для фильтрации (1-6+)
   auctionStatuses: string[];    // Статусы аукционов
   zoneTypes: ZoneTypeFilter[];  // Типы зон: proxy, sbt
+  activeStatuses: ActiveStatusFilter[]; // Активные/неактивные (деактивированные зоны/сабдомены)
 }
 
 // Интерфейсы для данных

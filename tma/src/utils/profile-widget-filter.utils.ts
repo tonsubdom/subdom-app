@@ -43,7 +43,15 @@ export const filterZones = (
       return filters.zoneTypes!.includes(zoneType);
     });
   }
-  
+
+  // Фильтрация по активности — zone.status === "inactive" это реальный
+  // ончейн-маркер [INACTIVE] в имени коллекции (см. collectionToZone/
+  // isZoneMarkedInactive), не эвристика. Пусто/оба варианта = не фильтруем.
+  if (filters.activeStatuses && filters.activeStatuses.length === 1) {
+    const wantInactive = filters.activeStatuses[0] === 'inactive';
+    filtered = filtered.filter(zone => (zone.status === 'inactive') === wantInactive);
+  }
+
   return filtered;
 };
 
@@ -193,7 +201,15 @@ export const filterSubdomains = (
       return filters.zoneTypes!.includes(zoneType);
     });
   }
-  
+
+  // Фильтрация по активности — status="inactive" сюда попадает каскадом от
+  // деактивированной родительской зоны (см. ProfileWidget.tsx,
+  // getUserSubdomainsFromBlockchain), не только с самого сабдомена.
+  if (filters.activeStatuses && filters.activeStatuses.length === 1) {
+    const wantInactive = filters.activeStatuses[0] === 'inactive';
+    filtered = filtered.filter(subdomain => (subdomain.status === 'inactive') === wantInactive);
+  }
+
   return filtered;
 };
 

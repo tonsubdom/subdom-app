@@ -2666,6 +2666,7 @@ const ProfileWidget: React.FC = () => {
     subdomainLengths: [],
     auctionStatuses: [],
     zoneTypes: [],
+    activeStatuses: [],
   });
   const [sortBy, setSortBy] = useState<SortOption>("name_asc");
   const PROFILE_PAGE_SIZE = 10;

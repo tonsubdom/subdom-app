@@ -47,12 +47,14 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
   const [showZoneFilter, setShowZoneFilter] = useState<boolean>(false);
   const [showSubdomainFilter, setShowSubdomainFilter] = useState<boolean>(false);
   const [showZoneTypeFilter, setShowZoneTypeFilter] = useState<boolean>(false);
+  const [showActiveStatusFilter, setShowActiveStatusFilter] = useState<boolean>(false);
   const [showSortDropdown, setShowSortDropdown] = useState<boolean>(false);
-  
+
   // Refs для кликов вне дропдаунов
   const zoneFilterRef = useRef<HTMLDivElement>(null);
   const subdomainFilterRef = useRef<HTMLDivElement>(null);
   const zoneTypeFilterRef = useRef<HTMLDivElement>(null);
+  const activeStatusFilterRef = useRef<HTMLDivElement>(null);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
 
   // Статические диапазоны
@@ -96,13 +98,24 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
     }
   };
 
+  const toggleActiveStatusFilter = (status: 'active' | 'inactive') => {
+    const current = filters.activeStatuses || [];
+    setFilters({
+      ...filters,
+      activeStatuses: current.includes(status)
+        ? current.filter(s => s !== status)
+        : [...current, status]
+    });
+  };
+
   // Очистка фильтров
   const clearFilters = () => {
     setFilters({
       zoneLengths: [],
       subdomainLengths: [],
       auctionStatuses: [],
-      zoneTypes: []
+      zoneTypes: [],
+      activeStatuses: []
     });
     setSearchQuery('');
   };
@@ -118,6 +131,9 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
       }
       if (zoneTypeFilterRef.current && !zoneTypeFilterRef.current.contains(event.target as Node)) {
         setShowZoneTypeFilter(false);
+      }
+      if (activeStatusFilterRef.current && !activeStatusFilterRef.current.contains(event.target as Node)) {
+        setShowActiveStatusFilter(false);
       }
       if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target as Node)) {
         setShowSortDropdown(false);
@@ -195,11 +211,16 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
     return type === 'proxy' ? t('zoneTypeProxy') : t('zoneTypeSbt');
   };
 
+  const getActiveStatusText = (status: 'active' | 'inactive') => {
+    return status === 'active' ? (t('activeStatusActive') || 'Активные') : (t('activeStatusInactive') || 'Неактивные');
+  };
+
   // Подсчитываем количество активных фильтров
-  const activeFiltersCount = 
-    (filters.zoneLengths?.length || 0) + 
-    (filters.subdomainLengths?.length || 0) + 
-    (filters.zoneTypes?.length || 0);
+  const activeFiltersCount =
+    (filters.zoneLengths?.length || 0) +
+    (filters.subdomainLengths?.length || 0) +
+    (filters.zoneTypes?.length || 0) +
+    (filters.activeStatuses?.length || 0);
 
   return (
     <div style={{ marginBottom: '4px' }}>
@@ -311,6 +332,87 @@ const SearchAndFilters: React.FC<SearchAndFiltersProps> = ({
                         }}
                       />
                       <span>{getZoneTypeText(type)}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Фильтр по активности — показываем для зон и субдоменов. Раньше
+            деактивированные зоны/сабдомены просто мешались со всеми
+            остальными в общем списке — юзер попросил возможность отфильтровать
+            (см. Log.md 2026-08-11). Пусто/оба чекбокса = показываем всё. */}
+        {(activeTab === 'zones' || activeTab === 'subdomains') && (
+          <div style={{ position: 'relative' }} ref={activeStatusFilterRef}>
+            <button
+              onClick={() => setShowActiveStatusFilter(!showActiveStatusFilter)}
+              style={{
+                padding: '8px 12px',
+                background: (filters.activeStatuses?.length || 0) > 0 ? colors.primary : colors.secondaryBg,
+                color: (filters.activeStatuses?.length || 0) > 0 ? (isDark ? '#000' : '#fff') : colors.text,
+                border: `1px solid ${colors.border}`,
+                borderRadius: '6px',
+                fontSize: '12px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <span>{t('activeStatusFilter') || 'Статус'}</span>
+
+              {(filters.activeStatuses?.length || 0) > 0 && (
+                <FilterCounter
+                  count={filters.activeStatuses?.length || 0}
+                  isDark={isDark}
+                  color={isDark ? colors.accent : "black"}
+                />
+              )}
+            </button>
+
+            {showActiveStatusFilter && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                marginTop: '4px',
+                background: colors.dropdownBg || colors.background,
+                border: `1px solid ${colors.dropdownBorder || colors.border}`,
+                borderRadius: '8px',
+                padding: '12px',
+                zIndex: 1000,
+                minWidth: '180px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
+              }}>
+                <div style={{
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  marginBottom: '8px',
+                  color: colors.text
+                }}>
+                  {t('activeStatusFilter') || 'Статус'}:
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {(['active', 'inactive'] as const).map(status => (
+                    <label key={status} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      color: colors.text
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={(filters.activeStatuses || []).includes(status)}
+                        onChange={() => toggleActiveStatusFilter(status)}
+                        style={{
+                          accentColor: colors.primary
+                        }}
+                      />
+                      <span>{getActiveStatusText(status)}</span>
                     </label>
                   ))}
                 </div>

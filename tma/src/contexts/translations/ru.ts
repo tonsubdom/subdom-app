@@ -665,6 +665,9 @@ attention: 'Внимание!',
   
   // Фильтры
   zoneTypeFilter: '🏷️ Тип зоны',
+  activeStatusFilter: '🟢 Статус',
+  activeStatusActive: 'Активные',
+  activeStatusInactive: 'Неактивные',
   zoneLengthFilter: '🌐 Длина зоны',
   subdomainLengthFilter: '🔤 Длина субдомена',
   
