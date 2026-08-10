@@ -79,6 +79,10 @@ export const Link: FC<LinkProps> = ({
       <a
         {...rest}
         href={path}
+        // _blank — открываем как отдельное приложение/окно, не пытаемся
+        // навигировать в текущем вебвью Mini App (см. Log.md 2026-08-10).
+        target="_blank"
+        rel="noopener noreferrer"
         onClick={onClick}
         className={classNames(className, 'link')}
       />
