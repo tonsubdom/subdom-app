@@ -945,7 +945,7 @@
 
 // ${network}
 // 🌐 Домен: <code>${domain}</code>
-// 👤 Адрес: ${this.formatTonviewerLink(userAddress, isTestnet)}
+// 👤 Адрес: ${await this.formatTonviewerLink(userAddress, isTestnet)}
 
 // 💬 Сообщение:
 // ${messageText.substring(0, 500)}${messageText.length > 500 ? '...' : ''}
@@ -976,7 +976,7 @@
 
 // ${network}
 // 🌐 Домен: <code>${domain}</code>
-// 👤 Адрес: ${this.formatTonviewerLink(userAddress, isTestnet)}
+// 👤 Адрес: ${await this.formatTonviewerLink(userAddress, isTestnet)}
 
 // ⏰ Время создания: ${new Date().toLocaleString('ru-RU')}
 //       `.trim();
@@ -1031,8 +1031,8 @@
 
 // ${network}
 // 🏷️ Название: *.<code>${name}</code>
-// 📍 Адрес домена: ${this.formatTonviewerLink(address, isTestnet)}
-// 👤 Владелец: ${this.formatTonviewerLink(owner, isTestnet)}
+// 📍 Адрес домена: ${await this.formatTonviewerLink(address, isTestnet)}
+// 👤 Владелец: ${await this.formatTonviewerLink(owner, isTestnet)}
 // 💰 Цена: ${price} TON
 // 🛡️ Тип: Proxy (для продажи)
 // ⏰ Время создания: ${new Date().toLocaleString('ru-RU')}
@@ -1061,8 +1061,8 @@
 
 // ${network}
 // 🌐 Домен: <code>${domain}</code>
-// 📍 Адрес коллекции: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
-// 👤 Владелец: ${this.formatTonviewerLink(address, isTestnet)}
+// 📍 Адрес коллекции: ${await this.formatTonviewerLink(bundleAddress, isTestnet)}
+// 👤 Владелец: ${await this.formatTonviewerLink(address, isTestnet)}
 
 // ⏰ Время развертывания: ${new Date().toLocaleString('ru-RU')}
 // 💡 Теперь можно создавать субдомены в этой Proxy-зоне!
@@ -1091,9 +1091,9 @@
 
 // ${network}
 // 🏷️ Название: <code>${name}</code>
-// 📦 Адрес коллекции: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
-// 📍 Адрес домена: ${this.formatTonviewerLink(address, isTestnet)}
-// 👤 Владелец: ${this.formatTonviewerLink(owner, isTestnet)}
+// 📦 Адрес коллекции: ${await this.formatTonviewerLink(bundleAddress, isTestnet)}
+// 📍 Адрес домена: ${await this.formatTonviewerLink(address, isTestnet)}
+// 👤 Владелец: ${await this.formatTonviewerLink(owner, isTestnet)}
 // 💰 Цена: ${price} TON
 // 🎫 Тип: SBT (не для продажи)
 
@@ -1123,7 +1123,7 @@
 
 // ${network}
 // 🏷️ Название: <code>${name}</code>
-// 📍 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
+// 📍 Адрес: ${await this.formatTonviewerLink(address, isTestnet)}
 // 🎫 Статус изменён на: <code>${status}</code>
 
 // ⏰ Время завершения работы: ${new Date().toLocaleString('ru-RU')}
@@ -1146,7 +1146,7 @@
 
 // ${network}
 // 🌐 Домен: <code>${domain}</code>
-// 👤 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
+// 👤 Адрес: ${await this.formatTonviewerLink(address, isTestnet)}
 // 💰 Стартовая цена: ${price} TON
 // 🎯 Тип: Proxy аукцион
 
@@ -1174,7 +1174,7 @@
 //       const network = this.formatNetwork(isTestnet);
 //       const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(domain);
 //       const previousBidderInfo = previousBidder
-//         ? `\n👤 Предыдущий ставщик: ${this.formatTonviewerLink(previousBidder, isTestnet)}`
+//         ? `\n👤 Предыдущий ставщик: ${await this.formatTonviewerLink(previousBidder, isTestnet)}`
 //         : '';
 
 //       const message = `
@@ -1182,7 +1182,7 @@
 
 // ${network}
 // 🌐 Домен: <code>${domain}</code>
-// 👤 Ставщик: ${this.formatTonviewerLink(bidder, isTestnet)}
+// 👤 Ставщик: ${await this.formatTonviewerLink(bidder, isTestnet)}
 // 💵 Сумма: ${amount} TON${previousBidderInfo}
 // 🎯 Тип: Proxy аукцион
 
@@ -1211,8 +1211,8 @@
 
 // ${network}
 // 🌐 Домен: <code>${domain}</code>
-// 📍 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
-// 👤 Владелец: ${this.formatTonviewerLink(owner, isTestnet)}
+// 📍 Адрес: ${await this.formatTonviewerLink(address, isTestnet)}
+// 👤 Владелец: ${await this.formatTonviewerLink(owner, isTestnet)}
 // 💰 Цена: ${price} TON
 // 🔒 Тип: SBT (не для продажи)
 // ⏰ Время минта: ${new Date().toLocaleString('ru-RU')}
@@ -1240,7 +1240,7 @@
 
 // ${network}
 // 🌐 Домен: <code>${domain}</code>
-// 👑 Победитель: ${this.formatTonviewerLink(winner, isTestnet)}
+// 👑 Победитель: ${await this.formatTonviewerLink(winner, isTestnet)}
 // 🏆 Финальная цена: ${finalPrice} TON
 
 // ⏰ Время завершения: ${new Date().toLocaleString('ru-RU')}
@@ -1269,7 +1269,7 @@
 // 👤 <b>НОВЫЙ ПОЛЬЗОВАТЕЛЬ ЗАРЕГИСТРИРОВАН!</b>
 
 // ${network}
-// 📍 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
+// 📍 Адрес: ${await this.formatTonviewerLink(address, isTestnet)}
 
 // ⏰ Время регистрации: ${new Date().toLocaleString('ru-RU')}
 //       `.trim();
@@ -1293,8 +1293,8 @@
 
 // ${network}
 // 🏷️ Название: <code>${name}</code>
-// 📍 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
-// 👤 Владелец: ${this.formatTonviewerLink(owner, isTestnet)}
+// 📍 Адрес: ${await this.formatTonviewerLink(address, isTestnet)}
+// 👤 Владелец: ${await this.formatTonviewerLink(owner, isTestnet)}
 // 💰 Цена: ${price} TON
 // 🛡️ Тип: Proxy (для продажи)
 
@@ -1329,9 +1329,9 @@
 
 // ${network}
 // 🏷️ Название: <code>${name}</code>
-// 📦 Адрес коллекции: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
-// 📍 Адрес домена: ${this.formatTonviewerLink(address, isTestnet)}
-// 👤 Владелец: ${this.formatTonviewerLink(owner, isTestnet)}
+// 📦 Адрес коллекции: ${await this.formatTonviewerLink(bundleAddress, isTestnet)}
+// 📍 Адрес домена: ${await this.formatTonviewerLink(address, isTestnet)}
+// 👤 Владелец: ${await this.formatTonviewerLink(owner, isTestnet)}
 // 💰 Цена: ${price} TON
 // 🎫 Тип: SBT (не для продажи)
 
@@ -1365,7 +1365,7 @@
 
 // ${network}
 // 🌐 Домен: <code>${domain}</code>
-// 👤 Владелец: ${this.formatTonviewerLink(address, isTestnet)}
+// 👤 Владелец: ${await this.formatTonviewerLink(address, isTestnet)}
 // 💰 Стартовая цена: ${price} TON
 // 🎯 Тип: Proxy аукцион
 
@@ -1396,7 +1396,7 @@
 //       const network = this.formatNetwork(isTestnet);
 //       const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(domain);
 //       const previousBidderInfo = previousBidder
-//         ? `\n👤 Предыдущий ставщик: ${this.formatTonviewerLink(previousBidder, isTestnet)}`
+//         ? `\n👤 Предыдущий ставщик: ${await this.formatTonviewerLink(previousBidder, isTestnet)}`
 //         : '';
 
 //       const message = `
@@ -1404,7 +1404,7 @@
 
 // ${network}
 // 🌐 Домен: <code>${domain}</code>
-// 👤 Ставщик: ${this.formatTonviewerLink(bidder, isTestnet)}
+// 👤 Ставщик: ${await this.formatTonviewerLink(bidder, isTestnet)}
 // 💵 Сумма: ${amount} TON${previousBidderInfo}
 
 // ⏰ Время ставки: ${new Date().toLocaleString('ru-RU')}
@@ -1435,8 +1435,8 @@
 
 // ${network}
 // 🌐 Домен: <code>${domain}</code>
-// 📍 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
-// 👤 Владелец: ${this.formatTonviewerLink(owner, isTestnet)}
+// 📍 Адрес: ${await this.formatTonviewerLink(address, isTestnet)}
+// 👤 Владелец: ${await this.formatTonviewerLink(owner, isTestnet)}
 // 💰 Цена: ${price} TON
 
 // ⏰ Время минта: ${new Date().toLocaleString('ru-RU')}
@@ -1461,7 +1461,7 @@
 
 // ${network}
 // 🌐 Домен: <code>${domain}</code>
-// 👑 Победитель: ${this.formatTonviewerLink(winner, isTestnet)}
+// 👑 Победитель: ${await this.formatTonviewerLink(winner, isTestnet)}
 // 🏆 Финальная цена: ${finalPrice} TON
 
 // ⏰ Время завершения: ${new Date().toLocaleString('ru-RU')}
@@ -1491,7 +1491,7 @@
 // 👤 <b>НОВЫЙ ПОЛЬЗОВАТЕЛЬ ЗАРЕГИСТРИРОВАН!</b>
 
 // ${network}
-// 📍 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
+// 📍 Адрес: ${await this.formatTonviewerLink(address, isTestnet)}
 
 // ⏰ Время регистрации: ${new Date().toLocaleString('ru-RU')}
 //       `.trim();
@@ -1584,7 +1584,7 @@
 // 💰 <b>ОПЛАЧЕННАЯ ПОПЫТКА ДОБАВЛЕНА!</b>
 
 // ${network}
-// 👤 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
+// 👤 Адрес: ${await this.formatTonviewerLink(address, isTestnet)}
 // 🏷️ Тип зоны: ${zoneTypeText}
 // 📏 Длина: ${formattedLength} символов
 
@@ -1611,7 +1611,7 @@
 // 💰 <b>НОВАЯ ОПЛАЧЕННАЯ ПОПЫТКА!</b>
 
 // ${network}
-// 👤 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
+// 👤 Адрес: ${await this.formatTonviewerLink(address, isTestnet)}
 // 🏷️ Тип зоны: ${zoneTypeText}
 // 📏 Длина: ${formattedLength} символов
 
@@ -1639,7 +1639,7 @@
 // 💸 <b>ОПЛАЧЕННАЯ ПОПЫТКА ИСПОЛЬЗОВАНА!</b>
 
 // ${network}
-// 👤 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
+// 👤 Адрес: ${await this.formatTonviewerLink(address, isTestnet)}
 // 🏷️ Тип зоны: ${zoneTypeText}
 // 📏 Длина: ${formattedLength} символов
 
@@ -1665,7 +1665,7 @@
 // 💸 <b>ОПЛАЧЕННАЯ ПОПЫТКА ИСПОЛЬЗОВАНА!</b>
 
 // ${network}
-// 👤 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
+// 👤 Адрес: ${await this.formatTonviewerLink(address, isTestnet)}
 // 🏷️ Тип зоны: ${zoneTypeText}
 // 📏 Длина: ${length} символов
 
@@ -1692,7 +1692,7 @@
 // ❌ <b>ОШИБКА ПРИ ОПЛАТЕ ПОПЫТКИ!</b>
 
 // ${network}
-// 👤 Адрес: ${this.formatTonviewerLink(address, isTestnet)}
+// 👤 Адрес: ${await this.formatTonviewerLink(address, isTestnet)}
 // 🏷️ Тип зоны: ${zoneTypeText}
 // 📏 Длина: ${length} символов
 
@@ -2516,9 +2516,54 @@ class TelegramBotService {
     return isTestnet ? 'https://testnet.tonviewer.com' : 'https://tonviewer.com';
   }
 
-  private formatTonviewerLink(address: string, isTestnet: boolean): string {
+  /**
+   * Резолвит адрес в привязанный .ton домен (официальная TON DNS-коллекция
+   * через toncenter, не наши зоны платформы) — 1:1 порт fetchDomain из
+   * tma/src/components/ActiveAuctions/ActiveAuctions.tsx / resolveAddressToDomain
+   * из tma/src/utils/tonUtils.ts, только на Node fetch вместо браузерного.
+   * null — нет привязанного домена или запрос не удался; вызывающий код
+   * фолбэчится на укороченный адрес, не считает null ошибкой.
+   */
+  private async resolveOwnerDomain(address: string, isTestnet: boolean): Promise<string | null> {
+    if (!address) return null;
+    try {
+      const host = isTestnet ? 'testnet.toncenter.com' : 'toncenter.com';
+      const apiKey = process.env.TONCENTER_API_KEY;
+
+      const url = new URL(`https://${host}/api/v3/dns/records`);
+      url.searchParams.set('wallet', address);
+      url.searchParams.set('limit', '100');
+      url.searchParams.set('offset', '0');
+      if (apiKey) url.searchParams.set('api_key', apiKey);
+
+      const response = await fetch(url.toString(), { signal: AbortSignal.timeout(5000) });
+      if (!response.ok) return null;
+      const data: any = await response.json();
+
+      const domainFromRecords = data.records?.find(
+        (r: any) => r.nft_item_owner === address
+      )?.domain;
+      const domainFromAddressBook = (Object.values(data.address_book || {}) as any[]).find(
+        (entry: any) => entry.user_friendly === address
+      )?.domain;
+
+      return domainFromRecords || domainFromAddressBook || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Ссылка на владельца в уведомлениях — раньше всегда укороченный адрес
+   * (0x1234...5678), нечитаемо и никак не мотивирует комьюнити ("хочу
+   * увидеть своё имя в уведомлении"). Теперь показывает привязанный .ton
+   * домен, если он есть, адрес — только как фолбэк (см. Log.md 2026-08-10).
+   */
+  private async formatTonviewerLink(address: string, isTestnet: boolean): Promise<string> {
     const base = this.getTonviewerUrl(isTestnet);
-    return `<a href="${base}/${address}">${address.slice(0, 6)}...${address.slice(-4)}</a>`;
+    const domain = await this.resolveOwnerDomain(address, isTestnet);
+    const label = domain ? `${domain}.ton` : `${address.slice(0, 6)}...${address.slice(-4)}`;
+    return `<a href="${base}/${address}">${label}</a>`;
   }
 
   /** Портировано из MarketPage.tsx createGetGemsLink — тот же формат ссылки на карточку итема. */
@@ -3033,7 +3078,7 @@ ${$.newMessage}
 
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
-${$.fieldAddress}: ${this.formatTonviewerLink(userAddress, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(userAddress, isTestnet)}
 
 💬 Сообщение:
 ${messageText.substring(0, 500)}${messageText.length > 500 ? '...' : ''}
@@ -3065,7 +3110,7 @@ ${$.newChat}
 
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
-${$.fieldAddress}: ${this.formatTonviewerLink(userAddress, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(userAddress, isTestnet)}
 
 ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
@@ -3084,7 +3129,7 @@ ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
   // ==================== ОТПРАВКА В ГРУППУ (ВСЕМ PUBLIC-ПОДПИСЧИКАМ) ====================
 
   private async sendGroupNotification(
-    getMessage: (lang: string) => string,
+    getMessage: (lang: string) => string | Promise<string>,
     inlineKeyboard?: any,
     photoUrl?: string | null
   ): Promise<boolean> {
@@ -3099,7 +3144,7 @@ ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
     for (const sub of publicSubs) {
       try {
         const lang = sub.lang || 'ru';
-        const message = getMessage(lang);
+        const message = await getMessage(lang);
         if (photoUrl) {
           await this.sendPhotoWithCaption(sub.chatId, photoUrl, message, inlineKeyboard);
         } else {
@@ -3124,15 +3169,15 @@ ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(name, '');
       const inlineKeyboard = [[{ text: LANG.ru.btnCreateSubdomain, url: miniAppLink }]];
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         return `
 ${$.proxyZoneCreated}
 
 ${network}
 ${$.fieldName}: *.<code>${name}</code>
-${$.fieldDomainAddress}: ${this.formatTonviewerLink(address, isTestnet)}
-${$.fieldOwner}: ${this.formatTonviewerLink(owner, isTestnet)}
+${$.fieldDomainAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
 ${$.fieldPrice}: ${price} TON
 ${$.fieldType}: ${$.fieldTypeProxy}
 ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
@@ -3153,15 +3198,15 @@ ${$.hintProxyZone}
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(domain, '');
       const inlineKeyboard = [[{ text: LANG.ru.btnCreateSubdomain, url: miniAppLink }]];
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         return `
 ${$.bundleDeployed}
 
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
-${$.fieldCollectionAddress}: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
-${$.fieldOwner}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldCollectionAddress}: ${await this.formatTonviewerLink(bundleAddress, isTestnet)}
+${$.fieldOwner}: ${await this.formatTonviewerLink(address, isTestnet)}
 
 ${$.fieldDeployedAt}: ${new Date().toLocaleString('ru-RU')}
 ${$.hintProxyZone}
@@ -3181,16 +3226,16 @@ ${$.hintProxyZone}
       // может создать только её владелец, показывать эту кнопку всей
       // публичной аудитории вводит в заблуждение.
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         return `
 ${$.sbtZoneCreated}
 
 ${network}
 ${$.fieldName}: <a href="tonsite://${name}">.${name}</a>
-${$.fieldCollectionAddress}: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
-${$.fieldDomainAddress}: ${this.formatTonviewerLink(address, isTestnet)}
-${$.fieldOwner}: ${this.formatTonviewerLink(owner, isTestnet)}
+${$.fieldCollectionAddress}: ${await this.formatTonviewerLink(bundleAddress, isTestnet)}
+${$.fieldDomainAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
 ${$.fieldPrice}: ${price} TON
 ${$.fieldType}: ${$.fieldTypeSBT}
 
@@ -3215,7 +3260,7 @@ ${$.sbtZoneDeactivated}
 
 ${network}
 ${$.fieldName}: <code>${name}</code>
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldStatus}: <code>${status}</code>
 
 ${$.fieldDeactivatedAt}: ${new Date().toLocaleString('ru-RU')}
@@ -3243,8 +3288,8 @@ ${$.deactivationRequested}
 
 ${network}
 ${$.fieldName}: <code>${name}</code>
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
-${$.fieldRequestedBy}: ${this.formatTonviewerLink(requestedBy, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldRequestedBy}: ${await this.formatTonviewerLink(requestedBy, isTestnet)}
 
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
@@ -3311,7 +3356,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     try {
       const network = this.formatNetwork(isTestnet);
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         const domainLink = `<a href="tonsite://${domain}">${domain}</a>`;
         const changedLines = [
@@ -3392,14 +3437,14 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
       const inlineKeyboard = [[{ text: LANG.ru.btnPlaceBid, url: miniAppLink }]];
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         return `
 ${$.auctionStarted}
 
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldPrice}: ${price} TON
 ${$.fieldAuctionType}: ${$.fieldAuctionTypeProxy}
 
@@ -3423,10 +3468,10 @@ ${$.hintHurryUp}
       const miniAppLink = DeeplinkUtils.generateAddSubdomainLink(zoneName as string, subdomainName as string);
       const inlineKeyboard = [[{ text: LANG.ru.btnPlaceBid, url: miniAppLink }]];
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         const previousBidderInfo = previousBidder
-          ? `\n${$.fieldPreviousBidder}: ${this.formatTonviewerLink(previousBidder, isTestnet)}`
+          ? `\n${$.fieldPreviousBidder}: ${await this.formatTonviewerLink(previousBidder, isTestnet)}`
           : '';
 
         return `
@@ -3434,7 +3479,7 @@ ${$.newBid}
 
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
-${$.fieldBidder}: ${this.formatTonviewerLink(bidder, isTestnet)}
+${$.fieldBidder}: ${await this.formatTonviewerLink(bidder, isTestnet)}
 ${$.fieldAmount}: ${amount} TON${previousBidderInfo}
 ${$.fieldAuctionType}: ${$.fieldAuctionTypeProxy}
 
@@ -3452,15 +3497,15 @@ ${$.fieldBidTime}: ${new Date().toLocaleString('ru-RU')}
     try {
       const network = this.formatNetwork(isTestnet);
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         return `
 ${$.sbtSubdomainMinted}
 
 ${network}
 ${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
-${$.fieldOwner}: ${this.formatTonviewerLink(owner, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
 ${$.fieldPrice}: ${price} TON
 ${$.fieldType}: ${$.fieldTypeSBT}
 ${$.fieldMintTime}: ${new Date().toLocaleString('ru-RU')}
@@ -3488,14 +3533,14 @@ ${$.hintCongrats}
         if (getGemsUrl) inlineKeyboard[0]!.push({ text: LANG.ru.btnViewGetGems, url: getGemsUrl });
       }
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         return `
 ${$.auctionEnded}
 
 ${network}
 ${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
-${itemAddress ? `${$.fieldAddress}: ${this.formatTonviewerLink(itemAddress, isTestnet)}\n` : ''}${$.fieldWinner}: ${this.formatTonviewerLink(winner, isTestnet)}
+${itemAddress ? `${$.fieldAddress}: ${await this.formatTonviewerLink(itemAddress, isTestnet)}\n` : ''}${$.fieldWinner}: ${await this.formatTonviewerLink(winner, isTestnet)}
 ${$.fieldFinalPrice}: ${finalPrice} TON
 
 ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
@@ -3514,13 +3559,13 @@ ${$.hintCongratsWinner}
     try {
       const network = this.formatNetwork(isTestnet);
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         return `
 ${$.newUser}
 
 ${network}
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 
 ${$.fieldRegisteredAt}: ${new Date().toLocaleString('ru-RU')}
         `.trim();
@@ -3536,13 +3581,13 @@ ${$.fieldRegisteredAt}: ${new Date().toLocaleString('ru-RU')}
     try {
       const network = this.formatNetwork(isTestnet);
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         return `
 ${$.promoGranted}
 
 ${network}
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldLength}: ${length} символов
         `.trim();
       }, [[{ text: LANG.ru.btnRegisterPromo, url: DeeplinkUtils.generateHomeLink() }]]);
@@ -3560,13 +3605,13 @@ ${$.fieldLength}: ${length} символов
     try {
       const network = this.formatNetwork(isTestnet);
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         return `
 ${$.tutorialCompleted}
 
 ${network}
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldLength}: ${length} символов
         `.trim();
       }, [[{ text: LANG.ru.btnRegisterPromo, url: DeeplinkUtils.generateHomeLink() }]]);
@@ -3608,8 +3653,8 @@ ${$.proxyZoneCreated}
 
 ${network}
 ${$.fieldName}: <code>${name}</code>
-${$.fieldDomainAddress}: ${this.formatTonviewerLink(address, isTestnet)}
-${$.fieldOwner}: ${this.formatTonviewerLink(owner, isTestnet)}
+${$.fieldDomainAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
 ${$.fieldPrice}: ${price} TON
 ${$.fieldType}: ${$.fieldTypeProxy}
 
@@ -3646,9 +3691,9 @@ ${$.sbtZoneCreated}
 
 ${network}
 ${$.fieldName}: <a href="tonsite://${name}">.${name}</a>
-${$.fieldCollectionAddress}: ${this.formatTonviewerLink(bundleAddress, isTestnet)}
-${$.fieldDomainAddress}: ${this.formatTonviewerLink(address, isTestnet)}
-${$.fieldOwner}: ${this.formatTonviewerLink(owner, isTestnet)}
+${$.fieldCollectionAddress}: ${await this.formatTonviewerLink(bundleAddress, isTestnet)}
+${$.fieldDomainAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
 ${$.fieldPrice}: ${price} TON
 ${$.fieldType}: ${$.fieldTypeSBT}
 
@@ -3685,7 +3730,7 @@ ${$.auctionStarted}
 
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
-${$.fieldOwner}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldOwner}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldPrice}: ${price} TON
 ${$.fieldAuctionType}: ${$.fieldAuctionTypeProxy}
 
@@ -3719,7 +3764,7 @@ ${$.hintHurryUp}
       const network = this.formatNetwork(isTestnet);
       const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(domain);
       const previousBidderInfo = previousBidder
-        ? `\n${$.fieldPreviousBidder}: ${this.formatTonviewerLink(previousBidder, isTestnet)}`
+        ? `\n${$.fieldPreviousBidder}: ${await this.formatTonviewerLink(previousBidder, isTestnet)}`
         : '';
 
       const message = `
@@ -3727,7 +3772,7 @@ ${$.newBid}
 
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
-${$.fieldBidder}: ${this.formatTonviewerLink(bidder, isTestnet)}
+${$.fieldBidder}: ${await this.formatTonviewerLink(bidder, isTestnet)}
 ${$.fieldAmount}: ${amount} TON${previousBidderInfo}
 
 ${$.fieldBidTime}: ${new Date().toLocaleString('ru-RU')}
@@ -3761,8 +3806,8 @@ ${$.sbtSubdomainMinted}
 
 ${network}
 ${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
-${$.fieldOwner}: ${this.formatTonviewerLink(owner, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
 ${$.fieldPrice}: ${price} TON
 
 ${$.fieldMintTime}: ${new Date().toLocaleString('ru-RU')}
@@ -3792,7 +3837,7 @@ ${$.auctionEnded}
 
 ${network}
 ${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
-${itemAddress ? `${$.fieldAddress}: ${this.formatTonviewerLink(itemAddress, isTestnet)}\n` : ''}${$.fieldWinner}: ${this.formatTonviewerLink(winner, isTestnet)}
+${itemAddress ? `${$.fieldAddress}: ${await this.formatTonviewerLink(itemAddress, isTestnet)}\n` : ''}${$.fieldWinner}: ${await this.formatTonviewerLink(winner, isTestnet)}
 ${$.fieldFinalPrice}: ${finalPrice} TON
 
 ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
@@ -3829,7 +3874,7 @@ ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
 ${$.newUser}
 
 ${network}
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 
 ${$.fieldRegisteredAt}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
@@ -3923,7 +3968,7 @@ ${$.fieldRegisteredAt}: ${new Date().toLocaleString('ru-RU')}
 ${$.paymentRecorded}
 
 ${network}
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldZoneType}: ${zoneTypeText}
 ${$.fieldLength}: ${formattedLength} символов
 
@@ -3944,7 +3989,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     try {
       const network = this.formatNetwork(isTestnet);
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
         const formattedLength = length === 9 ? '9+' : String(length);
@@ -3953,7 +3998,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
 ${$.paymentRecorded}
 
 ${network}
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldZoneType}: ${zoneTypeText}
 ${$.fieldLength}: ${formattedLength} символов
 
@@ -3981,7 +4026,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
 ${$.paymentConsumed}
 
 ${network}
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldZoneType}: ${zoneTypeText}
 ${$.fieldLength}: ${formattedLength} символов
 
@@ -4002,7 +4047,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     try {
       const network = this.formatNetwork(isTestnet);
 
-      return await this.sendGroupNotification((lang) => {
+      return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
 
@@ -4010,7 +4055,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
 ${$.paymentConsumed}
 
 ${network}
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldZoneType}: ${zoneTypeText}
 ${$.fieldLength}: ${length} символов
 
@@ -4037,7 +4082,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
 ${$.paymentError}
 
 ${network}
-${$.fieldAddress}: ${this.formatTonviewerLink(address, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldZoneType}: ${zoneTypeText}
 ${$.fieldLength}: ${length} символов
 
