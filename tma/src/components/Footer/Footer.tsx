@@ -81,7 +81,14 @@ const Footer = () => {
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'absolute',
-              bottom: '70px',
+              // 70px фиксированного отступа хватало для safe-area, но не для
+              // нижних виджетов чата/профиля, которые Telegram-клиент рисует
+              // поверх Mini App на части платформ — они не входят в
+              // env(safe-area-inset-bottom) (это только аппаратный notch),
+              // поэтому модалка пряталась под ними. Увеличенный базовый
+              // отступ + safe-area сверху (та же причина, что и в футере
+              // ниже, см. Log.md 2026-08-10).
+              bottom: 'calc(110px + env(safe-area-inset-bottom, 0px))',
               right: '12px',
               left: '12px',
               maxWidth: '360px',

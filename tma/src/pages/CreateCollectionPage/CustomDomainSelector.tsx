@@ -273,6 +273,23 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
             </button>
           </div>
 
+          {!isLoading && !error && (
+            <div
+              style={{
+                padding: "6px 10px",
+                fontSize: "11px",
+                fontFamily: "monospace",
+                color: isDark ? "#888" : "#999",
+                borderBottom: `1px solid ${isDark ? "#333" : "#f0f0f0"}`,
+                background: isDark ? "#1A1A1A" : "white",
+              }}
+            >
+              {searchQuery.trim()
+                ? `${t("domainSelectorFoundOf") || "Найдено"}: ${filteredDomains.length} / ${domains.length}`
+                : `${t("domainSelectorLoadedCount") || "Загружено доменов"}: ${domains.length}`}
+            </div>
+          )}
+
           <div style={{ flex: 1, overflowY: "auto", maxHeight: "260px", background: isDark ? "#1A1A1A" : "white" }}>
             {isLoading ? (
               <div style={{ padding: "16px", textAlign: "center", color: "#999", fontSize: "13px", fontFamily: "monospace" }}>
