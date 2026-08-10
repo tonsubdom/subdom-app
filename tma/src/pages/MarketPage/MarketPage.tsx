@@ -255,8 +255,12 @@ else {
     console.log('❌ Изображение не найдено');
   }
   
-  // Получаем имя из token_info или из домена
-  let name = tokenInfo.name || item.domain || 'Без названия';
+  // Получаем имя из token_info или из домена. cleanZoneDisplayName — та же
+  // чистка сырых метаданных коллекции ("Proxy X ton Domain" -> "x.ton"),
+  // что уже применяется в ManageDomainPage/ProfileWidget/CreateCollectionPage —
+  // тут её не хватало, и в Маркете для proxy-зон/сабдоменов вылезало сырое
+  // имя вместо человекочитаемого (см. Log.md 2026-08-11).
+  let name = cleanZoneDisplayName(tokenInfo.name || item.domain || 'Без названия');
 let { zoneLength, subdomainLength } = extractLengths(item.domain);
   // if (itemType === 'nft_wrapper') {
   //   name = name.split(' ')[1]+'.ton';
@@ -264,7 +268,7 @@ let { zoneLength, subdomainLength } = extractLengths(item.domain);
   // }
   if (itemType === 'nft_wrapper') {
     // Для NFT wrapper имя берём из домена, а не из token_info (там может быть что угодно)
-    name = item.domain || name;
+    name = cleanZoneDisplayName(item.domain || name);
     if (!name.endsWith('.ton')) {
         name = name + '.ton';
     }
