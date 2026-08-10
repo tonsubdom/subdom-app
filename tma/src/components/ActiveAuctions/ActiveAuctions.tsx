@@ -464,10 +464,15 @@ const SubdomainImage: React.FC<{
   const imageUrl = useMemo(() => {
     if (auction.zoneName && auction.subdomainName) {
       // Убираем .ton из zoneName если есть
-      const cleanZoneName = auction.zoneName.endsWith('.ton') 
-        ? auction.zoneName.slice(0, -4) 
+      const cleanZoneName = auction.zoneName.endsWith('.ton')
+        ? auction.zoneName.slice(0, -4)
         : auction.zoneName;
-      return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${cleanZoneName}/${auction.subdomainName}.png`;
+      // Бэкенд-генератор картинки рендерит подпись буквально из пути URL —
+      // если zoneName/subdomainName пришли с чейна не в нижнем регистре (в
+      // отличие от Manager/Market/поиска, которые эти же поля приводят к
+      // lowercase перед показом), лейбл на картинке показывал "Conect.Tion"
+      // вместо "conect.tion" (только здесь, см. Log.md 2026-08-10).
+      return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${cleanZoneName.toLowerCase()}/${auction.subdomainName.toLowerCase()}.png`;
     }
     return '';
   }, [auction.zoneName, auction.subdomainName]);
