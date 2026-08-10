@@ -59,8 +59,21 @@ export const extractZoneName = (uri: string): string => {
 // ManageDomainPage строил свой DisplayItem.title из тех же сырых метаданных
 // отдельно и той же чистки не делал — юзер увидел разницу между виджетом
 // профиля и менеджером на одной и той же зоне.
+// change_content на реальной ончейн-деактивации SBT-зоны дописывает
+// "[INACTIVE]" прямо в название коллекции (не отдельное поле статуса) —
+// проверено вживую 2026-08-11. Суффиксные regex'ы в cleanZoneDisplayName
+// ниже все заточены под $ (конец строки) и переставали срабатывать
+// целиком, стоило добавиться этому маркеру после "Domain" — юзер видел
+// сырое ".4044 dns domains [inactive].ton" вместо "4044.ton". Снимаем
+// маркер ДО чистки суффиксов, а не после.
+const INACTIVE_MARKER_RE = /\s*\[\s*inactive\s*\]\s*/i;
+
+export const isZoneMarkedInactive = (rawName: string): boolean =>
+  INACTIVE_MARKER_RE.test(rawName || '');
+
 export const cleanZoneDisplayName = (rawName: string): string => {
   return rawName
+    .replace(INACTIVE_MARKER_RE, ' ')
     .replace(/^proxy\s+/i, '') // "Proxy downloader ton Domain" -> "downloader ton Domain"
     .replace(/\s+dns\s+domains?$/i, '') // "... DNS Domains" / "... DNS Domain"
     .replace(/\s+proxy\s+domains?$/i, '') // "... Proxy Domains" / "... Proxy Domain" (суффиксом)

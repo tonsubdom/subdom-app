@@ -2268,8 +2268,12 @@ import { useNavigate } from "react-router-dom";
 import {
   useTonAddress,
   useTonWallet,
+  useTonConnectUI,
   TonConnectButton,
 } from "@tonconnect/ui-react";
+import { useDispatch } from "react-redux";
+import { AppDispatch } from "@/store/store";
+import { setWalletRecord } from "@/store/dns/dnsRecordsSlice";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUser } from "@/contexts/UserContext";
@@ -2297,7 +2301,7 @@ import {
   SimpleEnrichedItem,
   ItemType,
 } from "@/services/blockchainItems/blockchain-items-types";
-import { cleanZoneDisplayName } from "@/services/blockchainItems/blockchain-items-utils";
+import { cleanZoneDisplayName, isZoneMarkedInactive } from "@/services/blockchainItems/blockchain-items-utils";
 import { decodeDomainForDisplay } from "@/utils/domainPunycode";
 import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInfo";
 import { getAuctionBidHistory } from "@/pages/AddSubdomainPage/flipTimer/getAuctionBidHistory";
@@ -2383,7 +2387,10 @@ const collectionToZone = (col: SimpleCollection): Zone => {
     createdAt: col.created_at || col.lastUpdated || new Date().toISOString(),
     subdomainsAmount: col.item_count || 0,
     proxy: col.type === "proxy" ? 1 : 0,
-    status: "active",
+    // Раньше всегда хардкожено "active" — теперь читает реальный маркер
+    // "[INACTIVE]", который change_content дописывает в название коллекции
+    // на настоящей деактивации (см. isZoneMarkedInactive, Log.md 2026-08-11).
+    status: isZoneMarkedInactive(rawName) ? "inactive" : "active",
     image: col.metadata?.token_info?.[0]?.image || col.image,
     description: col.metadata?.token_info?.[0]?.description || col.description,
     zoneLength: zoneName.length,
@@ -2589,6 +2596,8 @@ const ProfileWidget: React.FC = () => {
   const wallet = useTonWallet();
   const address = useTonAddress();
   const isTestnet = wallet?.account?.chain === "-3";
+  const [tonConnectUI] = useTonConnectUI();
+  const dispatch = useDispatch<AppDispatch>();
 
   const [snackbar, setSnackbar] = useState<React.ReactElement | null>(null);
   const showSnackbar = (
@@ -2900,6 +2909,62 @@ const ProfileWidget: React.FC = () => {
     } catch {
       if (!isStale?.()) setDomain(null);
       return null;
+    }
+  };
+
+  // ====== ПРИВЯЗКА АДРЕСА КОШЕЛЬКА К ДОМЕНУ (шаг 1 подсказки настройки) ======
+  // Юзер жмёт "Привязать адрес" → вводит свой домен/субдомен → мы резолвим
+  // его в NFT-адрес и шлём ту же транзакцию смены wallet DNS-записи, что и
+  // handleSaveWalletAddress в ManageDomainPage. Свой адрес кошелька не
+  // спрашиваем — он уже известен (address). После успеха — fetchDomain()
+  // заново: domain обновится и тот же useEffect [domain,...] выше сам
+  // подтянет аватар/описание, если они уже были записаны на этот домен
+  // раньше (например через ton_site_builder_bot) — юзер увидит картинку
+  // сразу же, без перезахода.
+  const [showLinkAddressForm, setShowLinkAddressForm] = useState(false);
+  const [linkDomainInput, setLinkDomainInput] = useState("");
+  const [linkAddressInProgress, setLinkAddressInProgress] = useState(false);
+
+  const handleLinkAddress = async () => {
+    const domainLabel = linkDomainInput.trim().replace(/^\./, "");
+    if (!domainLabel) {
+      showSnackbar(t("addressPlaceholder") || "Введите домен", "error");
+      return;
+    }
+    if (!address || !tonConnectUI) {
+      showSnackbar(t("walletNotConnected") || "Кошелёк не подключён", "error");
+      return;
+    }
+
+    setLinkAddressInProgress(true);
+    try {
+      const resolved = await resolveDomainNftAddress(domainLabel, isTestnet);
+      if (!resolved?.nftAddress) {
+        showSnackbar(t("zoneToggleNoCollectionAddress") || "Не удалось найти этот домен", "error");
+        return;
+      }
+
+      const result = await dispatch(
+        setWalletRecord({
+          dnsItemAddress: resolved.nftAddress,
+          userWalletAddress: address,
+          tonConnectUI,
+          isTestnet,
+        })
+      );
+
+      if (setWalletRecord.fulfilled.match(result)) {
+        showSnackbar(t("proxyDeployedSuccessfully") || "Адрес привязан", "success");
+        setShowLinkAddressForm(false);
+        setLinkDomainInput("");
+        await fetchDomain();
+      } else {
+        showSnackbar(String(result.payload || t("transactionNotConfirmed") || "Ошибка транзакции"), "error");
+      }
+    } catch (error: any) {
+      showSnackbar(error?.message || t("zoneToggleError") || "Ошибка транзакции", "error");
+    } finally {
+      setLinkAddressInProgress(false);
     }
   };
 
@@ -3714,8 +3779,13 @@ const ProfileWidget: React.FC = () => {
     const zoneType = getZoneTypeInfo(zone);
     const zoneStatus = getZoneStatusInfo(zone);
     const isSbtZone = Number(zone.proxy) === 0;
+    // zone.status === "inactive" — реальный ончейн-маркер (см.
+    // collectionToZone/isZoneMarkedInactive) и главнее клиентской эвристики
+    // по дублям имени (inactiveSbtZoneAddresses) — та вообще не сработает,
+    // если деактивированная зона осталась в одиночестве без переиспользования
+    // имени под новую (см. Log.md 2026-08-11).
     const isInactiveDuplicate =
-      isSbtZone && inactiveSbtZoneAddresses.has(zone.address);
+      isSbtZone && (zone.status === "inactive" || inactiveSbtZoneAddresses.has(zone.address));
     // Заявка на деактивацию уже отправлена, но площадка её ещё не исполнила —
     // реальный inactiveSbtZoneAddresses (пришедший с ончейна) главнее: как
     // только он реально появится там, "в процессе" уступает настоящему INACTIVE.
@@ -5099,7 +5169,7 @@ const ProfileWidget: React.FC = () => {
                     top: "calc(100% + 8px)",
                     left: 0,
                     display: "flex",
-                    alignItems: "flex-start",
+                    flexDirection: "column",
                     gap: "8px",
                     padding: "10px 12px",
                     borderRadius: "10px",
@@ -5121,27 +5191,121 @@ const ProfileWidget: React.FC = () => {
                     zIndex: 5,
                   }}
                 >
-                  <span>{t("onchainProfileSetupHint") || "Настройте onchain-профиль."}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      dismissSetupPrompt();
-                    }}
-                    style={{
-                      flexShrink: 0,
-                      background: "none",
-                      border: "none",
-                      color: colors.text,
-                      opacity: 0.6,
-                      cursor: "pointer",
-                      fontSize: "13px",
-                      padding: 0,
-                      lineHeight: 1,
-                    }}
-                    aria-label={t("close") || "Закрыть"}
-                  >
-                    ✕
-                  </button>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "8px" }}>
+                    <span style={{ flex: 1 }}>{t("onchainProfileSetupHint") || "Настройте onchain-профиль."}</span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        dismissSetupPrompt();
+                      }}
+                      style={{
+                        flexShrink: 0,
+                        background: "none",
+                        border: "none",
+                        color: colors.text,
+                        opacity: 0.6,
+                        cursor: "pointer",
+                        fontSize: "13px",
+                        padding: 0,
+                        lineHeight: 1,
+                      }}
+                      aria-label={t("close") || "Закрыть"}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Шаг 1 отдельной кнопкой — раньше был только текстом,
+                      юзер должен был сам догадаться идти в ManageDomainPage.
+                      Тут же домен вводится, адрес кошелька берётся сам
+                      (address уже известен), шлём ту же транзакцию смены
+                      wallet DNS-записи. domain !== null — шаг уже выполнен
+                      (зелёная галочка), кнопка скрыта. */}
+                  {domain ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#4ade80", fontWeight: 700 }}>
+                      <span>✅</span>
+                      <span>{t("linkAddressDoneLabel") || "Адрес привязан"}</span>
+                    </div>
+                  ) : showLinkAddressForm ? (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ display: "flex", flexDirection: "column", gap: "6px" }}
+                    >
+                      <input
+                        type="text"
+                        value={linkDomainInput}
+                        onChange={(e) => setLinkDomainInput(e.target.value)}
+                        placeholder={t("linkAddressDomainPlaceholder") || "ваш-домен.ton"}
+                        disabled={linkAddressInProgress}
+                        style={{
+                          padding: "6px 8px",
+                          borderRadius: "6px",
+                          border: `1px solid ${colors.border}`,
+                          background: colors.background,
+                          color: colors.text,
+                          fontSize: "11px",
+                          fontFamily: "monospace",
+                          outline: "none",
+                        }}
+                      />
+                      <div style={{ display: "flex", gap: "6px" }}>
+                        <button
+                          onClick={() => setShowLinkAddressForm(false)}
+                          disabled={linkAddressInProgress}
+                          style={{
+                            flex: 1,
+                            padding: "6px",
+                            borderRadius: "6px",
+                            border: `1px solid ${colors.border}`,
+                            background: "transparent",
+                            color: colors.text,
+                            fontSize: "11px",
+                            cursor: linkAddressInProgress ? "default" : "pointer",
+                            opacity: linkAddressInProgress ? 0.5 : 1,
+                          }}
+                        >
+                          {t("cancel") || "Отмена"}
+                        </button>
+                        <button
+                          onClick={handleLinkAddress}
+                          disabled={linkAddressInProgress}
+                          style={{
+                            flex: 1,
+                            padding: "6px",
+                            borderRadius: "6px",
+                            border: "none",
+                            background: linkAddressInProgress ? colors.border : colors.cyberpunk,
+                            color: "#000",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                            cursor: linkAddressInProgress ? "default" : "pointer",
+                          }}
+                        >
+                          {linkAddressInProgress ? (t("processing") || "Отправка...") : (t("linkAddressSubmit") || "Привязать")}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowLinkAddressForm(true);
+                      }}
+                      style={{
+                        alignSelf: "flex-start",
+                        padding: "5px 10px",
+                        borderRadius: "8px",
+                        border: `1px solid ${colors.cyberpunk}`,
+                        background: "transparent",
+                        color: colors.cyberpunk,
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {t("linkAddressButton") || "Привязать адрес"}
+                    </button>
+                  )}
                 </div>
               )}
               <div
