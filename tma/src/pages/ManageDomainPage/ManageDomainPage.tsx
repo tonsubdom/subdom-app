@@ -6043,7 +6043,7 @@ export const ManageDomainPage: FC = () => {
 
         {/* ====== СПИСОК ====== */}
         {!isLoading && displayItems.length > 0 && (
-          <List style={{ background: "transparent", marginBottom: "120px" }}>
+          <List style={{ background: "transparent", marginBottom: "10px" }}>
             {/* {displayItems.map((item: DisplayItem) => (
               <div
                 key={item.id}
@@ -6552,7 +6552,7 @@ export const ManageDomainPage: FC = () => {
               padding: "15px",
               background: isDark ? "#2d2d2d" : "#f5f5f5",
               borderRadius: "12px",
-              marginBottom: "120px",
+              marginBottom: "10px",
             }}
           >
             <div
@@ -6790,10 +6790,21 @@ export const ManageDomainPage: FC = () => {
 
         {/* ====== DNS BLOCK ====== */}
         {showDNSBlock && isVerified && (
+          <>
+            <div
+              style={{
+                height: "2px",
+                margin: "10px 0",
+                borderRadius: "1px",
+                background: isDark
+                  ? "linear-gradient(90deg, transparent, #FFD700, transparent)"
+                  : "linear-gradient(90deg, transparent, #3B82F6, transparent)",
+              }}
+            />
           <div
             ref={dnsBlockRef}
             style={{
-              marginTop: "20px",
+              marginTop: "0px",
               padding: "15px",
               background: isDark ? "#2d2d2d" : "#f5f5f5",
               borderRadius: "12px",
@@ -7099,6 +7110,7 @@ export const ManageDomainPage: FC = () => {
               </div>
             </div>
           </div>
+          </>
         )}
 
         {snackbar}
