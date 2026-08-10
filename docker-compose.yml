@@ -96,13 +96,22 @@ services:
       # состояние с последнего образа при каждом деплое.
       - ./subdom-server/nft-domains-mainnet.db:/app/nft-domains-mainnet.db
       - ./subdom-server/nft-domains.db:/app/nft-domains.db
-      # NB: сознательно НЕ монтируем .db-wal/.db-shm (обе базы в WAL-режиме,
-      # см. tgBot-sqlite.ts `pragma('journal_mode = WAL')`) — эти host-пути
-      # никогда не существовали как файлы на сервере, и bind-mount несуществующего
-      # пути создаёт на его месте директорию, из-за которой SQLite не может
-      # открыть/создать WAL-файл (SQLITE_CANTOPEN, ловили в проде 2026-08-01).
-      # Защита от потери WAL при передеплое — chekpoint на SIGTERM в
-      # server-sqlite.ts, ему для этого volume не нужны.
+      # .db-wal/.db-shm ТЕПЕРЬ ТОЖЕ монтируются (см. Log.md 2026-08-11) — без
+      # этого свежие записи (весь platformCache-кроулер) жили только внутри
+      # контейнера в WAL-режиме и были невидимы с хоста до checkpoint'а
+      # (ловили вживую: dedupe-скрипт на хосте видел старую/пустую копию
+      # базы, хотя приложение внутри контейнера работало с актуальными
+      # данными). Раньше эти пути НЕ монтировали, потому что bind-mount
+      # несуществующего host-пути создаёт на его месте директорию вместо
+      # файла (SQLITE_CANTOPEN, ловили в проде 2026-08-01) — теперь на хосте
+      # заранее лежат пустые файлы-плейсхолдеры под них, так что Docker
+      # монтирует настоящие файлы, а не директории.
+      - ./subdom-server/nft-domains-mainnet.db-wal:/app/nft-domains-mainnet.db-wal
+      - ./subdom-server/nft-domains-mainnet.db-shm:/app/nft-domains-mainnet.db-shm
+      - ./subdom-server/nft-domains.db-wal:/app/nft-domains.db-wal
+      - ./subdom-server/nft-domains.db-shm:/app/nft-domains.db-shm
+      # Checkpoint на SIGTERM в server-sqlite.ts остаётся как доп. подстраховка
+      # на передеплое — теперь просто перестал быть единственной защитой.
 
   storage:
     build:
