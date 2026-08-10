@@ -855,6 +855,7 @@ failedToCalculateNFTAddress: 'NFT पता गणना विफल',
   domainSelectorSortDefault: 'बिना क्रम',
   domainSelectorFoundOf: 'मिला',
   domainSelectorLoadedCount: 'लोड किए गए डोमेन',
+  domainSelectorPunycodeWarning: '⚠️ आधिकारिक रूप से समर्थित नहीं — xn--... के रूप में दिखाया जाएगा',
 
   footerAgentManifest: 'AI एजेंट मैनिफ़ेस्ट',
 };

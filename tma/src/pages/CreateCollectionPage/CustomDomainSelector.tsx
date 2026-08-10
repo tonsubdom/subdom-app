@@ -43,6 +43,11 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
+  // Пуникод-домены (xn--...) не декодируем в юникод — вместо этого просто
+  // предупреждаем, что они не входят в официально поддерживаемый набор
+  // символов и будут отображаться как есть (raw xn--...). Тултип открыт для
+  // одного домена одновременно, по адресу — ключ.
+  const [punycodeWarningFor, setPunycodeWarningFor] = useState<string | null>(null);
   const loadedForRef = useRef<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -306,24 +311,97 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
                   : (t("domainSelectorNoMatches") || "Ничего не найдено")}
               </div>
             ) : (
-              filteredDomains.map((domain) => (
-                <div
-                  key={domain.address}
-                  onClick={() => handleSelect(domain.name)}
-                  style={{
-                    padding: "10px 12px",
-                    cursor: "pointer",
-                    color: isDark ? "#E5E5E5" : "black",
-                    fontFamily: "monospace",
-                    fontSize: "13px",
-                    borderBottom: `1px solid ${isDark ? "#2a2a2a" : "#f5f5f5"}`,
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = isDark ? "#2a2a2a" : "#f5f5f5"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
-                >
-                  .{formatDomainLabel(domain.name)}
-                </div>
-              ))
+              filteredDomains.map((domain) => {
+                const label = formatDomainLabel(domain.name);
+                const isPunycode = label.toLowerCase().startsWith("xn--");
+                return (
+                  <div
+                    key={domain.address}
+                    onClick={() => handleSelect(domain.name)}
+                    style={{
+                      padding: "10px 12px",
+                      cursor: "pointer",
+                      color: isDark ? "#E5E5E5" : "black",
+                      fontFamily: "monospace",
+                      fontSize: "13px",
+                      borderBottom: `1px solid ${isDark ? "#2a2a2a" : "#f5f5f5"}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "8px",
+                      position: "relative",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = isDark ? "#2a2a2a" : "#f5f5f5"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
+                  >
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      .{label}
+                    </span>
+                    {isPunycode && (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPunycodeWarningFor((prev) => (prev === domain.address ? null : domain.address));
+                        }}
+                        style={{
+                          flexShrink: 0,
+                          width: "18px",
+                          height: "18px",
+                          borderRadius: "50%",
+                          background: "#f59e0b",
+                          color: "#1a1a1a",
+                          fontWeight: "bold",
+                          fontSize: "12px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                        }}
+                      >
+                        !
+                      </span>
+                    )}
+                    {isPunycode && punycodeWarningFor === domain.address && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 8px)",
+                          right: "8px",
+                          width: "220px",
+                          background: isDark ? "#2a2a2a" : "white",
+                          color: isDark ? "#E5E5E5" : "black",
+                          border: `2px solid #f59e0b`,
+                          borderRadius: "14px",
+                          padding: "10px 12px",
+                          fontSize: "11px",
+                          fontFamily: "monospace",
+                          lineHeight: 1.4,
+                          boxShadow: "0 6px 16px rgba(0,0,0,0.3)",
+                          zIndex: 2000,
+                        }}
+                      >
+                        {/* "Хвостик" пузыря — квадрат 12x12, повёрнутый на 45°,
+                            прижат к верхнему краю, имитирует уголок комикс-бабла. */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "-7px",
+                            right: "16px",
+                            width: "12px",
+                            height: "12px",
+                            background: isDark ? "#2a2a2a" : "white",
+                            borderTop: `2px solid #f59e0b`,
+                            borderLeft: `2px solid #f59e0b`,
+                            transform: "rotate(45deg)",
+                          }}
+                        />
+                        {t("domainSelectorPunycodeWarning")}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

@@ -853,6 +853,7 @@ failedToCalculateNFTAddress: '计算NFT地址失败',
   domainSelectorSortDefault: '不排序',
   domainSelectorFoundOf: '已找到',
   domainSelectorLoadedCount: '已加载域名数',
+  domainSelectorPunycodeWarning: '⚠️ 官方不支持 — 将显示为 xn--...',
 
   footerAgentManifest: 'AI 代理清单',
 }

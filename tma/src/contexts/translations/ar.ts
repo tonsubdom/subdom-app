@@ -855,6 +855,7 @@ failedToCalculateNFTAddress: 'فشل في حساب عنوان NFT',
   domainSelectorSortDefault: 'بدون ترتيب',
   domainSelectorFoundOf: 'تم العثور',
   domainSelectorLoadedCount: 'النطاقات المحملة',
+  domainSelectorPunycodeWarning: '⚠️ غير مدعوم رسميًا — سيظهر كـ xn--...',
 
   footerAgentManifest: 'بيان وكلاء الذكاء الاصطناعي',
 };

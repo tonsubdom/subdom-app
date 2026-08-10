@@ -920,6 +920,7 @@ itemFoundSuccessfully: 'Item found successfully',
   domainSelectorSortDefault: 'No sorting',
   domainSelectorFoundOf: 'Found',
   domainSelectorLoadedCount: 'Domains loaded',
+  domainSelectorPunycodeWarning: '⚠️ Not officially supported — will be displayed as xn--...',
 
   footerAgentManifest: 'AI agent manifest',
 }

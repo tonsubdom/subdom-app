@@ -856,6 +856,7 @@ failedToCalculateNFTAddress: 'NFTアドレスの計算に失敗しました',
   domainSelectorSortDefault: '並び替えなし',
   domainSelectorFoundOf: '検索結果',
   domainSelectorLoadedCount: '読み込み済みドメイン数',
+  domainSelectorPunycodeWarning: '⚠️ 公式にはサポートされていません — xn--... として表示されます',
 
   footerAgentManifest: 'AIエージェント用マニフェスト',
 };

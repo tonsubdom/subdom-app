@@ -853,6 +853,7 @@ failedToCalculateNFTAddress: 'Error al calcular dirección NFT',
   domainSelectorSortDefault: 'Sin ordenar',
   domainSelectorFoundOf: 'Encontrado',
   domainSelectorLoadedCount: 'Dominios cargados',
+  domainSelectorPunycodeWarning: '⚠️ No soportado oficialmente — se mostrará como xn--...',
 
   footerAgentManifest: 'Manifest para agentes IA',
 };

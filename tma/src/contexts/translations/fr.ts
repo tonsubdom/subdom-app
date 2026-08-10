@@ -861,6 +861,7 @@ failedToCalculateNFTAddress: 'Échec du calcul de l\'adresse NFT',
   domainSelectorSortDefault: 'Sans tri',
   domainSelectorFoundOf: 'Trouvé',
   domainSelectorLoadedCount: 'Domaines chargés',
+  domainSelectorPunycodeWarning: '⚠️ Non officiellement pris en charge — sera affiché comme xn--...',
 
   footerAgentManifest: 'Manifest pour agents IA',
 };
