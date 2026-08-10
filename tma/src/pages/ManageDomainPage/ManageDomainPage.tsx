@@ -4770,6 +4770,11 @@ export const ManageDomainPage: FC = () => {
   const prevMode = useRef(mode);
   const prevSelectedCollection = useRef(selectedCollection);
   const prevIsTestnet = useRef(isTestnet);
+  // hasLoadedData раньше сбрасывался только при смене mode — переключение
+  // кошелька на другой аккаунт БЕЗ смены таба "Другое" оставляло старые
+  // filteredItems/allNfts (redux nftState) от прошлого адреса навсегда,
+  // ЭФФЕКТ 1 ниже просто не перезапрашивал (см. Log.md 2026-08-11).
+  const prevWalletAddress = useRef(wallet?.account?.address);
 
   // ====== ОБЪЕДИНЁННЫЙ ЛОАДЕР ======
   // blockchainLoading (useBlockchainItems, медленный ончейн-агрегатор всех
@@ -4909,6 +4914,12 @@ export const ManageDomainPage: FC = () => {
     if (prevMode.current !== mode) {
       hasLoadedData.current = false;
       prevMode.current = mode;
+      dispatch(resetNetworkState(isTestnet));
+    }
+
+    if (prevWalletAddress.current !== wallet.account.address) {
+      hasLoadedData.current = false;
+      prevWalletAddress.current = wallet.account.address;
       dispatch(resetNetworkState(isTestnet));
     }
 

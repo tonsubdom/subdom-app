@@ -7,7 +7,11 @@ import { track } from '@/utils/analytics';
 
 // ============ API CONFIG ============
 const siteApiAddr = import.meta.env.VITE_API_SC_PAYLOAD_URL;
-const API_BASE_URL = `$${siteApiAddr}/api/v1/dns`;
+// Лишний "$" перед интерполяцией ("$${siteApiAddr}") склеивал URL с
+// буквальным "$" в начале — new URL("$https://...") падал с
+// "cannot be parsed as a URL", Save в Manager молча ничего не отправлял
+// (см. Log.md 2026-08-11).
+const API_BASE_URL = `${siteApiAddr}/api/v1/dns`;
 
 // ============ ТИПЫ ============
 
