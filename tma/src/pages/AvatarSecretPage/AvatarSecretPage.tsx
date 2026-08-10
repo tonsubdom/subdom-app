@@ -539,7 +539,7 @@ export const AvatarSecretPage: React.FC = () => {
       <Box sx={{ maxWidth: 425, mx: 'auto', px: 2, pt: 1, pb: '180px' }}>
         <Box style={cardStyle}>
           <Typography variant="body2" sx={{ mb: 1, color: colors.textSecondary, fontFamily: 'monospace' }}>
-            {t('avatarEnterDomain') || 'Домен/Субдомен'}
+            {t('avatarEnterDomain') || 'Домен (.ton) / Субдомен / Юзернейм (.t.me)'}
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
             <Input
