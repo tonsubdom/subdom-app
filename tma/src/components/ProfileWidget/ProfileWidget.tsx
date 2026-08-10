@@ -3936,9 +3936,21 @@ const ProfileWidget: React.FC = () => {
           </div>
         </div>
 
-        {/* КНОПКИ: 4 плоских по углам + круглая "Создать субдомен" в центре */}
-        {zone.status !== "inactive" && (
-          <div style={{ position: "relative" as const, marginTop: "2px" }}>
+        {/* КНОПКИ: 4 плоских по углам + круглая "Создать субдомен" в центре.
+            zone.status тут не годится — collectionToZone всегда хардкодит
+            "active" независимо от реального состояния (см. Log.md
+            2026-08-11), поэтому берём уже рабочую isInactiveDuplicate.
+            Кнопки остаются видимыми (не прячем совсем) — юзер попросил
+            именно серые/задизейбленные, а не пропавшие. */}
+        <div
+          style={{
+            position: "relative" as const,
+            marginTop: "2px",
+            opacity: isInactiveDuplicate ? 0.4 : 1,
+            pointerEvents: isInactiveDuplicate ? "none" : "auto",
+            filter: isInactiveDuplicate ? "grayscale(1)" : "none",
+          }}
+        >
             <div
               style={{
                 display: "grid",
@@ -4058,8 +4070,7 @@ const ProfileWidget: React.FC = () => {
               {t("createSubdomain") || "Сделать субдомен"}
             </button>
           </div>
-        )}
-      </div>
+        </div>
     );
   };
 

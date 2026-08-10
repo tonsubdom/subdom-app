@@ -3956,7 +3956,7 @@ app.post('/api/admin/pending-actions/:id/complete', requireAdminAuth, (req, res)
     const { txHash } = req.body;
     const db = req.db;
 
-    const existing = db.prepare('SELECT * FROM pending_admin_actions WHERE id = ?').get(id);
+    const existing = db.prepare('SELECT * FROM pending_admin_actions WHERE id = ?').get(id) as any;
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Заявка не найдена' });
     }
@@ -3967,7 +3967,18 @@ app.post('/api/admin/pending-actions/:id/complete', requireAdminAuth, (req, res)
       WHERE id = ?
       RETURNING *
     `);
-    const updated = stmt.get(txHash || null, id);
+    const updated = stmt.get(txHash || null, id) as any;
+
+    // Отмечаем зону неактивной в platform_zones_cache сразу, не дожидаясь
+    // следующего прохода кроулера (~15 мин) — до этого фикса Market/Manager
+    // и другие юзеры видели зону как активную ещё четверть часа после
+    // реальной ончейн-деактивации (см. Log.md 2026-08-11). Список "мои
+    // зоны" в самом ProfileWidget читает ончейн напрямую (не эту таблицу),
+    // это не трогает.
+    if (existing.actionType === 'deactivate_zone') {
+      const collectionAddress = existing.targetCollectionAddress || existing.targetAddress;
+      db.prepare(`UPDATE platform_zones_cache SET status = 'inactive' WHERE collectionAddress = ?`).run(collectionAddress);
+    }
 
     return res.json({ success: true, data: updated });
   } catch (error) {
