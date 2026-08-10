@@ -12463,12 +12463,13 @@ import {
 import { useLaunchParams } from "@telegram-apps/sdk-react";
 import { MiniAppLinks } from "@/utils/miniAppLinks";
 import { AuctionCollectionSelector } from "./AuctionCollectionSelector";
-import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
+import { convertUserFriendlyToRaw, resolveAddressToDomain, getAddressLastTransaction } from "@/utils/tonUtils";
 import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
 import { useTutorial } from "@/contexts/TutorialContext";
 import { track } from "@/utils/analytics";
 import { sanitizeDomainLabelInput, encodeDomainLabel, decodeDomainLabel } from "@/utils/domainPunycode";
 import { CopyLinkIcon, ShareArrowIcon } from "@/components/icons/CopyShareIcons";
+import { fetchPlatformCache } from "@/services/blockchainItems/platformCacheClient";
 
 // ====== ТИПЫ ======
 
@@ -12589,6 +12590,16 @@ export const AuctionPage: React.FC<{}> = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [nftAddress, setNftAddress] = useState("");
   const [hasChecked, setHasChecked] = useState(false);
+  // Инфа о реальном владельце уже занятого сабдомена (proxy-путь: get_auction_info
+  // отдаёт null одинаково и для "ещё не было ставок", и для "уже заклеймлен" —
+  // occupiedInfo отличает второй случай через platform-cache). Домен/дата
+  // резолвятся отдельным запросом после определения владельца.
+  const [occupiedInfo, setOccupiedInfo] = useState<{
+    ownerAddress: string;
+    ownerDomain: string | null;
+    timestamp: number | null;
+    txHash: string | null;
+  } | null>(null);
   const [isClaimLoading, setIsClaimLoading] = useState(false);
   const subdomainNameInputRef = useRef<HTMLInputElement>(null);
   const [customBidAmount, setCustomBidAmount] = useState("");
@@ -12885,6 +12896,27 @@ export const AuctionPage: React.FC<{}> = () => {
     // eslint-disable-next-line
   }, [allZones, launchParams.startParam]);
 
+  // Домен владельца + время/хэш последней транзакции — для карточки уже
+  // занятого сабдомена (реальная история вместо пустой "доступен"-заглушки,
+  // см. Log.md 2026-08-10). Резолвится отдельно от основной проверки, чтобы
+  // не блокировать показ карточки, если toncenter притормозит на этих
+  // дополнительных запросах.
+  const resolveOccupiedInfo = useCallback(
+    async (ownerAddress: string, itemAddress: string) => {
+      const [ownerDomain, txInfo] = await Promise.all([
+        resolveAddressToDomain(ownerAddress, isTestnet),
+        getAddressLastTransaction(itemAddress, isTestnet),
+      ]);
+      setOccupiedInfo({
+        ownerAddress,
+        ownerDomain,
+        timestamp: txInfo?.timestamp ?? null,
+        txHash: txInfo?.hash ?? null,
+      });
+    },
+    [isTestnet]
+  );
+
   // ====== ПРОВЕРКА ИТЕМА =======
   const handleCheckItem = useCallback(async () => {
     if (!selectedDomainZone || !subDomainName || !collectionAddress) {
@@ -12897,6 +12929,7 @@ export const AuctionPage: React.FC<{}> = () => {
     }
     setIsLoading(true);
     setHasChecked(false);
+    setOccupiedInfo(null);
     const lowerValue = subDomainName.toLowerCase();
     if (activeTab === "sbt") {
       const sbtInfo = await checkSBTSubdomain(
@@ -12914,6 +12947,9 @@ export const AuctionPage: React.FC<{}> = () => {
             : t("sbtSubdomainAvailable"),
           sbtInfo.isTaken ? "error" : "success"
         );
+        if (sbtInfo.isTaken && sbtInfo.ownerAddress) {
+          resolveOccupiedInfo(sbtInfo.ownerAddress, sbtInfo.nftAddress);
+        }
       } else {
         setSbtSubdomainInfo(null);
         setAuctionInfo(null);
@@ -12942,7 +12978,27 @@ export const AuctionPage: React.FC<{}> = () => {
         );
         if (proxyNFTAddress) {
           setNftAddress(proxyNFTAddress);
-          showSnackbar(t("subdomainAvailableForFirstBid"), "success");
+
+          // get_auction_info отдаёт null и для "ещё не было ставок", и для
+          // "уже заклеймлен" — сверяемся с platform-cache (собственный кэш
+          // subdomain'ов, см. Log.md 2026-08-10), чтобы понять, действительно
+          // ли это первая ставка или сабдомен уже кому-то ушёл. Сравнение
+          // имени в lowercase с обеих сторон — кэш пишет как на чейне,
+          // регистр не гарантирован (тот же класс бага, что и в
+          // ActiveAuctions, см. Log.md).
+          const cachedSubdomains = await fetchPlatformCache("subdomains", isTestnet, {
+            collectionAddress,
+          });
+          const existing = cachedSubdomains?.find(
+            (row) => row.name.toLowerCase() === lowerValue && row.status === "active"
+          );
+
+          if (existing?.ownerAddress) {
+            showSnackbar(t("subdomainAlreadyTaken"), "error");
+            resolveOccupiedInfo(existing.ownerAddress, existing.itemAddress);
+          } else {
+            showSnackbar(t("subdomainAvailableForFirstBid"), "success");
+          }
         } else {
           setNftAddress("");
           showSnackbar(t("failedToCalculateNFTAddress"), "error");
@@ -12961,6 +13017,7 @@ export const AuctionPage: React.FC<{}> = () => {
     activeTab,
     updateUrlWithCurrentAuction,
     showSnackbar,
+    resolveOccupiedInfo,
   ]);
 
   const loadAuctionFromParams = useCallback(
@@ -13443,9 +13500,14 @@ export const AuctionPage: React.FC<{}> = () => {
   // ====== UI HELPERS ======
   const getImageUrl = () => {
     if (!domainZoneName || !subDomainName) return "";
+    // Бэкенд-генератор рендерит подпись буквально из пути URL — без
+    // lowercase тут же ловится тот же баг с регистром в лейбле, что чинили
+    // в ActiveAuctions.tsx (см. Log.md 2026-08-10).
+    const zone = domainZoneName.toLowerCase();
+    const sub = subDomainName.toLowerCase();
     if (activeTab === "proxy")
-      return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${domainZoneName}/${subDomainName}.png`;
-    return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${domainZoneName}/${subDomainName}.png`;
+      return `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${zone}/${sub}.png`;
+    return `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${zone}/${sub}.png`;
   };
 
   const getActionButtonText = (): string => {
@@ -14066,7 +14128,7 @@ export const AuctionPage: React.FC<{}> = () => {
               {sbtSubdomainInfo.isTaken && sbtSubdomainInfo.ownerAddress && (
                 <>
                   <div style={{ marginBottom: "10px" }}>
-                    <strong>{t("sbtOwner")}:</strong>
+                    <strong>{t("occupiedOwnerLabel")}:</strong>
                     <br />
                     <code style={{ fontSize: "12px", wordBreak: "break-all" }}>
                       <a
@@ -14075,7 +14137,15 @@ export const AuctionPage: React.FC<{}> = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        {sbtSubdomainInfo.ownerAddress}
+                        {/* Домен вместо голого адреса, если у владельца есть
+                            привязанный .ton — понятнее человеку; пока не
+                            зарезолвился (occupiedInfo ещё грузится), просто
+                            показываем адрес. Ссылка при этом всегда ведёт на
+                            сам адрес — она нужна именно для проверки, а не
+                            для красоты. */}
+                        {occupiedInfo?.ownerDomain
+                          ? `${occupiedInfo.ownerDomain}.ton`
+                          : sbtSubdomainInfo.ownerAddress}
                       </a>
                     </code>
                   </div>
@@ -14097,12 +14167,21 @@ export const AuctionPage: React.FC<{}> = () => {
                       </code>
                     </div>
                   )}
-                  {sbtSubdomainInfo.timestamp && (
+                  {occupiedInfo?.timestamp && (
                     <div style={{ marginBottom: "10px" }}>
-                      <strong>{t("created")}:</strong>{" "}
-                      {new Date(
-                        sbtSubdomainInfo.timestamp * 1000
-                      ).toLocaleString()}
+                      <strong>{t("occupiedDateLabel")}:</strong>{" "}
+                      {occupiedInfo.txHash ? (
+                        <a
+                          style={{ color: "white" }}
+                          href={`https://tonviewer.com/transaction/${occupiedInfo.txHash}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {new Date(occupiedInfo.timestamp * 1000).toLocaleString()}
+                        </a>
+                      ) : (
+                        new Date(occupiedInfo.timestamp * 1000).toLocaleString()
+                      )}
                     </div>
                   )}
                 </>
@@ -14138,8 +14217,110 @@ export const AuctionPage: React.FC<{}> = () => {
           </Card>
         )}
 
+        {/* OCCUPIED SUBDOMAIN (proxy) — get_auction_info вернул null не
+            потому что ставок не было, а потому что сабдомен уже заклеймлен
+            (см. resolveOccupiedInfo / handleCheckItem выше). Раньше в этом
+            случае молча показывалась "доступен для первой ставки" карточка
+            без имени/картинки, потому что airdrop/claim-путь не проверялся
+            вообще — теперь сверяемся с platform-cache. */}
+        {hasChecked && !auctionInfo && !sbtSubdomainInfo && occupiedInfo && activeTab === "proxy" && (
+          <Card
+            style={{
+              background: "linear-gradient(to bottom, #2a1a1a, #3a2a2a)",
+              marginBottom: "20px",
+              padding: "15px",
+              borderRadius: "10px",
+              width: "280px",
+              border: "2px solid #f87171",
+            }}
+          >
+            <div style={{ color: "#fff", fontSize: "14px" }}>
+              <div
+                style={{
+                  marginBottom: "10px",
+                  textAlign: "center",
+                  color: "#f87171",
+                  fontWeight: "bold",
+                }}
+              >
+                {`❌ ${t("subdomainAlreadyTaken")}`}
+              </div>
+              <div
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <a
+                  href={`https://tonviewer.com/${nftAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <img
+                    style={{
+                      width: "200px",
+                      height: "200px",
+                      borderRadius: "25px",
+                      marginBottom: "15px",
+                    }}
+                    src={getImageUrl()}
+                    alt="subdomainImage"
+                  />
+                </a>
+              </div>
+              <div style={{ marginBottom: "10px" }}>
+                <strong>{t("occupiedOwnerLabel")}:</strong>
+                <br />
+                <code style={{ fontSize: "12px", wordBreak: "break-all" }}>
+                  <a
+                    style={{ color: "white" }}
+                    href={`https://tonviewer.com/${occupiedInfo.ownerAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {occupiedInfo.ownerDomain
+                      ? `${occupiedInfo.ownerDomain}.ton`
+                      : occupiedInfo.ownerAddress}
+                  </a>
+                </code>
+              </div>
+              {occupiedInfo.timestamp && (
+                <div style={{ marginBottom: "10px" }}>
+                  <strong>{t("occupiedDateLabel")}:</strong>{" "}
+                  {occupiedInfo.txHash ? (
+                    <a
+                      style={{ color: "white" }}
+                      href={`https://tonviewer.com/transaction/${occupiedInfo.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {new Date(occupiedInfo.timestamp * 1000).toLocaleString()}
+                    </a>
+                  ) : (
+                    new Date(occupiedInfo.timestamp * 1000).toLocaleString()
+                  )}
+                </div>
+              )}
+              <div
+                style={{
+                  marginTop: "10px",
+                  paddingTop: "10px",
+                  borderTop: "1px solid #444",
+                  fontSize: "11px",
+                  color: "#aaa",
+                }}
+              >
+                <strong>{t("networkLabel")}</strong>{" "}
+                {isTestnet ? t("testnet") : t("mainnet")}
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* FREE SUBDOMAIN */}
-        {hasChecked && !auctionInfo && !sbtSubdomainInfo && (
+        {hasChecked && !auctionInfo && !sbtSubdomainInfo && !occupiedInfo && (
           <Card
             style={{
               background:

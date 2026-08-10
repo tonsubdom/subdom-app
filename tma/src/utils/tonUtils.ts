@@ -341,3 +341,88 @@ export function tonsiteToGatewayUrl(tonsiteUrl: string): string {
   const name = tonsiteUrl.replace(/^tonsite:\/\//i, '').replace(/\.ton$/i, '');
   return `https://${name}.ton.run`;
 }
+
+/**
+ * Резолвит адрес кошелька в привязанный к нему .ton домен (официальная TON
+ * DNS-коллекция через toncenter, а не наши зоны платформы) — 1:1 портировано
+ * из fetchDomain в ActiveAuctions.tsx, вынесено сюда как общий хелпер, чтобы
+ * не дублировать в каждом месте, где нужно показать владельца по-человечески
+ * (домен вместо голого адреса), а не только в списке аукционов.
+ *
+ * Возвращает null, если у адреса нет привязанного домена или запрос не
+ * удался (rate limit и т.п.) — вызывающий код должен фолбэчиться на
+ * отображение самого адреса, а не считать null ошибкой.
+ */
+export async function resolveAddressToDomain(address: string, isTestnet: boolean): Promise<string | null> {
+  if (!address) return null;
+
+  try {
+    const host = isTestnet ? 'testnet.toncenter.com' : 'toncenter.com';
+    const apiKey = import.meta.env.VITE_TONCENTER_API_KEY;
+
+    const url = new URL(`https://${host}/api/v3/dns/records`);
+    url.searchParams.append('wallet', address);
+    url.searchParams.append('limit', '100');
+    url.searchParams.append('offset', '0');
+    if (apiKey) url.searchParams.append('api_key', apiKey);
+
+    const response = await fetch(url.toString());
+    if (!response.ok) return null;
+
+    const data = await response.json();
+
+    const domainFromRecords = data.records?.find(
+      (record: any) => record.nft_item_owner === address
+    )?.domain;
+
+    const domainFromAddressBook = Object.values(
+      (data.address_book as Record<string, { user_friendly: string; domain?: string }>) || {}
+    ).find((entry: any) => entry.user_friendly === address)?.domain;
+
+    return domainFromRecords || domainFromAddressBook || null;
+  } catch {
+    return null;
+  }
+}
+
+export interface AddressLastTransactionInfo {
+  timestamp: number; // unix seconds
+  hash: string;
+}
+
+/**
+ * Последняя транзакция по адресу айтема — используется, чтобы показать
+ * "когда реально ушёл" (не placeholder Date.now(), а настоящее время
+ * транзакции) + ссылку на неё в эксплорере. sort:'desc' — последняя, а не
+ * первая (deploy) транзакция, т.к. нас интересует момент перехода к
+ * текущему владельцу, а не создание самого NFT-контракта.
+ */
+export async function getAddressLastTransaction(
+  address: string,
+  isTestnet: boolean
+): Promise<AddressLastTransactionInfo | null> {
+  if (!address) return null;
+
+  try {
+    const host = isTestnet ? 'testnet.toncenter.com' : 'toncenter.com';
+    const apiKey = import.meta.env.VITE_TONCENTER_API_KEY;
+
+    const url = new URL(`https://${host}/api/v3/transactions`);
+    url.searchParams.append('account', address);
+    url.searchParams.append('limit', '1');
+    url.searchParams.append('offset', '0');
+    url.searchParams.append('sort', 'desc');
+    if (apiKey) url.searchParams.append('api_key', apiKey);
+
+    const response = await fetch(url.toString());
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const tx = data.transactions?.[0];
+    if (!tx?.now || !tx?.hash) return null;
+
+    return { timestamp: tx.now, hash: tx.hash };
+  } catch {
+    return null;
+  }
+}

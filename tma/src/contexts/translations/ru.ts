@@ -768,6 +768,10 @@ creatingBundleForDomain: 'Создание Bundle для домена',
 bundleWillCreateSubdomainCollection: 'Bundle создаст коллекцию субдоменов',
 subdomainAvailableForFirstBid: 'Субдомен доступен для первой ставки',
 failedToCalculateNFTAddress: 'Не удалось рассчитать адрес NFT',
+subdomainAlreadyTaken: 'Субдомен уже занят',
+occupiedOwnerLabel: 'Владелец',
+occupiedDateLabel: 'Ушёл',
+occupiedViewTransaction: 'Смотреть транзакцию',
 
 // ManageDomainPage.tsx
 // ManageDomainPage — лоадеры
