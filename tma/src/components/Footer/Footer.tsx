@@ -81,18 +81,17 @@ const Footer = () => {
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'absolute',
-              // 70px фиксированного отступа хватало для safe-area, но не для
-              // нижних виджетов чата/профиля, которые Telegram-клиент рисует
-              // поверх Mini App на части платформ — они не входят в
-              // env(safe-area-inset-bottom) (это только аппаратный notch),
-              // поэтому модалка пряталась под ними. Увеличенный базовый
-              // отступ + safe-area сверху (та же причина, что и в футере
-              // ниже, см. Log.md 2026-08-10).
-              bottom: 'calc(110px + env(safe-area-inset-bottom, 0px))',
+              // Не про Telegram-safe-area — это свои же ChatWidget/
+              // ProfileWidget, круглые кнопки с bottom:80px и высотой 60px
+              // (см. ChatWidget.tsx/ProfileWidget.tsx), занимают полосу
+              // 80–140px от низа экрана. Модалка должна начинаться выше этой
+              // полосы + запас, плюс safe-area для устройств с "чёлкой"
+              // снизу (см. Log.md 2026-08-10). Ширина уже — компактный
+              // плавающий виджет у правого края, а не растянутая на весь
+              // экран панель (юзер попросил вернуть).
+              bottom: 'calc(150px + env(safe-area-inset-bottom, 0px))',
               right: '12px',
-              left: '12px',
-              maxWidth: '360px',
-              marginLeft: 'auto',
+              width: 'min(280px, calc(100% - 24px))',
               background: isDark ? '#1F2937' : '#FFFFFF',
               border: `1px solid ${accent}`,
               borderRadius: '14px',
