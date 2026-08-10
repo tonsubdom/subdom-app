@@ -4560,6 +4560,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { convertRawToUserFriendlyTest } from "@/utils/tonUtils";
 import { decodeDomainForDisplay, isPunycodeEncoded } from "@/utils/domainPunycode";
 import { apiService } from "@/services/api";
+import { resolveDomainNftAddress } from "@/services/ownerMetaService";
 
 import { DomainExpirationInfo } from "@/utils/domainExpiredAtFetchConvert";
 
@@ -5145,7 +5146,25 @@ export const ManageDomainPage: FC = () => {
             }
           }
         } else {
-          itemAddress = editingItem.address;
+          // SBT-зона: editingItem.address тут — адрес SBT-коллекции
+          // сабдоменов (см. collectionToZone/enrichedItemToDisplayItem),
+          // НЕ самого домена. Транзакции смены DNS-записей (кошелёк/сайт/
+          // сторедж) должны уходить на реальный домен-NFT — коллекция такой
+          // метод не поддерживает так же, поэтому Save молча не срабатывал
+          // (см. Log.md 2026-08-11). Резолвим настоящий адрес домена по имени.
+          try {
+            const domainLabel = (editingItem.title || editingItem.name || "").replace(/\.ton$/i, "");
+            const resolved = domainLabel
+              ? await resolveDomainNftAddress(domainLabel, isTestnet)
+              : null;
+            itemAddress = resolved?.nftAddress || editingItem.address;
+            if (!resolved?.nftAddress) {
+              showSnackbar("Не удалось найти адрес домена", "error");
+            }
+          } catch {
+            itemAddress = editingItem.address;
+            showSnackbar("Не удалось найти адрес домена", "error");
+          }
         }
       } else {
         itemAddress = editingItem.address;
