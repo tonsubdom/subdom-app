@@ -244,13 +244,32 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
                 border: "1px solid #ddd",
                 background: sortOrder ? "rgba(255,255,255,0.85)" : "white",
                 cursor: "pointer",
-                fontSize: "15px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              {sortOrder === "asc" ? "↑" : sortOrder === "desc" ? "↓" : "↕"}
+              {/* SVG вместо текстовых стрелок — "↕" (U+2195) в вебвью
+                  Telegram на части платформ рендерится как пустой квадрат
+                  (нет глифа в шрифте), в отличие от более частых "↑"/"↓".
+                  SVG не зависит от шрифта. */}
+              {sortOrder === "asc" ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5" />
+                  <polyline points="5 12 12 5 19 12" />
+                </svg>
+              ) : sortOrder === "desc" ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <polyline points="19 12 12 19 5 12" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="21" x2="12" y2="3" />
+                  <polyline points="7 8 12 3 17 8" />
+                  <polyline points="7 16 12 21 17 16" />
+                </svg>
+              )}
             </button>
           </div>
 

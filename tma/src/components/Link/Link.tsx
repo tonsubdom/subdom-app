@@ -10,20 +10,45 @@ export const Link: FC<LinkProps> = ({
   className,
   onClick: propsOnClick,
   to,
+  // RR-специфичные пропсы — не валидны на обычном <a>, отфильтровываем
+  // перед спредом в кастомно-схемной ветке ниже.
+  reloadDocument,
+  replace,
+  state,
+  preventScrollReset,
+  relative,
   ...rest
 }) => {
+  let path: string;
+  if (typeof to === 'string') {
+    path = to;
+  } else {
+    const { search = '', pathname = '', hash = '' } = to;
+    path = `${pathname}?${search}#${hash}`;
+  }
+
+  // Кастомная схема (tonsite:// и т.п.) — react-router's <Link to> её не
+  // понимает: резолвит как внутренний путь приложения относительно текущего
+  // роута и портит итоговый href, поэтому клик по карточке ничего не делал
+  // (см. Log.md 2026-08-10). Определяем это уже на рендере, не только в
+  // onClick, чтобы под кастомную схему рендерить настоящий <a href> — тот
+  // же паттерн, что уже работает в ManageDomainPage/AvatarSecretPage/
+  // LupaButton.
+  let targetUrl: URL | null = null;
+  try {
+    targetUrl = new URL(path, window.location.toString());
+  } catch {
+    targetUrl = null;
+  }
+  const isCustomScheme = !!targetUrl
+    && targetUrl.protocol !== 'http:'
+    && targetUrl.protocol !== 'https:'
+    && targetUrl.protocol !== window.location.protocol;
+
   const onClick = useCallback<MouseEventHandler<HTMLAnchorElement>>((e) => {
     propsOnClick?.(e);
 
-    let path: string;
-    if (typeof to === 'string') {
-      path = to;
-    } else {
-      const { search = '', pathname = '', hash = '' } = to;
-      path = `${pathname}?${search}#${hash}`;
-    }
-
-    const targetUrl = new URL(path, window.location.toString());
+    if (!targetUrl) return;
     const currentUrl = new URL(window.location.toString());
     const isExternal = targetUrl.protocol !== currentUrl.protocol
       || targetUrl.host !== currentUrl.host;
@@ -47,12 +72,28 @@ export const Link: FC<LinkProps> = ({
       e.preventDefault();
       window.open(tonsiteToGatewayUrl(targetUrl.toString()), '_blank', 'noopener,noreferrer');
     }
-  }, [to, propsOnClick]);
+  }, [to, propsOnClick, targetUrl]);
+
+  if (isCustomScheme) {
+    return (
+      <a
+        {...rest}
+        href={path}
+        onClick={onClick}
+        className={classNames(className, 'link')}
+      />
+    );
+  }
 
   return (
     <RouterLink
       {...rest}
       to={to}
+      reloadDocument={reloadDocument}
+      replace={replace}
+      state={state}
+      preventScrollReset={preventScrollReset}
+      relative={relative}
       onClick={onClick}
       className={classNames(className, 'link')}
     />

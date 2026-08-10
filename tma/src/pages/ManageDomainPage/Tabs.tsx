@@ -142,24 +142,6 @@ export default function IconLabelTabs({
                 >
                   {config.label}
                 </motion.span>
-
-                {/* Процент - черный овал с белым текстом */}
-                <motion.div
-                  layout
-                  transition={{ duration: 0.3 }}
-                  style={{
-                    background: '#000000',
-                    color: 'white',
-                    fontSize: '12px',
-                    fontWeight: '700',
-                    padding: '6px 12px',
-                    borderRadius: '20px',
-                    minWidth: '50px',
-                    textAlign: 'center'
-                  }}
-                >
-                  {config.percentage.toFixed(1)}%
-                </motion.div>
               </motion.button>
             ))}
           </AnimatePresence>
