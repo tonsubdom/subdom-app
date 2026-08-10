@@ -18,7 +18,7 @@ interface CommunityDapp {
 }
 
 const COMMUNITY_DAPPS: CommunityDapp[] = [
-  { label: 'TonSite Builder', href: 'https://t.me/Ton_site_builder_bot', logo: tsbLogo },
+  { label: 'TonSite Builder', href: 'https://t.me/Ton_site_builder_bot?startapp', logo: tsbLogo },
   { label: 'TonSite Catalog', href: 'tonsite://tonsitecatalog.ton', logo: tonsiteCatalogLogo },
   { label: 'Webdom', href: 'https://webdom.market', logo: webdomLogo },
   { label: 'Resistance Tools', href: 'https://app.resistance.dog', logo: resistorLogo },

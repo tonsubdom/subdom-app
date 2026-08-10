@@ -488,7 +488,10 @@ export const IndexPage: React.FC = () => {
       ),
       cornerIcon: "edit",
       actionText: t('open'),
-      to: "https://t.me/Ton_site_builder_bot",
+      // ?startapp (без значения) открывает Mini App партнёра напрямую, а не
+      // просто чат с ботом с кнопкой "Start" — тот же паттерн, что уже
+      // используется в AddSubdomainPage.tsx для этой же ссылки.
+      to: "https://t.me/Ton_site_builder_bot?startapp",
       tutorialId: 'site',
       exemptFromWalletGate: true,
     },
