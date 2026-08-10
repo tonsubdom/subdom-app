@@ -73,7 +73,10 @@ export const isZoneMarkedInactive = (rawName: string): boolean =>
 
 export const cleanZoneDisplayName = (rawName: string): string => {
   return rawName
-    .replace(INACTIVE_MARKER_RE, ' ')
+    // trimEnd отдельным шагом — replace оставлял висящий пробел на месте
+    // маркера, из-за которого следующий $-заточенный regex (dns domains$)
+    // переставал матчиться, и суффикс "DNS Domains" оставался в имени.
+    .replace(INACTIVE_MARKER_RE, ' ').trimEnd()
     .replace(/^proxy\s+/i, '') // "Proxy downloader ton Domain" -> "downloader ton Domain"
     .replace(/\s+dns\s+domains?$/i, '') // "... DNS Domains" / "... DNS Domain"
     .replace(/\s+proxy\s+domains?$/i, '') // "... Proxy Domains" / "... Proxy Domain" (суффиксом)
