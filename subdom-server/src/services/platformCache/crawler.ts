@@ -77,6 +77,38 @@ const rawAddressEquals = (a: string, b: string): boolean => a.toUpperCase() === 
 const metaFor = (metadataByAddress: Record<string, any>, address: string) =>
   metadataByAddress[address]?.token_info?.[0];
 
+// Порт tma/src/services/blockchainItems/blockchain-items-types.ts::extractDomainAndZone —
+// метадата-`name` коллекции ("Song DNS Domains") НЕ домен, реальный домен
+// зоны лежит только в пути collection_content.uri
+// (.../metadata/ton/{domainName}). Именно domain, а не name, пишем в
+// platform_zones_cache.domain — фронтовый SBT-бейдж в CustomDomainSelector
+// сравнивает домены кошелька с этим полем.
+const extractDomainFromUri = (uri: string | undefined): string | null => {
+  if (!uri) return null;
+  try {
+    const url = new URL(uri);
+    const pathParts = url.pathname.split('/').filter((p) => p !== '');
+    const metadataIndex = pathParts.indexOf('metadata');
+    if (metadataIndex === -1) return null;
+
+    const afterMetadata = pathParts.slice(metadataIndex + 1);
+    if (afterMetadata.length < 2) return null;
+
+    if (afterMetadata.length === 2) {
+      const [zonePart, namePart] = afterMetadata;
+      const domain = `${namePart}.${zonePart}`;
+      return domain.endsWith('.ton') ? domain : `${domain}.ton`;
+    }
+
+    const subdomain = afterMetadata[afterMetadata.length - 1];
+    const zoneParts = afterMetadata.slice(0, -1);
+    const zone = [...zoneParts.slice(1), zoneParts[0]].join('.');
+    return `${subdomain}.${zone}`;
+  } catch {
+    return null;
+  }
+};
+
 /**
  * "Реальный создатель" — отправитель deploy-транзакции адреса. 1:1 с
  * getCollectionCreatorAndTime во фронтовом universal-blockchain-service.ts.
@@ -127,10 +159,11 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
 
   const upsertZone = db.prepare(`
     INSERT INTO platform_zones_cache
-      (collectionAddress, name, isProxy, wrapperAddress, ownerAddress, image, description, totalItems, status, lastSyncedAt, chainCreatedAt, source)
-    VALUES (@collectionAddress, @name, @isProxy, @wrapperAddress, @ownerAddress, @image, @description, @totalItems, 'active', @lastSyncedAt, @chainCreatedAt, 'crawler')
+      (collectionAddress, name, domain, isProxy, wrapperAddress, ownerAddress, image, description, totalItems, status, lastSyncedAt, chainCreatedAt, source)
+    VALUES (@collectionAddress, @name, @domain, @isProxy, @wrapperAddress, @ownerAddress, @image, @description, @totalItems, 'active', @lastSyncedAt, @chainCreatedAt, 'crawler')
     ON CONFLICT(collectionAddress) DO UPDATE SET
       name = excluded.name,
+      domain = excluded.domain,
       isProxy = excluded.isProxy,
       ownerAddress = excluded.ownerAddress,
       image = excluded.image,
@@ -212,6 +245,7 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
           const ownerAddress = creator || col.owner_address || null;
           const colMeta = metaFor(collectionsMetadata, col.address);
           const zoneName: string = colMeta?.name || '';
+          const zoneDomain = extractDomainFromUri(col.collection_content?.uri);
 
           // 3) Субдомены внутри зоны — считаем заодно totalItems для зоны
           let itemsCount = 0;
@@ -243,6 +277,7 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
           upsertZone.run({
             collectionAddress: toRawAddress(col.address),
             name: zoneName,
+            domain: zoneDomain,
             isProxy: isProxy ? 1 : 0,
             wrapperAddress: null,
             ownerAddress: ownerAddress ? toRawAddress(ownerAddress) : null,
@@ -336,8 +371,11 @@ async function pingAllSites(db: SqliteDatabase, label: string): Promise<void> {
     `UPDATE platform_subdomains_cache SET siteResolves = @siteResolves, siteCheckedAt = @siteCheckedAt WHERE itemAddress = @itemAddress`
   );
 
-  const zones = db.prepare(`SELECT collectionAddress, name FROM platform_zones_cache WHERE status = 'active'`).all() as
-    Array<{ collectionAddress: string; name: string }>;
+  // zone.name — отображаемое имя коллекции ("Song DNS Domains"), не домен;
+  // пинговать нужно zone.domain ("song.ton"), см. platform_zones_cache.domain.
+  const zones = db
+    .prepare(`SELECT collectionAddress, COALESCE(domain, name) as domain FROM platform_zones_cache WHERE status = 'active'`)
+    .all() as Array<{ collectionAddress: string; domain: string }>;
   const subdomains = db
     .prepare(`SELECT itemAddress, name FROM platform_subdomains_cache WHERE status = 'active'`)
     .all() as Array<{ itemAddress: string; name: string }>;
@@ -345,7 +383,7 @@ async function pingAllSites(db: SqliteDatabase, label: string): Promise<void> {
   console.log(`[platformCache] ${label}: проверка живости сайтов — зон=${zones.length}, субдоменов=${subdomains.length}`);
 
   await runWithConcurrency(zones, SITE_PING_CONCURRENCY, async (zone) => {
-    const siteResolves = await pingSiteResolves(zone.name);
+    const siteResolves = await pingSiteResolves(zone.domain);
     updateZoneSite.run({ collectionAddress: zone.collectionAddress, siteResolves: siteResolves ? 1 : 0, siteCheckedAt: nowIso() });
   });
 
@@ -382,13 +420,19 @@ export function upsertSinglePlatformEntity(
   const timestamp = nowIso();
   if (kind === 'zone') {
     db.prepare(
-      `INSERT INTO platform_zones_cache (collectionAddress, name, isProxy, wrapperAddress, ownerAddress, status, lastSyncedAt, source)
-       VALUES (@collectionAddress, @name, @isProxy, @wrapperAddress, @ownerAddress, 'active', @lastSyncedAt, 'create-trigger')
+      `INSERT INTO platform_zones_cache (collectionAddress, name, domain, isProxy, wrapperAddress, ownerAddress, status, lastSyncedAt, source)
+       VALUES (@collectionAddress, @name, @domain, @isProxy, @wrapperAddress, @ownerAddress, 'active', @lastSyncedAt, 'create-trigger')
        ON CONFLICT(collectionAddress) DO UPDATE SET
-         name = excluded.name, isProxy = excluded.isProxy, wrapperAddress = excluded.wrapperAddress,
+         name = excluded.name, domain = excluded.domain, isProxy = excluded.isProxy, wrapperAddress = excluded.wrapperAddress,
          ownerAddress = excluded.ownerAddress, status = 'active', lastSyncedAt = excluded.lastSyncedAt`
     ).run({
       ...payload,
+      // Точечный апсерт шлётся сразу после деплоя зоны — фронт в этот момент
+      // уже знает точный домен (name здесь и есть "{domainName}.ton", см.
+      // CreateCollectionPage.tsx), кроулер на следующем проходе перепишет
+      // оба поля из ончейна и разведёт их (name = метадата-тайтл, domain =
+      // реальный домен) — тут просто не оставляем domain пустым до тех пор.
+      domain: payload.domain ?? payload.name ?? null,
       collectionAddress: toRawAddress(payload.collectionAddress),
       ownerAddress: payload.ownerAddress ? toRawAddress(payload.ownerAddress) : payload.ownerAddress,
       lastSyncedAt: timestamp,

@@ -386,8 +386,6 @@ const partnerAddress = isTestnet
   // строке — не полагаемся на то, что суффикс ".ton" гарантированно есть с
   // обеих сторон одинаково, просто отбрасываем его перед сравнением.
   const domainsWithSbtZone = React.useMemo(() => {
-    // ВРЕМЕННЫЙ диагностический лог — почему бейдж не находит совпадений.
-    console.log('🔎 [SBT badge debug] sbtCollections:', sbtCollections.length, sbtCollections.slice(0, 5).map((c) => ({ domain: c.domain, type: c.type, name: c.name })));
     return new Set(
       sbtCollections
         .map((c) => c.domain?.trim().toLowerCase().replace(/\.ton$/i, ''))

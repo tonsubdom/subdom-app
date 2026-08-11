@@ -334,8 +334,6 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
                 // между источниками), ни от того, что суффикс ".ton"
                 // одинаково присутствует с обеих сторон.
                 const hasSbtZone = domainsWithSbtZone?.has(label.toLowerCase()) ?? false;
-                // ВРЕМЕННЫЙ диагностический лог.
-                console.log('🔎 [SBT badge debug] domain.name:', domain.name, '| label:', label, '| key:', label.toLowerCase(), '| setSize:', domainsWithSbtZone?.size, '| hasSbtZone:', hasSbtZone);
                 return (
                   <div
                     key={domain.address}

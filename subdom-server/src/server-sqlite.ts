@@ -501,6 +501,7 @@ const initializeDatabase = (db: SqliteDatabase) => {
     CREATE TABLE IF NOT EXISTS platform_zones_cache (
       collectionAddress TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      domain TEXT,
       isProxy INTEGER NOT NULL DEFAULT 0,
       wrapperAddress TEXT,
       ownerAddress TEXT,
@@ -594,6 +595,14 @@ const migratePlatformCacheColumns = (db: SqliteDatabase) => {
   // в toncenter, поле `now`) — отдельно от firstSeenAt (момент INSERT в SQLite)
   // и lastSyncedAt (обновляется каждый краул). См. Log.md 2026-08-09.
   addColumnIfMissing('platform_zones_cache', 'chainCreatedAt', 'chainCreatedAt TEXT');
+  // `name` — отображаемое имя коллекции из её метадаты (например "Song DNS
+  // Domains"), НЕ домен. Фронт (SBT-бейдж в CustomDomainSelector) сравнивал
+  // юзерские домены именно с этим полем через platformZoneToSimpleCollection
+  // (domain: row.name) — сравнение всегда проваливалось, бейдж не показывался
+  // никогда и ни у кого. `domain` — реальное имя ("song.ton"), распарсенное
+  // из collection_content.uri той же логикой, что и на медленном ончейн-
+  // фоллбэке (extractDomainAndZone на фронте).
+  addColumnIfMissing('platform_zones_cache', 'domain', 'domain TEXT');
 
   addColumnIfMissing('platform_subdomains_cache', 'zoneName', 'zoneName TEXT');
   addColumnIfMissing('platform_subdomains_cache', 'itemType', 'itemType TEXT');

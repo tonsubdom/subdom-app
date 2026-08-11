@@ -20,6 +20,11 @@ const DEFAULT_TIMEOUT_MS = 2000;
 export interface PlatformZoneCacheRow {
   collectionAddress: string;
   name: string;
+  // Отображаемое имя коллекции из метадаты ("Song DNS Domains") — НЕ домен.
+  // Реальный домен ("song.ton") лежит здесь, распаршен кроулером из
+  // collection_content.uri. Может быть null для строк, ещё не пересобранных
+  // после добавления этой колонки — до первого нового прохода кроулера.
+  domain: string | null;
   isProxy: number;
   wrapperAddress: string | null;
   ownerAddress: string | null;
@@ -122,7 +127,7 @@ export function platformZoneToSimpleCollection(row: PlatformZoneCacheRow): Simpl
   return {
     address: row.collectionAddress,
     name: row.name,
-    domain: row.name,
+    domain: row.domain ?? undefined,
     description: row.description ?? undefined,
     image: row.image ?? undefined,
     total_items: row.totalItems,
