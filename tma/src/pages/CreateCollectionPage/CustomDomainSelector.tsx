@@ -444,7 +444,7 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
                           cursor: "pointer",
                         }}
                       >
-                        🔒 SBT
+                        🔗 SBT
                       </span>
                     )}
                     {hasSbtZone && sbtInfoFor === domain.address && (
