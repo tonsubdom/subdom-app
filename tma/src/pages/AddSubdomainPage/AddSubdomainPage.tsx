@@ -12476,8 +12476,13 @@ import { fetchPlatformCache } from "@/services/blockchainItems/platformCacheClie
 // фоне остального приложения. Теперь — то же круглое золото/синее кольцо,
 // что и у ShareButton в других местах приложения (профиль, степпер, аукционы).
 const shareIconButtonStyle = (isDark: boolean): React.CSSProperties => ({
-  backgroundColor: isDark ? "rgba(255, 215, 0, 0.14)" : "rgba(59, 130, 246, 0.12)",
+  backgroundColor: isDark ? "rgba(255, 215, 0, 0.18)" : "rgba(59, 130, 246, 0.12)",
   borderColor: isDark ? "#FFD700" : "#3B82F6",
+  // IconButton mode="outline" по умолчанию рисует тонкую (1px) рамку —
+  // borderColor её только красит, а не утолщает; на золотом акценте в
+  // тёмной теме она терялась ("неочевидная и некрасивая"), см. ту же
+  // правку в ShareButton.tsx.
+  borderWidth: "2px",
   color: isDark ? "#FFD700" : "#3B82F6",
   padding: "6px",
   borderRadius: "50%",
@@ -14065,7 +14070,7 @@ export const AuctionPage: React.FC<{}> = () => {
                       title={t("shareAuction")}
                       style={shareIconButtonStyle(isDark)}
                     >
-                      <ShareArrowIcon />
+                      <ShareArrowIcon size={16} />
                     </IconButton>
                   </div>
                 )}
@@ -14406,7 +14411,7 @@ export const AuctionPage: React.FC<{}> = () => {
                       title={t("shareAuction")}
                       style={shareIconButtonStyle(isDark)}
                     >
-                      <ShareArrowIcon />
+                      <ShareArrowIcon size={16} />
                     </IconButton>
                   </div>
                 )}

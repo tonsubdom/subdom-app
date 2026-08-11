@@ -54,8 +54,11 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
         width: size,
         height: size,
         borderRadius: "50%",
-        border: `1.5px solid ${accent}`,
-        background: isDark ? "rgba(255, 215, 0, 0.14)" : "rgba(59, 130, 246, 0.12)",
+        // 2px вместо прежних 1.5 — на золотом акценте (#FFD700, тёмная
+        // тема) тонкая рамка почти не читалась на тёмном фоне, юзер жаловался
+        // "неочевидная и некрасивая".
+        border: `2px solid ${accent}`,
+        background: isDark ? "rgba(255, 215, 0, 0.18)" : "rgba(59, 130, 246, 0.12)",
         color: accent,
         display: "flex",
         alignItems: "center",
@@ -69,7 +72,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({
       onMouseEnter={(e) => { e.currentTarget.style.transform = "scale(1.1)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
     >
-      {justShared ? "✓" : <ShareArrowIcon size={Math.round(size * 0.5)} />}
+      {justShared ? "✓" : <ShareArrowIcon size={Math.round(size * 0.56)} />}
     </button>
   );
 };

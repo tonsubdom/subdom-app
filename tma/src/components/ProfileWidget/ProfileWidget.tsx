@@ -2284,6 +2284,7 @@ import { fromNano } from "ton-core";
 import SearchAndFilters from "@/components/SearchAndFilters/SearchAndFilters";
 import {
   FilterState,
+  ActiveStatusFilter,
   SortOption,
   Zone,
   Subdomain,
@@ -2662,13 +2663,35 @@ const ProfileWidget: React.FC = () => {
 
   // Фильтры
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [filters, setFilters] = useState<FilterState>({
+  // activeStatuses ("Активные/Неактивные") персистится в localStorage — тот
+  // же паттерн, что и SBT_MANUAL_INACTIVE_KEY выше. Без этого выбор фильтра
+  // слетал на каждый ремаунт ProfileWidget (переключение вкладок и т.п.),
+  // юзер жаловался, что список каждый раз грузится заново без фильтра.
+  // Остальные поля FilterState намеренно не персистятся — жалоба была
+  // только про этот фильтр.
+  const ACTIVE_STATUS_FILTER_KEY = "subdom_profile_active_status_filter";
+  const loadActiveStatuses = (): ActiveStatusFilter[] => {
+    try {
+      const raw = localStorage.getItem(ACTIVE_STATUS_FILTER_KEY);
+      return raw ? (JSON.parse(raw) as ActiveStatusFilter[]) : [];
+    } catch {
+      return [];
+    }
+  };
+  const [filters, setFilters] = useState<FilterState>(() => ({
     zoneLengths: [],
     subdomainLengths: [],
     auctionStatuses: [],
     zoneTypes: [],
-    activeStatuses: [],
-  });
+    activeStatuses: loadActiveStatuses(),
+  }));
+  useEffect(() => {
+    try {
+      localStorage.setItem(ACTIVE_STATUS_FILTER_KEY, JSON.stringify(filters.activeStatuses));
+    } catch {
+      // localStorage недоступен (приватный режим и т.п.) — фильтр просто не переживёт ремаунт
+    }
+  }, [filters.activeStatuses]);
   const [sortBy, setSortBy] = useState<SortOption>("name_asc");
   const PROFILE_PAGE_SIZE = 10;
   const [listPage, setListPage] = useState<number>(0);
