@@ -12,11 +12,13 @@ export const CopyLinkIcon: React.FC<{ size?: number }> = ({ size = 14 }) => (
   </svg>
 );
 
+// Широкая гнутая стрелка "переслать" — тот же силуэт, что forward-иконка в
+// Telegram и большинстве мессенджеров (Feather "corner-up-right"), обводка
+// вместо заливки — жирнее и разборчивее на маленьком размере, чем прежняя
+// тонкая залитая стрелка.
 export const ShareArrowIcon: React.FC<{ size?: number }> = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path
-      d="M18.4 10.6C16.55 8.99 14.15 8 11.5 8c-4.65 0-8.58 3.03-9.96 7.22L3.9 16c1.05-3.19 4.05-5.5 7.6-5.5 1.95 0 3.73.72 5.12 1.88L13 16h9V7l-3.6 3.6z"
-      fill="currentColor"
-    />
+    <polyline points="14 4 20 10 14 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M4 18v-5a4 4 0 0 1 4-4h12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );

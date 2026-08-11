@@ -98,10 +98,18 @@ export async function copyAuctionUrlToClipboard(params: AuctionUrlParams): Promi
 }
 
 /**
- * Поделиться аукционом (или зоной целиком, если subdomain не задан) через
- * Web Share API. custom позволяет переопределить title/text для мест, где
- * шарится не конкретный лот, а сама зона (например "Поделитесь аукционами
- * на этой зоне" в карточке зоны — там нет auction.subdomain).
+ * Поделиться аукционом (или зоной целиком, если subdomain не задан).
+ * custom позволяет переопределить title/text для мест, где шарится не
+ * конкретный лот, а сама зона (например "Поделитесь аукционами на этой
+ * зоне" в карточке зоны — там нет auction.subdomain).
+ *
+ * Приоритет источников:
+ * 1. Telegram shareURL (t.me/share/url) — открывает нативный список чатов
+ *    Telegram и ГАРАНТИРОВАННО предлагает Telegram как получателя. Обычный
+ *    navigator.share() внутри Telegram-вебвью на части платформ либо
+ *    недоступен, либо не включает сам Telegram в список приложений.
+ * 2. Web Share API — вне Telegram (юзер открыл ссылку в обычном браузере).
+ * 3. Копирование в буфер — если ничего из вышеперечисленного недоступно.
  */
 export async function shareAuction(
   params: AuctionUrlParams,
@@ -115,6 +123,16 @@ export async function shareAuction(
     const text = custom?.text || (params.subdomain
       ? `Посмотрите этот аукцион субдомена на TON!`
       : `Создавайте субдомены и участвуйте в аукционах на зоне ${params.zone}!`);
+
+    try {
+      const { shareURL } = await import('@telegram-apps/sdk-react');
+      if (shareURL.isAvailable()) {
+        shareURL(url, `${title}\n${text}`);
+        return true;
+      }
+    } catch {
+      // Не внутри Telegram Mini App или SDK не инициализирован — идём дальше по цепочке.
+    }
 
     if (navigator.share) {
       await navigator.share({

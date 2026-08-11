@@ -377,10 +377,20 @@ const partnerAddress = isTestnet
 
   // Ончейн-коллекции текущей сети (для проверки "уже есть SBT-зона на этом домене" без бэкенда)
   const { sbtCollections, ensureData } = useBlockchainItems();
-  // Те же полные имена ("name.ton"), что использует checkDomainExists ниже —
-  // нужен набор для O(1)-подсветки в CustomDomainSelector.
+  // Набор для O(1)-подсветки "уже есть SBT-зона" в CustomDomainSelector.
+  // Ключ — нижний регистр БЕЗ ".ton": c.domain (из platform_zones_cache,
+  // записан crawler'ом при обходе — регистр не гарантированно совпадает с
+  // тем, что сейчас отдаёт TonCenter для того же домена, см. Log.md
+  // 2026-08-11 про ту же болезнь с crawler.ts) и domain.name в самом
+  // селекторе сравниваются по этому нормализованному ключу, а не по сырой
+  // строке — не полагаемся на то, что суффикс ".ton" гарантированно есть с
+  // обеих сторон одинаково, просто отбрасываем его перед сравнением.
   const domainsWithSbtZone = React.useMemo(
-    () => new Set(sbtCollections.map((c) => c.domain).filter((d): d is string => !!d)),
+    () => new Set(
+      sbtCollections
+        .map((c) => c.domain?.trim().toLowerCase().replace(/\.ton$/i, ''))
+        .filter((d): d is string => !!d)
+    ),
     [sbtCollections]
   );
 

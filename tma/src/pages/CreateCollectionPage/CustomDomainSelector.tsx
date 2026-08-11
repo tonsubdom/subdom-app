@@ -328,6 +328,12 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
                 const label = formatDomainLabel(domain.name);
                 const isPunycode = isPunycodeEncoded(label);
                 const displayLabel = isPunycode ? decodeDomainForDisplay(label) : label;
+                // label уже без ".ton" (formatDomainLabel выше) — сравниваем
+                // по нему в нижнем регистре, а не по сырому domain.name: так
+                // не зависим ни от регистра (не гарантированно совпадает
+                // между источниками), ни от того, что суффикс ".ton"
+                // одинаково присутствует с обеих сторон.
+                const hasSbtZone = domainsWithSbtZone?.has(label.toLowerCase()) ?? false;
                 return (
                   <div
                     key={domain.address}
@@ -420,7 +426,7 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
                         {t("domainSelectorPunycodeWarning")}
                       </div>
                     )}
-                    {domainsWithSbtZone?.has(domain.name) && (
+                    {hasSbtZone && (
                       <span
                         onClick={(e) => {
                           e.stopPropagation();
@@ -441,7 +447,7 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
                         🔒 SBT
                       </span>
                     )}
-                    {domainsWithSbtZone?.has(domain.name) && sbtInfoFor === domain.address && (
+                    {hasSbtZone && sbtInfoFor === domain.address && (
                       <div
                         onClick={(e) => e.stopPropagation()}
                         style={{
