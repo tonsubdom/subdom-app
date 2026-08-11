@@ -2323,6 +2323,7 @@ import {
 } from "@/services/ownerMetaService";
 import { ShowSnackbar } from "@/components/ShowSnackbar";
 import { LupaButton } from "@/components/LupaButton/LupaButton";
+import { ShareButton } from "@/components/ShareButton/ShareButton";
 import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
 import { useTutorial } from "@/contexts/TutorialContext";
 import { OPEN_PROFILE_WIDGET_EVENT } from "@/components/SearchWidget/SearchWidget";
@@ -3867,6 +3868,20 @@ const ProfileWidget: React.FC = () => {
                 corner="bottom-right"
                 siteResolves={zone.siteResolves}
               />
+              {/* Только proxy — SBT-зоны не продаются и не участвуют в
+                  аукционах, делиться там нечем (см. isSbtZone выше). Ссылка
+                  ведёт на создание субдомена с уже вбитой зоной — тот же URL,
+                  что и у кнопки "Создать субдомен" в степпере CreateCollectionPage. */}
+              {!isSbtZone && (
+                <ShareButton
+                  params={{ zone: zone.name }}
+                  isDark={isDark}
+                  size={32}
+                  shareTitle={`Зона ${zone.name} на TON`}
+                  shareText={`Поделитесь аукционами на этой зоне — создавайте новые субдомены на ${zone.name}!`}
+                  style={{ position: "absolute", bottom: "4px", left: "4px" }}
+                />
+              )}
             </div>
           )}
 
@@ -4583,6 +4598,19 @@ const ProfileWidget: React.FC = () => {
               >
                 {auction.bid}
               </div>
+              {/* Только пока аукцион не завершён — делимся конкретным лотом
+                  (зона + субдомен), у друга сразу откроется чек и сам аукцион,
+                  как и на этой карточке. */}
+              {!isEnded && auction.subdomain?.zone?.name && (
+                <ShareButton
+                  params={{
+                    zone: auction.subdomain.zone.name,
+                    subdomain: auction.name.split(".")[0],
+                  }}
+                  isDark={isDark}
+                  size={26}
+                />
+              )}
             </div>
             <div>
               <p

@@ -5,6 +5,7 @@
 import { TonConnectUI } from '@tonconnect/ui-react';
 import { Cell } from 'ton-core';
 import { trackTxFailed } from '@/utils/analytics';
+import { NETWORK_CONFIGS } from '@/services/blockchainItems/toncenter-api-config';
 
 export interface TransactionOptions {
   /** Максимальное время ожидания подтверждения (мс) */
@@ -44,16 +45,6 @@ export interface TransactionStatus {
 }
 
 export class TransactionService {
-  private static readonly TONCENTER_API = {
-    mainnet: 'https://toncenter.com/api/v2',
-    testnet: 'https://testnet.toncenter.com/api/v2'
-  };
-
-  private static readonly TONAPI_IO = {
-    mainnet: 'https://tonapi.io/v2',
-    testnet: 'https://testnet.tonapi.io/v2'
-  };
-
   /**
    * Отправка транзакции с проверкой статуса.
    *
@@ -197,72 +188,62 @@ export class TransactionService {
   }
 
   /**
-   * Получение статуса транзакции
+   * Получение статуса транзакции.
+   *
+   * `hash` — это hash ВХОДЯЩЕГО внешнего сообщения (extractHashFromBoc), а
+   * не hash итоговой транзакции — это два разных значения в TON. Раньше
+   * здесь запрашивали tonapi/toncenter "по хешу транзакции" (эндпоинты
+   * transactions/{hash}, getTransactions?hash=), передавая туда хеш
+   * сообщения — запрос почти всегда не находил совпадение, и юзер видел
+   * "транзакция не подтверждена в блокчейне", хотя платёж реально прошёл.
+   * toncenter v3 `/transactionsByMessage` — единственный источник в
+   * проекте (см. NETWORK_CONFIGS/TonCenterAPI, платный план 25 req/s,
+   * используется во всех остальных ончейн-запросах приложения) — умеет
+   * искать транзакцию именно по хешу входящего сообщения.
    */
   static async getTransactionStatus(
     hash: string,
     network: 'mainnet' | 'testnet'
   ): Promise<TransactionStatus> {
-    try {
-      // Пробуем получить через tonapi.io (более надежный)
-      const tonapiUrl = `${this.TONAPI_IO[network]}/blockchain/transactions/${hash}`;
-      const tonapiResponse = await fetch(tonapiUrl);
-      
-      if (tonapiResponse.ok) {
-        const data = await tonapiResponse.json();
-        
-        if (data.hash) {
-          return {
-            hash: data.hash,
-            status: 'confirmed',
-            block: data.block?.seqno,
-            timestamp: data.utime,
-            messages: data.out_msgs?.map((msg: any) => ({
-              source: msg.source,
-              destination: msg.destination,
-              value: msg.value,
-              success: true
-            }))
-          };
-        }
-      }
-    } catch (error) {
-      console.warn('tonapi.io недоступен, пробуем toncenter...');
-    }
+    const config = NETWORK_CONFIGS[network];
+    const url = new URL(`${config.API_URL}/transactionsByMessage`);
+    url.searchParams.set('msg_hash', hash);
+    url.searchParams.set('direction', 'in');
+    url.searchParams.set('limit', '1');
+    if (config.API_KEY) url.searchParams.set('api_key', config.API_KEY);
 
-    // Fallback на toncenter
     try {
-      const toncenterUrl = `${this.TONCENTER_API[network]}/getTransactions?hash=${hash}&limit=1`;
-      const response = await fetch(toncenterUrl);
-      
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.ok && data.result && data.result.length > 0) {
-          const tx = data.result[0];
-          return {
-            hash: tx.hash,
-            status: 'confirmed',
-            block: tx.block,
-            timestamp: tx.utime,
-            messages: tx.out_msgs?.map((msg: any) => ({
-              source: msg.source,
-              destination: msg.destination,
-              value: msg.value,
-              success: msg.success
-            }))
-          };
-        }
+      const response = await fetch(url.toString());
+      if (!response.ok) {
+        return { hash, status: 'not_found' };
       }
-    } catch (error) {
-      console.warn('toncenter недоступен');
-    }
 
-    // Если транзакция не найдена ни в одном источнике
-    return {
-      hash,
-      status: 'not_found'
-    };
+      const data = await response.json();
+      const tx = data?.transactions?.[0];
+      if (!tx) {
+        return { hash, status: 'not_found' };
+      }
+
+      const aborted = !!tx.description?.aborted;
+      const computeFailed = tx.description?.compute_ph?.success === false;
+      const actionFailed = tx.description?.action?.success === false;
+
+      return {
+        hash: tx.hash,
+        status: aborted || computeFailed || actionFailed ? 'failed' : 'confirmed',
+        block: tx.block_ref?.seqno,
+        timestamp: tx.now,
+        messages: (tx.out_msgs || []).map((msg: any) => ({
+          source: msg.source,
+          destination: msg.destination,
+          value: msg.value,
+          success: true,
+        })),
+      };
+    } catch (error) {
+      console.warn('toncenter v3 недоступен:', error);
+      return { hash, status: 'not_found' };
+    }
   }
 
   /**
@@ -307,21 +288,17 @@ export class TransactionService {
   }
 
   /**
-   * Извлечение hash из BOC
+   * Извлечение hash входящего сообщения из BOC, который TonConnect
+   * возвращает после sendTransaction. base64, а не hex — так toncenter v3
+   * (`/transactionsByMessage?msg_hash=...`) принимает msg_hash.
    */
   static extractHashFromBoc(boc: string): string | null {
     try {
-      // Простая реализация - в реальном приложении используйте ton-core
-      // или другую библиотеку для парсинга BOC
       if (boc.length < 64) return null;
-      
-      // Для демонстрации - возвращаем первые 64 символа
-      // В продакшене используйте: 
-      
+
       const cell = Cell.fromBoc(Buffer.from(boc, 'base64'))[0];
-      const hash = cell.hash().toString('hex');
-      
-      // return boc.substring(0, 64);
+      const hash = cell.hash().toString('base64');
+
       return hash;
     } catch (error) {
       console.error('Ошибка извлечения hash из BOC:', error);

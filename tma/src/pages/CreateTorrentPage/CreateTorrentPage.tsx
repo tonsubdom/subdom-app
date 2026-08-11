@@ -11,7 +11,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { useTonAddress, useTonConnectUI } from '@tonconnect/ui-react';
+import { useTonAddress, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -141,10 +141,9 @@ const CreateTorrentPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [tonConnectUI] = useTonConnectUI();
   const userAddress = useTonAddress();
+  const wallet = useTonWallet();
   const tutorial = useTutorial();
-  // TODO: подхватить реальный флаг сети, как в остальном приложении
-  // (сейчас страница не завязана на isTestnet нигде — оставляем mainnet).
-  const isTestnet = false;
+  const isTestnet = wallet?.account?.chain === '-3';
 
   const [tab, setTab] = useState<Tab>('create');
 

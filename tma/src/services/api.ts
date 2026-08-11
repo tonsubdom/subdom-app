@@ -360,6 +360,25 @@ class ApiService {
     }
   }
 
+  // Лог согласия с рисками proxy-зоны — пишем при КАЖДОМ создании proxy-зоны
+  // (не только один раз на кошелёк), см. модалку в CreateCollectionPage.
+  // Fire-and-forget по своей природе — не блокирует деплой, если бэкенд недоступен.
+  async acknowledgeProxyRisk(address: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/users/${address}/proxy-risk-ack`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error acknowledging proxy risk:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
   async consumePaymentAttempt(
     address: string, 
     zoneType: 'proxy' | 'sbt', 

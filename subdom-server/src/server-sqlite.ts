@@ -385,6 +385,7 @@ const initializeDatabase = (db: SqliteDatabase) => {
       totalProxySubdomainSpending REAL DEFAULT 0,
       totalSbtSubdomainSpending REAL DEFAULT 0,
       totalProfit REAL DEFAULT 0,
+      proxyRiskAcknowledged INTEGER DEFAULT 0,
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
       updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
     );
@@ -576,6 +577,11 @@ const migratePlatformCacheColumns = (db: SqliteDatabase) => {
     }
   };
 
+  // Согласие на риски proxy-зоны (см. модалку при создании proxy в
+  // CreateCollectionPage) — 1 раз на юзера, не на зону, чтобы не показывать
+  // повторно при создании второй/третьей proxy-зоны тем же кошельком.
+  addColumnIfMissing('users', 'proxyRiskAcknowledged', 'proxyRiskAcknowledged INTEGER DEFAULT 0');
+
   addColumnIfMissing('platform_zones_cache', 'image', 'image TEXT');
   addColumnIfMissing('platform_zones_cache', 'description', 'description TEXT');
   addColumnIfMissing('platform_zones_cache', 'totalItems', 'totalItems INTEGER DEFAULT 0');
@@ -734,7 +740,10 @@ const storageUpload = multer({
       fs.mkdirSync(dir, { recursive: true });
       cb(null, dir);
     },
-    filename: (_req, file, cb) => cb(null, file.originalname),
+    // file.originalname приходит от клиента как есть — без этого юзер мог бы
+    // прислать "../../../etc/passwd" и записать файл за пределами uploadDir.
+    // basename() отбрасывает любые directory-компоненты, оставляя только имя файла.
+    filename: (_req, file, cb) => cb(null, path.basename(file.originalname)),
   }),
   limits: { fileSize: 200 * 1024 * 1024, files: 50 }, // 200MB/файл, до 50 файлов — разумный потолок для сайта
 });
@@ -1063,6 +1072,33 @@ app.post('/api/users/:address/payments', (req, res) => {
       success: false,
       message: 'Внутренняя ошибка сервера'
     });
+  }
+});
+
+// Лог согласия с рисками proxy-зоны — пишется при КАЖДОМ создании proxy-зоны
+// (не разовый флаг "больше не показывать"), модалка на фронте всё равно
+// показывается каждый раз перед деплоем; это просто аудиторская отметка.
+app.post('/api/users/:address/proxy-risk-ack', (req, res) => {
+  try {
+    const { address } = req.params;
+    const db = req.db;
+
+    if (!address) {
+      return res.status(400).json({ success: false, message: 'Адрес обязателен' });
+    }
+
+    const result = db
+      .prepare('UPDATE users SET proxyRiskAcknowledged = 1, updatedAt = CURRENT_TIMESTAMP WHERE address = ?')
+      .run(address);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ success: false, message: 'Пользователь не найден' });
+    }
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при логировании согласия с рисками proxy-зоны:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
   }
 });
 
@@ -3922,6 +3958,93 @@ app.get('/api/admin/pending-actions', requireAdminAuth, (req, res) => {
   } catch (error) {
     console.error('❌ Ошибка при получении заявок на действия площадки:', error);
     return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Читаемый HTML-слепок всей БД для админки — быстрая ручная сверка
+// состояния без похода в sqlite3 CLI. Список таблиц статичный (не
+// PRAGMA table_list) — так проще держать порядок вывода осмысленным
+// (сперва актуальный platform_*_cache, потом легаси zones/subdomains) и не
+// светить служебные sqlite_* таблицы.
+const DB_SNAPSHOT_TABLES = [
+  'platform_zones_cache',
+  'platform_subdomains_cache',
+  'platform_wrappers_cache',
+  'users',
+  'zones',
+  'subdomains',
+  'chats',
+  'messages',
+  'auctions',
+  'pending_admin_actions',
+  'tutorial_progress',
+] as const;
+
+function escapeHtml(value: unknown): string {
+  const str = value === null || value === undefined ? '' : String(value);
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+app.get('/api/admin/db-snapshot', requireAdminAuth, (req, res) => {
+  try {
+    const db = req.db;
+    const sections = DB_SNAPSHOT_TABLES.map((table) => {
+      let rows: Record<string, unknown>[];
+      try {
+        rows = db.prepare(`SELECT * FROM ${table}`).all() as Record<string, unknown>[];
+      } catch (err: any) {
+        return `<section><h2>${table} — ошибка</h2><p class="err">${escapeHtml(err?.message)}</p></section>`;
+      }
+      if (rows.length === 0) {
+        return `<section><h2>${table} <span class="count">(0)</span></h2><p class="empty">пусто</p></section>`;
+      }
+      const columns = Object.keys(rows[0] ?? {});
+      const head = columns.map((c) => `<th>${escapeHtml(c)}</th>`).join('');
+      const body = rows
+        .map(
+          (row) =>
+            `<tr>${columns
+              .map((c) => {
+                const v = row[c];
+                const text = typeof v === 'object' && v !== null ? JSON.stringify(v) : v;
+                return `<td>${escapeHtml(text)}</td>`;
+              })
+              .join('')}</tr>`
+        )
+        .join('');
+      return `<section><h2>${table} <span class="count">(${rows.length})</span></h2><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></section>`;
+    });
+
+    const html = `<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8"><title>DB snapshot — ${req.isTestnet ? 'testnet' : 'mainnet'}</title>
+<style>
+  body { font-family: ui-monospace, monospace; background: #111; color: #e5e5e5; margin: 0; padding: 20px; }
+  h1 { color: #ffd700; }
+  h2 { color: #ffd700; border-bottom: 1px solid #333; padding-bottom: 4px; margin-top: 32px; }
+  .count { color: #888; font-weight: normal; font-size: 14px; }
+  .empty { color: #666; }
+  .err { color: #e74c3c; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 8px; }
+  th, td { border: 1px solid #333; padding: 4px 8px; text-align: left; white-space: nowrap; max-width: 320px; overflow: hidden; text-overflow: ellipsis; }
+  th { background: #1a1a1a; position: sticky; top: 0; }
+  tr:nth-child(even) { background: #191919; }
+  td:hover { white-space: normal; overflow: visible; }
+</style></head>
+<body>
+  <h1>DB snapshot — ${req.isTestnet ? 'testnet' : 'mainnet'}</h1>
+  <p>Сгенерировано: ${escapeHtml(new Date().toISOString())}</p>
+  ${sections.join('\n')}
+</body></html>`;
+
+    res.type('html').send(html);
+  } catch (error: any) {
+    console.error('❌ Ошибка при формировании DB-снапшота:', error);
+    res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
   }
 });
 

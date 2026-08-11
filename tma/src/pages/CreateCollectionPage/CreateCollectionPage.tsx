@@ -57,6 +57,7 @@ import { track } from '@/utils/analytics';
 import { createAuctionUrl } from '@/utils/urlParams';
 import { sanitizeDomainLabelInput, encodeDomainLabel } from '@/utils/domainPunycode';
 import { CustomDomainSelector } from './CustomDomainSelector';
+import { ShareButton } from '@/components/ShareButton/ShareButton';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { addOptimisticCollection } from '@/services/blockchainItems/blockchain-items-slice';
 import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-items-utils';
@@ -218,6 +219,139 @@ const UnlinkConfirmationModal: React.FC<UnlinkConfirmationModalProps> = ({
   );
 };
 
+// Модалка про нюансы Proxy-зоны — показывается КАЖДЫЙ раз при выборе таба
+// Proxy (не только один раз на кошелёк, юзер явно попросил не прятать её
+// после первого раза), в самом начале флоу, до всякой оплаты. Тот же
+// overlay+card паттерн, что и UnlinkConfirmationModal выше.
+interface ProxyRiskModalProps {
+  open: boolean;
+  onBack: () => void;
+  onConfirm: () => void;
+}
+
+const ProxyRiskModal: React.FC<ProxyRiskModalProps> = ({ open, onBack, onConfirm }) => {
+  const { currentTheme } = useTheme();
+  const isDark = currentTheme === 'dark';
+  const { t } = useLanguage();
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    if (open) setChecked(false);
+  }, [open]);
+
+  const colors = {
+    background: isDark ? '#121212' : '#FFFFFF',
+    text: isDark ? '#E5E5E5' : '#1F2937',
+    border: isDark ? '#333333' : '#E5E7EB',
+    shadow: isDark ? 'rgba(255, 215, 0, 0.35)' : 'rgba(59, 130, 246, 0.35)',
+  };
+
+  if (!open) return null;
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
+        zIndex: 10000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+      }}
+    >
+      <div
+        style={{
+          backgroundColor: colors.background,
+          borderRadius: '16px',
+          padding: '24px',
+          maxWidth: '420px',
+          width: '100%',
+          border: `1px solid ${colors.border}`,
+          boxShadow: `0 10px 40px ${colors.shadow}`,
+        }}
+      >
+        <div style={{ fontSize: '36px', textAlign: 'center', marginBottom: '8px' }}>🌐</div>
+        <h3
+          style={{
+            margin: '0 0 14px 0',
+            fontSize: '17px',
+            fontWeight: 700,
+            color: colors.text,
+            textAlign: 'center',
+            fontFamily: 'monospace',
+          }}
+        >
+          {t('proxyRiskModalTitle')}
+        </h3>
+
+        <ul style={{ margin: '0 0 16px 0', padding: '0 0 0 18px', fontSize: '13px', color: colors.text, lineHeight: 1.6 }}>
+          <li>{t('proxyRiskModalPointWrapper')}</li>
+          <li>{t('proxyRiskModalPointMarket')}</li>
+          <li>{t('proxyRiskModalPointTonviewer')}</li>
+        </ul>
+
+        <label
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '8px',
+            fontSize: '12px',
+            color: colors.text,
+            marginBottom: '20px',
+            cursor: 'pointer',
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => setChecked(e.target.checked)}
+            style={{ marginTop: '2px', flexShrink: 0, cursor: 'pointer' }}
+          />
+          {t('proxyRiskModalCheckbox')}
+        </label>
+
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={onBack}
+            style={{
+              flex: 1,
+              padding: '12px',
+              borderRadius: '10px',
+              border: `1px solid ${colors.border}`,
+              background: 'transparent',
+              color: colors.text,
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {t('back')}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={!checked}
+            style={{
+              flex: 1,
+              padding: '12px',
+              borderRadius: '10px',
+              border: 'none',
+              background: checked ? '#4a90e2' : colors.border,
+              color: '#FFFFFF',
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: checked ? 'pointer' : 'default',
+            }}
+          >
+            {t('proxyRiskModalNext')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CreateCollectionPage: React.FC = () => {
   const dispatch = useTypedDispatch();
   const wallet = useTonWallet();
@@ -243,6 +377,12 @@ const partnerAddress = isTestnet
 
   // Ончейн-коллекции текущей сети (для проверки "уже есть SBT-зона на этом домене" без бэкенда)
   const { sbtCollections, ensureData } = useBlockchainItems();
+  // Те же полные имена ("name.ton"), что использует checkDomainExists ниже —
+  // нужен набор для O(1)-подсветки в CustomDomainSelector.
+  const domainsWithSbtZone = React.useMemo(
+    () => new Set(sbtCollections.map((c) => c.domain).filter((d): d is string => !!d)),
+    [sbtCollections]
+  );
 
   const { currentTheme } = useTheme();
   const isDark = currentTheme === 'dark';
@@ -257,6 +397,7 @@ const partnerAddress = isTestnet
   // По умолчанию SBT — безопасный обратимый режим, чтобы юзер, тыкающий не глядя,
   // не попал сразу на необратимый Proxy.
   const [activeTab, setActiveTab] = useState<ActiveTab>('sbt');
+  const [proxyRiskModalOpen, setProxyRiskModalOpen] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   // Блок "Особенности" сворачивается по умолчанию — раньше длинный список
   // из 12 пунктов занимал весь экран, и важный контент ниже (форма ввода
@@ -1393,8 +1534,24 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
   };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: ActiveTab) => {
+    // Proxy — необратимый режим (см. модалку ниже), перед входом в него
+    // всегда показываем нюансы, даже если юзер уже видел их раньше на
+    // предыдущей zone. SBT выбирается сразу, без модалки.
+    if (newValue === 'proxy' && activeTab !== 'proxy') {
+      setProxyRiskModalOpen(true);
+      return;
+    }
     setActiveTab(newValue);
     handleReset();
+  };
+
+  const handleProxyRiskConfirm = () => {
+    setProxyRiskModalOpen(false);
+    setActiveTab('proxy');
+    handleReset();
+    if (address) {
+      apiService.acknowledgeProxyRisk(address).catch(() => {});
+    }
   };
 
   // Проверяем URL параметры для предзаполнения
@@ -1619,6 +1776,7 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
                   dnsCollectionAddress={TonDnsAddress}
                   ownerAddress={address || null}
                   isTestnet={isTestnet}
+                  domainsWithSbtZone={domainsWithSbtZone}
                   selectedDomain={domainInputMode === 'select' ? domainNameDisplay : ''}
                   onDomainChange={(name) => {
                     setDomainNameDisplay(name);
@@ -1822,6 +1980,13 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
         onConfirm={handleUnlinkConfirm}
         domainName={domainName}
         loading={unlinkingInProgress}
+      />
+
+      {/* Нюансы Proxy-зоны — перед входом в необратимый режим, до всякой оплаты */}
+      <ProxyRiskModal
+        open={proxyRiskModalOpen}
+        onBack={() => setProxyRiskModalOpen(false)}
+        onConfirm={handleProxyRiskConfirm}
       />
 
       <Banner
@@ -2198,6 +2363,15 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
                 >
                   {t('startOver')}
                 </Button>
+                {activeTab === 'proxy' && (
+                  <ShareButton
+                    params={{ zone: `${domainName}.ton` }}
+                    isDark={isDark}
+                    size={44}
+                    shareTitle={`Зона ${domainName}.ton на TON`}
+                    shareText={`Только что создал(а) зону ${domainName}.ton — создавайте субдомены и участвуйте в аукционах!`}
+                  />
+                )}
               </Box>
             </Paper>
           )}

@@ -7,6 +7,7 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { TonCenterAPI } from "@/services/blockchainItems/toncenter-api-config";
+import { decodeDomainForDisplay, isPunycodeEncoded } from "@/utils/domainPunycode";
 
 export interface OwnedDomain {
   name: string;
@@ -23,6 +24,9 @@ interface CustomDomainSelectorProps {
   placeholder?: string;
   disabled?: boolean;
   onActivate?: () => void;
+  // Полные имена ("name.ton") доменов, на которых уже есть SBT-зона —
+  // подсвечиваем лейблом в списке, чтобы юзер не пытался создать вторую.
+  domainsWithSbtZone?: Set<string>;
 }
 
 export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
@@ -35,6 +39,7 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
   placeholder,
   disabled = false,
   onActivate,
+  domainsWithSbtZone,
 }) => {
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
@@ -43,11 +48,15 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc" | null>(null);
-  // Пуникод-домены (xn--...) не декодируем в юникод — вместо этого просто
-  // предупреждаем, что они не входят в официально поддерживаемый набор
-  // символов и будут отображаться как есть (raw xn--...). Тултип открыт для
-  // одного домена одновременно, по адресу — ключ.
+  // Пуникод-домены (xn--...) декодируем в юникод для отображения, но красным
+  // текстом — юзер должен видеть реальные символы, а не opaque "xn--...", но
+  // при этом понимать, что это не официально поддерживаемый набор символов
+  // (риск омоглифов). Тултип открыт для одного домена одновременно, по
+  // адресу — ключ.
   const [punycodeWarningFor, setPunycodeWarningFor] = useState<string | null>(null);
+  // Тултип SBT-лейбла — свой независимый стейт, чтобы клик по SBT-бейджу
+  // не путался с punycode-предупреждением, если у домена есть оба маркера.
+  const [sbtInfoFor, setSbtInfoFor] = useState<string | null>(null);
   const loadedForRef = useRef<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -138,7 +147,11 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
   };
 
   const handleSelect = (domainFullName: string) => {
-    onDomainChange(formatDomainLabel(domainFullName));
+    const label = formatDomainLabel(domainFullName);
+    // domainNameDisplay в CreateCollectionPage ожидает юникод (как при ручном
+    // вводе) — encodeDomainLabel там же переведёт обратно в punycode перед
+    // отправкой ончейн.
+    onDomainChange(isPunycodeEncoded(label) ? decodeDomainForDisplay(label) : label);
     setIsOpen(false);
     setSearchQuery("");
   };
@@ -313,7 +326,8 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
             ) : (
               filteredDomains.map((domain) => {
                 const label = formatDomainLabel(domain.name);
-                const isPunycode = label.toLowerCase().startsWith("xn--");
+                const isPunycode = isPunycodeEncoded(label);
+                const displayLabel = isPunycode ? decodeDomainForDisplay(label) : label;
                 return (
                   <div
                     key={domain.address}
@@ -334,8 +348,15 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = isDark ? "#2a2a2a" : "#f5f5f5"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "transparent"; }}
                   >
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      .{label}
+                    <span
+                      style={{
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        color: isPunycode ? "#e74c3c" : undefined,
+                      }}
+                    >
+                      .{displayLabel}
                     </span>
                     {isPunycode && (
                       <span
@@ -397,6 +418,63 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
                           }}
                         />
                         {t("domainSelectorPunycodeWarning")}
+                      </div>
+                    )}
+                    {domainsWithSbtZone?.has(domain.name) && (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSbtInfoFor((prev) => (prev === domain.address ? null : domain.address));
+                        }}
+                        style={{
+                          flexShrink: 0,
+                          padding: "3px 8px",
+                          borderRadius: "4px",
+                          background: "#3b82f6",
+                          color: "white",
+                          fontSize: "10px",
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                          cursor: "pointer",
+                        }}
+                      >
+                        🔒 SBT
+                      </span>
+                    )}
+                    {domainsWithSbtZone?.has(domain.name) && sbtInfoFor === domain.address && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 8px)",
+                          right: "8px",
+                          width: "200px",
+                          background: isDark ? "#2a2a2a" : "white",
+                          color: isDark ? "#E5E5E5" : "black",
+                          border: `2px solid #3b82f6`,
+                          borderRadius: "14px",
+                          padding: "10px 12px",
+                          fontSize: "11px",
+                          fontFamily: "monospace",
+                          lineHeight: 1.4,
+                          boxShadow: "0 6px 16px rgba(0,0,0,0.3)",
+                          zIndex: 2000,
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "-7px",
+                            right: "16px",
+                            width: "12px",
+                            height: "12px",
+                            background: isDark ? "#2a2a2a" : "white",
+                            borderTop: `2px solid #3b82f6`,
+                            borderLeft: `2px solid #3b82f6`,
+                            transform: "rotate(45deg)",
+                          }}
+                        />
+                        {t("domainSelectorHasSbtZone")}
                       </div>
                     )}
                   </div>

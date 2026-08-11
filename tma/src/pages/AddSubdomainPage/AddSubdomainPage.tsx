@@ -12471,6 +12471,21 @@ import { sanitizeDomainLabelInput, encodeDomainLabel, decodeDomainLabel } from "
 import { CopyLinkIcon, ShareArrowIcon } from "@/components/icons/CopyShareIcons";
 import { fetchPlatformCache } from "@/services/blockchainItems/platformCacheClient";
 
+// Единый акцентный стиль для копировать-ссылку/поделиться — раньше это были
+// серые прямоугольные кнопки (#333 фон, #555 бордер), визуально "чопорные" на
+// фоне остального приложения. Теперь — то же круглое золото/синее кольцо,
+// что и у ShareButton в других местах приложения (профиль, степпер, аукционы).
+const shareIconButtonStyle = (isDark: boolean): React.CSSProperties => ({
+  backgroundColor: isDark ? "rgba(255, 215, 0, 0.14)" : "rgba(59, 130, 246, 0.12)",
+  borderColor: isDark ? "#FFD700" : "#3B82F6",
+  color: isDark ? "#FFD700" : "#3B82F6",
+  padding: "6px",
+  borderRadius: "50%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+});
+
 // ====== ТИПЫ ======
 
 type CollectionAddressMap = {
@@ -14039,16 +14054,7 @@ export const AuctionPage: React.FC<{}> = () => {
                       mode="outline"
                       onClick={handleCopyAuctionLink}
                       title={t("copyAuctionLink")}
-                      style={{
-                        backgroundColor: "#333",
-                        borderColor: "#555",
-                        color: "white",
-                        padding: "4px 8px",
-                        fontSize: "10px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
+                      style={shareIconButtonStyle(isDark)}
                     >
                       <CopyLinkIcon />
                     </IconButton>
@@ -14057,16 +14063,7 @@ export const AuctionPage: React.FC<{}> = () => {
                       mode="outline"
                       onClick={handleShareAuction}
                       title={t("shareAuction")}
-                      style={{
-                        backgroundColor: "#333",
-                        borderColor: "#555",
-                        color: "white",
-                        padding: "4px 8px",
-                        fontSize: "10px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
+                      style={shareIconButtonStyle(isDark)}
                     >
                       <ShareArrowIcon />
                     </IconButton>
@@ -14398,16 +14395,7 @@ export const AuctionPage: React.FC<{}> = () => {
                       mode="outline"
                       onClick={handleCopyAuctionLink}
                       title={t("copyAuctionLink")}
-                      style={{
-                        backgroundColor: "#333",
-                        borderColor: "#555",
-                        color: "white",
-                        padding: "4px 8px",
-                        fontSize: "10px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
+                      style={shareIconButtonStyle(isDark)}
                     >
                       <CopyLinkIcon />
                     </IconButton>
@@ -14416,16 +14404,7 @@ export const AuctionPage: React.FC<{}> = () => {
                       mode="outline"
                       onClick={handleShareAuction}
                       title={t("shareAuction")}
-                      style={{
-                        backgroundColor: "#333",
-                        borderColor: "#555",
-                        color: "white",
-                        padding: "4px 8px",
-                        fontSize: "10px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
+                      style={shareIconButtonStyle(isDark)}
                     >
                       <ShareArrowIcon />
                     </IconButton>

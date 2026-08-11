@@ -98,14 +98,24 @@ export async function copyAuctionUrlToClipboard(params: AuctionUrlParams): Promi
 }
 
 /**
- * Поделиться аукционом через Web Share API
+ * Поделиться аукционом (или зоной целиком, если subdomain не задан) через
+ * Web Share API. custom позволяет переопределить title/text для мест, где
+ * шарится не конкретный лот, а сама зона (например "Поделитесь аукционами
+ * на этой зоне" в карточке зоны — там нет auction.subdomain).
  */
-export async function shareAuction(params: AuctionUrlParams): Promise<boolean> {
+export async function shareAuction(
+  params: AuctionUrlParams,
+  custom?: { title?: string; text?: string }
+): Promise<boolean> {
   try {
     const url = getFullAuctionUrl(params);
-    const title = `Аукцион субдомена ${params.subdomain}.${params.zone}`;
-    const text = `Посмотрите этот аукцион субдомена на TON!`;
-    
+    const title = custom?.title || (params.subdomain
+      ? `Аукцион субдомена ${params.subdomain}.${params.zone}`
+      : `Зона ${params.zone} на TON`);
+    const text = custom?.text || (params.subdomain
+      ? `Посмотрите этот аукцион субдомена на TON!`
+      : `Создавайте субдомены и участвуйте в аукционах на зоне ${params.zone}!`);
+
     if (navigator.share) {
       await navigator.share({
         title,
