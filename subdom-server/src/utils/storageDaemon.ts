@@ -85,3 +85,17 @@ export async function addBag(bagId: string, diskPath: string): Promise<void> {
     body: JSON.stringify({ bag_id: bagId, path: diskPath, download_all: true }),
   });
 }
+
+/**
+ * Снимает bag с раздачи и удаляет исходные файлы с диска демона —
+ * вызывается только после того, как все требуемые провайдеры storage-
+ * contract'а подтвердили ончейн хотя бы один цикл proof_storage (см.
+ * checkStorageDeals в server-sqlite.ts), то есть реально скачали полную
+ * копию и способны раздавать её сами дальше без нашего узла.
+ */
+export async function removeBag(bagId: string): Promise<void> {
+  await storageFetch<{ ok: boolean }>('/api/v1/remove', {
+    method: 'POST',
+    body: JSON.stringify({ bag_id: bagId, with_files: true }),
+  });
+}

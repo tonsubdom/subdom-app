@@ -8,8 +8,8 @@ import dotenv from 'dotenv';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import crypto from 'crypto';
 import Joi from 'joi';
+import { Address } from '@ton/core';
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -20,6 +20,7 @@ import telegramBot from './utils/tgBot-sqlite';
 import { generatePayload, verifyAdminProof, CheckProofRequest } from './utils/tonProof';
 import { createAdminToken, requireAdminAuth } from './utils/adminAuth';
 import { createBag, getBagDetails, addBag } from './utils/storageDaemon';
+import { startStorageDealsChecker } from './services/storageDealsChecker';
 import platformCacheRouter from './services/platformCache/routes';
 import { startPlatformCacheCrawler } from './services/platformCache/crawler';
 // Flat JSON tool manifest for LLM/MCP tool-use (same file as
@@ -557,6 +558,26 @@ const initializeDatabase = (db: SqliteDatabase) => {
     );
     CREATE INDEX IF NOT EXISTS idx_platform_wrappers_holder ON platform_wrappers_cache(wrapperHolderAddress);
     CREATE INDEX IF NOT EXISTS idx_platform_wrappers_dividend ON platform_wrappers_cache(dividendOwnerAddress);
+
+    -- Отслеживает жизненный цикл bag'а TON Storage от заливки на наш диск
+    -- (см. POST /api/storage/create) до момента, когда все выбранные при
+    -- деплое storage-contract'а провайдеры подтвердят ончейн хотя бы один
+    -- цикл proof_storage — только тогда наш узел безопасно перестаёт быть
+    -- единственным сидом и чистит uploadDir (см. services/storageDealsChecker.ts).
+    -- Строка создаётся сразу при заливке (contractAddress ещё NULL, до
+    -- оплаты провайдеру) — если сделка так и не оплачена, строка просто
+    -- висит нерелизнутой навсегда, это ожидаемо (TODO квот пока не решает).
+    CREATE TABLE IF NOT EXISTS storage_deals (
+      bagId TEXT PRIMARY KEY,
+      uploadDir TEXT NOT NULL,
+      contractAddress TEXT,
+      providers TEXT,
+      requiredProviders INTEGER,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      dealSentAt TEXT,
+      releasedAt TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_storage_deals_pending ON storage_deals(contractAddress, releasedAt);
   `);
 
   // Выполняем миграцию после создания таблиц
@@ -697,6 +718,7 @@ app.use('/api/*', networkMiddleware);
 // чтобы req.db/req.isTestnet были уже выставлены.
 app.use('/api/platform', platformCacheRouter);
 startPlatformCacheCrawler(testnetDb, mainnetDb);
+startStorageDealsChecker(testnetDb, mainnetDb);
 
 // ==================== ADMIN AUTH (TonProof) ====================
 // Единственный способ получить доступ к чувствительным CRUD-ручкам ниже —
@@ -741,20 +763,26 @@ app.post('/api/admin/auth/check-proof', async (req, res) => {
 // файлы по пути на диске — сохраняем загруженные файлы во временную
 // поддиректорию общего volume, зовём /api/v1/create, затем чистим за собой
 // вне зависимости от результата (неудачные загрузки не должны копиться).
+//
+// Заливка идёт чанками (см. CreateTorrentPage.tsx), а не одним fetch —
+// при 2GB/файл обрыв сети на 90-й секунде означал бы начинать всё заново.
+// sessionId — sha256 от списка (имя+размер+lastModified) выбранных файлов,
+// считается на фронте: если юзер после обрыва/релоада заново выбирает те
+// же файлы, sessionId совпадает сам по себе, без localStorage — GET
+// upload-status просто сообщает, сколько байт каждого файла уже лежит на
+// диске, и фронт продолжает с этого места (с небольшим откатом на один
+// чанк назад — на случай, если последняя запись была не завершена).
 
-const storageUpload = multer({
-  storage: multer.diskStorage({
-    destination: (req, _file, cb) => {
-      const dir = path.join(STORAGE_UPLOADS_PATH, (req as any).uploadId);
-      fs.mkdirSync(dir, { recursive: true });
-      cb(null, dir);
-    },
-    // file.originalname приходит от клиента как есть — без этого юзер мог бы
-    // прислать "../../../etc/passwd" и записать файл за пределами uploadDir.
-    // basename() отбрасывает любые directory-компоненты, оставляя только имя файла.
-    filename: (_req, file, cb) => cb(null, path.basename(file.originalname)),
-  }),
-  limits: { fileSize: 200 * 1024 * 1024, files: 50 }, // 200MB/файл, до 50 файлов — разумный потолок для сайта
+const SESSION_ID_RE = /^[0-9a-fA-F]{64}$/;
+const CHUNK_UPLOAD_MAX_BYTES = 8 * 1024 * 1024; // с запасом над чанком в 5MB на фронте
+
+function sessionDirFor(sessionId: string): string {
+  return path.join(STORAGE_UPLOADS_PATH, sessionId);
+}
+
+const chunkUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: CHUNK_UPLOAD_MAX_BYTES },
 });
 
 app.get('/api/storage/details', async (req, res) => {
@@ -772,41 +800,195 @@ app.get('/api/storage/details', async (req, res) => {
   }
 });
 
-app.post(
-  '/api/storage/create',
-  (req, res, next) => {
-    (req as any).uploadId = crypto.randomUUID();
-    next();
-  },
-  storageUpload.array('files'),
-  async (req, res) => {
-    const uploadId = (req as any).uploadId as string;
-    const uploadDir = path.join(STORAGE_UPLOADS_PATH, uploadId);
-    try {
-      const files = req.files as Express.Multer.File[] | undefined;
-      if (!files || files.length === 0) {
-        res.status(400).json({ error: 'No files uploaded' });
-        return;
+// Сколько байт каждого файла сессии уже принято на диск — фронт зовёт это
+// перед стартом (и после каждого обрыва), чтобы знать, откуда продолжать.
+// Пустой объект для незнакомого/нового sessionId — не ошибка, это старт с нуля.
+app.get('/api/storage/upload-status', (req, res) => {
+  const sessionId = typeof req.query?.sessionId === 'string' ? req.query.sessionId : '';
+  if (!SESSION_ID_RE.test(sessionId)) {
+    return res.status(400).json({ error: 'sessionId должен быть 64-символьной hex-строкой' });
+  }
+  const dir = sessionDirFor(sessionId);
+  const received: Record<string, number> = {};
+  try {
+    if (fs.existsSync(dir)) {
+      for (const entry of fs.readdirSync(dir)) {
+        if (!entry.endsWith('.part')) continue;
+        const name = entry.slice(0, -'.part'.length);
+        received[name] = fs.statSync(path.join(dir, entry)).size;
       }
-      const description = typeof req.body?.description === 'string' ? req.body.description : '';
-      // ВАЖНО: файлы НЕ удаляются после create — tonutils-storage продолжает
-      // раздавать bag пирам/провайдеру с этого же пути постоянно, это не
-      // одноразовое хеширование. Место на диске растёт с каждым созданным
-      // bag'ом — квоты/чистки старых bag'ов пока не реализованы (TODO,
-      // нужно решение о лимитах на юзера).
-      const bagId = await createBag(uploadDir, description);
-      res.json({ bagId });
-    } catch (error: any) {
-      console.error('❌ Ошибка создания bag через tonutils-storage:', error);
-      fs.rm(uploadDir, { recursive: true, force: true }, () => {}); // при ошибке — не копим мусор
-      res.status(500).json({ error: error?.message || 'Failed to create bag' });
+    }
+  } catch (error) {
+    console.error('❌ Ошибка чтения статуса заливки:', error);
+  }
+  res.json({ received });
+  return;
+});
+
+// Принимает один чанк файла и дозаписывает его строго по указанному offset
+// (не append) — повторная отправка того же чанка после обрыва идемпотентна,
+// просто перезаписывает те же байты на то же место.
+app.post('/api/storage/upload-chunk', chunkUpload.single('chunk'), async (req, res) => {
+  try {
+    const sessionId = typeof req.body?.sessionId === 'string' ? req.body.sessionId : '';
+    const offset = Number(req.body?.offset);
+    const fileName = typeof req.body?.fileName === 'string' ? path.basename(req.body.fileName) : '';
+    const chunk = req.file;
+
+    if (!SESSION_ID_RE.test(sessionId)) {
+      return res.status(400).json({ error: 'sessionId должен быть 64-символьной hex-строкой' });
+    }
+    if (!fileName) {
+      return res.status(400).json({ error: 'fileName обязателен' });
+    }
+    if (!Number.isInteger(offset) || offset < 0) {
+      return res.status(400).json({ error: 'offset должен быть целым неотрицательным числом' });
+    }
+    if (!chunk || !chunk.buffer.length) {
+      return res.status(400).json({ error: 'chunk обязателен и не может быть пустым' });
+    }
+
+    const dir = sessionDirFor(sessionId);
+    fs.mkdirSync(dir, { recursive: true });
+    const filePath = path.join(dir, `${fileName}.part`);
+
+    const handle = await fs.promises.open(filePath, 'a+');
+    try {
+      await handle.write(chunk.buffer, 0, chunk.buffer.length, offset);
+    } finally {
+      await handle.close();
+    }
+
+    const receivedBytes = (await fs.promises.stat(filePath)).size;
+    res.json({ receivedBytes });
+  } catch (error: any) {
+    console.error('❌ Ошибка записи чанка заливки:', error);
+    res.status(500).json({ error: error?.message || 'Failed to write chunk' });
+  }
+  return;
+});
+
+// Финализация: все файлы сессии должны быть полностью на диске (размер
+// каждого .part совпадает с ожидаемым) — иначе 409 со списком того, чего не
+// хватает, фронт дозаливает недостающее и зовёт finalize снова.
+app.post('/api/storage/finalize', async (req, res) => {
+  const sessionId = typeof req.body?.sessionId === 'string' ? req.body.sessionId : '';
+  const description = typeof req.body?.description === 'string' ? req.body.description : '';
+  const files = Array.isArray(req.body?.files) ? req.body.files : [];
+
+  if (!SESSION_ID_RE.test(sessionId)) {
+    return res.status(400).json({ error: 'sessionId должен быть 64-символьной hex-строкой' });
+  }
+  if (files.length === 0) {
+    return res.status(400).json({ error: 'files обязателен и не может быть пустым' });
+  }
+
+  const dir = sessionDirFor(sessionId);
+  const incomplete: Array<{ name: string; receivedBytes: number; expectedBytes: number }> = [];
+
+  for (const f of files) {
+    const name = typeof f?.name === 'string' ? path.basename(f.name) : '';
+    const expectedBytes = Number(f?.size);
+    if (!name || !Number.isInteger(expectedBytes) || expectedBytes < 0) {
+      return res.status(400).json({ error: 'Каждый элемент files должен содержать name и size' });
+    }
+    const partPath = path.join(dir, `${name}.part`);
+    let receivedBytes = 0;
+    try {
+      receivedBytes = (await fs.promises.stat(partPath)).size;
+    } catch {
+      receivedBytes = 0;
+    }
+    if (receivedBytes !== expectedBytes) {
+      incomplete.push({ name, receivedBytes, expectedBytes });
     }
   }
-);
+
+  if (incomplete.length > 0) {
+    return res.status(409).json({ error: 'Не все файлы докачаны', incomplete });
+  }
+
+  try {
+    for (const f of files) {
+      const name = path.basename(f.name);
+      await fs.promises.rename(path.join(dir, `${name}.part`), path.join(dir, name));
+    }
+    // ВАЖНО: файлы НЕ удаляются сразу после finalize — tonutils-storage
+    // продолжает раздавать bag пирам/провайдеру с этого же пути, это не
+    // одноразовое хеширование. Место на диске освобождается позже,
+    // автоматически, только после того как юзер оплатит storage-contract
+    // и ВСЕ выбранные провайдеры подтвердят ончейн реальное владение
+    // данными (см. POST /api/storage/deals и services/storageDealsChecker.ts).
+    // Если сделка так и не будет оплачена — эта строка просто остаётся
+    // нерелизнутой навсегда (квоты на такие висящие заливки — TODO).
+    const bagId = await createBag(dir, description);
+    req.db.prepare(
+      `INSERT OR REPLACE INTO storage_deals (bagId, uploadDir) VALUES (?, ?)`
+    ).run(bagId, dir);
+    res.json({ bagId });
+  } catch (error: any) {
+    console.error('❌ Ошибка создания bag через tonutils-storage:', error);
+    fs.rm(dir, { recursive: true, force: true }, () => {}); // при ошибке — не копим мусор
+    res.status(500).json({ error: error?.message || 'Failed to create bag' });
+  }
+  return;
+});
 
 // bagID — 64 hex-символа (sha256 корня Merkle-дерева) — только этот формат
 // пускаем дальше в диск-путь, чтобы chuжой ввод не мог сделать path traversal.
 const BAG_ID_RE = /^[0-9a-fA-F]{64}$/;
+
+// Фронт зовёт это сразу после успешной отправки транзакции деплоя
+// storage-contract'а (см. CreateTorrentPage.tsx, handleDeploy) — привязывает
+// уже существующую (созданную в /api/storage/finalize) строку storage_deals
+// к адресу контракта и списку выбранных провайдеров, чтобы
+// storageDealsChecker знал, что и у кого проверять перед очисткой диска.
+app.post('/api/storage/deals', (req, res) => {
+  try {
+    const bagId = typeof req.body?.bagId === 'string' ? req.body.bagId.trim().toLowerCase() : '';
+    const contractAddress = typeof req.body?.contractAddress === 'string' ? req.body.contractAddress.trim() : '';
+    const providers = req.body?.providers;
+
+    if (!BAG_ID_RE.test(bagId)) {
+      return res.status(400).json({ error: 'bagId должен быть 64-символьной hex-строкой' });
+    }
+    try {
+      Address.parse(contractAddress);
+    } catch {
+      return res.status(400).json({ error: 'Некорректный contractAddress' });
+    }
+    if (!Array.isArray(providers) || providers.length === 0 || providers.length > 10) {
+      return res.status(400).json({ error: 'providers должен быть непустым массивом (до 10 элементов)' });
+    }
+    for (const p of providers) {
+      if (typeof p?.pubkey !== 'string' || typeof p?.address !== 'string') {
+        return res.status(400).json({ error: 'Каждый provider должен содержать pubkey и address' });
+      }
+      try {
+        Address.parse(p.address);
+      } catch {
+        return res.status(400).json({ error: `Некорректный address у провайдера: ${p.address}` });
+      }
+    }
+
+    const result = req.db
+      .prepare(
+        `UPDATE storage_deals
+         SET contractAddress = ?, providers = ?, requiredProviders = ?, dealSentAt = CURRENT_TIMESTAMP
+         WHERE bagId = ?`
+      )
+      .run(contractAddress, JSON.stringify(providers), providers.length, bagId);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ error: 'bag не найден — сначала вызови /api/storage/finalize' });
+    }
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('❌ Ошибка регистрации storage-сделки:', error);
+    res.status(500).json({ error: error?.message || 'Failed to register storage deal' });
+  }
+  return;
+});
 
 const DOWNLOADS_DIR = path.join(STORAGE_UPLOADS_PATH, 'downloads');
 

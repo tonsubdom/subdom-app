@@ -12682,7 +12682,7 @@ export const AuctionPage: React.FC<{}> = () => {
     ensureData();
   }, []);
 
-  // ====== ВСЕ PROXY КОЛЛЕКЦИИ (для селекта) + ФИЛЬТР ПУСТЫХ/WILDCARD/PSEUDONYM ======
+  // ====== ВСЕ PROXY КОЛЛЕКЦИИ (для селекта) + ФИЛЬТР ПУСТЫХ/WILDCARD/PSEUDONYM/INACTIVE ======
   const allProxyZones: Zone[] = useMemo(
     () =>
       dedupeByLatest(proxyCollections)
@@ -12692,7 +12692,10 @@ export const AuctionPage: React.FC<{}> = () => {
           return (
             zonePart !== "" && zonePart !== "*" && zonePart !== "pseudonym"
           );
-        }),
+        })
+        // Та же деактивация, что и у SBT (activeSbtZones ниже) — иначе
+        // деактивированная зона всё ещё предлагается для создания субдомена.
+        .filter((z) => z.status !== "inactive"),
     [proxyCollections]
   );
 

@@ -1,13 +1,20 @@
 // tma/src/pages/CreateTorrentPage/CreateTorrentPage.tsx
 //
-// "Создать торрент" — загрузить файлы, выбрать провайдера TON Storage,
-// получить bagID, оплатить провайдеру (реальный storage-contract на чейне,
+// "Создать торрент" — загрузить файлы, выбрать провайдеров TON Storage,
+// получить bagID, оплатить провайдерам (реальный storage-contract на чейне,
 // см. utils/storageContract.ts) и опционально сразу привязать bagID в
 // DNS-запись домена. Провайдеров берём напрямую с mytonprovider.org (у них
 // Access-Control-Allow-Origin: *, прокси через свой бэкенд не нужен). Само
 // создание bag'а — через subdom-server -> tonutils-storage демон
-// (см. storage-daemon/, subdom-server/src/utils/storageDaemon.ts):
-// POST /api/storage/create принимает multipart/form-data.
+// (см. storage-daemon/, subdom-server/src/utils/storageDaemon.ts).
+//
+// Заливка — чанками с докачкой (POST /api/storage/upload-chunk +
+// /api/storage/finalize), не одним fetch: при лимите 2GB/файл обрыв сети
+// на середине означал бы начинать всё заново. sessionId — детерминированный
+// хеш от списка выбранных файлов (см. computeSessionId ниже), поэтому даже
+// без localStorage повторный выбор тех же файлов после сбоя/релоада сам
+// попадает в ту же сессию и продолжает с места обрыва (см. GET
+// /api/storage/upload-status).
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDispatch } from 'react-redux';
@@ -107,11 +114,6 @@ function formatSpace(gb: number): string {
   return gb >= 1024 ? (gb / 1024).toFixed(1) + ' ТБ' : gb.toFixed(0) + ' ГБ';
 }
 
-function formatSpeed(bitsPerSec?: number): string {
-  if (!bitsPerSec) return '—';
-  return (bitsPerSec / 1e6).toFixed(1) + ' Мбит/с';
-}
-
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return (bytes / 1024 ** 3).toFixed(2) + ' ГБ';
   if (bytes >= 1024 ** 2) return (bytes / 1024 ** 2).toFixed(2) + ' МБ';
@@ -126,6 +128,86 @@ function formatTon(nanoTon: bigint | number): string {
   if (ton < 0.001) return ton.toFixed(6);
   if (ton < 1) return ton.toFixed(4);
   return ton.toFixed(2);
+}
+
+// ====== ЧАНКОВАЯ ЗАЛИВКА С ДОКАЧКОЙ ======
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB — backend принимает до 8MB на чанк, запас на неточности
+const CHUNK_RETRIES = 4;
+
+// Детерминированный ID сессии заливки — от списка (имя+размер+lastModified)
+// выбранных файлов. Не localStorage: если юзер после обрыва/релоада заново
+// перетащит те же файлы, sessionId совпадёт сам собой, и upload-status
+// вернёт уже принятые байты — заливка продолжится, а не начнётся с нуля.
+async function computeSessionId(files: File[]): Promise<string> {
+  const manifest = files.map((f) => `${f.name}:${f.size}:${f.lastModified}`).join('|');
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(manifest));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function fetchUploadStatus(sessionId: string): Promise<Record<string, number>> {
+  const res = await fetch(`${API_BASE_URL}/api/storage/upload-status?sessionId=${sessionId}`);
+  if (!res.ok) throw new Error(`Не удалось получить статус заливки: HTTP ${res.status}`);
+  const data = await res.json();
+  return data.received || {};
+}
+
+async function uploadChunkWithRetry(sessionId: string, file: File, offset: number): Promise<number> {
+  const end = Math.min(offset + CHUNK_SIZE, file.size);
+  const blob = file.slice(offset, end);
+
+  let lastError: unknown = null;
+  for (let attempt = 1; attempt <= CHUNK_RETRIES; attempt++) {
+    try {
+      const formData = new FormData();
+      formData.append('sessionId', sessionId);
+      formData.append('fileName', file.name);
+      formData.append('offset', String(offset));
+      formData.append('chunk', blob);
+
+      const res = await fetch(`${API_BASE_URL}/api/storage/upload-chunk`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      return data.receivedBytes as number;
+    } catch (e) {
+      lastError = e;
+      if (attempt < CHUNK_RETRIES) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+      }
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * Заливает один файл чанками начиная с resumeFromBytes (уже принятое на
+ * бэкенде количество байт) — при обрыве где-то в середине откатывается на
+ * один чанк назад от последнего известного смещения: последняя запись
+ * могла быть не завершена физически, а перезапись того же чанка безопасна
+ * (backend пишет строго по offset, не аппендит вслепую).
+ */
+async function uploadFileResumable(
+  sessionId: string,
+  file: File,
+  resumeFromBytes: number,
+  onProgress: (uploadedBytes: number) => void
+): Promise<void> {
+  let offset = resumeFromBytes;
+  if (offset > 0 && offset < file.size) {
+    const chunkIndex = Math.floor(offset / CHUNK_SIZE);
+    offset = Math.max(0, (chunkIndex - 1) * CHUNK_SIZE);
+  }
+  onProgress(offset);
+  while (offset < file.size) {
+    const receivedBytes = await uploadChunkWithRetry(sessionId, file, offset);
+    offset = receivedBytes;
+    onProgress(offset);
+  }
 }
 
 type SortField = 'rating' | 'price' | 'uptime' | 'freeSpace';
@@ -150,7 +232,8 @@ const CreateTorrentPage: React.FC = () => {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [providersLoading, setProvidersLoading] = useState(true);
   const [providersError, setProvidersError] = useState<string | null>(null);
-  const [selectedProvider, setSelectedProvider] = useState<string>('');
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+  const [providerCount, setProviderCount] = useState<number>(3);
   const [sortField, setSortField] = useState<SortField>('rating');
   const [sortDesc, setSortDesc] = useState(true);
 
@@ -160,6 +243,7 @@ const CreateTorrentPage: React.FC = () => {
   const [days, setDays] = useState<number>(30);
 
   const [creating, setCreating] = useState(false);
+  const [uploadedBytes, setUploadedBytes] = useState(0);
   const [bagId, setBagId] = useState<string | null>(null);
   const [bagDetails, setBagDetails] = useState<BagDetails | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -187,13 +271,27 @@ const CreateTorrentPage: React.FC = () => {
 
   useEffect(() => {
     fetchProviders()
-      .then((list) => {
-        setProviders(list);
-        if (list[0]) setSelectedProvider(list[0].pubkey);
-      })
+      .then((list) => setProviders(list))
       .catch((e) => setProvidersError(e?.message || 'Ошибка загрузки провайдеров'))
       .finally(() => setProvidersLoading(false));
   }, []);
+
+  // Автоподбор топ-N провайдеров (по рейтингу — независимо от текущей
+  // сортировки таблицы) при загрузке списка и при смене желаемого
+  // количества источников. Юзер может дальше вручную донастроить чекбоксами
+  // ниже — эффект не трогает выбор, пока сам providerCount не поменяется.
+  useEffect(() => {
+    if (providers.length === 0) return;
+    const topByRating = [...providers].sort((a, b) => b.rating - a.rating);
+    setSelectedProviders(topByRating.slice(0, providerCount).map((p) => p.pubkey));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [providers, providerCount]);
+
+  const toggleProvider = (pubkey: string) => {
+    setSelectedProviders((prev) =>
+      prev.includes(pubkey) ? prev.filter((k) => k !== pubkey) : [...prev, pubkey]
+    );
+  };
 
   // domain приходит с карточки конкретной зоны/субдомена в ProfileWidget
   // (handleCreateTorrent) — сразу подставляет имя в поле привязки и включает
@@ -228,14 +326,30 @@ const CreateTorrentPage: React.FC = () => {
     return list;
   }, [providers, sortField, sortDesc]);
 
-  const selected = providers.find((p) => p.pubkey === selectedProvider);
+  const selectedProviderObjs = useMemo(
+    () => providers.filter((p) => selectedProviders.includes(p.pubkey)),
+    [providers, selectedProviders]
+  );
   const totalBytes = useMemo(() => files.reduce((sum, f) => sum + f.size, 0), [files]);
 
-  const ratePerMbDay = selected ? ratePerMbDayFromMyTonProviderPrice(selected.price) : 0n;
-  const totalCostNanoTon = selected && totalBytes > 0
-    ? calculateStorageCostNanoTon(selected.price, totalBytes, days)
+  // Контракт платит бонус тому провайдеру, который прислал proof, из ОБЩЕГО
+  // баланса контракта — то есть суммарное финансирование должно покрывать
+  // ставку КАЖДОГО из выбранных провайдеров за весь срок, а не одну ставку
+  // на всех (см. storage-contract.fc: bounty считается по rate_per_mb_day
+  // конкретного провайдера, но списывается с общего contract_balance).
+  const totalCostNanoTon = totalBytes > 0
+    ? selectedProviderObjs.reduce(
+        (sum, p) => sum + calculateStorageCostNanoTon(p.price, totalBytes, days),
+        0n
+      )
     : 0n;
-  const oversizeProvider = !!selected && totalBytes > selected.max_bag_size_bytes;
+  const oversizeProvider =
+    selectedProviderObjs.length > 0 &&
+    selectedProviderObjs.some((p) => totalBytes > p.max_bag_size_bytes);
+  const oversizeProviderNames = selectedProviderObjs
+    .filter((p) => totalBytes > p.max_bag_size_bytes)
+    .map((p) => `${p.location?.country || '?'} (${formatBytes(p.max_bag_size_bytes)})`)
+    .join(', ');
 
   const colors = {
     text: isDark ? '#F9FAFB' : '#1F2937',
@@ -295,6 +409,31 @@ const CreateTorrentPage: React.FC = () => {
     cursor: disabled ? 'default' : 'pointer',
     marginTop: '8px',
   });
+
+  // Нумерованный заголовок шага — чтобы длинная форма читалась как 3
+  // понятных действия, а не сплошная простыня полей.
+  const StepHeader: React.FC<{ n: number; title: string; done?: boolean }> = ({ n, title, done }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '20px 0 10px 0' }}>
+      <div
+        style={{
+          width: '24px',
+          height: '24px',
+          borderRadius: '50%',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '12px',
+          fontWeight: 700,
+          background: done ? colors.success : colors.accent,
+          color: isDark ? '#000' : '#fff',
+        }}
+      >
+        {done ? '✓' : n}
+      </div>
+      <div style={{ fontSize: '14px', fontWeight: 700, color: colors.text }}>{title}</div>
+    </div>
+  );
 
   // ====== DROPZONE ======
   const addFiles = (incoming: FileList | File[]) => {
@@ -395,6 +534,10 @@ const CreateTorrentPage: React.FC = () => {
     }
   };
 
+  // Заливает все файлы чанками (с докачкой, см. uploadFileResumable) и
+  // финализирует bag на бэкенде. Повторный вызов (например, после разрыва
+  // сети — юзер просто снова жмёт "Создать") продолжает ту же сессию с
+  // места, где данные реально долетели, а не с нуля.
   const handleCreate = async () => {
     if (files.length === 0 || creating) return;
     setCreating(true);
@@ -406,13 +549,32 @@ const CreateTorrentPage: React.FC = () => {
     setDealContractAddress(null);
     setDealSent(false);
     try {
-      const formData = new FormData();
-      files.forEach((f) => formData.append('files', f));
-      formData.append('description', description);
+      const sessionId = await computeSessionId(files);
+      const received = await fetchUploadStatus(sessionId);
 
-      const res = await fetch(`${API_BASE_URL}/api/storage/create`, {
+      const progressByFile = new Map<string, number>(files.map((f) => [f.name, 0]));
+      const reportProgress = () => {
+        let sum = 0;
+        progressByFile.forEach((v) => { sum += v; });
+        setUploadedBytes(sum);
+      };
+
+      for (const file of files) {
+        await uploadFileResumable(sessionId, file, received[file.name] || 0, (uploaded) => {
+          progressByFile.set(file.name, uploaded);
+          reportProgress();
+        });
+      }
+
+      const res = await fetch(`${API_BASE_URL}/api/storage/finalize`, {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          description,
+          isTestnet,
+          files: files.map((f) => ({ name: f.name, size: f.size })),
+        }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -433,7 +595,10 @@ const CreateTorrentPage: React.FC = () => {
       }
     } catch (e: any) {
       track('torrent_creation_failed', { reason: String(e?.message || 'unknown').slice(0, 120) });
-      setCreateError(e?.message || 'Ошибка создания bag');
+      setCreateError(
+        (e?.message || 'Ошибка заливки') +
+          ' — уже переданные данные сохранены, можно нажать «Создать» ещё раз, заливка продолжится с места обрыва.'
+      );
     } finally {
       setCreating(false);
     }
@@ -487,17 +652,17 @@ const CreateTorrentPage: React.FC = () => {
 
   // ====== ОПЛАТА ПРОВАЙДЕРУ (реальный storage-contract) ======
   const handleDeploy = async () => {
-    if (!selected || !bagId || !bagDetails || !userAddress || dealPreparing) return;
+    if (selectedProviderObjs.length === 0 || !bagId || !bagDetails || !userAddress || dealPreparing) return;
     setDealPreparing(true);
     setDealError(null);
     try {
       const owner = Address.parse(userAddress);
-      const providerDeal: StorageProviderDeal = {
-        pubkey: selected.pubkey,
-        address: selected.address,
-        maxSpanSeconds: selected.max_span,
-        ratePerMbDayNanoTon: ratePerMbDayFromMyTonProviderPrice(selected.price),
-      };
+      const providerDeals: StorageProviderDeal[] = selectedProviderObjs.map((p) => ({
+        pubkey: p.pubkey,
+        address: p.address,
+        maxSpanSeconds: p.max_span,
+        ratePerMbDayNanoTon: ratePerMbDayFromMyTonProviderPrice(p.price),
+      }));
       const deal = prepareStorageDeal(
         {
           bagIdHex: bagId,
@@ -506,7 +671,7 @@ const CreateTorrentPage: React.FC = () => {
           pieceSizeBytes: bagDetails.piece_size,
         },
         owner,
-        [providerDeal],
+        providerDeals,
         totalCostNanoTon
       );
       setDealContractAddress(deal.contractAddress);
@@ -530,6 +695,30 @@ const CreateTorrentPage: React.FC = () => {
         return;
       }
 
+      // Регистрируем сделку на бэкенде — без этого storageDealsChecker не
+      // узнает, каких провайдеров ждать перед тем, как освободить диск (см.
+      // services/storageDealsChecker.ts). Если этот вызов не удался — сама
+      // сделка на чейне всё равно живая, просто автоочистка не сработает;
+      // не блокируем юзера ошибкой, только логируем.
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/storage/deals`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bagId,
+            contractAddress: deal.contractAddress.toString({ bounceable: true, testOnly: isTestnet }),
+            providers: providerDeals.map((p) => ({ pubkey: p.pubkey, address: p.address })),
+            isTestnet,
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          console.error('Не удалось зарегистрировать storage-сделку на бэкенде:', err?.error);
+        }
+      } catch (e) {
+        console.error('Не удалось зарегистрировать storage-сделку на бэкенде:', e);
+      }
+
       track('torrent_deal_sent');
       setDealSent(true);
     } catch (e: any) {
@@ -540,14 +729,21 @@ const CreateTorrentPage: React.FC = () => {
     }
   };
 
-  const canDeploy = !!selected && !!bagId && !!bagDetails && !!userAddress && !oversizeProvider;
+  const canDeploy = selectedProviderObjs.length > 0 && !!bagId && !!bagDetails && !!userAddress && !oversizeProvider;
 
   return (
     <Page back={true}>
       <div style={{ maxWidth: '425px', margin: '0 auto', padding: '20px 16px 180px 16px' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: '700', color: colors.text, margin: '0 0 16px 0' }}>
+        <h1 style={{ fontSize: '22px', fontWeight: '700', color: colors.text, margin: '0 0 6px 0' }}>
           {t('createTorrentTitle') || 'Создать торрент'}
         </h1>
+        <p style={{ fontSize: '13px', fontWeight: 600, color: colors.text, margin: '0 0 4px 0' }}>
+          {t('createTorrentHeadline') || 'Храни безотказно в нескольких местах одновременно за микроплатежи'}
+        </p>
+        <p style={{ fontSize: '12px', color: colors.textSecondary, margin: '0 0 16px 0' }}>
+          {t('createTorrentHeadlineSub') ||
+            'subdom не хранит данные и не участвует в раздаче — после успешных подтверждений от провайдеров о скачивании вашего файла папка на сервисе очищается.'}
+        </p>
 
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
           <button style={tabButtonStyle(tab === 'create')} onClick={() => setTab('create')}>
@@ -562,8 +758,10 @@ const CreateTorrentPage: React.FC = () => {
           <>
             <p style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '16px' }}>
               {t('createTorrentDescription') ||
-                'Загрузи файлы сайта — они превратятся в bagID (TON Storage), который потом можно вписать в DNS-запись домена.'}
+                'Всего 3 шага: загрузить файлы → выбрать провайдеров → запустить и оплатить.'}
             </p>
+
+            <StepHeader n={1} title={t('createTorrentStep1') || 'Файлы'} done={files.length > 0} />
 
             {/* ====== DROPZONE ====== */}
             <div
@@ -588,7 +786,7 @@ const CreateTorrentPage: React.FC = () => {
               </div>
               <div style={{ fontSize: '11px', color: colors.textSecondary, marginTop: '6px' }}>
                 {t('createTorrentDropzoneHint') ||
-                  'Любые файлы и архивы, несколько штук за раз. До 200 МБ на файл, до 50 файлов.'}
+                  'Любые файлы и архивы, несколько штук за раз. До 2 ГБ на файл, до 50 файлов.'}
               </div>
               <input
                 ref={fileInputRef}
@@ -635,7 +833,7 @@ const CreateTorrentPage: React.FC = () => {
                   {t('createTorrentTotalSize') || 'Итого'}: {formatBytes(totalBytes)}
                   {oversizeProvider && (
                     <span style={{ color: colors.error }}>
-                      {' '}— {t('createTorrentTooBigForProvider') || 'больше лимита выбранного провайдера'} ({formatBytes(selected!.max_bag_size_bytes)})
+                      {' '}— {t('createTorrentTooBigForProvider') || 'больше лимита у'}: {oversizeProviderNames}
                     </span>
                   )}
                 </p>
@@ -650,11 +848,34 @@ const CreateTorrentPage: React.FC = () => {
               style={inputStyle}
             />
 
-            {/* ====== ПРОВАЙДЕР + СОРТИРОВКА ====== */}
+            <StepHeader n={2} title={t('createTorrentStep2') || 'Провайдеры хранения'} done={selectedProviders.length > 0} />
+
+            {/* ====== КОЛИЧЕСТВО ИСТОЧНИКОВ ====== */}
             <label style={{ fontSize: '12px', color: colors.textSecondary, display: 'block', marginBottom: '6px' }}>
-              {t('createTorrentProviderLabel') || 'Провайдер хранения'}
+              {t('createTorrentProviderCountLabel') || 'Количество независимых провайдеров'}{' '}
+              <span style={{ opacity: 0.7 }}>
+                ({t('createTorrentProviderCountHint') || 'subdom рекомендует 3–5 источников для надёжности'})
+              </span>
+            </label>
+            <select
+              value={providerCount}
+              onChange={(e) => setProviderCount(Number(e.target.value))}
+              style={{ ...inputStyle, cursor: 'pointer' }}
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                <option key={n} value={n}>
+                  {n} {n >= 3 && n <= 5 ? `— ${t('createTorrentRecommended') || 'рекомендуется'}` : ''}
+                </option>
+              ))}
+            </select>
+
+            {/* ====== ПРОВАЙДЕРЫ + СОРТИРОВКА ====== */}
+            <label style={{ fontSize: '12px', color: colors.textSecondary, display: 'block', margin: '12px 0 6px 0' }}>
+              {t('createTorrentProviderLabel') || 'Провайдеры хранения'}
               {!providersLoading && !providersError && (
-                <span style={{ opacity: 0.7 }}> ({t('createTorrentProvidersFound') || 'найдено'}: {providers.length})</span>
+                <span style={{ opacity: 0.7 }}>
+                  {' '}({t('createTorrentProvidersSelected') || 'выбрано'}: {selectedProviders.length} {t('createTorrentProvidersOf') || 'из'} {providers.length})
+                </span>
               )}
             </label>
 
@@ -685,39 +906,44 @@ const CreateTorrentPage: React.FC = () => {
             )}
             {providersError && <p style={{ fontSize: '12px', color: colors.error }}>{providersError}</p>}
             {!providersLoading && !providersError && (
-              <select
-                value={selectedProvider}
-                onChange={(e) => setSelectedProvider(e.target.value)}
-                style={{ ...inputStyle, cursor: 'pointer' }}
-              >
-                {sortedProviders.map((p) => (
-                  <option key={p.pubkey} value={p.pubkey}>
-                    {p.location?.country || '?'} — {p.rating.toFixed(1)}★ — uptime {p.uptime.toFixed(1)}% —{' '}
-                    {formatTon(p.price)} TON/200ГБ/мес — свободно {formatSpace(freeSpaceGb(p))}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {selected?.telemetry && (
-              <div
-                style={{
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: '10px',
-                  padding: '12px',
-                  marginBottom: '12px',
-                  fontSize: '11px',
-                  color: colors.textSecondary,
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '6px 12px',
-                }}
-              >
-                <div>⬇️ {formatSpeed(selected.telemetry.speedtest_download)}</div>
-                <div>⬆️ {formatSpeed(selected.telemetry.speedtest_upload)}</div>
-                <div>📶 ping {selected.telemetry.speedtest_ping !== undefined ? selected.telemetry.speedtest_ping.toFixed(0) + ' мс' : '—'}</div>
-                <div>🖥️ {selected.telemetry.cpu_number || '—'} CPU</div>
-                <div style={{ gridColumn: '1 / -1' }}>🌐 {selected.telemetry.isp || '—'}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px', maxHeight: '340px', overflowY: 'auto', paddingRight: '2px' }}>
+                {sortedProviders.map((p) => {
+                  const isChecked = selectedProviders.includes(p.pubkey);
+                  const stat = (label: string, value: string) => (
+                    <div>
+                      <div style={{ fontSize: '9px', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</div>
+                      <div style={{ fontSize: '12px', color: colors.text, fontWeight: 600 }}>{value}</div>
+                    </div>
+                  );
+                  return (
+                    <label
+                      key={p.pubkey}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '10px',
+                        padding: '10px',
+                        borderRadius: '10px',
+                        border: `1px solid ${isChecked ? colors.accent : colors.border}`,
+                        background: isChecked ? `${colors.accent}11` : 'transparent',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <input type="checkbox" checked={isChecked} onChange={() => toggleProvider(p.pubkey)} style={{ marginTop: '3px', flexShrink: 0 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '12px', fontWeight: 700, color: colors.text, marginBottom: '6px' }}>
+                          {p.location?.country || '?'}{p.location?.city ? `, ${p.location.city}` : ''}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
+                          {stat(t('createTorrentSortRating') || 'Рейтинг', `${p.rating.toFixed(1)}★`)}
+                          {stat(t('createTorrentSortPrice') || 'Цена', `${formatTon(p.price)} TON`)}
+                          {stat(t('createTorrentSortUptime') || 'Uptime', `${p.uptime.toFixed(0)}%`)}
+                          {stat(t('createTorrentSortSpace') || 'Свободно', formatSpace(freeSpaceGb(p)))}
+                        </div>
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
             )}
 
@@ -734,7 +960,7 @@ const CreateTorrentPage: React.FC = () => {
               style={inputStyle}
             />
 
-            {selected && (
+            {selectedProviderObjs.length > 0 && (
               <div
                 style={{
                   border: `1px solid ${colors.accent}55`,
@@ -746,8 +972,7 @@ const CreateTorrentPage: React.FC = () => {
                 }}
               >
                 <div style={{ marginBottom: '6px', color: colors.textSecondary }}>
-                  {t('createTorrentTariffLabel') || 'Тариф'}: <strong>{formatTon(selected.price)} TON</strong> {t('createTorrentTariffPer200gb30d') || 'за 200 ГБ за 30 дней'}
-                  {' '}(≈ {formatTon(ratePerMbDay)} TON/{t('createTorrentPerMbDay') || 'МБ/день'})
+                  {t('createTorrentTariffMultiLabel') || 'Оплата провайдерам'}: {selectedProviderObjs.length} × {t('createTorrentTariffPer200gb30d') || 'ставка своя за 200 ГБ / 30 дней'}
                 </div>
                 <div style={{ fontSize: '15px', fontWeight: 700, color: colors.accent }}>
                   {t('createTorrentTotalCostLabel') || 'Итого за'} {days} {t('createTorrentDays') || 'дн.'}: {totalBytes > 0 ? formatTon(totalCostNanoTon) : '0'} TON
@@ -757,8 +982,15 @@ const CreateTorrentPage: React.FC = () => {
                     {t('createTorrentAddFilesForEstimate') || 'Добавь файлы, чтобы увидеть точную сумму'}
                   </div>
                 )}
+                {oversizeProvider && (
+                  <div style={{ fontSize: '11px', color: colors.error, marginTop: '4px' }}>
+                    {t('createTorrentTooBigForProvider') || 'Больше лимита у'}: {oversizeProviderNames}
+                  </div>
+                )}
               </div>
             )}
+
+            <StepHeader n={3} title={t('createTorrentStep3') || 'Запуск и оплата'} done={dealSent} />
 
             {/* ====== ПРИВЯЗКА К ДОМЕНУ ====== */}
             <label
@@ -790,8 +1022,23 @@ const CreateTorrentPage: React.FC = () => {
             )}
 
             <button onClick={handleCreate} disabled={files.length === 0 || creating || oversizeProvider} style={primaryButtonStyle(files.length === 0 || creating || oversizeProvider)}>
-              {creating ? (t('processing') || 'Создание...') : (t('createTorrentButton') || 'Создать bagID')}
+              {creating
+                ? `${t('createTorrentUploading') || 'Заливка'}... ${formatBytes(uploadedBytes)} / ${formatBytes(totalBytes)}`
+                : (t('createTorrentButton') || 'Создать bagID')}
             </button>
+
+            {creating && totalBytes > 0 && (
+              <div style={{ height: '4px', borderRadius: '2px', background: colors.border, marginTop: '6px', overflow: 'hidden' }}>
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${Math.min(100, (uploadedBytes / totalBytes) * 100)}%`,
+                    background: colors.accent,
+                    transition: 'width 0.2s ease',
+                  }}
+                />
+              </div>
+            )}
 
             {tutorial.active && !tutorial.isStepDone('torrent_created') && (
               <TutorialTooltip
