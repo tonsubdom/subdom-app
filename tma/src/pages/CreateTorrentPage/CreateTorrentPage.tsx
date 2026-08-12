@@ -265,7 +265,9 @@ const CreateTorrentPage: React.FC = () => {
   const [downloadBagId, setDownloadBagId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloadDetails, setDownloadDetails] = useState<BagDetails | null>(null);
+  const [downloadStalled, setDownloadStalled] = useState(false);
   const downloadPollRef = useRef<number | null>(null);
+  const downloadProgressRef = useRef<{ bytes: number; sinceMs: number }>({ bytes: 0, sinceMs: 0 });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -473,13 +475,32 @@ const CreateTorrentPage: React.FC = () => {
 
   useEffect(() => stopDownloadPolling, []);
 
+  // Если скачанные байты не растут дольше этого порога — в сети TON Storage
+  // прямо сейчас нет ни одного пира, реально раздающего этот bag (метаданные
+  // демон получил, а данные тянуть неоткуда). Юзеру иначе непонятно, почему
+  // прогресс навсегда завис на "0 Б" — предупреждаем явно, а не молчим.
+  const STALL_THRESHOLD_MS = 30000;
+
   const startDownloadPolling = (bagId: string) => {
     stopDownloadPolling();
+    downloadProgressRef.current = { bytes: 0, sinceMs: Date.now() };
+    setDownloadStalled(false);
     const poll = async () => {
       const details = await fetchBagDetails(bagId);
       if (details) {
         setDownloadDetails(details);
-        if (details.completed) stopDownloadPolling();
+        if (details.completed) {
+          stopDownloadPolling();
+          setDownloadStalled(false);
+          return;
+        }
+        const downloaded = details.downloaded || 0;
+        if (downloaded > downloadProgressRef.current.bytes) {
+          downloadProgressRef.current = { bytes: downloaded, sinceMs: Date.now() };
+          setDownloadStalled(false);
+        } else if (Date.now() - downloadProgressRef.current.sinceMs > STALL_THRESHOLD_MS) {
+          setDownloadStalled(true);
+        }
       }
     };
     poll();
@@ -494,6 +515,7 @@ const CreateTorrentPage: React.FC = () => {
     setDownloadError(null);
     setDownloadDetails(null);
     setDownloadBagId(null);
+    setDownloadStalled(false);
     stopDownloadPolling();
 
     try {
@@ -1207,6 +1229,23 @@ const CreateTorrentPage: React.FC = () => {
                               : '...'
                           }`}
                     </div>
+
+                    {!downloadDetails.completed && downloadStalled && (
+                      <div
+                        style={{
+                          fontSize: '11px',
+                          color: colors.error,
+                          background: `${colors.error}15`,
+                          border: `1px solid ${colors.error}55`,
+                          borderRadius: '8px',
+                          padding: '8px 10px',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        {t('createTorrentDownloadStalled') ||
+                          'Похоже, сейчас никто в сети TON Storage не раздаёт этот файл (0 активных пиров) — скачивание может не начаться. Попробуйте позже или свяжитесь с владельцем файла, чтобы он снова запустил раздачу.'}
+                      </div>
+                    )}
 
                     {downloadDetails.files && downloadDetails.files.length > 0 && (
                       <div>

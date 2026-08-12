@@ -326,7 +326,10 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+            transition: 'transform 0.15s ease',
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
         >
           🌐
         </button>

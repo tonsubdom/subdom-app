@@ -3819,6 +3819,66 @@ const ProfileWidget: React.FC = () => {
     };
   };
 
+  // Круглая центральная кнопка действия на карточках зон/субдоменов
+  // ("Создать субдомен" / "Блокчейн-Профиль") — юзер попросил живее: при
+  // нажатии слегка увеличивается и инвертируется в чёрный фон/белый текст,
+  // плюс тактильный отклик в Telegram (вне Telegram HapticFeedback просто
+  // отсутствует — optional chaining, тихий no-op).
+  const CentralActionButton: React.FC<{
+    onClick: (e: React.MouseEvent) => void;
+    label: string;
+    title?: string;
+  }> = ({ onClick, label, title }) => {
+    const [pressed, setPressed] = useState(false);
+    const press = () => {
+      setPressed(true);
+      const telegram = (window as unknown as {
+        Telegram?: { WebApp?: { HapticFeedback?: { impactOccurred?: (style: string) => void } } };
+      }).Telegram;
+      telegram?.WebApp?.HapticFeedback?.impactOccurred?.("medium");
+    };
+    const release = () => setPressed(false);
+    return (
+      <button
+        onClick={onClick}
+        onPointerDown={press}
+        onPointerUp={release}
+        onPointerLeave={release}
+        onPointerCancel={release}
+        title={title || label}
+        style={{
+          position: "absolute" as const,
+          top: "50%",
+          left: "50%",
+          transform: pressed ? "translate(-50%, -50%) scale(1.12)" : "translate(-50%, -50%) scale(1)",
+          width: "76px",
+          height: "76px",
+          borderRadius: "50%",
+          border: `3px solid ${colors.secondaryBg}`,
+          background: pressed ? "#000000" : (isDark ? colors.gold : colors.blue),
+          color: pressed ? "#ffffff" : (isDark ? "#000" : "#fff"),
+          fontSize: "10px",
+          fontWeight: 700,
+          fontFamily: "monospace",
+          textTransform: "uppercase" as const,
+          letterSpacing: "0.3px",
+          lineHeight: 1.2,
+          cursor: "pointer",
+          boxShadow: pressed ? `0 4px 16px ${colors.shadow}` : `0 2px 8px ${colors.shadow}`,
+          zIndex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center" as const,
+          padding: "4px",
+          transition: "transform 0.12s ease, background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease",
+        }}
+      >
+        {label}
+      </button>
+    );
+  };
+
   const renderZoneCard = (zone: Zone) => {
     const zoneType = getZoneTypeInfo(zone);
     const zoneStatus = getZoneStatusInfo(zone);
@@ -4162,41 +4222,13 @@ const ProfileWidget: React.FC = () => {
                 {t("avatarSecretTitle") || "Аватар / Секрет"}
               </button>
             </div>
-            <button
+            <CentralActionButton
               onClick={(e) => {
                 e.stopPropagation();
                 handleAddSubdomain(zone.name);
               }}
-              title={t("createSubdomain") || "Сделать субдомен"}
-              style={{
-                position: "absolute" as const,
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: "76px",
-                height: "76px",
-                borderRadius: "50%",
-                border: `3px solid ${colors.secondaryBg}`,
-                background: isDark ? colors.gold : colors.blue,
-                color: isDark ? "#000" : "#fff",
-                fontSize: "10px",
-                fontWeight: 700,
-                fontFamily: "monospace",
-                textTransform: "uppercase" as const,
-                letterSpacing: "0.3px",
-                lineHeight: 1.2,
-                cursor: "pointer",
-                boxShadow: `0 2px 8px ${colors.shadow}`,
-                zIndex: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center" as const,
-                padding: "4px",
-              }}
-            >
-              {t("createSubdomain") || "Сделать субдомен"}
-            </button>
+              label={t("createSubdomain") || "Сделать субдомен"}
+            />
           </div>
         </div>
     );
@@ -4491,41 +4523,13 @@ const ProfileWidget: React.FC = () => {
                 {t("createTorrentTitle") || "Создать торрент"}
               </button>
             </div>
-            <button
+            <CentralActionButton
               onClick={(e) => {
                 e.stopPropagation();
                 handleOpenAvatarSecret(subdomain.name, subdomain.address);
               }}
-              title={t("avatarSecretTitle") || "Аватар / Секрет"}
-              style={{
-                position: "absolute" as const,
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: "76px",
-                height: "76px",
-                borderRadius: "50%",
-                border: `3px solid ${colors.secondaryBg}`,
-                background: isDark ? colors.gold : colors.blue,
-                color: isDark ? "#000" : "#fff",
-                fontSize: "10px",
-                fontWeight: 700,
-                fontFamily: "monospace",
-                textTransform: "uppercase" as const,
-                letterSpacing: "0.3px",
-                lineHeight: 1.2,
-                cursor: "pointer",
-                boxShadow: `0 2px 8px ${colors.shadow}`,
-                zIndex: 1,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                textAlign: "center" as const,
-                padding: "4px",
-              }}
-            >
-              {t("avatarSecretTitle") || "Аватар / Секрет"}
-            </button>
+              label={t("avatarSecretTitle") || "Аватар / Секрет"}
+            />
           </div>
         )}
       </div>
