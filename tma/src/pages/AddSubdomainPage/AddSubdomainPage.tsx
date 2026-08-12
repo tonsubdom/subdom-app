@@ -12894,7 +12894,20 @@ export const AuctionPage: React.FC<{}> = () => {
     const hasUrlParams = isAuctionPage();
     const hasDeeplink = !!launchParams.startParam;
     if ((hasUrlParams || hasDeeplink) && allZones.length === 0) return;
-    if (hasDeeplink) {
+    // hasUrlParams ПЕРВЫМ, не hasDeeplink — иначе ссылка-"сайт" (обычный
+    // https://.../#/add-subdomain?zone=...&subdomain=..., открытая вне
+    // Telegram, например другом без Telegram-контекста) ломалась молча:
+    // mockEnv.ts (см. mockEnvReady) вне Telegram ВСЕГДА подставляет
+    // start_param: 'debug' в замоканные launchParams, поэтому hasDeeplink
+    // был true всегда, MiniAppLinks.parseStartapp('debug') падал в catch
+    // ничего не сделав, а ветка с реальными query-параметрами из адресной
+    // строки (else if hasUrlParams) была недостижима — шаренная зона/аукцион
+    // никогда не подставлялись тому, кто открыл ссылку не из Telegram.
+    if (hasUrlParams) {
+      const p = getAuctionParamsFromUrl();
+      if (p.zone && p.subdomain) loadAuctionFromParams(p.zone, p.subdomain);
+      else if (p.zone) selectZoneFromParams(p.zone);
+    } else if (hasDeeplink) {
       const sp = launchParams.startParam!;
       try {
         const { route, params } = MiniAppLinks.parseStartapp(sp);
@@ -12908,10 +12921,6 @@ export const AuctionPage: React.FC<{}> = () => {
       } catch (e) {
         console.error("deeplink parse error:", e);
       }
-    } else if (hasUrlParams) {
-      const p = getAuctionParamsFromUrl();
-      if (p.zone && p.subdomain) loadAuctionFromParams(p.zone, p.subdomain);
-      else if (p.zone) selectZoneFromParams(p.zone);
     }
     // eslint-disable-next-line
   }, [allZones, launchParams.startParam]);

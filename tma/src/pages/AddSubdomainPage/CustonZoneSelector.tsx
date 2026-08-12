@@ -1476,13 +1476,6 @@ export const CustomZoneSelector: React.FC<CustomZoneSelectorProps> = ({
               >
                 .{formatZoneName(selectedZoneInfo.name)}
               </span>
-              {mode === "sbt" && (
-                <span
-                  style={{ marginLeft: "8px", fontSize: "12px", color: "#666" }}
-                >
-                  🔗
-                </span>
-              )}
               <div
                 style={{
                   marginLeft: "auto",
@@ -1822,7 +1815,6 @@ export const CustomZoneSelector: React.FC<CustomZoneSelectorProps> = ({
                       />
                       <span style={{ color: isDark ? "white" : "black" }}>
                         .{formatZoneName(zone.name)}
-                        {mode === "sbt" && " 🔗"}
                       </span>
                       {isUserZone && mode !== "sbt" && (
                         <div

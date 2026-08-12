@@ -2110,7 +2110,7 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
                 <ul style={{
                   paddingLeft: '20px',
                   margin: 0,
-                  listStyleType: 'decimal'
+                  listStyleType: 'disc'
                 }}>
                   <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature9')}</li>
                   <li style={{ marginBottom: '10px' }}>{t('proxyZoneFeature7')}</li>
@@ -2216,7 +2216,7 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
                 <ul style={{
                   paddingLeft: '20px',
                   margin: 0,
-                  listStyleType: 'decimal'
+                  listStyleType: 'disc'
                 }}>
                   <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature9')}</li>
                   <li style={{ marginBottom: '10px' }}>{t('sbtZoneFeature8')}</li>
