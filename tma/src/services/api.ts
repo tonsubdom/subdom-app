@@ -855,7 +855,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
-  async completeTutorial(address: string): Promise<{ rewardGranted: boolean; rewardLength?: string }> {
+  async completeTutorial(address: string): Promise<{ rewardGranted: boolean; rewardLength?: string; error?: string }> {
     try {
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/tutorial/complete`), {
         method: 'POST',
@@ -863,10 +863,13 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
         body: JSON.stringify({ address }),
       });
       const json = await response.json();
+      if (!json.success) {
+        return { rewardGranted: false, error: json.message || `HTTP ${response.status}` };
+      }
       return json.data || { rewardGranted: false };
     } catch (error) {
       console.error('Error completing tutorial:', error);
-      return { rewardGranted: false };
+      return { rewardGranted: false, error: 'Не удалось связаться с сервером' };
     }
   }
 

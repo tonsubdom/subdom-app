@@ -52,6 +52,15 @@ interface TutorialContextType {
   exitTutorial: () => void;
   recordStep: (step: TutorialStepId) => Promise<void>;
   isStepDone: (step: TutorialStepId) => boolean;
+  // Раньше отказ /api/tutorial/complete (или сетевая ошибка) проглатывался
+  // молча — кнопка "Завершить" внешне ничего не делала, юзер не понимал,
+  // сработало или нет (см. Log.md). Публичный метод (а не только внутренний
+  // вызов из resumeStep) — чтобы TutorialProgressPanel мог дождаться
+  // результата напрямую (по возвращаемому значению, не по стейту — стейт
+  // синхронно после await ещё не обновится в замыкании) и решить, закрывать
+  // ли панель. completeError — тот же результат, но реактивно для рендера.
+  completeTutorial: () => Promise<{ success: boolean; error?: string }>;
+  completeError: string | null;
   // Переходит на страницу/виджет, где живёт текущий незавершённый шаг —
   // вызывается кнопкой "Выполнить" в панели прогресса и после каждой
   // подтверждённой на бэкенде записи шага.
@@ -87,6 +96,7 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
   const [showIntroModal, setShowIntroModal] = useState(false);
   const [showRewardReveal, setShowRewardReveal] = useState(false);
   const [showProgressPanel, setShowProgressPanel] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
 
   useEffect(() => {
     // Сброс синхронно и БЕЗ условия на !walletAddress — раньше при переходе
@@ -97,6 +107,7 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     setStarted(false);
     setCompletedSteps([]);
     setRewardGranted(false);
+    setCompleteError(null);
     setRewardLength(null);
     setActive(false);
 
@@ -116,15 +127,22 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     [completedSteps]
   );
 
-  const completeTutorial = useCallback(async () => {
-    if (!walletAddress) return;
+  const completeTutorial = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    if (!walletAddress) return { success: false };
+    setCompleteError(null);
     apiService.setNetwork(isTestnet);
     const result = await apiService.completeTutorial(walletAddress);
     if (result.rewardGranted) {
       setRewardGranted(true);
       setRewardLength(result.rewardLength || null);
       setShowRewardReveal(true);
+      return { success: true };
     }
+    if (result.error) {
+      setCompleteError(result.error);
+      return { success: false, error: result.error };
+    }
+    return { success: false };
   }, [walletAddress, isTestnet]);
 
   // Единая точка "куда вести юзера дальше" — по первому незавершённому
@@ -262,6 +280,8 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     isStepDone,
     resumeStep,
     dismissRewardReveal,
+    completeTutorial,
+    completeError,
   };
 
   return <TutorialContext.Provider value={value}>{children}</TutorialContext.Provider>;

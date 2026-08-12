@@ -793,6 +793,26 @@ app.get('/api/storage/details', async (req, res) => {
       return;
     }
     const details = await getBagDetails(bagId);
+
+    // Демон помечает bag completed:true на уровне торрента (все пиры/куски
+    // известны) РАНЬШЕ, чем реально дописывает файлы на диск в
+    // DOWNLOADS_DIR/bagId — фронт по этому флагу сразу показывал кнопку
+    // "Скачать" (см. вкладку "Загрузить" в CreateTorrentPage), а
+    // GET /api/storage/download-file ещё не находил файл (404 "Файл ещё не
+    // скачан на диск"). Актуально только для bag'ов, добавленных через
+    // POST /api/storage/download (папка в DOWNLOADS_DIR существует) — для
+    // собственных только что созданных bag'ов (вкладка "Создать") files/
+    // completed от демона не про то же самое, их не трогаем.
+    if (details.completed && Array.isArray(details.files)) {
+      const bagDownloadDir = path.join(DOWNLOADS_DIR, bagId);
+      if (fs.existsSync(bagDownloadDir)) {
+        const allFilesOnDisk = details.files.every((f) => fs.existsSync(path.join(bagDownloadDir, f.name)));
+        if (!allFilesOnDisk) {
+          details.completed = false;
+        }
+      }
+    }
+
     res.json(details);
   } catch (error: any) {
     console.error('❌ Ошибка получения деталей bag:', error);
@@ -4478,9 +4498,36 @@ app.post('/api/tutorial/complete', (req, res) => {
       });
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE address = ?').get(address) as User;
+    // Живой фронт нигде не вызывает POST /api/users (createUser/createUserWithMeta
+    // из api.ts используются только из AdminPanelPage) — обычный юзер, дошедший
+    // досюда через весь тур, до этого момента мог вообще не иметь строки в
+    // users. Раньше это било 404 и тихо ничего не делало (см. Log.md) —
+    // самовосстанавливаемся, создавая пустую строку без промо-бонуса (тот
+    // промо — отдельная механика для POST /api/users, тут не место её тоже
+    // выдавать) вместо того, чтобы блокировать заслуженную награду за тур.
+    let user = db.prepare('SELECT * FROM users WHERE address = ?').get(address) as User | undefined;
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Пользователь не найден' });
+      const emptyNftAccessAmount = JSON.stringify({
+        proxy: {4: false, 5: false, 6: false, 7: false, 8: false, 9: false},
+        sbt: {4: false, 5: false, 6: false, 7: false, 8: false, 9: false}
+      });
+      const emptyTotalPaidAttempts = JSON.stringify({
+        proxy: {4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0},
+        sbt: {4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0}
+      });
+      user = db.prepare(`
+        INSERT INTO users (
+          address, name, domains, zones, subdomains,
+          proxyZones, sbtZones, proxySubdomains, sbtSubdomains,
+          nftAccessAmount, totalPaidAttempts,
+          totalZoneSpending, totalSubdomainSpending,
+          totalProxyZoneSpending, totalSbtZoneSpending,
+          totalProxySubdomainSpending, totalSbtSubdomainSpending,
+          totalProfit
+        )
+        VALUES (?, NULL, 0, 0, 0, 0, 0, 0, 0, ?, ?, 0, 0, 0, 0, 0, 0, 0)
+        RETURNING *
+      `).get(address, emptyNftAccessAmount, emptyTotalPaidAttempts) as User;
     }
 
     const nftAccessAmount = parseNftAccessAmount(user.nftAccessAmount);

@@ -93,6 +93,7 @@ export const TutorialProgressPanel: React.FC = () => {
     accentText: isDark ? '#000000' : '#FFFFFF',
     done: '#4caf50',
     locked: isDark ? '#374151' : '#E5E7EB',
+    error: '#e53935',
   };
 
   const stepCopy = getStepCopy(t);
@@ -100,7 +101,21 @@ export const TutorialProgressPanel: React.FC = () => {
   const copy = stepCopy[viewedStep];
   const remaining = TUTORIAL_STEPS.length - tutorial.completedSteps.length;
 
-  const handleExecute = () => {
+  const [completing, setCompleting] = useState(false);
+
+  const handleExecute = async () => {
+    if (allDone) {
+      // Не закрываем панель сразу, как для обычных шагов — иначе ошибка
+      // (см. TutorialContext.completeError) рендерится в уже закрытой панели
+      // и юзер её не видит. Закрываем только при реальном успехе.
+      setCompleting(true);
+      const result = await tutorial.completeTutorial();
+      setCompleting(false);
+      if (result.success) {
+        tutorial.closeProgressPanel();
+      }
+      return;
+    }
     tutorial.closeProgressPanel();
     tutorial.resumeStep();
   };
@@ -200,6 +215,7 @@ export const TutorialProgressPanel: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <button
             onClick={handleExecute}
+            disabled={completing}
             style={{
               padding: '10px 14px',
               borderRadius: '10px',
@@ -208,11 +224,19 @@ export const TutorialProgressPanel: React.FC = () => {
               color: colors.accentText,
               fontWeight: 700,
               fontSize: '13px',
-              cursor: 'pointer',
+              cursor: completing ? 'default' : 'pointer',
+              opacity: completing ? 0.7 : 1,
             }}
           >
-            {allDone ? (t('tutorialFinish') || 'Завершить') : (t('tutorialExecuteStep') || 'Выполнить')}
+            {completing
+              ? (t('processing') || 'Отправка...')
+              : allDone ? (t('tutorialFinish') || 'Завершить') : (t('tutorialExecuteStep') || 'Выполнить')}
           </button>
+          {allDone && tutorial.completeError && (
+            <span style={{ fontSize: '11px', color: colors.error, lineHeight: 1.4 }}>
+              {tutorial.completeError}
+            </span>
+          )}
           <button
             onClick={tutorial.closeProgressPanel}
             style={{
