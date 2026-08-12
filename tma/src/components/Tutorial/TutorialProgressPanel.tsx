@@ -74,6 +74,7 @@ export const TutorialProgressPanel: React.FC = () => {
   const allDone = tutorial.completedSteps.length >= TUTORIAL_STEPS.length;
 
   const [viewedIndex, setViewedIndex] = useState(currentIndex);
+  const [completing, setCompleting] = useState(false);
 
   // Панель переоткрывают на каждый клик по виджету — сбрасываем просмотр на
   // актуальный текущий шаг, а не оставляем то, что юзер листал прошлый раз.
@@ -100,8 +101,6 @@ export const TutorialProgressPanel: React.FC = () => {
   const viewedStep = TUTORIAL_STEPS[viewedIndex];
   const copy = stepCopy[viewedStep];
   const remaining = TUTORIAL_STEPS.length - tutorial.completedSteps.length;
-
-  const [completing, setCompleting] = useState(false);
 
   const handleExecute = async () => {
     if (allDone) {
