@@ -1770,10 +1770,25 @@ interface TelegramCallbackQuery {
   };
 }
 
-interface MessageContext {
+interface DomainChatContext {
   domain: string;
   userAddress: string;
   isTestnet: boolean;
+}
+
+// /report_bug — обратная связь напрямую в бота, без привязки к домену/
+// адресу (в отличие от сообщений из чата на сайте, DomainChatContext) —
+// ответ администратора уходит обратно raw Telegram-сообщением по chatId
+// репортера, а не пишется в БД chats/messages.
+interface BugReportContext {
+  bugReportChatId: number;
+  bugReportUsername: string;
+}
+
+type MessageContext = DomainChatContext | BugReportContext;
+
+function isBugReportContext(context: MessageContext): context is BugReportContext {
+  return 'bugReportChatId' in context;
 }
 
 interface BotSubscription {
@@ -1816,7 +1831,8 @@ const LANG = {
     startCommands: `<b>📋 Доступные команды:</b>
 /subscribe — подписаться на уведомления
 /unsubscribe — отписаться
-/status — статус подписки и системы`,
+/status — статус подписки и системы
+/report_bug — сообщить о баге / оставить отзыв`,
     startHowTo: '📌 <b>Как подписаться:</b>\nНажмите /subscribe или кнопку «✅ Подписаться» ниже',
     startWebApp: '<b>Веб-приложение:</b>',
     startSubStatus: '<b>Статус подписки:</b>',
@@ -1878,6 +1894,23 @@ const LANG = {
     newUser: '👤 <b>НОВЫЙ ПОЛЬЗОВАТЕЛЬ ЗАРЕГИСТРИРОВАН!</b>',
     promoGranted: '🎁 <b>ВЫДАНА БЕСПЛАТНАЯ ПОПЫТКА!</b>',
     tutorialCompleted: '🎓 <b>ОБУЧЕНИЕ ПРОЙДЕНО!</b>',
+    fieldStepsCompleted: '📋 Шаги',
+    // Порядок строго совпадает с TUTORIAL_STEPS в server-sqlite.ts
+    // (см. комментарий там же про синхронизацию с TutorialContext.tsx) —
+    // награда выдаётся только когда пройдены ВСЕ, так что в уведомлении
+    // всегда N/N, но список всё равно строим по этому порядку, а не
+    // произвольно из completedSteps.
+    tutorialStepNames: [
+      'Домен',
+      'Создание зоны',
+      'Создание субдомена',
+      'Профиль / аватар',
+      'Посещение сайта',
+      'Создание торрента',
+      'Обзор маркета',
+      'Каталог зон',
+      'Вкладки профиля',
+    ],
     newMessage: '📨 <b>НОВОЕ СООБЩЕНИЕ ОТ КЛИЕНТА</b>',
     newChat: '🔔 <b>НОВЫЙ ЧАТ!</b>',
     paymentRecorded: '💰 <b>ОПЛАЧЕННАЯ ПОПЫТКА ДОБАВЛЕНА!</b>',
@@ -1966,6 +1999,15 @@ const LANG = {
     replyDbError: '❌ Ошибка при сохранении ответа в базу данных',
     replyHelp: 'ℹ️ Чтобы ответить клиенту, сначала нажмите кнопку "Ответить" под уведомлением о сообщении.',
 
+    // /report_bug — обратная связь напрямую в бота, без привязки к домену/
+    // адресу (в отличие от сообщений из чата на сайте) — контекст ответа
+    // хранит raw chatId репортера, а не domain/userAddress.
+    reportBugTitle: '🐞 <b>НОВЫЙ БАГ-РЕПОРТ</b>',
+    reportBugFrom: '👤 От',
+    reportBugPrompt: '🐞 Опишите баг или оставьте отзыв одним сообщением — оно уйдёт напрямую администратору, и он сможет вам ответить прямо здесь.',
+    reportBugSent: '✅ Спасибо! Репорт отправлен администратору. Если понадобится уточнение — он ответит вам в этом чате.',
+    reportBugReplyPrefix: '💬 <b>Ответ от администратора на ваш баг-репорт:</b>',
+
     // Тестовое уведомление
     testNotification: '🤖 <b>Бот поддержки Subdom (TON DNS Subdomains) запущен!</b>\n\nСтатус: <b>✅ Активен</b>',
   },
@@ -1981,7 +2023,8 @@ const LANG = {
     startCommands: `<b>📋 Commands:</b>
 /subscribe — subscribe to notifications
 /unsubscribe — unsubscribe
-/status — subscription and system status`,
+/status — subscription and system status
+/report_bug — report a bug / leave feedback`,
     startHowTo: '📌 <b>How to subscribe:</b>\nClick /subscribe or the «✅ Subscribe» button below',
     startWebApp: '<b>Web App:</b>',
     startSubStatus: '<b>Subscription:</b>',
@@ -2041,6 +2084,18 @@ const LANG = {
     newUser: '👤 <b>NEW USER REGISTERED!</b>',
     promoGranted: '🎁 <b>FREE ATTEMPT GRANTED!</b>',
     tutorialCompleted: '🎓 <b>TUTORIAL COMPLETED!</b>',
+    fieldStepsCompleted: '📋 Steps',
+    tutorialStepNames: [
+      'Domain',
+      'Zone creation',
+      'Subdomain creation',
+      'Profile / avatar',
+      'Site visit',
+      'Torrent creation',
+      'Market tour',
+      'Zone catalog',
+      'Profile tabs',
+    ],
     newMessage: '📨 <b>NEW CLIENT MESSAGE</b>',
     newChat: '🔔 <b>NEW CHAT!</b>',
     paymentRecorded: '💰 <b>PAYMENT ATTEMPT ADDED!</b>',
@@ -2128,6 +2183,13 @@ const LANG = {
     replyNoText: '❌ Message contains no text',
     replyDbError: '❌ Error saving reply to database',
     replyHelp: 'ℹ️ To reply to a client, first click the "Reply" button under a message notification.',
+
+    // /report_bug
+    reportBugTitle: '🐞 <b>NEW BUG REPORT</b>',
+    reportBugFrom: '👤 From',
+    reportBugPrompt: '🐞 Describe the bug or leave feedback in one message — it goes straight to the admin, who can reply to you right here.',
+    reportBugSent: '✅ Thanks! Your report has been sent to the admin. If they need more details, they will reply in this chat.',
+    reportBugReplyPrefix: '💬 <b>Reply from the admin about your bug report:</b>',
 
     // Тестовое уведомление
     testNotification: '🤖 <b>Subdom Support Bot (TON DNS Subdomains) started!</b>\n\nStatus: <b>✅ Active</b>',
@@ -2273,6 +2335,10 @@ class TelegramBotService {
   private groupId: string = process.env.TELEGRAM_GROUP_ID || '';
   private replyContext = new Map<number, MessageContext>();
   private messageContexts = new Map<string, MessageContext>();
+  // chatId'ы, ожидающие текст баг-репорта после /report_bug — следующее
+  // текстовое сообщение от них уходит админу целиком, а не обрабатывается
+  // как обычный чат-текст.
+  private bugReportPending = new Set<number>();
 
   // Базы данных
   private testnetDb: Database.Database;
@@ -2368,6 +2434,7 @@ class TelegramBotService {
       { command: 'subscribe', description: '✅ Подписаться на уведомления' },
       { command: 'unsubscribe', description: '❌ Отписаться от уведомлений' },
       { command: 'status', description: '📊 Статус подписки и системы' },
+      { command: 'report_bug', description: '🐞 Сообщить о баге / оставить отзыв' },
     ], { language_code: 'ru' });
 
     // --- Английские команды ---
@@ -2376,6 +2443,7 @@ class TelegramBotService {
       { command: 'subscribe', description: '✅ Subscribe to notifications' },
       { command: 'unsubscribe', description: '❌ Unsubscribe' },
       { command: 'status', description: '📊 Subscription & system status' },
+      { command: 'report_bug', description: '🐞 Report a bug / leave feedback' },
     ], { language_code: 'en' });
 
     // --- Кнопка Web App ---
@@ -2796,6 +2864,15 @@ ${$.startSubStatus} ${isSubscribed ? $.active : $.inactive}
       );
     });
 
+    // /report_bug — следующее текстовое сообщение этого чата уйдёт админу
+    // целиком (см. bugReportPending + handleBugReportSubmission ниже).
+    this.bot.onText(/\/report_bug/, (msg: TelegramMessage) => {
+      const chatId = msg.chat.id;
+      const $ = this.t(chatId.toString());
+      this.bugReportPending.add(chatId);
+      this.bot!.sendMessage(chatId, $.reportBugPrompt);
+    });
+
     // callback_query — обрабатываем кнопки меню
     this.bot.on('callback_query', async (callbackQuery: TelegramCallbackQuery) => {
       try {
@@ -2861,6 +2938,11 @@ ${$.connectWarning}
 
         console.log(`📨 Получено сообщение в чате ${msg.chat.id}: ${msg.text?.substring(0, 50)}...`);
 
+        if (this.bugReportPending.has(msg.chat.id) && msg.text) {
+          await this.handleBugReportSubmission(msg);
+          return;
+        }
+
         const context = this.replyContext.get(msg.chat.id);
 
         if (context && msg.text) {
@@ -2893,6 +2975,53 @@ ${$.connectWarning}
   }
 
   // ==================== ОБРАБОТКА REPLY / SUPPORT ====================
+
+  // Юзер прислал текст после /report_bug — уходит владельцу боту с кнопкой
+  // "Ответить" (тот же паттерн, что и sendNewMessageNotification), контекст
+  // ответа хранит raw chatId репортера (BugReportContext), не domain/address.
+  private async handleBugReportSubmission(msg: any): Promise<void> {
+    const chatId = msg.chat.id;
+    this.bugReportPending.delete(chatId);
+    const $ = this.t(chatId.toString());
+
+    try {
+      const reportId = `bug_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const bugReportUsername = msg.from?.username
+        ? `@${msg.from.username}`
+        : (msg.from?.first_name || String(chatId));
+
+      this.messageContexts.set(reportId, { bugReportChatId: chatId, bugReportUsername });
+      if (this.messageContexts.size > 100) {
+        const keys = Array.from(this.messageContexts.keys());
+        for (let i = 0; i < 50; i++) {
+          const key = keys[i];
+          if (key) this.messageContexts.delete(key);
+        }
+      }
+
+      const text = String(msg.text || '');
+      const message = `
+${LANG.ru.reportBugTitle}
+
+${LANG.ru.reportBugFrom}: ${bugReportUsername} (<code>${chatId}</code>)
+
+💬 Текст:
+${text.substring(0, 1000)}${text.length > 1000 ? '...' : ''}
+      `.trim();
+
+      const inlineKeyboard = [[{ text: LANG.ru.btnReply, callback_data: `reply_${reportId}` }]];
+
+      if (this.bot) {
+        await this.bot.sendMessage(this.ownerId, message, {
+          parse_mode: 'HTML',
+          reply_markup: { inline_keyboard: inlineKeyboard },
+        });
+        await this.bot.sendMessage(chatId, $.reportBugSent);
+      }
+    } catch (error) {
+      console.error('❌ Ошибка при отправке баг-репорта:', error);
+    }
+  }
 
   private async handleReplyCallback(callbackQuery: TelegramCallbackQuery): Promise<void> {
     try {
@@ -2936,17 +3065,12 @@ ${$.connectWarning}
       return;
     }
 
-    const { domain, userAddress, isTestnet } = context;
     const $ = this.t(chatId.toString());
-
-    console.log(`💬 Обработка ответа для: ${domain} - ${userAddress} (${isTestnet ? 'testnet' : 'mainnet'})`);
-
-    this.replyContext.set(chatId, { domain, userAddress, isTestnet });
 
     if (this.replyContextTimeouts.has(chatId)) {
       clearTimeout(this.replyContextTimeouts.get(chatId)!);
     }
-
+    this.replyContext.set(chatId, context);
     const timeout = setTimeout(() => {
       console.log(`⏰ Таймаут контекста для чата ${chatId}`);
       this.replyContext.delete(chatId);
@@ -2955,8 +3079,25 @@ ${$.connectWarning}
         this.bot.sendMessage(chatId, $.replyTimeout);
       }
     }, 10 * 60 * 1000);
-
     this.replyContextTimeouts.set(chatId, timeout);
+
+    if (isBugReportContext(context)) {
+      console.log(`💬 Обработка ответа на баг-репорт от ${context.bugReportUsername} (${context.bugReportChatId})`);
+      const instruction = `
+${$.replyInstruction}
+
+${$.reportBugFrom}: ${context.bugReportUsername}
+
+${$.replyPrompt}
+      `.trim();
+      if (this.bot) {
+        await this.bot.sendMessage(chatId, instruction, { parse_mode: 'HTML', reply_to_message_id: messageId });
+      }
+      return;
+    }
+
+    const { domain, userAddress, isTestnet } = context;
+    console.log(`💬 Обработка ответа для: ${domain} - ${userAddress} (${isTestnet ? 'testnet' : 'mainnet'})`);
 
     const instruction = `
 ${$.replyInstruction}
@@ -2991,6 +3132,19 @@ ${$.replyPrompt}
       if (!context) {
         if (this.bot) {
           await this.bot.sendMessage(chatId, $.replyNoContext);
+        }
+        return;
+      }
+
+      if (isBugReportContext(context)) {
+        if (this.bot) {
+          await this.bot.sendMessage(context.bugReportChatId, `${$.reportBugReplyPrefix}\n\n${replyText}`, { parse_mode: 'HTML' });
+          await this.bot.sendMessage(chatId, `${$.replySuccess}\n\n${$.reportBugFrom}: ${context.bugReportUsername}\n\n${$.replyText}:\n${replyText}`, { parse_mode: 'HTML' });
+        }
+        this.replyContext.delete(chatId);
+        if (this.replyContextTimeouts.has(chatId)) {
+          clearTimeout(this.replyContextTimeouts.get(chatId)!);
+          this.replyContextTimeouts.delete(chatId);
         }
         return;
       }
@@ -3601,18 +3755,34 @@ ${$.fieldLength}: ${length} символов
   // Публично, тем же паттерном, что и sendPublicPromoGrantedNotification —
   // это отдельная вторая награда (за реально пройденные шаги), не промо при
   // регистрации, и её тоже стоит показывать в паблик-чате как соц.доказательство.
-  async sendTutorialCompletedNotification(address: string, length: string, isTestnet: boolean = true): Promise<boolean> {
+  async sendTutorialCompletedNotification(
+    address: string,
+    length: string,
+    isTestnet: boolean = true,
+    completedSteps: string[] = []
+  ): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
 
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
+        // completedSteps приходит из TUTORIAL_STEPS (server-sqlite.ts) —
+        // награда выдаётся только когда пройдены ВСЕ, так что тут всегда
+        // N/N, но список строим по порядку $.tutorialStepNames (тот же
+        // порядок, что и TUTORIAL_STEPS), а не по порядку прихода из БД.
+        const stepsList = $.tutorialStepNames
+          .map((name: string, i: number) => `${completedSteps[i] ? '✅' : '▫️'} ${name}`)
+          .join('\n');
+        const lengthUnit = lang === 'en' ? 'characters' : 'символов';
         return `
 ${$.tutorialCompleted}
 
 ${network}
 ${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
-${$.fieldLength}: ${length} символов
+${$.fieldLength}: ${length} ${lengthUnit}
+
+${$.fieldStepsCompleted} (${completedSteps.length}/${$.tutorialStepNames.length}):
+${stepsList}
         `.trim();
       }, [[{ text: LANG.ru.btnRegisterPromo, url: DeeplinkUtils.generateHomeLink() }]]);
     } catch (error) {

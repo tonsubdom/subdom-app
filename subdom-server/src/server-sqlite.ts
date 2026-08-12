@@ -4481,7 +4481,12 @@ app.post('/api/tutorial/complete', (req, res) => {
     console.log(`🎓 [TUTORIAL] Юзер ${address} завершил обучалку, выдана SBT-попытка длины ${rewardLength}`);
 
     if (telegramBot && telegramBot.sendTutorialCompletedNotification) {
-      telegramBot.sendTutorialCompletedNotification(address, rewardLength, isTestnet);
+      // Переупорядочиваем под TUTORIAL_STEPS — bot'у передаём только
+      // готовый позиционный массив, у него нет доступа к самим ID шагов,
+      // только к их отображаемым названиям (LANG.tutorialStepNames) в этом
+      // же порядке, так что позиция в массиве обязана совпадать 1-в-1.
+      const orderedSteps = TUTORIAL_STEPS.filter((step) => completedSteps.includes(step));
+      telegramBot.sendTutorialCompletedNotification(address, rewardLength, isTestnet, orderedSteps);
     }
 
     return res.json({ success: true, data: { rewardGranted: true, rewardLength } });
