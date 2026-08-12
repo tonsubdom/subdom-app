@@ -1829,9 +1829,11 @@ const LANG = {
 • Новых пользователях
 • Сообщениях от клиентов (для техподдержки)`,
     startCommands: `<b>📋 Доступные команды:</b>
+/help — список всех команд с пояснениями
 /subscribe — подписаться на уведомления
 /unsubscribe — отписаться
 /status — статус подписки и системы
+/stats — статистика платформы
 /report_bug — сообщить о баге / оставить отзыв`,
     startHowTo: '📌 <b>Как подписаться:</b>\nНажмите /subscribe или кнопку «✅ Подписаться» ниже',
     startWebApp: '<b>Веб-приложение:</b>',
@@ -1869,6 +1871,28 @@ const LANG = {
     statusNo: '❌ Нет',
     statusAllSubs: 'Все активные подписки',
     statusTime: 'Время',
+
+    // /stats — из platform_*_cache (крауленый ончейн-кэш), не из legacy
+    // zones/subdomains таблиц, только status='active', только mainnet.
+    statsTitle: '📊 <b>Статистика Subdom</b>',
+    statsZonesTotal: '🌐 Зоны всего',
+    statsZonesSbt: '🎫 SBT',
+    statsZonesProxy: '🔄 Proxy',
+    statsSubdomainsTotal: '📦 Субдомены всего',
+    statsSubdomainsSbt: '🎫 SBT',
+    statsSubdomainsProxy: '🔄 Proxy',
+    statsUsers: '👤 Пользователей',
+    statsTime: '⏰ Обновлено',
+
+    // /help
+    helpTitle: '❓ <b>Команды бота</b>',
+    helpBody: `/start — перезапустить бота, открыть главное меню
+/help — этот список команд
+/subscribe — подписаться на уведомления (о новых зонах, субдоменах, аукционах и т.д.)
+/unsubscribe — отписаться от уведомлений
+/status — статус вашей подписки и бота
+/stats — статистика платформы: сколько всего зон (SBT/Proxy), субдоменов (SBT/Proxy) и пользователей
+/report_bug — сообщить о баге или оставить отзыв напрямую администратору (он сможет ответить вам здесь же)`,
 
     // cmd_lang
     langChangedRu: '🇷🇺 Язык изменён на Русский',
@@ -2021,9 +2045,11 @@ const LANG = {
 • New users
 • Support messages from clients`,
     startCommands: `<b>📋 Commands:</b>
+/help — list all commands with explanations
 /subscribe — subscribe to notifications
 /unsubscribe — unsubscribe
 /status — subscription and system status
+/stats — platform stats
 /report_bug — report a bug / leave feedback`,
     startHowTo: '📌 <b>How to subscribe:</b>\nClick /subscribe or the «✅ Subscribe» button below',
     startWebApp: '<b>Web App:</b>',
@@ -2059,6 +2085,27 @@ const LANG = {
     statusNo: '❌ No',
     statusAllSubs: 'All active subscriptions',
     statusTime: 'Time',
+
+    // /stats
+    statsTitle: '📊 <b>Subdom Stats</b>',
+    statsZonesTotal: '🌐 Total zones',
+    statsZonesSbt: '🎫 SBT',
+    statsZonesProxy: '🔄 Proxy',
+    statsSubdomainsTotal: '📦 Total subdomains',
+    statsSubdomainsSbt: '🎫 SBT',
+    statsSubdomainsProxy: '🔄 Proxy',
+    statsUsers: '👤 Users',
+    statsTime: '⏰ Updated',
+
+    // /help
+    helpTitle: '❓ <b>Bot commands</b>',
+    helpBody: `/start — restart the bot, open the main menu
+/help — this command list
+/subscribe — subscribe to notifications (new zones, subdomains, auctions, etc.)
+/unsubscribe — unsubscribe from notifications
+/status — your subscription and bot status
+/stats — platform stats: total zones (SBT/Proxy), subdomains (SBT/Proxy), and users
+/report_bug — report a bug or leave feedback directly to the admin (they can reply to you right here)`,
 
     // cmd_lang
     langChangedRu: '🇷🇺 Язык изменён на Русский',
@@ -2431,18 +2478,22 @@ class TelegramBotService {
     // --- Русские команды ---
     await this.bot.setMyCommands([
       { command: 'start', description: '🔄 Перезапустить бота / главное меню' },
+      { command: 'help', description: '❓ Список всех команд с пояснениями' },
       { command: 'subscribe', description: '✅ Подписаться на уведомления' },
       { command: 'unsubscribe', description: '❌ Отписаться от уведомлений' },
       { command: 'status', description: '📊 Статус подписки и системы' },
+      { command: 'stats', description: '📈 Статистика платформы (зоны/субдомены/юзеры)' },
       { command: 'report_bug', description: '🐞 Сообщить о баге / оставить отзыв' },
     ], { language_code: 'ru' });
 
     // --- Английские команды ---
     await this.bot.setMyCommands([
       { command: 'start', description: '🔄 Restart bot / main menu' },
+      { command: 'help', description: '❓ List all commands with explanations' },
       { command: 'subscribe', description: '✅ Subscribe to notifications' },
       { command: 'unsubscribe', description: '❌ Unsubscribe' },
       { command: 'status', description: '📊 Subscription & system status' },
+      { command: 'stats', description: '📈 Platform stats (zones/subdomains/users)' },
       { command: 'report_bug', description: '🐞 Report a bug / leave feedback' },
     ], { language_code: 'en' });
 
@@ -2556,6 +2607,45 @@ class TelegramBotService {
 
   private getDatabase(isTestnet: boolean): Database.Database {
     return isTestnet ? this.testnetDb : this.mainnetDb;
+  }
+
+  // /stats — источник platform_zones_cache/platform_subdomains_cache
+  // (ончейн-краулер, Group 3.3), не legacy zones/subdomains таблицы —
+  // те не всегда актуальны на фоне decentralization-миграции. Только
+  // status='active' (деактивированные не в счёт) и только mainnet —
+  // testnet числа тут никому не интересны.
+  private gatherStats(): {
+    zonesTotal: number; zonesSbt: number; zonesProxy: number;
+    subdomainsTotal: number; subdomainsSbt: number; subdomainsProxy: number;
+    users: number;
+  } {
+    const db = this.getDatabase(false);
+
+    const zones = db.prepare(`
+      SELECT COUNT(*) as total,
+             SUM(CASE WHEN isProxy = 1 THEN 1 ELSE 0 END) as proxy,
+             SUM(CASE WHEN isProxy = 0 THEN 1 ELSE 0 END) as sbt
+      FROM platform_zones_cache WHERE status = 'active'
+    `).get() as { total: number; proxy: number | null; sbt: number | null };
+
+    const subdomains = db.prepare(`
+      SELECT COUNT(*) as total,
+             SUM(CASE WHEN isProxy = 1 THEN 1 ELSE 0 END) as proxy,
+             SUM(CASE WHEN isProxy = 0 THEN 1 ELSE 0 END) as sbt
+      FROM platform_subdomains_cache WHERE status = 'active'
+    `).get() as { total: number; proxy: number | null; sbt: number | null };
+
+    const users = db.prepare(`SELECT COUNT(*) as count FROM users`).get() as { count: number };
+
+    return {
+      zonesTotal: zones.total,
+      zonesSbt: zones.sbt || 0,
+      zonesProxy: zones.proxy || 0,
+      subdomainsTotal: subdomains.total,
+      subdomainsSbt: subdomains.sbt || 0,
+      subdomainsProxy: subdomains.proxy || 0,
+      users: users.count,
+    };
   }
 
   private generateMessageId(domain: string, userAddress: string): string {
@@ -2862,6 +2952,40 @@ ${$.startSubStatus} ${isSubscribed ? $.active : $.inactive}
         `${$.statusTitle}\n\n${$.statusBot}: <b>${$.statusActive}</b>\n${$.statusOwner}: <code>${this.ownerId || $.statusNotSet}</code>\n${$.statusYourId}: <code>${chatId}</code>\n${$.statusSubscribed}: ${subs.length > 0 ? $.statusYes : $.statusNo}\n\n<b>${$.statusAllSubs} (${this.subscriptions.length}):</b>\n${allSubs || 'нет'}\n\n${$.statusTime}: ${new Date().toLocaleString('ru-RU')}`,
         { parse_mode: 'HTML' }
       );
+    });
+
+    // /help — список всех команд с пояснениями
+    this.bot.onText(/\/help/, (msg: TelegramMessage) => {
+      const chatId = msg.chat.id;
+      const $ = this.t(chatId.toString());
+      this.bot!.sendMessage(chatId, `${$.helpTitle}\n\n${$.helpBody}`, { parse_mode: 'HTML' });
+    });
+
+    // /stats — сводка по платформе, из platform_*_cache (см. gatherStats).
+    this.bot.onText(/\/stats/, async (msg: TelegramMessage) => {
+      const chatId = msg.chat.id;
+      const $ = this.t(chatId.toString());
+      try {
+        const s = this.gatherStats();
+        const message = `
+${$.statsTitle}
+
+${$.statsZonesTotal}: <b>${s.zonesTotal}</b>
+   ${$.statsZonesSbt}: ${s.zonesSbt}
+   ${$.statsZonesProxy}: ${s.zonesProxy}
+
+${$.statsSubdomainsTotal}: <b>${s.subdomainsTotal}</b>
+   ${$.statsSubdomainsSbt}: ${s.subdomainsSbt}
+   ${$.statsSubdomainsProxy}: ${s.subdomainsProxy}
+
+${$.statsUsers}: <b>${s.users}</b>
+
+${$.statsTime}: ${new Date().toLocaleString('ru-RU')}
+        `.trim();
+        await this.bot!.sendMessage(chatId, message, { parse_mode: 'HTML' });
+      } catch (error) {
+        console.error('❌ Ошибка при сборе статистики:', error);
+      }
     });
 
     // /report_bug — следующее текстовое сообщение этого чата уйдёт админу
