@@ -189,6 +189,26 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     }
   }, [started, rewardGranted]);
 
+  // Диплинк из бота (кнопка "Обучиться" под публичным уведомлением о том,
+  // что кто-то прошёл обучение, см. DeeplinkUtils.generateTutorialLink на
+  // бэкенде) — открывает вводную модалку сразу при заходе, даже без
+  // подключённого кошелька: openEntry() сам решит показать intro
+  // (started=false по дефолту без кошелька) вместо попытки сразу стартовать
+  // тур. Once-флаг — чтобы повторный рендер (например, после round-trip в
+  // кошелёк за подключением) не переоткрывал модалку поверх уже идущего тура.
+  const [tutorialDeeplinkConsumed, setTutorialDeeplinkConsumed] = useState(false);
+  useEffect(() => {
+    if (tutorialDeeplinkConsumed) return;
+    const hash = window.location.hash;
+    const queryString = hash.includes('?') ? hash.split('?')[1] : '';
+    const params = new URLSearchParams(queryString);
+    if (params.get('tutorial') === '1') {
+      setTutorialDeeplinkConsumed(true);
+      openEntry();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tutorialDeeplinkConsumed]);
+
   const closeIntroModal = useCallback(() => setShowIntroModal(false), []);
   const openProgressPanel = useCallback(() => setShowProgressPanel(true), []);
   const closeProgressPanel = useCallback(() => setShowProgressPanel(false), []);

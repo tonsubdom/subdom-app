@@ -48,6 +48,7 @@ import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-
 // Импортируем API service
 import { apiService, getZoneLengthKey, ZoneLength, PaymentAttempts } from '@/services/api';
 import PaymentAttemptsSection from '@/components/PaymentAttemptsSection';
+import ConnectWalletPrompt from '@/components/ConnectWalletPrompt/ConnectWalletPrompt';
 import { convertUserFriendlyToRaw, getNftOwnerAddress } from '@/utils/tonUtils';
 
 // Импортируем новый сервис транзакций
@@ -450,7 +451,11 @@ const partnerAddress = isTestnet
   // Новые состояния для проверки домена
   const [unlinkModalOpen, setUnlinkModalOpen] = useState(false);
   const [existingZone, setExistingZone] = useState<any>(null);
-  const [unlinkingInProgress, setUnlinkingInProgress] = useState(false);
+  // Неподключённый юзер видит страницу целиком (шаги, Особенности) — только
+  // реальное создание требует кошелька. Вместо тихого "владелец не найден"
+  // (что было бы неверно и непонятно без кошелька) показываем штатный
+  // ConnectWalletPrompt, тот же компонент, что и везде в приложении.
+  const [showConnectPrompt, setShowConnectPrompt] = useState(false);
 
   // Новые состояния для оплаченных попыток
   const [paymentAttempts, setPaymentAttempts] = useState<PaymentAttempts>({
@@ -873,24 +878,24 @@ const partnerAddress = isTestnet
   // };
 
   // Проверка владельца домена
-  const checkOwnerDomainExists = useCallback(async (domainName: string): Promise<boolean> => {
+  const checkOwnerDomainExists = useCallback(async (domainName: string): Promise<{ isOwner: boolean; nftAddress: string | null }> => {
     try {
       const nftAddress = await getAddressDomainByIndex(
         domainName,
-        TonDnsAddress, 
+        TonDnsAddress,
         isTestnet
       );
 
       if (!nftAddress) {
         console.log("NFT адрес не найден для домена:", domainName);
-        return false;
+        return { isOwner: false, nftAddress: null };
       }
 
       const ownerAddress = await getNftOwnerAddress(nftAddress, isTestnet);
-      
+
       if (!ownerAddress) {
         console.log("Владелец не найден для NFT:", nftAddress);
-        return false;
+        return { isOwner: false, nftAddress };
       }
 
       const currentUserAddress = convertUserFriendlyToRaw(address);
@@ -905,10 +910,10 @@ const partnerAddress = isTestnet
         nftAddress
       });
 
-      return currentUserAddress === nftOwnerAddress;
+      return { isOwner: currentUserAddress === nftOwnerAddress, nftAddress };
     } catch (error) {
       console.error("Ошибка проверки владельца домена:", error);
-      return false;
+      return { isOwner: false, nftAddress: null };
     }
   }, [address, isTestnet]);
 
@@ -923,8 +928,9 @@ const partnerAddress = isTestnet
   // handleCheckDomain работала со сдвигом на один рендер (срабатывала только
   // на следующей попытке, когда state уже был из прошлого вызова).
   const checkDomainExists = useCallback(async (
-    domain: string
-  ): Promise<{ collectionAddress: string; name: string; currentId: number } | null> => {
+    domain: string,
+    domainAddress: string | null
+  ): Promise<{ collectionAddress: string; name: string; currentId: number; domainAddress: string | null } | null> => {
     try {
       const fullDomainName = `${domain}.ton`;
       console.log(`🔍 Проверяем существование SBT-зоны ончейн: ${fullDomainName}`);
@@ -951,6 +957,7 @@ const partnerAddress = isTestnet
         collectionAddress: latest.collectionAddress,
         name: fullDomainName,
         currentId: latest.id,
+        domainAddress,
       };
       setExistingZone(zoneInfo);
       return zoneInfo;
@@ -965,6 +972,11 @@ const partnerAddress = isTestnet
 
   // Шаг 0: Ввод домена и проверка
   const handleCheckDomain = useCallback(async () => {
+    if (!address) {
+      setShowConnectPrompt(true);
+      return;
+    }
+
     if (!domainName.trim()) {
       showSnackbar(t('pleaseEnterDomainName'), "error");
       return;
@@ -981,13 +993,13 @@ const partnerAddress = isTestnet
       return;
     }
 
-    const isOwner = await checkOwnerDomainExists(domainName);
+    const { isOwner, nftAddress } = await checkOwnerDomainExists(domainName);
     if (!isOwner) {
       showSnackbar(t('domainNotOwnerError'), "error");
     return;
     }
 
-    const existing = await checkDomainExists(domainName);
+    const existing = await checkDomainExists(domainName, nftAddress);
 
     if (existing) {
       setUnlinkModalOpen(true);
@@ -995,7 +1007,7 @@ const partnerAddress = isTestnet
     }
 
     setActiveStep(1);
-  }, [domainName, checkDomainExists, showSnackbar, t]);
+  }, [address, domainName, checkOwnerDomainExists, checkDomainExists, showSnackbar, t]);
 
   const handleConfirmPayment = useCallback(async () => {
     if (!domainName.trim()) {
@@ -1028,136 +1040,46 @@ const partnerAddress = isTestnet
   }, [domainName, hasPaidAttempt, activeTab, handlePaymentTransaction, showSnackbar, t, paymentAttempts, domainLength]);
 
 
-    // Функция для отвязки старой коллекции с использованием нового сервиса транзакций
-const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean> => {
-  if (!zone.collectionAddress) {
-    console.log('❌ У существующей зоны нет collectionAddress');
-    return false;
-  }
-
-  setUnlinkingInProgress(true);
-  setTransactionStatus({ status: 'pending', message: 'Начинаем отвязку коллекции...' });
-
-  const zoneNameWithoutTonArr = (zone.name).slice(0, -4);
-
-  try {
-    // 1. Отправляем транзакцию на смену контента
-    const changeContentUrl = `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/${zone.collectionAddress}/change_content?query_id=0`;
-
-    const changeContentData = {
-      new_content: {
-        content: {
-          uri: `${API_PAYLOAD_URL}/api/v1/inactive-subdomain/metadata/ton/${zoneNameWithoutTonArr}`
-        },
-        common_content: {
-          suffix_uri: `${API_PAYLOAD_URL}/api/v1/inactive-subdomain/metadata/ton/${zoneNameWithoutTonArr}/`
-        }
-      }
-    };
-
-    console.log('📤 Отправляем запрос на смену контента:', changeContentUrl);
-
-    const response = await fetch(changeContentUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(changeContentData)
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
-    console.log('✅ Ответ от API смены контента:', result);
-
-    if (result.messages && result.messages.length > 0) {
-      // 2. Подписываем транзакцию через TonConnect с проверкой
-      console.log('📝 Подписываем транзакцию через TonConnect...');
-
-      const transaction = {
-        validUntil: result.validUntil || Math.floor(Date.now() / 1000) + 240,
-        messages: result.messages
-      };
-
-      const txResult = await sendTransactionWithVerification(transaction, {
-        description: 'Отвязка коллекции',
-        onStatusUpdate: (status) => {
-          setTransactionStatus(prev => ({ ...prev, message: status }));
-        }
-      });
-
-      console.log('✅ Результат транзакции:', txResult);
-
-      if (txResult.success && txResult.hash) {
-        // 3. Уведомляем бота о деактивации — relay-only, не требует DB-id.
-        // Плюс легаси-путь: если это старая зона с реальным DB-id, заодно
-        // обновляем её статус в базе (для админ-панели и т.п. читателей).
-        try {
-          await apiService.notifyZoneDeactivated({
-            name: zone.name,
-            address: zone.collectionAddress,
-          });
-
-          if (zone.id != null) {
-            const res = await apiService.updateZoneStatusToInactive(zone.id);
-            console.log(`Ответ о смене статуса для зоны с таким же доменом: ${res}`);
-          }
-
-          if (txResult.confirmedInBlock) {
-            showSnackbar(t('collectionUnlinkedSuccessConfirmed'), "success");
-          } else {
-            showSnackbar(t('collectionUnlinkedSentNotConfirmed'), "error");
-          }
-          
-          return true;
-        } catch (dbError) {
-          console.error('❌ Ошибка обновления базы данных:', dbError);
-          showSnackbar(t('collectionUnlinkedDbError'), "error");
-          return true; // Транзакция прошла, даже если база не обновилась
-        }
-      } else {
-        showSnackbar(txResult.error || t('unlinkTransactionFailed'), "error");
-        return false;
-      }
-    }
-
-    return false;
-  } catch (error: any) {
-    console.error('❌ Ошибка при отвязке коллекции:', error);
-    showSnackbar(`${t('unlinkError')}: ${error.message}`, "error");
-    return false;
-  } finally {
-    setUnlinkingInProgress(false);
-  }}, [tonConnectUI, showSnackbar, sendTransactionWithVerification, t]);
-  
-    // Обработчик подтверждения отвязки
+    // change_content на SBT-коллекции может вызвать только сам адрес площадки
+    // (проверено вживую) — юзерский кошелёк отправить такую транзакцию не
+    // может, она гарантированно бампнется (bounce) с ошибкой на чейне.
+    // Раньше это было незаметно из-за бага в TransactionService (см. fix
+    // TransactionService.sendTransaction — теперь вторым хопом реально
+    // проверяет исполнение на целевом контракте, а не только пересылку
+    // кошельком), из-за чего отвязка "успешно" висела бесконечно, блокируя
+    // юзера на этом шаге. Вместо обречённой транзакции — та же заявка в
+    // очередь (pending_admin_actions), что и кнопка "Деактивировать" в
+    // профиле (см. confirmSbtZoneToggle в ProfileWidget.tsx), площадка
+    // исполнит её вручную. Юзер продолжает создание новой зоны сразу же.
     const handleUnlinkConfirm = useCallback(async () => {
       if (!existingZone) {
         setUnlinkModalOpen(false);
         return;
       }
-  
-      setUnlinkingInProgress(true);
-  
+
+      setUnlinkModalOpen(false);
+      setActiveStep(1);
+
+      if (!address) return;
       try {
-        // Отвязываем старую коллекцию
-        const unlinkSuccess = await unlinkExistingCollection(existingZone);
-  
-        if (unlinkSuccess) {
-          setUnlinkModalOpen(false);
-          // После отвязки переходим к следующему шагу
-          setActiveStep(1);
+        const result = await apiService.createPendingAction({
+          actionType: 'deactivate_zone',
+          targetType: 'zone',
+          targetAddress: existingZone.domainAddress || existingZone.collectionAddress,
+          targetCollectionAddress: existingZone.collectionAddress,
+          targetName: existingZone.name,
+          requestedBy: address,
+        });
+        if (result.success || result.alreadyPending) {
+          showSnackbar(t('zoneDeactivationQueued'), "success");
+        } else {
+          showSnackbar(t('zoneDeactivationQueueFailed'), "error");
         }
       } catch (error) {
-        console.error('Ошибка при отвязке:', error);
-        showSnackbar(`${t('unlinkError')}`, "error");
-      } finally {
-        setUnlinkingInProgress(false);
+        console.error('❌ Ошибка постановки заявки на деактивацию старой зоны:', error);
+        showSnackbar(t('zoneDeactivationQueueFailed'), "error");
       }
-    }, [existingZone, unlinkExistingCollection, showSnackbar]);
+    }, [existingZone, address, showSnackbar, t]);
 
   // ========== УЛУЧШЕННЫЙ ДЕПЛОЙ BUNDLE ==========
 
@@ -1373,9 +1295,11 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
         return;
       }
 
-      // Логика ID: если на домене уже была SBT-зона, она уже обнаружена и
-      // деактивирована на шаге 0 (handleCheckDomain -> unlinkExistingCollection),
-      // её текущий id лежит в existingZone.currentId — просто инкрементируем.
+      // Логика ID: если на домене уже была SBT-зона, она уже обнаружена на
+      // шаге 0 (handleCheckDomain), её текущий id лежит в
+      // existingZone.currentId — просто инкрементируем. Деактивация старой
+      // зоны на этом не завязана — заявка на неё лишь поставлена в очередь
+      // (см. handleUnlinkConfirm), площадка исполнит её отдельно и позже.
       // Повторный ончейн-запрос здесь не нужен.
       const idValue = existingZone?.currentId != null ? existingZone.currentId + 1 : 0;
       console.log(`📤 SBT ID для деплоя: ${idValue} (existingZone:`, existingZone, ')');
@@ -1591,13 +1515,18 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
           <Button
             variant="contained"
             onClick={handleCheckDomain}
+            // !address НЕ в disabled намеренно — кнопка остаётся кликабельной
+            // визуально приглушённой, чтобы клик показал ConnectWalletPrompt
+            // (см. проверку в начале handleCheckDomain), а не молча ничего
+            // не делал, как сделал бы настоящий disabled без кошелька.
             disabled={!domainName.trim() || domainName.length < 4 || loading}
             sx={{
               mt: 1,
               borderRadius: '25px',
               textTransform: 'none',
               minWidth: '120px',
-              background: loading ? '#888' : '#4a90e2'
+              background: loading ? '#888' : '#4a90e2',
+              opacity: address ? 1 : 0.5,
             }}
           >
             {loading ? t('processing') : t('continue')}
@@ -1990,8 +1919,40 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
         onClose={() => setUnlinkModalOpen(false)}
         onConfirm={handleUnlinkConfirm}
         domainName={domainName}
-        loading={unlinkingInProgress}
+        loading={false}
       />
+
+      {/* Неподключённый юзер видит шаги/Особенности, но реальное создание
+          требует кошелька — тот же паттерн оверлея, что в TutorialEntryWidget.tsx */}
+      {showConnectPrompt && (
+        <div
+          onClick={() => setShowConnectPrompt(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 10001,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: isDark ? '#121212' : '#FFFFFF',
+              border: `1px solid ${isDark ? '#333333' : '#E5E7EB'}`,
+              borderRadius: '16px',
+              maxWidth: '320px',
+              width: '100%',
+              boxShadow: '0 8px 28px rgba(0,0,0,0.4)',
+            }}
+          >
+            <ConnectWalletPrompt subtitle={t('connectWalletFirstZoneSubtitle') || 'Создание зоны доступно только подключённым пользователям — подключите кошелёк, чтобы продолжить.'} />
+          </div>
+        </div>
+      )}
 
       {/* Нюансы Proxy-зоны — перед входом в необратимый режим, до всякой оплаты */}
       <ProxyRiskModal
@@ -2129,13 +2090,17 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
             )}
             {paymentAttemptsExpanded && (
               <div style={{ marginTop: '12px' }}>
-                <PaymentAttemptsSection
-                  address={address}
-                  colors={colors}
-                  isDark={isDark}
-                  hideHeader
-                  forceExpanded
-                />
+                {address ? (
+                  <PaymentAttemptsSection
+                    address={address}
+                    colors={colors}
+                    isDark={isDark}
+                    hideHeader
+                    forceExpanded
+                  />
+                ) : (
+                  <ConnectWalletPrompt subtitle={t('connectWalletFirstAttemptsSubtitle') || 'Оплаченные попытки видны только подключённым пользователям.'} />
+                )}
               </div>
             )}
           </Card>
@@ -2235,13 +2200,17 @@ const unlinkExistingCollection = useCallback(async (zone: any): Promise<boolean>
             )}
             {paymentAttemptsExpanded && (
               <div style={{ marginTop: '12px' }}>
-                <PaymentAttemptsSection
-                  address={address}
-                  colors={colors}
-                  isDark={isDark}
-                  hideHeader
-                  forceExpanded
-                />
+                {address ? (
+                  <PaymentAttemptsSection
+                    address={address}
+                    colors={colors}
+                    isDark={isDark}
+                    hideHeader
+                    forceExpanded
+                  />
+                ) : (
+                  <ConnectWalletPrompt subtitle={t('connectWalletFirstAttemptsSubtitle') || 'Оплаченные попытки видны только подключённым пользователям.'} />
+                )}
               </div>
             )}
           </Card>

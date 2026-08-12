@@ -1853,6 +1853,7 @@ const LANG = {
     btnConnectChat: '🔌 Подключить к чату',
     btnOpenSubdom: '🔗 Открыть Subdom',
     btnRegisterPromo: '🎁 Зарегать аккаунт',
+    btnLearnToo: '🎓 Обучиться',
 
     // /subscribe
     subscribedAs: '✅ Вы подписаны на уведомления как',
@@ -2067,6 +2068,7 @@ const LANG = {
     btnConnectChat: '🔌 Connect to Chat',
     btnOpenSubdom: '🔗 Open Subdom',
     btnRegisterPromo: '🎁 Register account',
+    btnLearnToo: '🎓 Learn',
 
     // /subscribe
     subscribedAs: '✅ You are subscribed to notifications as',
@@ -2305,6 +2307,14 @@ class DeeplinkUtils {
 
   static generateHomeLink(): string {
     return this.generateTelegramDeeplink('/');
+  }
+
+  // Открывает главную и сразу поднимает вводную модалку обучалки (см.
+  // DeeplinkHandler.ts route === '/' на фронте и TutorialContext.tsx —
+  // читает ?tutorial=1 из query и зовёт openEntry()). Работает и без
+  // подключённого кошелька — просто покажет превью/интро, не даст начать.
+  static generateTutorialLink(): string {
+    return this.generateTelegramDeeplink('/', { tutorial: '1' });
   }
 
   static generateAdminPendingActionsLink(): string {
@@ -3908,7 +3918,7 @@ ${$.fieldLength}: ${length} ${lengthUnit}
 ${$.fieldStepsCompleted} (${completedSteps.length}/${$.tutorialStepNames.length}):
 ${stepsList}
         `.trim();
-      }, [[{ text: LANG.ru.btnRegisterPromo, url: DeeplinkUtils.generateHomeLink() }]]);
+      }, [[{ text: LANG.ru.btnLearnToo, url: DeeplinkUtils.generateTutorialLink() }]]);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления о завершении обучалки:', error);
       return false;

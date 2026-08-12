@@ -380,6 +380,8 @@ connectToChat: 'चैट करने के लिए वॉलेट कन�
 connectWalletFirstTitle: 'पहले वॉलेट कनेक्ट करें',
 connectWalletFirstSubtitle: 'जारी रखने के लिए अपना TON वॉलेट कनेक्ट करें',
 connectWalletFirstFromIndexSubtitle: 'यह सेक्शन केवल कनेक्टेड यूज़र्स के लिए उपलब्ध है — जारी रखने के लिए अपना वॉलेट कनेक्ट करें।',
+connectWalletFirstZoneSubtitle: 'ज़ोन बनाना केवल कनेक्टेड यूज़र्स के लिए उपलब्ध है — जारी रखने के लिए अपना वॉलेट कनेक्ट करें।',
+connectWalletFirstAttemptsSubtitle: 'भुगतान किए गए प्रयास केवल कनेक्टेड यूज़र्स को दिखाई देते हैं।',
 connectWalletFirstButton: 'वॉलेट कनेक्ट करें',
 noMessagesFirst: 'कोई संदेश नहीं',
 writeMessage: 'संदेश लिखें...',

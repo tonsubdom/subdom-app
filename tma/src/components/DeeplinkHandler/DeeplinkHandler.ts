@@ -67,9 +67,13 @@ const DeeplinkHandler: React.FC = () => {
           navigate(`/market${queryString ? `?${queryString}` : ''}`);
 
         } else if (route === '/') {
-          // Для главной страницы
-          navigate('/');
-          
+          // Для главной страницы — tutorial=1 (см. DeeplinkUtils.generateTutorialLink
+          // на бэкенде) читает TutorialContext.tsx и сам поднимает вводную модалку.
+          const queryParams = new URLSearchParams();
+          if (params.tutorial) queryParams.set('tutorial', params.tutorial);
+          const queryString = queryParams.toString();
+          navigate(`/${queryString ? `?${queryString}` : ''}`);
+
         } else {
           // Неизвестный роут - перенаправляем на главную
           console.warn(`⚠️ Неизвестный роут: ${route}, перенаправление на главную`);
