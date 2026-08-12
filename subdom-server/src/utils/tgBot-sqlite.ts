@@ -2730,7 +2730,13 @@ class TelegramBotService {
   private async formatTonviewerLink(address: string, isTestnet: boolean): Promise<string> {
     const base = this.getTonviewerUrl(isTestnet);
     const domain = await this.resolveOwnerDomain(address, isTestnet);
-    const label = domain ? `${domain}.ton` : `${address.slice(0, 6)}...${address.slice(-4)}`;
+    // toncenter уже отдаёт domain с ".ton" на конце (r.domain/entry.domain) —
+    // слепое ${domain}.ton дублировало суффикс ("7707.ton.ton"). Срезаем
+    // существующий суффикс перед тем, как добавить свой — верно независимо
+    // от того, что именно вернул toncenter.
+    const label = domain
+      ? `${domain.replace(/\.ton$/i, '')}.ton`
+      : `${address.slice(0, 6)}...${address.slice(-4)}`;
     return `<a href="${base}/${address}">${label}</a>`;
   }
 
