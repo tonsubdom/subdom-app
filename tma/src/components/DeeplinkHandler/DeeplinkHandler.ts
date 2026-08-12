@@ -74,6 +74,17 @@ const DeeplinkHandler: React.FC = () => {
           const queryString = queryParams.toString();
           navigate(`/${queryString ? `?${queryString}` : ''}`);
 
+        } else if (route === '/create-torrent') {
+          // Кнопка "Поделиться" в уведомлении об оплате хранения торрента
+          // (см. DeeplinkUtils.generateTorrentDownloadLink на бэкенде) —
+          // сразу открывает вкладку "Загрузить" с вбитым bagID, читает
+          // CreateTorrentPage.tsx.
+          const queryParams = new URLSearchParams();
+          if (params.bagId) queryParams.set('bagId', params.bagId);
+          if (params.tab) queryParams.set('tab', params.tab);
+          const queryString = queryParams.toString();
+          navigate(`/create-torrent${queryString ? `?${queryString}` : ''}`);
+
         } else {
           // Неизвестный роут - перенаправляем на главную
           console.warn(`⚠️ Неизвестный роут: ${route}, перенаправление на главную`);

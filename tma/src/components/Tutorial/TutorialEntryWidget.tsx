@@ -221,6 +221,8 @@ export const TutorialEntryWidget: React.FC = () => {
           t={t}
           onClose={tutorial.dismissRewardReveal}
           onCta={handleRewardCta}
+          title={t('tutorialCompleteRevealTitle') || 'Обучение пройдено!'}
+          subtitle={t('tutorialCompleteRevealSubtitle') || 'В награду вам подарена бесплатная попытка создать SBT-зону:'}
         />
       )}
     </div>

@@ -115,15 +115,32 @@ export async function shareAuction(
   params: AuctionUrlParams,
   custom?: { title?: string; text?: string }
 ): Promise<boolean> {
-  try {
-    const url = getFullAuctionUrl(params);
-    const title = custom?.title || (params.subdomain
-      ? `Аукцион субдомена ${params.subdomain}.${params.zone}`
-      : `Зона ${params.zone} на TON`);
-    const text = custom?.text || (params.subdomain
-      ? `Посмотрите этот аукцион субдомена на TON!`
-      : `Создавайте субдомены и участвуйте в аукционах на зоне ${params.zone}!`);
+  const url = getFullAuctionUrl(params);
+  const title = custom?.title || (params.subdomain
+    ? `Аукцион субдомена ${params.subdomain}.${params.zone}`
+    : `Зона ${params.zone} на TON`);
+  const text = custom?.text || (params.subdomain
+    ? `Посмотрите этот аукцион субдомена на TON!`
+    : `Создавайте субдомены и участвуйте в аукционах на зоне ${params.zone}!`);
 
+  return shareUrl(url, title, text, () => copyAuctionUrlToClipboard(params));
+}
+
+/**
+ * Общее ядро "поделиться" — вынесено из shareAuction, чтобы страницы вне
+ * аукциона/зоны (например CreateTorrentPage — шеринг bagID) могли
+ * переиспользовать тот же 3-уровневый приоритет источников без
+ * дублирования (см. комментарий у shareAuction выше). copyFallback — своя
+ * логика копирования в буфер для конкретного URL (Web Share API недоступен
+ * или упал).
+ */
+export async function shareUrl(
+  url: string,
+  title: string,
+  text: string,
+  copyFallback: () => Promise<boolean>
+): Promise<boolean> {
+  try {
     try {
       const { shareURL } = await import('@telegram-apps/sdk-react');
       if (shareURL.isAvailable()) {
@@ -135,15 +152,10 @@ export async function shareAuction(
     }
 
     if (navigator.share) {
-      await navigator.share({
-        title,
-        text,
-        url,
-      });
+      await navigator.share({ title, text, url });
       return true;
     } else {
-      // Fallback: копирование в буфер
-      return await copyAuctionUrlToClipboard(params);
+      return await copyFallback();
     }
   } catch (error) {
     console.error('Ошибка при попытке поделиться:', error);

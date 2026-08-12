@@ -26,6 +26,12 @@ interface LengthRevealCardProps {
   // попытки. Награда за прохождение обучалки — тоже случайная SBT-попытка
   // (см. TutorialContext/POST /api/tutorial/complete), отсюда "+1" в подписи.
   onStartTutorial?: () => void;
+  // Override дефолтного текста заголовка/подзаголовка варианта 'gift' — тот
+  // же компонент переиспользуется в TutorialEntryWidget для награды за
+  // ПРОХОЖДЕНИЕ обучалки, где "Действует акция!" (текст для промо за
+  // регистрацию) не подходит по смыслу.
+  title?: string;
+  subtitle?: string;
 }
 
 export const LengthRevealCard: React.FC<LengthRevealCardProps> = ({
@@ -37,6 +43,8 @@ export const LengthRevealCard: React.FC<LengthRevealCardProps> = ({
   onClose,
   onCta,
   onStartTutorial,
+  title,
+  subtitle,
 }) => {
   const price = (zoneType === 'sbt' ? sbtPrices : proxyPrices)[length] ?? 0;
   const isGift = variant === 'gift';
@@ -121,18 +129,18 @@ export const LengthRevealCard: React.FC<LengthRevealCardProps> = ({
               marginBottom: '10px',
             }}
           >
-            {isGift
+            {title || (isGift
               ? t('promoRevealTitle') || 'Действует акция!'
-              : t('purchaseRevealTitle') || 'Успешно приобретено!'}
+              : t('purchaseRevealTitle') || 'Успешно приобретено!')}
           </div>
 
           <div style={{ fontSize: '13px', color: isDark ? '#D1D5DB' : '#374151', marginBottom: '16px', lineHeight: 1.5 }}>
-            {isGift
+            {subtitle || (isGift
               ? t('promoRevealSubtitle') || 'Тебе подарена бесплатная попытка создать SBT-зону:'
               : (t('purchaseRevealSubtitle') || 'Открыта попытка создать {type}-зону:').replace(
                   '{type}',
                   zoneType === 'sbt' ? 'SBT' : 'Proxy'
-                )}
+                ))}
           </div>
 
           <div

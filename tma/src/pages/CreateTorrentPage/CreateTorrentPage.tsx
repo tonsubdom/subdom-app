@@ -39,6 +39,7 @@ import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 import { TransactionService } from '@/services/transactionService';
 import { track } from '@/utils/analytics';
 import { apiService } from '@/services/api';
+import { shareUrl } from '@/utils/urlParams';
 import TonLogo from '@/components/Header/ton.svg';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -311,6 +312,18 @@ const CreateTorrentPage: React.FC = () => {
       setDomainInput(domainFromUrl);
       setBindImmediately(true);
     }
+
+    // Кнопка "Поделиться" в завершающей модалке/уведомлении об оплате
+    // хранения торрента (см. DeeplinkUtils.generateTorrentDownloadLink на
+    // бэкенде, DeeplinkHandler.tsx) — сразу открывает вкладку "Загрузить" с
+    // вбитым bagID и запускает скачивание, юзеру не нужно копировать bagID
+    // руками и переключать вкладку самому.
+    const bagIdFromUrl = params.get('bagId');
+    if (bagIdFromUrl && BAG_ID_RE.test(bagIdFromUrl) && params.get('tab') === 'download') {
+      setTab('download');
+      setDownloadInput(bagIdFromUrl);
+      handleDownloadStart(bagIdFromUrl);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -520,8 +533,8 @@ const CreateTorrentPage: React.FC = () => {
     downloadPollRef.current = window.setInterval(poll, 3000);
   };
 
-  const handleDownloadStart = async () => {
-    const raw = downloadInput.trim();
+  const handleDownloadStart = async (overrideInput?: string) => {
+    const raw = (overrideInput ?? downloadInput).trim();
     if (!raw || downloadResolving) return;
 
     setDownloadResolving(true);
@@ -783,6 +796,24 @@ const CreateTorrentPage: React.FC = () => {
   };
 
   const canDeploy = selectedProviderObjs.length > 0 && !!bagId && !!bagDetails && !!userAddress && !oversizeProvider;
+
+  // Кнопка "Поделиться" в завершающей модалке — ссылка ведёт получателя
+  // прямо на вкладку "Загрузить" с вбитым bagID (см. useEffect с bagIdFromUrl
+  // выше и DeeplinkUtils.generateTorrentDownloadLink на бэкенде для той же
+  // ссылки в Telegram-уведомлении).
+  const handleShareBagId = async (bagIdToShare: string) => {
+    const url = `${window.location.origin}/#/create-torrent?bagId=${bagIdToShare}&tab=download`;
+    const title = t('createTorrentCompleteShareTitle') || 'Файл на TON Storage';
+    const text = t('createTorrentCompleteShareText') || 'Скачайте файл, который я только что разместил на TON Storage:';
+    await shareUrl(url, title, text, async () => {
+      try {
+        await navigator.clipboard.writeText(url);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+  };
 
   return (
     <Page back={true}>
@@ -1230,7 +1261,7 @@ const CreateTorrentPage: React.FC = () => {
             />
 
             <button
-              onClick={handleDownloadStart}
+              onClick={() => handleDownloadStart()}
               disabled={!downloadInput.trim() || downloadResolving}
               style={primaryButtonStyle(!downloadInput.trim() || downloadResolving)}
             >
@@ -1437,6 +1468,13 @@ const CreateTorrentPage: React.FC = () => {
                 {t('createTorrentViewOnTonscan') || 'Посмотреть на tonscan'} →
               </a>
             )}
+
+            <button
+              onClick={() => handleShareBagId(bagId)}
+              style={{ ...primaryButtonStyle(false), marginBottom: '8px' }}
+            >
+              📤 {t('createTorrentCompleteShareButton') || 'Поделиться'}
+            </button>
 
             <button
               onClick={() => setShowCompleteModal(false)}

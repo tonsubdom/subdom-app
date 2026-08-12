@@ -1854,6 +1854,10 @@ const LANG = {
     btnOpenSubdom: '🔗 Открыть Subdom',
     btnRegisterPromo: '🎁 Зарегать аккаунт',
     btnLearnToo: '🎓 Обучиться',
+    btnShareTorrent: '📥 Поделиться',
+    btnStats: '📊 Статистика платформы',
+    btnStartTutorial: '🎓 Пройти обучение',
+    btnReportBug: '🐞 Сообщить о баге',
 
     // /subscribe
     subscribedAs: '✅ Вы подписаны на уведомления как',
@@ -2076,6 +2080,10 @@ const LANG = {
     btnOpenSubdom: '🔗 Open Subdom',
     btnRegisterPromo: '🎁 Register account',
     btnLearnToo: '🎓 Learn',
+    btnShareTorrent: '📥 Share',
+    btnStats: '📊 Platform Stats',
+    btnStartTutorial: '🎓 Take the Tutorial',
+    btnReportBug: '🐞 Report a Bug',
 
     // /subscribe
     subscribedAs: '✅ You are subscribed to notifications as',
@@ -2329,6 +2337,15 @@ class DeeplinkUtils {
   // подключённого кошелька — просто покажет превью/интро, не даст начать.
   static generateTutorialLink(): string {
     return this.generateTelegramDeeplink('/', { tutorial: '1' });
+  }
+
+  // Открывает CreateTorrentPage сразу на вкладке "Загрузить" с уже вбитым
+  // bagID — кнопка в уведомлении об оплате хранения торрента (см.
+  // sendStorageDealCreatedNotification/sendPublicStorageDealCreatedNotification),
+  // чтобы получателю не пришлось копировать bagID руками. Симметрично
+  // читается на фронте в DeeplinkHandler.tsx (route === '/create-torrent').
+  static generateTorrentDownloadLink(bagId: string): string {
+    return this.generateTelegramDeeplink('/create-torrent', { bagId, tab: 'download' });
   }
 
   static generateAdminPendingActionsLink(): string {
@@ -2934,6 +2951,13 @@ ${$.startSubStatus} ${isSubscribed ? $.active : $.inactive}
           { text: $.btnOpenSubdom, url: DeeplinkUtils.generateHomeLink() }
         ],
         [
+          { text: $.btnStats, callback_data: 'cmd_stats' },
+          { text: $.btnStartTutorial, url: DeeplinkUtils.generateTutorialLink() }
+        ],
+        [
+          { text: $.btnReportBug, callback_data: 'cmd_report_bug' }
+        ],
+        [
           { text: $.btnConnectChat, callback_data: 'cmd_connect_chat' }
         ],
         [
@@ -2992,39 +3016,14 @@ ${$.startSubStatus} ${isSubscribed ? $.active : $.inactive}
     });
 
     // /stats — сводка по платформе, из platform_*_cache (см. gatherStats).
-    this.bot.onText(/\/stats/, async (msg: TelegramMessage) => {
-      const chatId = msg.chat.id;
-      const $ = this.t(chatId.toString());
-      try {
-        const s = this.gatherStats();
-        const message = `
-${$.statsTitle}
-
-${$.statsZonesTotal}: <b>${s.zonesTotal}</b>
-   ${$.statsZonesSbt}: ${s.zonesSbt}
-   ${$.statsZonesProxy}: ${s.zonesProxy}
-
-${$.statsSubdomainsTotal}: <b>${s.subdomainsTotal}</b>
-   ${$.statsSubdomainsSbt}: ${s.subdomainsSbt}
-   ${$.statsSubdomainsProxy}: ${s.subdomainsProxy}
-
-${$.statsUsers}: <b>${s.users}</b>
-
-${$.statsTime}: ${new Date().toLocaleString('ru-RU')}
-        `.trim();
-        await this.bot!.sendMessage(chatId, message, { parse_mode: 'HTML' });
-      } catch (error) {
-        console.error('❌ Ошибка при сборе статистики:', error);
-      }
+    this.bot.onText(/\/stats/, (msg: TelegramMessage) => {
+      this.sendStatsMessage(msg.chat.id);
     });
 
     // /report_bug — следующее текстовое сообщение этого чата уйдёт админу
     // целиком (см. bugReportPending + handleBugReportSubmission ниже).
     this.bot.onText(/\/report_bug/, (msg: TelegramMessage) => {
-      const chatId = msg.chat.id;
-      const $ = this.t(chatId.toString());
-      this.bugReportPending.add(chatId);
-      this.bot!.sendMessage(chatId, $.reportBugPrompt);
+      this.promptBugReport(msg.chat.id);
     });
 
     // callback_query — обрабатываем кнопки меню
@@ -3060,6 +3059,10 @@ ${$.statsTime}: ${new Date().toLocaleString('ru-RU')}
           const msg = newLang === 'ru' ? LANG.ru.langChangedRu : LANG.en.langChangedEn;
           await this.bot!.sendMessage(chatId, msg);
           await this.setupBotMenu();
+        } else if (data === 'cmd_stats') {
+          await this.sendStatsMessage(chatId);
+        } else if (data === 'cmd_report_bug') {
+          await this.promptBugReport(chatId);
         } else if (data === 'cmd_connect_chat') {
           const instructions = `
 ${$.connectTitle}
@@ -3126,6 +3129,42 @@ ${$.connectWarning}
       }
       console.error('❌ Ошибка Telegram polling:', error);
     });
+  }
+
+  // Общий код /stats и кнопки "Статистика платформы" в /start (cmd_stats) —
+  // раньше был только внутри onText(/\/stats/), кнопка callback_query такого
+  // текста не видит, нужен отдельно вызываемый метод.
+  private async sendStatsMessage(chatId: number): Promise<void> {
+    const $ = this.t(chatId.toString());
+    try {
+      const s = this.gatherStats();
+      const message = `
+${$.statsTitle}
+
+${$.statsZonesTotal}: <b>${s.zonesTotal}</b>
+   ${$.statsZonesSbt}: ${s.zonesSbt}
+   ${$.statsZonesProxy}: ${s.zonesProxy}
+
+${$.statsSubdomainsTotal}: <b>${s.subdomainsTotal}</b>
+   ${$.statsSubdomainsSbt}: ${s.subdomainsSbt}
+   ${$.statsSubdomainsProxy}: ${s.subdomainsProxy}
+
+${$.statsUsers}: <b>${s.users}</b>
+
+${$.statsTime}: ${new Date().toLocaleString('ru-RU')}
+      `.trim();
+      await this.bot!.sendMessage(chatId, message, { parse_mode: 'HTML' });
+    } catch (error) {
+      console.error('❌ Ошибка при сборе статистики:', error);
+    }
+  }
+
+  // Общий код /report_bug и кнопки "Сообщить о баге" в /start (cmd_report_bug)
+  // — по той же причине, что и sendStatsMessage выше.
+  private async promptBugReport(chatId: number): Promise<void> {
+    const $ = this.t(chatId.toString());
+    this.bugReportPending.add(chatId);
+    await this.bot!.sendMessage(chatId, $.reportBugPrompt);
   }
 
   // ==================== ОБРАБОТКА REPLY / SUPPORT ====================
@@ -3683,7 +3722,7 @@ ${$.fieldPrice}: ${totalCostTon} GRAM
 
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         `.trim();
-      });
+      }, [[{ text: LANG.ru.btnShareTorrent, url: DeeplinkUtils.generateTorrentDownloadLink(bagId) }]]);
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления об оплате хранения торрента:', error);
       return false;
@@ -3726,7 +3765,10 @@ ${$.fieldPrice}: ${totalCostTon} GRAM
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
+      await this.bot!.sendMessage(this.ownerId, message, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: [[{ text: $.btnShareTorrent, url: DeeplinkUtils.generateTorrentDownloadLink(bagId) }]] }
+      });
 
       await this.sendPublicStorageDealCreatedNotification(
         bagId, contractAddress, providerCount, fileSizeBytes, storageDays, totalCostTon, ownerAddress, boundTo, isTestnet
