@@ -38,6 +38,7 @@ import { useTutorial } from '@/contexts/TutorialContext';
 import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 import { TransactionService } from '@/services/transactionService';
 import { track } from '@/utils/analytics';
+import { apiService } from '@/services/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -258,6 +259,8 @@ const CreateTorrentPage: React.FC = () => {
   const [dealError, setDealError] = useState<string | null>(null);
   const [dealContractAddress, setDealContractAddress] = useState<Address | null>(null);
   const [dealSent, setDealSent] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [bagIdCopied, setBagIdCopied] = useState(false);
 
   // ====== ВКЛАДКА "ЗАГРУЗИТЬ" (скачивание уже существующего bagID) ======
   const [downloadInput, setDownloadInput] = useState('');
@@ -570,6 +573,7 @@ const CreateTorrentPage: React.FC = () => {
     setBindMessage(null);
     setDealContractAddress(null);
     setDealSent(false);
+    setShowCompleteModal(false);
     try {
       const sessionId = await computeSessionId(files);
       const received = await fetchUploadStatus(sessionId);
@@ -605,9 +609,6 @@ const CreateTorrentPage: React.FC = () => {
       const data = await res.json();
       setBagId(data.bagId);
       track('torrent_created');
-      if (tutorial.active && !tutorial.isStepDone('torrent_created')) {
-        tutorial.recordStep('torrent_created');
-      }
 
       const details = await fetchBagDetails(data.bagId);
       setBagDetails(details);
@@ -743,6 +744,26 @@ const CreateTorrentPage: React.FC = () => {
 
       track('torrent_deal_sent');
       setDealSent(true);
+      setShowCompleteModal(true);
+
+      // Торрент считается реально "созданным" только теперь — раньше (на
+      // одном лишь bagID без оплаты провайдерам) шаг обучалки засчитывался
+      // преждевременно, до того как файлы реально начинали где-то храниться.
+      if (tutorial.active && !tutorial.isStepDone('torrent_created')) {
+        tutorial.recordStep('torrent_created');
+      }
+
+      apiService.setNetwork(isTestnet);
+      apiService.notifyStorageDealCreated({
+        bagId,
+        contractAddress: deal.contractAddress.toString({ bounceable: true, testOnly: isTestnet }),
+        providerCount: providerDeals.length,
+        fileSizeBytes: bagDetails.bag_size,
+        storageDays: days,
+        totalCostTon: formatTon(totalCostNanoTon),
+        ownerAddress: userAddress,
+        boundTo: bindResult === 'success' ? domainInput.trim() : undefined,
+      });
     } catch (e: any) {
       track('torrent_deal_failed', { reason: String(e?.message || 'unknown').slice(0, 120) });
       setDealError(e?.message || 'Ошибка отправки транзакции');
@@ -1287,6 +1308,140 @@ const CreateTorrentPage: React.FC = () => {
           </>
         )}
       </div>
+
+      {showCompleteModal && bagId && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onClick={() => setShowCompleteModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: colors.background,
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '100%',
+              border: `1px solid ${colors.border}`,
+              boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: '40px', textAlign: 'center', marginBottom: '12px' }}>✅</div>
+            <h3 style={{ margin: '0 0 8px 0', fontSize: '17px', fontWeight: 700, color: colors.text, textAlign: 'center' }}>
+              {t('createTorrentCompleteTitle') || 'Торрент создан и записан!'}
+            </h3>
+            <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: colors.textSecondary, textAlign: 'center', lineHeight: '1.4' }}>
+              {t('createTorrentCompleteSubtitle') ||
+                'Провайдеры получили оплату и начали хранить файлы. Сохраните bagID — он понадобится, чтобы раздавать или скачивать файлы.'}
+            </p>
+
+            <div
+              style={{
+                background: isDark ? '#111827' : '#F3F4F6',
+                borderRadius: '8px',
+                padding: '10px 12px',
+                marginBottom: '12px',
+                fontSize: '12px',
+                color: colors.text,
+              }}
+            >
+              <div style={{ marginBottom: '6px' }}>
+                <div style={{ fontSize: '10px', color: colors.textSecondary, textTransform: 'uppercase', marginBottom: '2px' }}>
+                  {t('createTorrentCompleteFilesLabel') || 'Файлы'}
+                </div>
+                {files.map((f) => (
+                  <div key={f.name} style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.name}</span>
+                    <span style={{ color: colors.textSecondary, whiteSpace: 'nowrap' }}>{formatBytes(f.size)}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '6px', borderTop: `1px solid ${colors.border}` }}>
+                <span style={{ color: colors.textSecondary }}>{t('createTorrentCompleteProvidersLabel') || 'Провайдеров'}</span>
+                <span>{selectedProviderObjs.length}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: colors.textSecondary }}>{t('createTorrentTotalCostLabel') || 'Итого за'} {days} {t('createTorrentDays') || 'дн.'}</span>
+                <span style={{ fontWeight: 700, color: colors.accent }}>{formatTon(totalCostNanoTon)} GRAM</span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                background: isDark ? '#111827' : '#F3F4F6',
+                borderRadius: '8px',
+                padding: '10px 12px',
+                marginBottom: '12px',
+              }}
+            >
+              <div style={{ fontSize: '10px', color: colors.textSecondary, marginBottom: '4px', textTransform: 'uppercase' }}>
+                {t('createTorrentCompleteBagIdLabel') || 'bagID'}
+              </div>
+              <div style={{ fontSize: '12px', color: colors.text, wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                {bagId}
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(bagId);
+                setBagIdCopied(true);
+                setTimeout(() => setBagIdCopied(false), 2000);
+              }}
+              style={{ ...primaryButtonStyle(false), marginBottom: '8px' }}
+            >
+              {bagIdCopied
+                ? `✓ ${t('createTorrentCompleteCopied') || 'Скопировано!'}`
+                : `📋 ${t('createTorrentCompleteCopyButton') || 'Скопировать bagID'}`}
+            </button>
+
+            {dealContractAddress && (
+              <a
+                href={tonscanAddressUrl(dealContractAddress, isTestnet)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'block',
+                  textAlign: 'center',
+                  fontSize: '12px',
+                  color: colors.accent,
+                  marginBottom: '14px',
+                }}
+              >
+                {t('createTorrentViewOnTonscan') || 'Посмотреть на tonscan'} →
+              </a>
+            )}
+
+            <button
+              onClick={() => setShowCompleteModal(false)}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: `1px solid ${colors.border}`,
+                color: colors.text,
+                borderRadius: '10px',
+                padding: '10px',
+                fontSize: '13px',
+                cursor: 'pointer',
+              }}
+            >
+              {t('createTorrentCompleteDoneButton') || 'Готово'}
+            </button>
+          </div>
+        </div>
+      )}
     </Page>
   );
 };

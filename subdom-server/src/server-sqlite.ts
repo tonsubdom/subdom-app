@@ -3899,6 +3899,34 @@ app.post('/api/notifications/dns-record', (req, res) => {
   }
 });
 
+// Оплата хранения торрента (storage-contract задеплоен и профинансирован
+// провайдерам, см. CreateTorrentPage.handleDeploy) — relay-only, ничего не
+// пишет в БД. Регистрация сделки для storageDealsChecker идёт отдельным
+// POST /api/storage/deals, этот эндпоинт только про уведомление боту.
+app.post('/api/notifications/storage-deal-created', (req, res) => {
+  try {
+    const { bagId, contractAddress, providerCount, fileSizeBytes, storageDays, totalCostTon, ownerAddress, boundTo } = req.body;
+    const isTestnet = req.isTestnet;
+
+    if (!bagId || !contractAddress || !providerCount || !fileSizeBytes || !storageDays || !totalCostTon || !ownerAddress) {
+      return res.status(400).json({
+        success: false,
+        message: 'bagId, contractAddress, providerCount, fileSizeBytes, storageDays, totalCostTon и ownerAddress обязательны'
+      });
+    }
+
+    telegramBot.sendStorageDealCreatedNotification(bagId, contractAddress, providerCount, fileSizeBytes, storageDays, totalCostTon, ownerAddress, boundTo, isTestnet);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при отправке уведомления об оплате хранения торрента:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Внутренняя ошибка сервера'
+    });
+  }
+});
+
 // Relay-only: сообщает боту факт обновления ончейн-контента домена (title/
 // description/category/picture, см. AvatarSecretPage) — ничего не пишет в БД.
 // В отличие от dns-record выше (там значение осознанно скрыто — это то, что

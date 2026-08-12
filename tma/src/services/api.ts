@@ -935,6 +935,31 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
+  // Relay-only: сообщает боту об оплате хранения торрента (storage-contract
+  // задеплоен и профинансирован провайдерам, см. CreateTorrentPage.handleDeploy),
+  // ничего не пишет в БД. Регистрация сделки для storageDealsChecker —
+  // отдельный POST /api/storage/deals, этот метод только про уведомление.
+  async notifyStorageDealCreated(dealData: {
+    bagId: string;
+    contractAddress: string;
+    providerCount: number;
+    fileSizeBytes: number;
+    storageDays: number;
+    totalCostTon: string;
+    ownerAddress: string;
+    boundTo?: string;
+  }): Promise<void> {
+    try {
+      await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/storage-deal-created`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dealData),
+      });
+    } catch (error) {
+      console.error('Error notifying about storage deal creation:', error);
+    }
+  }
+
   // Relay-only: сообщает боту о новой ставке на аукционе. Полная история
   // ставок читается ончейн (getAuctionBidHistory), в БД ничего не пишем.
   async notifyNewBid(bidData: {

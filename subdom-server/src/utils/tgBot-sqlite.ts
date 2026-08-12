@@ -1945,6 +1945,7 @@ const LANG = {
     dnsRecordDeleted: '🔓 <b>DNS-ЗАПИСЬ ОТВЯЗАНА!</b>',
     contentUpdated: '🖼️ Юзер {domain} обновил данные в ончейн-профиле {domain}',
     deactivationRequested: '⏳ <b>ЗАПРОС НА ДЕАКТИВАЦИЮ ЗОНЫ!</b>',
+    storageDealCreated: '📦 <b>ТОРРЕНТ ОПЛАЧЕН, ХРАНЕНИЕ ЗАПУЩЕНО!</b>',
 
     // Поля уведомлений
     fieldName: '🏷️ Название',
@@ -1957,6 +1958,12 @@ const LANG = {
     recordFormatAdnl: 'ADNL',
     recordFormatBagId: 'BagID',
     btnViewCatalog: '👀 Посмотреть',
+    fieldBagId: '🎒 BagID',
+    fieldProviders: '🛰️ Провайдеров',
+    fieldContractAddress: '📍 Адрес контракта',
+    fieldStorageDays: '📅 Срок хранения',
+    fieldFileSize: '📦 Размер',
+    fieldBoundDomain: '🔗 Привязан к',
     fieldCollectionAddress: '📦 Адрес коллекции',
     fieldDomainAddress: '📍 Адрес домена',
     fieldAddress: '📍 Адрес',
@@ -2154,6 +2161,7 @@ const LANG = {
     dnsRecordDeleted: '🔓 <b>DNS RECORD UNLINKED!</b>',
     contentUpdated: '🖼️ User {domain} updated their on-chain profile data {domain}',
     deactivationRequested: '⏳ <b>ZONE DEACTIVATION REQUESTED!</b>',
+    storageDealCreated: '📦 <b>TORRENT PAID, STORAGE STARTED!</b>',
 
     // Поля уведомлений
     fieldName: '🏷️ Name',
@@ -2166,6 +2174,12 @@ const LANG = {
     recordFormatAdnl: 'ADNL',
     recordFormatBagId: 'BagID',
     btnViewCatalog: '👀 View',
+    fieldBagId: '🎒 BagID',
+    fieldProviders: '🛰️ Providers',
+    fieldContractAddress: '📍 Contract Address',
+    fieldStorageDays: '📅 Storage Duration',
+    fieldFileSize: '📦 Size',
+    fieldBoundDomain: '🔗 Bound to',
     fieldCollectionAddress: '📦 Collection Address',
     fieldDomainAddress: '📍 Domain Address',
     fieldAddress: '📍 Address',
@@ -3633,6 +3647,53 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       });
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления о DNS-записи:', error);
+    }
+  }
+
+  // --- ОПЛАТА ХРАНЕНИЯ ТОРРЕНТА (в личку владельцу) ---
+  // Как и sendDnsRecordUpdatedNotification, уходит только владельцу
+  // площадки в личку, паблик-уведомления в группу намеренно нет — но, в
+  // отличие от DNS-записи, здесь это админский аудит-лог (кто что оплатил
+  // и куда привязал), поэтому владелец сделки и привязанный домен/итем в
+  // сообщении есть. boundTo — как есть из поля привязки на фронте (имя
+  // домена/субдомена или сырой NFT-адрес), undefined если юзер не привязывал
+  // bagId сразу.
+  async sendStorageDealCreatedNotification(
+    bagId: string,
+    contractAddress: string,
+    providerCount: number,
+    fileSizeBytes: number,
+    storageDays: number,
+    totalCostTon: string,
+    ownerAddress: string,
+    boundTo: string | undefined,
+    isTestnet: boolean = true
+  ): Promise<void> {
+    if (!this.isBotAvailable()) return;
+
+    try {
+      const $ = LANG.ru;
+      const network = this.formatNetwork(isTestnet);
+      const sizeMb = (fileSizeBytes / (1024 * 1024)).toFixed(2);
+
+      const message = `
+${$.storageDealCreated}
+
+${network}
+${$.fieldBagId}: <code>${bagId}</code>
+${$.fieldContractAddress}: ${await this.formatTonviewerLink(contractAddress, isTestnet)}
+${$.fieldOwner}: ${await this.formatTonviewerLink(ownerAddress, isTestnet)}
+${boundTo ? `${$.fieldBoundDomain}: ${boundTo}\n` : ''}${$.fieldProviders}: ${providerCount}
+${$.fieldFileSize}: ${sizeMb} MB
+${$.fieldStorageDays}: ${storageDays}
+${$.fieldPrice}: ${totalCostTon} TON
+
+${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
+      `.trim();
+
+      await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
+    } catch (error) {
+      console.error('❌ Ошибка при отправке уведомления об оплате хранения торрента:', error);
     }
   }
 
