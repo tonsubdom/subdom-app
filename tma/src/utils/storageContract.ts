@@ -24,7 +24,7 @@
 // можно было бы подумать по названию поля в API). Реальный per-MB-per-day
 // rate для контракта — обратное восстановление по этой же формуле.
 
-import { Address, beginCell, Cell, Dictionary, contractAddress as computeContractAddress, storeStateInit } from '@ton/core';
+import { Address, beginCell, Cell, Dictionary, DictionaryValue, contractAddress as computeContractAddress, storeStateInit } from '@ton/core';
 
 const V1_CODE_HEX =
   'b5ee9c7241021101000362000114ff00f4a413f4bcf2c80b01020162090202014804030089b8d31ed44d0d3ff31f404306f007f8e2a228307f47c6fa5208e1b02d33fd31fd33fd430d0d31ffa00302550554414036f06136f8c029132e201b3e630318201247ded43d880201580605005db006bb513434ffcc7d010c20c1fd039be87cb86534cff4c7f4cff5d33434c7fe800c3e09dbc420821312d028440d6002014808070026a87df8276f1082084c4b40a120c100923070de002aa9e9ed44d0d3ff71d721fa40d33fd31fd3ff304130039ed001d0d3030171b0925f04e0fa403020fa4430c000f2e06f21c700925f04e001d31f21c000925f05e0d33f22821048f548cebae3023133332282103dc680aeba9131e30d01821061fff683bae302300e0b0a007eed44d0d3ff71d721fa40305122c705f2e19182084c4b4070fb02f8258210b6236d63708010c8cb055005cf1624fa0214cb6a13cb1f12cb3fcbffc98306fb0002fced44d0d3fff404fa40d33fd31fd3ffd307305374c705f2e19120c00099955320ac24b991a4e8de08f404307f8e3a268307f47c6fa5208e2b53138307f40e6fa1b399303252088307f45b308e1403d74cd05003c705b39852088307f45b3007de07e2079132e201b3e630708ae6318308bef2d19605c8cbff14f40058cf160d0c0018cb3fcb1fcbff12cb07c9ed5400a8018307f4966fa5208e4404a453198307f40e6fa131b38e3102d31ffa00d121c000f2d19720c000f2d19801c8cb1f01fa02c9843ff8117029f811c8cb3fcb1fcb3fcc40198307f44307926c21e202926c21e2b31201fe6c12d3ff8308d71820f901541023f910f2e191d33fed44d0d3fff404fa40d33fd31fd3ffd3073053958307f40e6fa1f2e191d33fd31fd33f0cbaf2e1910ad74c20d0d31ffa0030111082084c4b40a001111101a120c100923070def823500ca1205611bc9130925710e2525fa8500f8102a3aa1aa9845390b9923028de19a10f01fe82084c4b40a070fb0206d74c5446d054530052a011103302d739b3f24dd30701c303f24e20d70bff5005bdf24f03d5315023a904219b01a55cad71b013d748d059e45bd7498307baf290f823843ff81122f811c8cb3f12cb1fcb3f1acc50628307f4438210a91baf56708010c8cb055009cf1628fa0218cb6a17cb1f15cb3f100038c98306fb0003c8cbff14f40001cf1613cb3f13cb1fcbffcb07c9ed54a985f39e';
@@ -112,7 +112,25 @@ export function prepareStorageDeal(
   const data = buildStorageDataCell(bag, ownerAddress);
   const code = getV1Code();
 
-  const providersDict = Dictionary.empty(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell());
+  // ВАЖНО: TL-B этого поля — providers:(HashmapE 256 ProviderInfo), БЕЗ "^"
+  // (в отличие от Provider.info:^ProviderInfo, который контракт использует
+  // для СВОЕГО персистентного active_providers — там ссылка уместна).
+  // Dictionary.Values.Cell() из @ton/core сериализует значение через
+  // builder.storeRef(...) — кладёт его КАК ССЫЛКУ. Контракт же читает
+  // значение этого поля инлайново: new_provider~load_uint(32) прямо на
+  // слайсе листа дерева, без предварительного load_ref(). Со storeRef лист
+  // содержал 0 бит данных (всё содержимое ушло в ref) — load_uint(32) на
+  // пустом слайсе = cell underflow, exit_code 9. Именно так и падало на
+  // чейне (см. Log.md 2026-08-13) — по кошельку "успешно", по факту bounce.
+  // Кастомный инлайновый сериализатор — как раз то, что нужно.
+  const providerInfoValue: DictionaryValue<Cell> = {
+    serialize: (src, builder) => {
+      builder.storeSlice(src.beginParse());
+    },
+    parse: (src) => src.asCell(),
+  };
+
+  const providersDict = Dictionary.empty(Dictionary.Keys.BigUint(256), providerInfoValue);
   for (const p of providers) {
     const providerAddr = Address.parse(p.address);
     const key = BigInt('0x' + providerAddr.hash.toString('hex'));
