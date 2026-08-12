@@ -3686,7 +3686,7 @@ ${$.fieldOwner}: ${await this.formatTonviewerLink(ownerAddress, isTestnet)}
 ${boundTo ? `${$.fieldBoundDomain}: ${boundTo}\n` : ''}${$.fieldProviders}: ${providerCount}
 ${$.fieldFileSize}: ${sizeMb} MB
 ${$.fieldStorageDays}: ${storageDays}
-${$.fieldPrice}: ${totalCostTon} TON
+${$.fieldPrice}: ${totalCostTon} GRAM
 
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();

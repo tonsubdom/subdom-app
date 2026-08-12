@@ -39,6 +39,7 @@ import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 import { TransactionService } from '@/services/transactionService';
 import { track } from '@/utils/analytics';
 import { apiService } from '@/services/api';
+import TonLogo from '@/components/Header/ton.svg';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -365,6 +366,15 @@ const CreateTorrentPage: React.FC = () => {
     error: '#e53935',
     success: '#4ade80',
   };
+
+  // Сумма + логотип монеты вместо текстового тикера — как в
+  // PaymentAttemptsSection.tsx (карточки оплаченных попыток создания зон).
+  const CoinAmount: React.FC<{ amount: string }> = ({ amount }) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+      {amount}
+      <img src={TonLogo} alt="GRAM" style={{ width: '12px', height: '12px' }} />
+    </span>
+  );
 
   const tabButtonStyle = (active: boolean): React.CSSProperties => ({
     flex: 1,
@@ -952,7 +962,7 @@ const CreateTorrentPage: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px', maxHeight: '340px', overflowY: 'auto', paddingRight: '2px' }}>
                 {sortedProviders.map((p) => {
                   const isChecked = selectedProviders.includes(p.pubkey);
-                  const stat = (label: string, value: string) => (
+                  const stat = (label: string, value: React.ReactNode) => (
                     <div>
                       <div style={{ fontSize: '9px', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{label}</div>
                       <div style={{ fontSize: '12px', color: colors.text, fontWeight: 600 }}>{value}</div>
@@ -979,7 +989,7 @@ const CreateTorrentPage: React.FC = () => {
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
                           {stat(t('createTorrentSortRating') || 'Рейтинг', `${p.rating.toFixed(1)}★`)}
-                          {stat(t('createTorrentSortPrice') || 'Цена', `${formatTon(p.price)} TON`)}
+                          {stat(t('createTorrentSortPrice') || 'Цена', <CoinAmount amount={formatTon(p.price)} />)}
                           {stat(t('createTorrentSortUptime') || 'Uptime', `${p.uptime.toFixed(0)}%`)}
                           {stat(t('createTorrentSortSpace') || 'Свободно', formatSpace(freeSpaceGb(p)))}
                         </div>
@@ -1018,7 +1028,7 @@ const CreateTorrentPage: React.FC = () => {
                   {t('createTorrentTariffMultiLabel') || 'Оплата провайдерам'}: {selectedProviderObjs.length} × {t('createTorrentTariffPer200gb30d') || 'ставка своя за 200 ГБ / 30 дней'}
                 </div>
                 <div style={{ fontSize: '15px', fontWeight: 700, color: colors.accent }}>
-                  {t('createTorrentTotalCostLabel') || 'Итого за'} {days} {t('createTorrentDays') || 'дн.'}: {totalBytes > 0 ? formatTon(totalCostNanoTon) : '0'} TON
+                  {t('createTorrentTotalCostLabel') || 'Итого за'} {days} {t('createTorrentDays') || 'дн.'}: <CoinAmount amount={totalBytes > 0 ? formatTon(totalCostNanoTon) : '0'} />
                 </div>
                 {totalBytes === 0 && (
                   <div style={{ fontSize: '11px', color: colors.textSecondary, marginTop: '4px' }}>
@@ -1175,9 +1185,13 @@ const CreateTorrentPage: React.FC = () => {
                   disabled={!canDeploy || dealPreparing}
                   style={primaryButtonStyle(!canDeploy || dealPreparing)}
                 >
-                  {dealPreparing
-                    ? (t('processing') || 'Отправка...')
-                    : `${t('createTorrentDealButton') || 'Оплатить и запустить хранение'} (${formatTon(totalCostNanoTon)} TON)`}
+                  {dealPreparing ? (
+                    t('processing') || 'Отправка...'
+                  ) : (
+                    <>
+                      {t('createTorrentDealButton') || 'Оплатить и запустить хранение'} (<CoinAmount amount={formatTon(totalCostNanoTon)} />)
+                    </>
+                  )}
                 </button>
                 {dealError && <p style={{ fontSize: '12px', color: colors.error, marginTop: '8px' }}>{dealError}</p>}
                 {dealContractAddress && (
@@ -1374,7 +1388,7 @@ const CreateTorrentPage: React.FC = () => {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span style={{ color: colors.textSecondary }}>{t('createTorrentTotalCostLabel') || 'Итого за'} {days} {t('createTorrentDays') || 'дн.'}</span>
-                <span style={{ fontWeight: 700, color: colors.accent }}>{formatTon(totalCostNanoTon)} GRAM</span>
+                <span style={{ fontWeight: 700, color: colors.accent }}><CoinAmount amount={formatTon(totalCostNanoTon)} /></span>
               </div>
             </div>
 
