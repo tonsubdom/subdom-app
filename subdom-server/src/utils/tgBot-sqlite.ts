@@ -3650,14 +3650,49 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     }
   }
 
-  // --- ОПЛАТА ХРАНЕНИЯ ТОРРЕНТА (в личку владельцу) ---
-  // Как и sendDnsRecordUpdatedNotification, уходит только владельцу
-  // площадки в личку, паблик-уведомления в группу намеренно нет — но, в
-  // отличие от DNS-записи, здесь это админский аудит-лог (кто что оплатил
-  // и куда привязал), поэтому владелец сделки и привязанный домен/итем в
-  // сообщении есть. boundTo — как есть из поля привязки на фронте (имя
-  // домена/субдомена или сырой NFT-адрес), undefined если юзер не привязывал
-  // bagId сразу.
+  // --- ОПЛАТА ХРАНЕНИЯ ТОРРЕНТА (публично, в паблик-чаты) ---
+  async sendPublicStorageDealCreatedNotification(
+    bagId: string,
+    contractAddress: string,
+    providerCount: number,
+    fileSizeBytes: number,
+    storageDays: number,
+    totalCostTon: string,
+    ownerAddress: string,
+    boundTo: string | undefined,
+    isTestnet: boolean = true
+  ): Promise<boolean> {
+    try {
+      const network = this.formatNetwork(isTestnet);
+      const sizeMb = (fileSizeBytes / (1024 * 1024)).toFixed(2);
+
+      return await this.sendGroupNotification(async (lang) => {
+        const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
+        const daysUnit = lang === 'en' ? 'days' : 'дней';
+        return `
+${$.storageDealCreated}
+
+${network}
+${$.fieldBagId}: <code>${bagId}</code>
+${$.fieldContractAddress}: ${await this.formatTonviewerLink(contractAddress, isTestnet)}
+${$.fieldOwner}: ${await this.formatTonviewerLink(ownerAddress, isTestnet)}
+${boundTo ? `${$.fieldBoundDomain}: ${boundTo}\n` : ''}${$.fieldProviders}: ${providerCount}
+${$.fieldFileSize}: ${sizeMb} MB
+${$.fieldStorageDays}: ${storageDays} ${daysUnit}
+${$.fieldPrice}: ${totalCostTon} GRAM
+
+${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
+        `.trim();
+      });
+    } catch (error) {
+      console.error('❌ Ошибка при отправке публичного уведомления об оплате хранения торрента:', error);
+      return false;
+    }
+  }
+
+  // --- ОПЛАТА ХРАНЕНИЯ ТОРРЕНТА (в личку владельцу + паблик) ---
+  // boundTo — как есть из поля привязки на фронте (имя домена/субдомена или
+  // сырой NFT-адрес), undefined если юзер не привязывал bagId сразу.
   async sendStorageDealCreatedNotification(
     bagId: string,
     contractAddress: string,
@@ -3685,13 +3720,17 @@ ${$.fieldContractAddress}: ${await this.formatTonviewerLink(contractAddress, isT
 ${$.fieldOwner}: ${await this.formatTonviewerLink(ownerAddress, isTestnet)}
 ${boundTo ? `${$.fieldBoundDomain}: ${boundTo}\n` : ''}${$.fieldProviders}: ${providerCount}
 ${$.fieldFileSize}: ${sizeMb} MB
-${$.fieldStorageDays}: ${storageDays}
+${$.fieldStorageDays}: ${storageDays} дней
 ${$.fieldPrice}: ${totalCostTon} GRAM
 
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
       await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
+
+      await this.sendPublicStorageDealCreatedNotification(
+        bagId, contractAddress, providerCount, fileSizeBytes, storageDays, totalCostTon, ownerAddress, boundTo, isTestnet
+      );
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления об оплате хранения торрента:', error);
     }
