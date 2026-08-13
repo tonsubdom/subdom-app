@@ -8,6 +8,7 @@ import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { TonCenterAPI } from "@/services/blockchainItems/toncenter-api-config";
 import { decodeDomainForDisplay, isPunycodeEncoded } from "@/utils/domainPunycode";
+import webdomLogo from "@/assets/webdom_logo.svg";
 
 export interface OwnedDomain {
   name: string;
@@ -322,6 +323,27 @@ export const CustomDomainSelector: React.FC<CustomDomainSelectorProps> = ({
                 {domains.length === 0
                   ? (t("domainSelectorNoDomains") || "У вас нет .ton доменов на этом кошельке")
                   : (t("domainSelectorNoMatches") || "Ничего не найдено")}
+                {domains.length === 0 && (
+                  <a
+                    href="https://webdom.market"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      marginTop: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      textDecoration: "none",
+                      color: isDark ? "#ccc" : "#555",
+                      fontSize: "12px",
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    <img src={webdomLogo} alt="" style={{ width: "20px", height: "20px", flexShrink: 0 }} />
+                    {t("domainSelectorBuyOnWebdom") || "Купить домен на webdom.market"}
+                  </a>
+                )}
               </div>
             ) : (
               filteredDomains.map((domain) => {
