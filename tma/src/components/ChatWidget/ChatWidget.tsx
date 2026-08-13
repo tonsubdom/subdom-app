@@ -375,7 +375,7 @@ const ChatWidget: React.FC = () => {
             right: "15px",
             left: "auto",
             width: "min(400px, calc(100% - 30px))",
-            maxHeight: "600px",
+            maxHeight: "min(600px, calc(100vh - 180px))",
             backgroundColor: colors.background,
             borderRadius: "12px",
             boxShadow: "0 5px 40px rgba(0,0,0,0.2)",
@@ -454,7 +454,7 @@ const ChatWidget: React.FC = () => {
                   flexDirection: "column",
                   gap: "12px",
                   backgroundColor: colors.secondaryBg,
-                  minHeight: "200px",
+                  minHeight: 0,
                 }}
               >
                 {error && (
