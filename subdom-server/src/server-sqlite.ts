@@ -4340,6 +4340,7 @@ app.post('/api/admin/pending-actions/:id/complete', requireAdminAuth, (req, res)
     if (existing.actionType === 'deactivate_zone') {
       const collectionAddress = existing.targetCollectionAddress || existing.targetAddress;
       db.prepare(`UPDATE platform_zones_cache SET status = 'inactive' WHERE collectionAddress = ?`).run(collectionAddress);
+      telegramBot.sendZoneStatusChangedNotification(existing.targetName, existing.targetAddress, 'inactive', req.isTestnet);
     }
 
     return res.json({ success: true, data: updated });
