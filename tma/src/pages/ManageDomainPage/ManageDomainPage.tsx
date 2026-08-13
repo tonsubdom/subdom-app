@@ -6956,40 +6956,28 @@ export const ManageDomainPage: FC = () => {
                     {t("walletAddress")}
                   </span>
                 </div>
-                <Input
-                  placeholder={
-                    t("addressPlaceholder") || "Введите адрес кошелька..."
-                  }
-                  value={formData.walletAddress}
-                  onChange={(e) =>
-                    handleInputChange("walletAddress", e.target.value)
-                  }
-                  style={{
-                    background: isDark ? "#3d3d3d" : "white",
-                    color: isDark ? "white" : "black",
-                  }}
-                />
-                {tutorial.active && !tutorial.isStepDone('domain_answered') && (
-                  <TutorialTooltip
-                    blockLabel={t('tutorialBlock1Label') || 'Блок 1'}
-                    stepLabel={t('tutorialStep2Label') || 'Шаг 2'}
-                    text={t('tutorialDomainBindHint') || 'Привяжите адрес своего кошелька к домену и нажмите «Сохранить» — это подтвердит, что домен ваш.'}
-                    buttons={[]}
-                    style={{ position: 'static', marginTop: '8px' }}
-                  />
-                )}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    marginTop: "8px",
-                  }}
-                >
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Input
+                      placeholder={
+                        t("addressPlaceholder") || "Введите адрес кошелька..."
+                      }
+                      value={formData.walletAddress}
+                      onChange={(e) =>
+                        handleInputChange("walletAddress", e.target.value)
+                      }
+                      style={{
+                        background: isDark ? "#3d3d3d" : "white",
+                        color: isDark ? "white" : "black",
+                      }}
+                    />
+                  </div>
                   <Button
                     size="s"
                     onClick={handleSaveWalletAddress}
                     loading={dnsOperationLoading}
                     style={{
+                      flexShrink: 0,
                       padding: "6px 12px",
                       fontSize: "12px",
                       background: "#4CAF50",
@@ -6999,6 +6987,15 @@ export const ManageDomainPage: FC = () => {
                     {t("save")}
                   </Button>
                 </div>
+                {tutorial.active && !tutorial.isStepDone('domain_answered') && (
+                  <TutorialTooltip
+                    blockLabel={t('tutorialBlock1Label') || 'Блок 1'}
+                    stepLabel={t('tutorialStep2Label') || 'Шаг 2'}
+                    text={t('tutorialDomainBindHint') || 'Привяжите адрес своего кошелька к домену и нажмите «Сохранить» — это подтвердит, что домен ваш.'}
+                    buttons={[]}
+                    style={{ position: 'static', marginTop: '8px' }}
+                  />
+                )}
               </div>
 
               <div>
@@ -7013,27 +7010,24 @@ export const ManageDomainPage: FC = () => {
                     {t("tonSites")}
                   </span>
                 </div>
-                <Input
-                  placeholder={t("adnlAddressHex") || "Введите ADNL адрес..."}
-                  value={formData.tonSite}
-                  onChange={(e) => handleInputChange("tonSite", e.target.value)}
-                  style={{
-                    background: isDark ? "#3d3d3d" : "white",
-                    color: isDark ? "white" : "black",
-                  }}
-                />
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    marginTop: "8px",
-                  }}
-                >
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Input
+                      placeholder={t("adnlAddressHex") || "Введите ADNL адрес..."}
+                      value={formData.tonSite}
+                      onChange={(e) => handleInputChange("tonSite", e.target.value)}
+                      style={{
+                        background: isDark ? "#3d3d3d" : "white",
+                        color: isDark ? "white" : "black",
+                      }}
+                    />
+                  </div>
                   <Button
                     size="s"
                     onClick={handleSaveTonSite}
                     loading={dnsOperationLoading}
                     style={{
+                      flexShrink: 0,
                       padding: "6px 12px",
                       fontSize: "12px",
                       background: "#4CAF50",
@@ -7057,29 +7051,26 @@ export const ManageDomainPage: FC = () => {
                     {t("tonStorage")}
                   </span>
                 </div>
-                <Input
-                  placeholder={t("hex") || "Введите Bag ID..."}
-                  value={formData.tonStorage}
-                  onChange={(e) =>
-                    handleInputChange("tonStorage", e.target.value)
-                  }
-                  style={{
-                    background: isDark ? "#3d3d3d" : "white",
-                    color: isDark ? "white" : "black",
-                  }}
-                />
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    marginTop: "8px",
-                  }}
-                >
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Input
+                      placeholder={t("hex") || "Введите Bag ID..."}
+                      value={formData.tonStorage}
+                      onChange={(e) =>
+                        handleInputChange("tonStorage", e.target.value)
+                      }
+                      style={{
+                        background: isDark ? "#3d3d3d" : "white",
+                        color: isDark ? "white" : "black",
+                      }}
+                    />
+                  </div>
                   <Button
                     size="s"
                     onClick={handleSaveTonStorage}
                     loading={dnsOperationLoading}
                     style={{
+                      flexShrink: 0,
                       padding: "6px 12px",
                       fontSize: "12px",
                       background: "#4CAF50",
@@ -7103,31 +7094,28 @@ export const ManageDomainPage: FC = () => {
                     {t("subdomainsNextResolver")}
                   </span>
                 </div>
-                <Input
-                  placeholder={
-                    t("addressPlaceholderEQC") || "Введите адрес резолвера..."
-                  }
-                  value={formData.subdomains}
-                  onChange={(e) =>
-                    handleInputChange("subdomains", e.target.value)
-                  }
-                  style={{
-                    background: isDark ? "#3d3d3d" : "white",
-                    color: isDark ? "white" : "black",
-                  }}
-                />
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                    marginTop: "8px",
-                  }}
-                >
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Input
+                      placeholder={
+                        t("addressPlaceholderEQC") || "Введите адрес резолвера..."
+                      }
+                      value={formData.subdomains}
+                      onChange={(e) =>
+                        handleInputChange("subdomains", e.target.value)
+                      }
+                      style={{
+                        background: isDark ? "#3d3d3d" : "white",
+                        color: isDark ? "white" : "black",
+                      }}
+                    />
+                  </div>
                   <Button
                     size="s"
                     onClick={handleSaveSubdomains}
                     loading={dnsOperationLoading}
                     style={{
+                      flexShrink: 0,
                       padding: "6px 12px",
                       fontSize: "12px",
                       background: "#4CAF50",
