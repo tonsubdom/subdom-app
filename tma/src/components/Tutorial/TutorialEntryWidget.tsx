@@ -24,7 +24,6 @@ export const TutorialEntryWidget: React.FC = () => {
   const navigate = useNavigate();
   const tutorial = useTutorial();
   const wallet = useTonWallet();
-  const [showCompletedHint, setShowCompletedHint] = useState(false);
   const [showConnectPrompt, setShowConnectPrompt] = useState(false);
   // Карточка "Освоился" (снимок пройденных шагов) показывается ПЕРВОЙ, до
   // денежной части (LengthRevealCard с SBT-попыткой) — юзер сначала видит
@@ -69,8 +68,12 @@ export const TutorialEntryWidget: React.FC = () => {
 
   const handleWidgetClick = () => {
     if (tutorial.rewardGranted) {
-      setShowCompletedHint(true);
-      window.setTimeout(() => setShowCompletedHint(false), 2500);
+      // Раньше тут была только сухая тулза "Обучение уже пройдено" — юзер,
+      // который прошёл тур ДО того, как появилась карточка "Освоился",
+      // никогда бы её не увидел (она триггерится только в момент самого
+      // completeTutorial(), не ретроактивно). Клик по виджету теперь всегда
+      // открывает снимок прогресса на память, а не просто тост.
+      setShowMasteryCard(true);
       return;
     }
     tutorial.openEntry();
@@ -108,26 +111,6 @@ export const TutorialEntryWidget: React.FC = () => {
           <path d="M22 8v6" />
         </svg>
       </button>
-
-      {showCompletedHint && (
-        <div
-          style={{
-            position: 'absolute',
-            top: `${WIDGET_SIZE + 8}px`,
-            left: 0,
-            padding: '8px 12px',
-            borderRadius: '10px',
-            background: colors.panelBg,
-            border: `1px solid ${colors.border}`,
-            color: colors.text,
-            fontSize: '12px',
-            whiteSpace: 'nowrap',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-          }}
-        >
-          {t('tutorialAlreadyCompleted') || 'Обучение уже пройдено 🎓'}
-        </div>
-      )}
 
       {tutorial.showIntroModal && (
         <div
@@ -225,7 +208,7 @@ export const TutorialEntryWidget: React.FC = () => {
         </div>
       )}
 
-      {tutorial.showRewardReveal && tutorial.rewardLength && showMasteryCard && (
+      {showMasteryCard && (
         <TutorialMasteryCard
           isDark={isDark}
           t={t}
@@ -233,7 +216,11 @@ export const TutorialEntryWidget: React.FC = () => {
           stepDetails={tutorial.stepDetails}
           onClose={() => {
             setShowMasteryCard(false);
-            tutorial.dismissRewardReveal();
+            // Только в сценарии "только что прошёл" showRewardReveal реально
+            // активен и его нужно погасить — при открытии карточки задним
+            // числом (клик по виджету у уже завершивших тур) это не при чём,
+            // dismissRewardReveal() на неактивном reveal — просто no-op.
+            if (tutorial.showRewardReveal) tutorial.dismissRewardReveal();
           }}
           onNext={() => setShowMasteryCard(false)}
         />

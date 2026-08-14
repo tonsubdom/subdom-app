@@ -4937,6 +4937,9 @@ const ProfileWidget: React.FC = () => {
                 пока !domain), 2 — заполнить аватар/профиль (активен, когда
                 домен уже привязан). Кругляш done — зелёная галочка,
                 активный — пульсирующая подсветка акцентным цветом. */}
+            {(() => {
+              const profileFilled = !!(avatarPictureUrl || profileDnsText?.title || profileDnsText?.description || profileDnsText?.category);
+              return (
             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
               <div
                 style={{
@@ -4969,15 +4972,17 @@ const ProfileWidget: React.FC = () => {
                   fontSize: "11px",
                   fontWeight: 700,
                   flexShrink: 0,
-                  background: domain ? colors.cyberpunk : colors.border,
-                  color: domain ? (isDark ? "#000" : "#fff") : colors.text,
-                  opacity: domain ? 1 : 0.5,
-                  boxShadow: domain ? `0 0 10px ${colors.cyberpunk}` : "none",
+                  background: profileFilled ? "#4ade80" : (domain ? colors.cyberpunk : colors.border),
+                  color: profileFilled ? "#000" : (domain ? (isDark ? "#000" : "#fff") : colors.text),
+                  opacity: domain || profileFilled ? 1 : 0.5,
+                  boxShadow: domain && !profileFilled ? `0 0 10px ${colors.cyberpunk}` : "none",
                 }}
               >
-                2
+                {profileFilled ? "✓" : "2"}
               </div>
             </div>
+              );
+            })()}
             <style>{`
               @keyframes quickDomainStepPulse {
                 0%, 100% { transform: scale(1); }
