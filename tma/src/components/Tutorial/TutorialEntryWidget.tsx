@@ -12,6 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { LengthRevealCard } from '@/components/PromoRevealModal/LengthRevealCard';
 import { TutorialProgressPanel } from '@/components/Tutorial/TutorialProgressPanel';
+import { TutorialMasteryCard } from '@/components/Tutorial/TutorialMasteryCard';
 import ConnectWalletPrompt from '@/components/ConnectWalletPrompt/ConnectWalletPrompt';
 
 const WIDGET_SIZE = 60;
@@ -25,6 +26,18 @@ export const TutorialEntryWidget: React.FC = () => {
   const wallet = useTonWallet();
   const [showCompletedHint, setShowCompletedHint] = useState(false);
   const [showConnectPrompt, setShowConnectPrompt] = useState(false);
+  // Карточка "Освоился" (снимок пройденных шагов) показывается ПЕРВОЙ, до
+  // денежной части (LengthRevealCard с SBT-попыткой) — юзер сначала видит
+  // закреплённый прогресс, потом уже награду. Сбрасывается на каждый новый
+  // showRewardReveal, а не остаётся залипшей после первого показа.
+  const [showMasteryCard, setShowMasteryCard] = useState(false);
+  const prevShowRewardRevealRef = React.useRef(false);
+  React.useEffect(() => {
+    if (tutorial.showRewardReveal && !prevShowRewardRevealRef.current) {
+      setShowMasteryCard(true);
+    }
+    prevShowRewardRevealRef.current = tutorial.showRewardReveal;
+  }, [tutorial.showRewardReveal]);
 
   const colors = {
     text: isDark ? '#F9FAFB' : '#1F2937',
@@ -212,7 +225,21 @@ export const TutorialEntryWidget: React.FC = () => {
         </div>
       )}
 
-      {tutorial.showRewardReveal && tutorial.rewardLength && (
+      {tutorial.showRewardReveal && tutorial.rewardLength && showMasteryCard && (
+        <TutorialMasteryCard
+          isDark={isDark}
+          t={t}
+          completedSteps={tutorial.completedSteps}
+          stepDetails={tutorial.stepDetails}
+          onClose={() => {
+            setShowMasteryCard(false);
+            tutorial.dismissRewardReveal();
+          }}
+          onNext={() => setShowMasteryCard(false)}
+        />
+      )}
+
+      {tutorial.showRewardReveal && tutorial.rewardLength && !showMasteryCard && (
         <LengthRevealCard
           length={Number(tutorial.rewardLength)}
           zoneType="sbt"

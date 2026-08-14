@@ -4723,6 +4723,13 @@ export const ManageDomainPage: FC = () => {
   // handleCheckResolverAddress, которая просто ставит isVerified=true и не
   // поднимает editingItem/showInfoBlock — итем реально не открывался.
   const [autoAnyLookupTriggered, setAutoAnyLookupTriggered] = useState(false);
+  // Быстрый флоу из превью-модалки ProfileWidget (?quickManage=1) — юзер уже
+  // выбрал домен из своих на кошельке, дальше сюда: сами дожимаем "Управлять"
+  // и подставляем адрес кошелька, чтобы оставалось только нажать "Сохранить".
+  const [quickManageIntent, setQuickManageIntent] = useState(false);
+  const [saveWalletButtonPulse, setSaveWalletButtonPulse] = useState(false);
+  const quickManagePrimedRef = useRef(false);
+  const saveWalletButtonRef = useRef<HTMLDivElement>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [mode, setMode] = useState<"other" | "service">("service");
   const [manualCollectionAddress, setManualCollectionAddress] = useState("");
@@ -4993,12 +5000,26 @@ export const ManageDomainPage: FC = () => {
         handleTabChange("any");
         setManualCollectionAddress(normalized);
         setAutoAnyLookupTriggered(true);
+        if (params.get("quickManage") === "1") {
+          setQuickManageIntent(true);
+        }
       } catch {
         /* ignore */
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
+
+  // ====== ЭФФЕКТ 3.2: quickManage — сразу дожимаем "Управлять" ======
+  // Без этого юзер из превью-модалки ProfileWidget попадал бы на резолвленный
+  // итем, но всё равно должен был бы вручную нажать "Управлять" — весь смысл
+  // быстрого флоу в том, чтобы сразу оказаться в режиме редактирования DNS.
+  useEffect(() => {
+    if (quickManageIntent && editingItem && !resolverAddress) {
+      handleManageClick();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickManageIntent, editingItem, resolverAddress]);
 
   // ====== ЭФФЕКТ 3.1: Авто-запуск поиска по адресу из deep-link'а ======
   useEffect(() => {
@@ -5051,6 +5072,41 @@ export const ManageDomainPage: FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tutorial.active, editingItem, wallet?.account?.address]);
+
+  // ====== ЭФФЕКТ 5.2: quickManage (превью-модалка ProfileWidget) — то же
+  // предзаполнение адреса, что и 5.1 для обучалки, но независимо от тура —
+  // юзер мог прийти сюда вне тьюториала, просто через кругляш 1 в модалке. ======
+  useEffect(() => {
+    if (
+      quickManageIntent &&
+      editingItem &&
+      !formData.walletAddress &&
+      wallet?.account?.address
+    ) {
+      setFormData((prev) => ({ ...prev, walletAddress: wallet.account!.address }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickManageIntent, editingItem, wallet?.account?.address]);
+
+  // ====== ЭФФЕКТ 5.3: quickManage — подсветка кнопки "Сохранить" ======
+  // Разово (quickManagePrimedRef), как только DNS-блок реально открылся —
+  // юзеру остаётся только нажать одну кнопку, а не искать её глазами.
+  useEffect(() => {
+    if (
+      quickManageIntent &&
+      showDNSBlock &&
+      resolverAddress &&
+      !dnsLoading &&
+      !quickManagePrimedRef.current
+    ) {
+      quickManagePrimedRef.current = true;
+      setSaveWalletButtonPulse(true);
+      setTimeout(() => {
+        saveWalletButtonRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickManageIntent, showDNSBlock, resolverAddress, dnsLoading]);
 
   // ====== ПРОВЕРКА АДРЕСА ======
   const handleCheckResolverAddress = async () => {
@@ -5312,7 +5368,7 @@ export const ManageDomainPage: FC = () => {
             apiService.notifyDnsRecordUpdated(editingItem.title, "address", "set");
           }
           if (tutorial.active && !tutorial.isStepDone('domain_answered')) {
-            await tutorial.recordStep('domain_answered');
+            await tutorial.recordStep('domain_answered', editingItem?.title);
             tutorial.resumeStep();
           }
         } else {
@@ -6972,20 +7028,33 @@ export const ManageDomainPage: FC = () => {
                       }}
                     />
                   </div>
-                  <Button
-                    size="s"
-                    onClick={handleSaveWalletAddress}
-                    loading={dnsOperationLoading}
-                    style={{
-                      flexShrink: 0,
-                      padding: "6px 12px",
-                      fontSize: "12px",
-                      background: "#4CAF50",
-                      color: "white",
-                    }}
-                  >
-                    {t("save")}
-                  </Button>
+                  <div ref={saveWalletButtonRef} style={{ flexShrink: 0 }}>
+                    <Button
+                      size="s"
+                      onClick={() => {
+                        setSaveWalletButtonPulse(false);
+                        handleSaveWalletAddress();
+                      }}
+                      loading={dnsOperationLoading}
+                      style={{
+                        padding: "6px 12px",
+                        fontSize: "12px",
+                        background: "#4CAF50",
+                        color: "white",
+                        animation: saveWalletButtonPulse ? "quickManageSavePulse 1.3s ease-in-out infinite" : "none",
+                      }}
+                    >
+                      {t("save")}
+                    </Button>
+                    {saveWalletButtonPulse && (
+                      <style>{`
+                        @keyframes quickManageSavePulse {
+                          0%, 100% { box-shadow: 0 0 4px rgba(76, 175, 80, 0.6); }
+                          50% { box-shadow: 0 0 16px rgba(76, 175, 80, 1); }
+                        }
+                      `}</style>
+                    )}
+                  </div>
                 </div>
                 {tutorial.active && !tutorial.isStepDone('domain_answered') && (
                   <TutorialTooltip

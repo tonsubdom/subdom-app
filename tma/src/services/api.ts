@@ -808,6 +808,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
   async getTutorialProgress(address: string): Promise<{
     started: boolean;
     completedSteps: string[];
+    stepDetails: Record<string, string>;
     rewardGranted: boolean;
     rewardLength: string | null;
   }> {
@@ -820,7 +821,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
       return json.data;
     } catch (error) {
       console.error('Error getting tutorial progress:', error);
-      return { started: false, completedSteps: [], rewardGranted: false, rewardLength: null };
+      return { started: false, completedSteps: [], stepDetails: {}, rewardGranted: false, rewardLength: null };
     }
   }
 
@@ -836,8 +837,9 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
-  async recordTutorialStep(address: string, step: string): Promise<{
+  async recordTutorialStep(address: string, step: string, detail?: string): Promise<{
     completedSteps: string[];
+    stepDetails: Record<string, string>;
     rewardGranted: boolean;
     rewardLength: string | null;
   }> {
@@ -845,13 +847,13 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/tutorial/step`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, step }),
+        body: JSON.stringify({ address, step, detail }),
       });
       const json = await response.json();
       return json.data;
     } catch (error) {
       console.error('Error recording tutorial step:', error);
-      return { completedSteps: [], rewardGranted: false, rewardLength: null };
+      return { completedSteps: [], stepDetails: {}, rewardGranted: false, rewardLength: null };
     }
   }
 

@@ -53,6 +53,8 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
   const isExpanded = forceExpanded ?? internalExpanded;
   const [contentHeight, setContentHeight] = useState<number>(0);
   const contentRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const prevExpandedRef = useRef<boolean>(isExpanded);
 
   const { payForZone } = useZonePayment();
   const [payingKey, setPayingKey] = useState<string | null>(null);
@@ -116,6 +118,23 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
       setContentHeight(contentRef.current.scrollHeight);
     }
   }, [paymentData, isExpanded]);
+
+  // Разворот меняет только max-height контента (см. transition ниже) — без
+  // явного скролла страница остаётся на месте, и юзер не видит, что блок
+  // раскрылся ниже видимой области. Ловим именно переход false→true (не
+  // сам isExpanded), чтобы не скроллить лишний раз при повторных рендерах,
+  // и ждём длительность CSS-transition (0.3s), чтобы скроллить уже к
+  // развернувшемуся блоку, а не к точке, где он ещё нулевой высоты.
+  useEffect(() => {
+    if (isExpanded && !prevExpandedRef.current) {
+      const id = setTimeout(() => {
+        sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 300);
+      prevExpandedRef.current = isExpanded;
+      return () => clearTimeout(id);
+    }
+    prevExpandedRef.current = isExpanded;
+  }, [isExpanded]);
 
   const toggleExpand = () => {
     setInternalExpanded(!internalExpanded);
@@ -441,7 +460,7 @@ const PaymentAttemptsSection: React.FC<PaymentAttemptsSectionProps> = ({
   };
 
   return (
-    <div style={{ marginTop: "10px" }}>
+    <div ref={sectionRef} style={{ marginTop: "10px" }}>
       <style>{`
         @keyframes payment-attempt-spin {
           to { transform: rotate(360deg); }

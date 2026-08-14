@@ -1923,23 +1923,24 @@ const LANG = {
     newUser: '👤 <b>НОВЫЙ ПОЛЬЗОВАТЕЛЬ ЗАРЕГИСТРИРОВАН!</b>',
     promoGranted: '🎁 <b>ВЫДАНА БЕСПЛАТНАЯ ПОПЫТКА!</b>',
     tutorialCompleted: '🎓 <b>ОБУЧЕНИЕ ПРОЙДЕНО!</b>',
-    fieldStepsCompleted: '📋 Шаги',
-    // Порядок строго совпадает с TUTORIAL_STEPS в server-sqlite.ts
-    // (см. комментарий там же про синхронизацию с TutorialContext.tsx) —
-    // награда выдаётся только когда пройдены ВСЕ, так что в уведомлении
-    // всегда N/N, но список всё равно строим по этому порядку, а не
-    // произвольно из completedSteps.
-    tutorialStepNames: [
-      'Домен',
-      'Создание зоны',
-      'Создание субдомена',
-      'Профиль / аватар',
-      'Посещение сайта',
-      'Создание торрента',
-      'Обзор маркета',
-      'Каталог зон',
-      'Вкладки профиля',
-    ],
+    tutorialGraduateSuffix: 'прошёл обучение функционалу TON DNS!',
+    tutorialResistanceLine: '🐕 Ещё один пёс в сопротивлении.',
+    tutorialRewardGranted: '🏆 Направлена +1 SBT-зона',
+    fieldStepsCompleted: '📋 Пройденные шаги',
+    // Ключ — id шага из TUTORIAL_STEPS (server-sqlite.ts) — совпадение по id,
+    // а не по позиции в массиве (та же логика раньше требовала completedSteps
+    // строго 1-в-1 совпадать позициями, что легко рассинхронизировать).
+    tutorialStepLabels: {
+      domain_answered: 'Домен / привязка адреса кошелька',
+      zone_selected: 'Создание первой зоны .ton',
+      subdomain_created: 'Создание первого субдомена',
+      profile_saved: 'Имя кошелька / Аватар / Название / Описание / Категория',
+      site_visited: 'Создание сайта на .ton',
+      torrent_created: 'Создание торрента на .ton',
+      market_toured: 'Обзор маркета @subdom',
+      catalog_focused: 'Обзор Каталога .ton-сайтов',
+      profile_tabs_toured: 'Обзор Вкладок личного кабинета',
+    } as Record<string, string>,
     newMessage: '📨 <b>НОВОЕ СООБЩЕНИЕ ОТ КЛИЕНТА</b>',
     newChat: '🔔 <b>НОВЫЙ ЧАТ!</b>',
     paymentRecorded: '💰 <b>ОПЛАЧЕННАЯ ПОПЫТКА ДОБАВЛЕНА!</b>',
@@ -2148,18 +2149,21 @@ const LANG = {
     newUser: '👤 <b>NEW USER REGISTERED!</b>',
     promoGranted: '🎁 <b>FREE ATTEMPT GRANTED!</b>',
     tutorialCompleted: '🎓 <b>TUTORIAL COMPLETED!</b>',
-    fieldStepsCompleted: '📋 Steps',
-    tutorialStepNames: [
-      'Domain',
-      'Zone creation',
-      'Subdomain creation',
-      'Profile / avatar',
-      'Site visit',
-      'Torrent creation',
-      'Market tour',
-      'Zone catalog',
-      'Profile tabs',
-    ],
+    tutorialGraduateSuffix: 'completed the TON DNS tutorial!',
+    tutorialResistanceLine: '🐕 Another dog joins the resistance.',
+    tutorialRewardGranted: '🏆 Granted +1 SBT zone',
+    fieldStepsCompleted: '📋 Steps completed',
+    tutorialStepLabels: {
+      domain_answered: 'Domain / wallet address linking',
+      zone_selected: 'Creating your first .ton zone',
+      subdomain_created: 'Creating your first subdomain',
+      profile_saved: 'Wallet name / Avatar / Title / Description / Category',
+      site_visited: 'Building a .ton site',
+      torrent_created: 'Creating a .ton torrent',
+      market_toured: 'Market tour @subdom',
+      catalog_focused: '.ton site catalog tour',
+      profile_tabs_toured: 'Profile tabs tour',
+    } as Record<string, string>,
     newMessage: '📨 <b>NEW CLIENT MESSAGE</b>',
     newChat: '🔔 <b>NEW CHAT!</b>',
     paymentRecorded: '💰 <b>PAYMENT ATTEMPT ADDED!</b>',
@@ -4041,29 +4045,43 @@ ${$.fieldLength}: ${length} символов
     address: string,
     length: string,
     isTestnet: boolean = true,
-    completedSteps: string[] = []
+    completedSteps: string[] = [],
+    stepDetails: Record<string, string> = {}
   ): Promise<boolean> {
     try {
-      const network = this.formatNetwork(isTestnet);
-
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
-        // completedSteps приходит из TUTORIAL_STEPS (server-sqlite.ts) —
-        // награда выдаётся только когда пройдены ВСЕ, так что тут всегда
-        // N/N, но список строим по порядку $.tutorialStepNames (тот же
-        // порядок, что и TUTORIAL_STEPS), а не по порядку прихода из БД.
-        const stepsList = $.tutorialStepNames
-          .map((name: string, i: number) => `${completedSteps[i] ? '✅' : '▫️'} ${name}`)
+        // completedSteps — уже id-шаги из TUTORIAL_STEPS (не позиционные
+        // булевы флаги, как раньше) — сматчиваем по id и с лейблом, и с
+        // деталью (stepDetails[id]), порядок совпадений не важен, потому
+        // что каждый шаг ищется по собственному ключу, а не по индексу.
+        const stepsList = completedSteps
+          .map((stepId) => {
+            const label = $.tutorialStepLabels[stepId] || stepId;
+            const detail = stepDetails[stepId];
+            return `✅ ${label}${detail ? `: ${detail}` : ''}`;
+          })
           .join('\n');
         const lengthUnit = lang === 'en' ? 'characters' : 'символов';
+        // Домен-формат имени юзера + ссылка на тонвьювер зашита прямо в
+        // приветственную строку (formatTonviewerLink уже резолвит адрес →
+        // привязанный домен и оборачивает в <a href>) — отдельная строка с
+        // сырым адресом ниже больше не нужна, домены дальше по тексту (в
+        // деталях шагов) идут plain-текстом, чтобы их линковал сам Telegram
+        // как .ton-сайт, а не тонвьювер.
+        const domainLink = await this.formatTonviewerLink(address, isTestnet);
+        // Сеть в явном виде убрана из мокапа юзера (адрес/сеть дублировали то,
+        // что уже видно по ссылке-домену) — но testnet-прохождения всё равно
+        // помечаем отдельной строкой, чтобы паблик-чат не путал их с реальными.
+        const testnetNote = isTestnet ? `\n${this.formatNetwork(isTestnet)}\n` : '';
         return `
-${$.tutorialCompleted}
+🎓 ${domainLink} ${$.tutorialGraduateSuffix}
+${testnetNote}
+${$.tutorialResistanceLine}
 
-${network}
-${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
-${$.fieldLength}: ${length} ${lengthUnit}
+${$.tutorialRewardGranted}: ${length} ${lengthUnit}.
 
-${$.fieldStepsCompleted} (${completedSteps.length}/${$.tutorialStepNames.length}):
+${$.fieldStepsCompleted} (${completedSteps.length}/9):
 ${stepsList}
         `.trim();
       }, [[{ text: LANG.ru.btnLearnToo, url: DeeplinkUtils.generateTutorialLink() }]]);

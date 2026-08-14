@@ -3491,6 +3491,11 @@ const ProfileWidget: React.FC = () => {
   // ====== ПРЕВЬЮ-МОДАЛКА ОНЧЕЙН-ПРОФИЛЯ (аватар/домен/баланс) ======
   const [showProfilePreview, setShowProfilePreview] = useState(false);
   const [avatarBlockHovered, setAvatarBlockHovered] = useState(false);
+  // 2 подпункта в превью-модалке: 1 — привязать адрес кошелька к домену
+  // (кругляш активен, пока !domain), 2 — заполнить аватар/профиль (кругляш
+  // активен, когда домен уже есть). Селект вместо текстового инпута — юзер
+  // выбирает из уже своих доменов на кошельке, не вводит руками.
+  const [selectedQuickDomain, setSelectedQuickDomain] = useState<Zone | null>(null);
   // "Настройте onchain-профиль" — только пока подключено, нет ни картинки,
   // ни резолвнутого домена, и юзер ещё не закрыл подсказку крестиком для
   // ЭТОГО конкретного адреса (ключ в localStorage per-address, чтобы не
@@ -4928,29 +4933,157 @@ const ProfileWidget: React.FC = () => {
                 </svg>
               )}
             </div>
-            <h3
-              style={{
-                margin: "0 0 4px 0",
-                fontSize: "16px",
-                fontWeight: 700,
-                color: colors.text,
-                textAlign: "center",
-                fontFamily: "monospace",
-              }}
-            >
-              {domain || t("onchainProfileNoDomain") || "Домен не определён"}
-            </h3>
-            <p
-              style={{
-                margin: "0 0 16px 0",
-                fontSize: "11px",
-                color: colors.text,
-                opacity: 0.6,
-                textAlign: "center",
-              }}
-            >
-              {t("onchainProfilePreviewHint") || "Данные из dns_text-записей этого домена"}
-            </p>
+            {/* 2 подпункта: 1 — привязать адрес кошелька к домену (активен,
+                пока !domain), 2 — заполнить аватар/профиль (активен, когда
+                домен уже привязан). Кругляш done — зелёная галочка,
+                активный — пульсирующая подсветка акцентным цветом. */}
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "8px", marginBottom: "10px" }}>
+              <div
+                style={{
+                  width: "22px",
+                  height: "22px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  background: domain ? "#4ade80" : colors.cyberpunk,
+                  color: domain ? "#000" : (isDark ? "#000" : "#fff"),
+                  boxShadow: !domain ? `0 0 10px ${colors.cyberpunk}` : "none",
+                  animation: !domain ? "quickDomainStepPulse 1.6s ease-in-out infinite" : "none",
+                }}
+              >
+                {domain ? "✓" : "1"}
+              </div>
+              <div style={{ width: "18px", height: "2px", background: colors.border }} />
+              <div
+                style={{
+                  width: "22px",
+                  height: "22px",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  background: domain ? colors.cyberpunk : colors.border,
+                  color: domain ? (isDark ? "#000" : "#fff") : colors.text,
+                  opacity: domain ? 1 : 0.5,
+                  boxShadow: domain ? `0 0 10px ${colors.cyberpunk}` : "none",
+                }}
+              >
+                2
+              </div>
+            </div>
+            <style>{`
+              @keyframes quickDomainStepPulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.15); }
+              }
+              @keyframes quickDomainConfirmPulse {
+                0%, 100% { box-shadow: 0 0 6px var(--pulse-color, rgba(0,0,0,0)); }
+                50% { box-shadow: 0 0 16px var(--pulse-color, rgba(0,0,0,0)); }
+              }
+            `}</style>
+
+            {!domain ? (
+              <div style={{ marginBottom: "16px" }}>
+                <div style={{ fontSize: "12px", color: colors.text, opacity: 0.7, textAlign: "center", marginBottom: "8px" }}>
+                  {t("onchainProfilePickDomainHint") || "Выберите домен, чтобы привязать к нему кошелёк:"}
+                </div>
+                {getUserZones.length === 0 ? (
+                  <div style={{ fontSize: "11px", color: colors.text, opacity: 0.5, textAlign: "center" }}>
+                    {t("tutorialNoDomainsFound") || "Домены не найдены на этом кошельке"}
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      value={selectedQuickDomain?.address || ""}
+                      onChange={(e) => {
+                        const picked = getUserZones.find((z) => z.address === e.target.value) || null;
+                        setSelectedQuickDomain(picked);
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: "10px",
+                        border: `1px solid ${colors.border}`,
+                        background: colors.background,
+                        color: colors.text,
+                        fontSize: "13px",
+                        fontFamily: "monospace",
+                        appearance: "none" as const,
+                        cursor: "pointer",
+                        marginBottom: selectedQuickDomain ? "10px" : 0,
+                      }}
+                    >
+                      <option value="">{t("onchainProfileSelectDomainPlaceholder") || "Домен…"}</option>
+                      {getUserZones.map((z) => (
+                        <option key={z.address} value={z.address}>
+                          {decodeDomainForDisplay(z.name)}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedQuickDomain && (
+                      <button
+                        onClick={() => {
+                          setShowProfilePreview(false);
+                          setTimeout(() => {
+                            navigateHash(`/#/manage?address=${encodeURIComponent(selectedQuickDomain.address)}&quickManage=1`);
+                          }, 300);
+                        }}
+                        style={
+                          {
+                            width: "100%",
+                            padding: "12px",
+                            borderRadius: "10px",
+                            border: "none",
+                            background: colors.cyberpunk,
+                            color: isDark ? "#000" : "#fff",
+                            fontSize: "14px",
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            "--pulse-color": colors.cyberpunk,
+                            animation: "quickDomainConfirmPulse 1.4s ease-in-out infinite",
+                          } as React.CSSProperties
+                        }
+                      >
+                        {t("onchainProfileContinueToManage") || "Продолжить"}: {decodeDomainForDisplay(selectedQuickDomain.name)}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            ) : (
+              <>
+                <h3
+                  style={{
+                    margin: "0 0 4px 0",
+                    fontSize: "16px",
+                    fontWeight: 700,
+                    color: colors.text,
+                    textAlign: "center",
+                    fontFamily: "monospace",
+                  }}
+                >
+                  {domain}
+                </h3>
+                <p
+                  style={{
+                    margin: "0 0 16px 0",
+                    fontSize: "11px",
+                    color: colors.text,
+                    opacity: 0.6,
+                    textAlign: "center",
+                  }}
+                >
+                  {t("onchainProfilePreviewHint") || "Данные из dns_text-записей этого домена"}
+                </p>
+              </>
+            )}
 
             <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
               {[
@@ -5190,7 +5323,10 @@ const ProfileWidget: React.FC = () => {
           >
             <div
               onClick={() => {
-                if (address) setShowProfilePreview(true);
+                if (address) {
+                  setSelectedQuickDomain(null);
+                  setShowProfilePreview(true);
+                }
               }}
               onMouseEnter={() => setAvatarBlockHovered(true)}
               onMouseLeave={() => setAvatarBlockHovered(false)}

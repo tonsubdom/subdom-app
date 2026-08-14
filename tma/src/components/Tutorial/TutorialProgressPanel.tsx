@@ -23,7 +23,7 @@ interface StepCopy {
 // элемент интерфейса) — здесь нужен более общий пересказ "что за шаг", не
 // заточенный под один конкретный виджет на странице. Функция (не константа) —
 // нужен доступ к t() для переводов на все языки LanguageContext.
-const getStepCopy = (t: (key: string) => string): Record<TutorialStepId, StepCopy> => ({
+export const getStepCopy = (t: (key: string) => string): Record<TutorialStepId, StepCopy> => ({
   domain_answered: {
     title: t('tutorialStepTitleDomain') || 'Указать домен',
     description: t('tutorialStepDescDomain') || 'Ответьте, есть ли у вас .ton домен — от этого зависит, с чего начнётся тур.',

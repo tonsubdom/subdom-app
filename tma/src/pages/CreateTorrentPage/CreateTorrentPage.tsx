@@ -773,7 +773,7 @@ const CreateTorrentPage: React.FC = () => {
       // одном лишь bagID без оплаты провайдерам) шаг обучалки засчитывался
       // преждевременно, до того как файлы реально начинали где-то храниться.
       if (tutorial.active && !tutorial.isStepDone('torrent_created')) {
-        tutorial.recordStep('torrent_created');
+        tutorial.recordStep('torrent_created', domainInput.trim() || bagId);
       }
 
       apiService.setNetwork(isTestnet);

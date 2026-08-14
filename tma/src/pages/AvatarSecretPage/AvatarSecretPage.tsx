@@ -22,7 +22,7 @@ import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-context.tsx';
 import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-items-utils';
-import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
+import { convertUserFriendlyToRaw, getNftOwnerAddress } from '@/utils/tonUtils';
 import { TransactionService } from '@/services/transactionService';
 import { track } from '@/utils/analytics';
 import { encodeDomainForChain, decodeDomainForDisplay } from '@/utils/domainPunycode';
@@ -143,6 +143,26 @@ export const AvatarSecretPage: React.FC = () => {
   const [resolvedDomainName, setResolvedDomainName] = useState<string | null>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [loadingExisting, setLoadingExisting] = useState(false);
+  // Реальный owner_address NFT-итема (домена/зоны/субдомена), отдельно от
+  // ResolvedDomain.ownerAddress — тот пустой для всего, что резолвится через
+  // TEP-81 full-chain (все субдомены платформы, см. ownerMetaService.ts),
+  // поэтому владельца дотягиваем сами через toncenter nft/items. null —
+  // "ещё не знаем" (тоже трактуется как "не владелец", гейт fail-closed).
+  const [resolvedOwnerAddress, setResolvedOwnerAddress] = useState<string | null>(null);
+  const [checkingOwner, setCheckingOwner] = useState(false);
+
+  // Fail-closed: пока владелец не подтверждён (ушёл в null/ещё грузится),
+  // считаем "не владелец" — форма редактирования лучше лишний раз спрячется,
+  // чем покажет "Сохранить onchain" для чужого домена.
+  const isOwner = useMemo(() => {
+    const myAddress = wallet?.account?.address;
+    if (!myAddress || !resolvedOwnerAddress) return false;
+    try {
+      return convertUserFriendlyToRaw(myAddress).toLowerCase() === convertUserFriendlyToRaw(resolvedOwnerAddress).toLowerCase();
+    } catch {
+      return false;
+    }
+  }, [wallet?.account?.address, resolvedOwnerAddress]);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -194,6 +214,8 @@ export const AvatarSecretPage: React.FC = () => {
     setResolveError(null);
     setResolvedDomain(null);
     setResolvedDomainName(null);
+    setResolvedOwnerAddress(null);
+    setCheckingOwner(false);
     setTitle('');
     setDescription('');
     setCategory('');
@@ -206,6 +228,21 @@ export const AvatarSecretPage: React.FC = () => {
     setIconPreview(null);
     setHasExisting({ title: false, description: false, category: false, picture: false, icon: false });
     previousValuesRef.current = { title: '', description: '', category: '' };
+  };
+
+  // Реальную проверку владельца делаем отдельным походом в toncenter —
+  // resolveDomainNftAddress не всегда её знает (см. resolvedOwnerAddress
+  // выше), поэтому нельзя полагаться на resolved.ownerAddress напрямую.
+  const checkOwner = async (nftAddress: string) => {
+    setCheckingOwner(true);
+    try {
+      const owner = await getNftOwnerAddress(nftAddress, isTestnet);
+      setResolvedOwnerAddress(owner);
+    } catch {
+      setResolvedOwnerAddress(null);
+    } finally {
+      setCheckingOwner(false);
+    }
   };
 
   const resolveDomain = async (rawDomain: string) => {
@@ -237,6 +274,7 @@ export const AvatarSecretPage: React.FC = () => {
       setResolvedDomain(resolved);
       setResolvedDomainName(matchedName);
       loadExistingRecords(resolved.nftAddress);
+      checkOwner(resolved.nftAddress);
     } catch (e) {
       setResolveError(t('avatarResolveError') || 'Ошибка при поиске домена');
     } finally {
@@ -260,6 +298,7 @@ export const AvatarSecretPage: React.FC = () => {
       const nftAddress = Address.parse(trimmed).toString({ bounceable: true });
       setResolvedDomain({ nftAddress, ownerAddress: '' });
       loadExistingRecords(nftAddress);
+      checkOwner(nftAddress);
     } catch (e) {
       setResolveError(t('avatarInvalidAddress') || 'Некорректный адрес');
     } finally {
@@ -412,6 +451,10 @@ export const AvatarSecretPage: React.FC = () => {
       showSnackbar(t('avatarDomainNotFound') || 'Сначала найдите домен', 'error');
       return;
     }
+    if (!isOwner) {
+      showSnackbar(t('avatarNotOwner') || 'Редактировать может только владелец домена', 'error');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -464,8 +507,12 @@ export const AvatarSecretPage: React.FC = () => {
           category: category.trim() && category.trim() !== prev.category ? category.trim() : undefined,
         });
       }
-      if (tutorial.active && !tutorial.isStepDone('profile_saved')) {
-        tutorial.recordStep('profile_saved');
+      // Шаг "профиль" засчитывается только если домен/адрес кошелька уже
+      // привязан (domain_answered) — юзер должен пройти оба подпункта
+      // модалки "Блокчейн-профиль" (кругляш 1 — привязка, кругляш 2 —
+      // редактирование), а не только сохранить аватар в обход первого.
+      if (tutorial.active && tutorial.isStepDone('domain_answered') && !tutorial.isStepDone('profile_saved')) {
+        tutorial.recordStep('profile_saved', notifyDomain || undefined);
       }
     } catch (e: any) {
       console.error('Avatar/Secret save error:', e);
@@ -626,6 +673,18 @@ export const AvatarSecretPage: React.FC = () => {
               </Typography>
             )}
 
+            {checkingOwner && (
+              <Typography sx={{ fontSize: '11px', color: colors.textSecondary, mb: 1, textAlign: 'center' }}>
+                {t('avatarCheckingOwner') || 'Проверяю владельца домена…'}
+              </Typography>
+            )}
+
+            {!checkingOwner && !isOwner && (
+              <Alert severity="warning" sx={{ mb: 2, fontSize: '12px' }}>
+                {t('avatarNotOwner') || 'Редактировать может только владелец домена'}
+              </Alert>
+            )}
+
             <Typography
               sx={{
                 fontSize: '12px',
@@ -685,6 +744,7 @@ export const AvatarSecretPage: React.FC = () => {
                 placeholder={t('avatarTitlePlaceholder') || 'Заголовок'}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                disabled={!isOwner}
                 style={inputStyle}
               />
               {hasExisting.title && (
@@ -696,6 +756,7 @@ export const AvatarSecretPage: React.FC = () => {
                 placeholder={t('avatarDescriptionPlaceholder') || 'Описание'}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                disabled={!isOwner}
                 style={inputStyle}
               />
               {hasExisting.description && (
@@ -705,11 +766,12 @@ export const AvatarSecretPage: React.FC = () => {
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
+              disabled={!isOwner}
               style={{
                 ...inputStyle,
                 marginTop: '4px',
                 appearance: 'none' as const,
-                cursor: 'pointer',
+                cursor: isOwner ? 'pointer' : 'default',
               }}
             >
               <option value="">{t('avatarCategoryPlaceholder') || 'Категория…'}</option>
@@ -718,17 +780,18 @@ export const AvatarSecretPage: React.FC = () => {
               ))}
             </select>
             <Box
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragOver={(e) => { if (isOwner) { e.preventDefault(); setDragOver(true); } }}
               onDragLeave={() => setDragOver(false)}
-              onDrop={handlePictureDrop}
-              onClick={() => fileInputRef.current?.click()}
+              onDrop={(e) => { if (isOwner) handlePictureDrop(e); }}
+              onClick={() => { if (isOwner) fileInputRef.current?.click(); }}
               sx={{
                 border: `2px dashed ${dragOver ? colors.accent : colors.border}`,
                 borderRadius: '14px',
                 padding: '14px',
                 marginBottom: '12px',
                 textAlign: 'center',
-                cursor: 'pointer',
+                cursor: isOwner ? 'pointer' : 'default',
+                opacity: isOwner ? 1 : 0.6,
                 transition: 'border-color 0.2s, background 0.2s',
                 background: dragOver ? `${colors.accent}14` : 'transparent',
               }}
@@ -740,6 +803,7 @@ export const AvatarSecretPage: React.FC = () => {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                disabled={!isOwner}
                 style={{
                   position: 'absolute',
                   width: 1,
@@ -792,6 +856,7 @@ export const AvatarSecretPage: React.FC = () => {
                   setIconPreview(null);
                 }}
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                disabled={!isOwner}
                 style={{ ...inputStyle, marginBottom: 0 }}
               />
               {dropNotice && (
@@ -801,14 +866,16 @@ export const AvatarSecretPage: React.FC = () => {
               )}
             </Box>
 
-            <Button
-              fullWidth
-              onClick={handleSave}
-              disabled={saving}
-              sx={buttonSx}
-            >
-              {saving ? (t('avatarSaving') || 'Сохранение...') : (t('avatarSave') || 'Сохранить onchain')}
-            </Button>
+            {isOwner && (
+              <Button
+                fullWidth
+                onClick={handleSave}
+                disabled={saving}
+                sx={buttonSx}
+              >
+                {saving ? (t('avatarSaving') || 'Сохранение...') : (t('avatarSave') || 'Сохранить onchain')}
+              </Button>
+            )}
           </Box>
         )}
       </Box>

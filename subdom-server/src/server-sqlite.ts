@@ -484,6 +484,11 @@ const initializeDatabase = (db: SqliteDatabase) => {
     CREATE TABLE IF NOT EXISTS tutorial_progress (
       address TEXT PRIMARY KEY,
       completedSteps TEXT NOT NULL DEFAULT '[]',
+      -- JSON-объект { [stepId]: string } — конкретное имя/значение, с которым
+      -- юзер прошёл шаг (название зоны/субдомена/домена/торрента), для
+      -- модалки завершения и уведомления бота. Не все шаги его имеют
+      -- (навигационные шаги вроде market_toured — просто отсутствуют в объекте).
+      stepDetails TEXT NOT NULL DEFAULT '{}',
       rewardGranted INTEGER NOT NULL DEFAULT 0,
       rewardLength TEXT,
       startedAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -584,6 +589,7 @@ const initializeDatabase = (db: SqliteDatabase) => {
   // migrateDatabase(db);
 
   migratePlatformCacheColumns(db);
+  backfillTutorialStepDetails(db);
 };
 
 // CREATE TABLE IF NOT EXISTS не добавляет новые колонки, если таблица уже
@@ -644,6 +650,76 @@ const migratePlatformCacheColumns = (db: SqliteDatabase) => {
   // platform_wrappers_cache никогда не наполнялась.
   addColumnIfMissing('platform_wrappers_cache', 'wrapperHolderAddress', 'wrapperHolderAddress TEXT');
   addColumnIfMissing('platform_wrappers_cache', 'dividendOwnerAddress', 'dividendOwnerAddress TEXT');
+
+  addColumnIfMissing('tutorial_progress', 'stepDetails', "stepDetails TEXT NOT NULL DEFAULT '{}'");
+};
+
+// Юзеры, прошедшие обучалку ДО того, как появился stepDetails, никогда не
+// присылали конкретные имена зон/субдоменов через /api/tutorial/step —
+// восстанавливаем то, что можно достоверно восстановить из уже
+// существующих данных (platform_*_cache, ownerAddress), а не гадаем.
+//
+// ВАЖНО: firstSeenAt в platform_zones_cache — момент, когда краулер
+// ВПЕРВЫЕ проиндексировал строку в SQLite, а не момент реального создания
+// зоны ончейн — для кошельков с историей (у которых крауler делал
+// массовый бэкфилл разом) все старые зоны получают ОДИНАКОВЫЙ firstSeenAt
+// того бэкфилла, а не свою реальную дату. "ORDER BY firstSeenAt ASC" на
+// таком кошельке подставил бы случайную древнюю зону, а не ту, что юзер
+// реально создал во время тура. Правильный источник реальной хронологии —
+// chainCreatedAt (timestamp транзакции деплоя коллекции с чейна). Берём
+// зону с ближайшим (но не позже) completedAt — это и есть та, что юзер
+// создал прямо во время тура. Для субдоменов chainCreatedAt не хранится
+// (только firstSeenAt) — но их не бэкфиллили массово одним пакетом так же,
+// как зоны, потому берём просто самый ранний firstSeenAt в окне
+// [момент создания найденной зоны; completedAt].
+// domain_answered/profile_saved/torrent_created источника не имеют
+// (storage_deals не хранит ownerAddress, а какой именно домен юзер привязывал/
+// редактировал нигде отдельно не сохранено) — для них просто остаётся пусто,
+// сообщение/модалка покажут шаг без уточнения имени.
+const backfillTutorialStepDetails = (db: SqliteDatabase) => {
+  const rows = db.prepare(`
+    SELECT address, stepDetails, completedAt FROM tutorial_progress
+    WHERE rewardGranted = 1 AND (stepDetails IS NULL OR stepDetails = '{}') AND completedAt IS NOT NULL
+  `).all() as Array<{ address: string; stepDetails: string; completedAt: string }>;
+
+  if (rows.length === 0) return;
+
+  // chainCreatedAt приходит с чейна в ISO8601 ('...T...Z'), а firstSeenAt/
+  // completedAt — в SQLite CURRENT_TIMESTAMP формате ('YYYY-MM-DD HH:MM:SS').
+  // Сырое строковое сравнение двух разных форматов даёт неверный порядок
+  // ('T' > ' ' лексикографически, так что ISO-таймстемп внутри суток всегда
+  // "больше" SQLite-таймстемпа того же дня, даже если по факту раньше) —
+  // прогоняем оба через datetime() для приведения к общему виду перед сравнением.
+  const findZone = db.prepare(`
+    SELECT COALESCE(domain, name) as label, COALESCE(chainCreatedAt, firstSeenAt) as ts
+    FROM platform_zones_cache
+    WHERE ownerAddress = ? AND datetime(COALESCE(chainCreatedAt, firstSeenAt)) <= datetime(?)
+    ORDER BY datetime(ts) DESC LIMIT 1
+  `);
+  const findSubdomain = db.prepare(`
+    SELECT name as label FROM platform_subdomains_cache
+    WHERE ownerAddress = ? AND datetime(firstSeenAt) >= datetime(?) AND datetime(firstSeenAt) <= datetime(?)
+    ORDER BY datetime(firstSeenAt) ASC LIMIT 1
+  `);
+  const update = db.prepare(`UPDATE tutorial_progress SET stepDetails = ? WHERE address = ?`);
+
+  let backfilled = 0;
+  for (const row of rows) {
+    const details: Record<string, string> = {};
+    const zone = findZone.get(row.address, row.completedAt) as { label: string; ts: string } | undefined;
+    if (zone?.label) {
+      details['zone_selected'] = zone.label;
+      const subdomain = findSubdomain.get(row.address, zone.ts, row.completedAt) as { label: string } | undefined;
+      if (subdomain?.label) details['subdomain_created'] = subdomain.label;
+    }
+    if (Object.keys(details).length > 0) {
+      update.run(JSON.stringify(details), row.address);
+      backfilled++;
+    }
+  }
+  if (backfilled > 0) {
+    console.log(`🔧 Миграция: backfill stepDetails для ${backfilled} юзеров, завершивших обучалку ранее`);
+  }
 };
 
 // Все шаги обучалки по всем 5 блокам (см. Log.md/подраздел "обучалка" —
@@ -4361,11 +4437,11 @@ app.get('/api/tutorial/progress/:address', (req, res) => {
     const db = req.db;
 
     const row = db.prepare('SELECT * FROM tutorial_progress WHERE address = ?').get(address) as
-      { address: string; completedSteps: string; rewardGranted: number; rewardLength: string | null; startedAt: string; completedAt: string | null }
+      { address: string; completedSteps: string; stepDetails: string; rewardGranted: number; rewardLength: string | null; startedAt: string; completedAt: string | null }
       | undefined;
 
     if (!row) {
-      return res.json({ success: true, data: { started: false, completedSteps: [], rewardGranted: false, rewardLength: null } });
+      return res.json({ success: true, data: { started: false, completedSteps: [], stepDetails: {}, rewardGranted: false, rewardLength: null } });
     }
 
     return res.json({
@@ -4373,6 +4449,7 @@ app.get('/api/tutorial/progress/:address', (req, res) => {
       data: {
         started: true,
         completedSteps: JSON.parse(row.completedSteps || '[]'),
+        stepDetails: JSON.parse(row.stepDetails || '{}'),
         rewardGranted: !!row.rewardGranted,
         rewardLength: row.rewardLength
       }
@@ -4419,7 +4496,7 @@ app.post('/api/tutorial/start', (req, res) => {
 // вызов стоит в хендлере успеха этого действия, а не по клику "Далее".
 app.post('/api/tutorial/step', (req, res) => {
   try {
-    const { address, step } = req.body;
+    const { address, step, detail } = req.body;
     const db = req.db;
 
     if (!address || !step) {
@@ -4431,11 +4508,11 @@ app.post('/api/tutorial/step', (req, res) => {
     }
 
     let row = db.prepare('SELECT * FROM tutorial_progress WHERE address = ?').get(address) as
-      { address: string; completedSteps: string } | undefined;
+      { address: string; completedSteps: string; stepDetails: string } | undefined;
 
     if (!row) {
       row = db.prepare('INSERT INTO tutorial_progress (address) VALUES (?) RETURNING *').get(address) as
-        { address: string; completedSteps: string };
+        { address: string; completedSteps: string; stepDetails: string };
     }
 
     const completedSteps: string[] = JSON.parse(row.completedSteps || '[]');
@@ -4443,15 +4520,25 @@ app.post('/api/tutorial/step', (req, res) => {
       completedSteps.push(step);
     }
 
+    // detail — конкретное имя (зоны/субдомена/домена/торрента), с которым
+    // юзер прошёл шаг, опционально: не у каждого шага есть что показать
+    // (навигационные шаги вроде market_toured его не присылают).
+    const stepDetails: Record<string, string> = JSON.parse(row.stepDetails || '{}');
+    if (typeof detail === 'string' && detail.trim()) {
+      stepDetails[step] = detail.trim();
+    }
+
     const updated = db.prepare(`
-      UPDATE tutorial_progress SET completedSteps = ? WHERE address = ?
+      UPDATE tutorial_progress SET completedSteps = ?, stepDetails = ? WHERE address = ?
       RETURNING *
-    `).get(JSON.stringify(completedSteps), address) as { completedSteps: string; rewardGranted: number; rewardLength: string | null };
+    `).get(JSON.stringify(completedSteps), JSON.stringify(stepDetails), address) as
+      { completedSteps: string; stepDetails: string; rewardGranted: number; rewardLength: string | null };
 
     return res.json({
       success: true,
       data: {
         completedSteps: JSON.parse(updated.completedSteps),
+        stepDetails: JSON.parse(updated.stepDetails),
         rewardGranted: !!updated.rewardGranted,
         rewardLength: updated.rewardLength
       }
@@ -4478,7 +4565,7 @@ app.post('/api/tutorial/complete', (req, res) => {
     }
 
     const progress = db.prepare('SELECT * FROM tutorial_progress WHERE address = ?').get(address) as
-      { completedSteps: string; rewardGranted: number; rewardLength: string | null } | undefined;
+      { completedSteps: string; stepDetails: string; rewardGranted: number; rewardLength: string | null } | undefined;
 
     if (!progress) {
       return res.status(400).json({ success: false, message: 'Обучалка ещё не начата' });
@@ -4562,7 +4649,8 @@ app.post('/api/tutorial/complete', (req, res) => {
       // только к их отображаемым названиям (LANG.tutorialStepNames) в этом
       // же порядке, так что позиция в массиве обязана совпадать 1-в-1.
       const orderedSteps = TUTORIAL_STEPS.filter((step) => completedSteps.includes(step));
-      telegramBot.sendTutorialCompletedNotification(address, rewardLength, isTestnet, orderedSteps);
+      const stepDetails: Record<string, string> = JSON.parse(progress.stepDetails || '{}');
+      telegramBot.sendTutorialCompletedNotification(address, rewardLength, isTestnet, orderedSteps, stepDetails);
     }
 
     return res.json({ success: true, data: { rewardGranted: true, rewardLength } });

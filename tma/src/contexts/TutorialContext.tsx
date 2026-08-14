@@ -32,6 +32,10 @@ interface TutorialContextType {
   active: boolean;
   started: boolean;
   completedSteps: TutorialStepId[];
+  // Конкретное имя/значение (зона/субдомен/домен/торрент), с которым юзер
+  // прошёл шаг — не у каждого шага есть (навигационные шаги вроде
+  // market_toured не передают detail). Ключ — id шага.
+  stepDetails: Partial<Record<TutorialStepId, string>>;
   rewardGranted: boolean;
   rewardLength: string | null;
   showIntroModal: boolean;
@@ -50,7 +54,7 @@ interface TutorialContextType {
   closeIntroModal: () => void;
   startTutorial: () => Promise<void>;
   exitTutorial: () => void;
-  recordStep: (step: TutorialStepId) => Promise<void>;
+  recordStep: (step: TutorialStepId, detail?: string) => Promise<void>;
   isStepDone: (step: TutorialStepId) => boolean;
   // Раньше отказ /api/tutorial/complete (или сетевая ошибка) проглатывался
   // молча — кнопка "Завершить" внешне ничего не делала, юзер не понимал,
@@ -91,6 +95,7 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
   const [active, setActive] = useState(false);
   const [started, setStarted] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<TutorialStepId[]>([]);
+  const [stepDetails, setStepDetails] = useState<Partial<Record<TutorialStepId, string>>>({});
   const [rewardGranted, setRewardGranted] = useState(false);
   const [rewardLength, setRewardLength] = useState<string | null>(null);
   const [showIntroModal, setShowIntroModal] = useState(false);
@@ -106,6 +111,7 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     // предыдущего аккаунта). См. Log.md 2026-08-09.
     setStarted(false);
     setCompletedSteps([]);
+    setStepDetails({});
     setRewardGranted(false);
     setCompleteError(null);
     setRewardLength(null);
@@ -117,6 +123,7 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     apiService.getTutorialProgress(walletAddress).then((progress) => {
       setStarted(progress.started);
       setCompletedSteps(progress.completedSteps as TutorialStepId[]);
+      setStepDetails((progress.stepDetails || {}) as Partial<Record<TutorialStepId, string>>);
       setRewardGranted(progress.rewardGranted);
       setRewardLength(progress.rewardLength);
     });
@@ -250,11 +257,12 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     setShowProgressPanel(false);
   }, []);
 
-  const recordStep = useCallback(async (step: TutorialStepId) => {
+  const recordStep = useCallback(async (step: TutorialStepId, detail?: string) => {
     if (!walletAddress) return;
     apiService.setNetwork(isTestnet);
-    const progress = await apiService.recordTutorialStep(walletAddress, step);
+    const progress = await apiService.recordTutorialStep(walletAddress, step, detail);
     setCompletedSteps(progress.completedSteps as TutorialStepId[]);
+    setStepDetails((progress.stepDetails || {}) as Partial<Record<TutorialStepId, string>>);
     setRewardGranted(progress.rewardGranted);
     setRewardLength(progress.rewardLength);
   }, [walletAddress, isTestnet]);
@@ -265,6 +273,7 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     active,
     started,
     completedSteps,
+    stepDetails,
     rewardGranted,
     rewardLength,
     showIntroModal,

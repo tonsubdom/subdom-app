@@ -1396,7 +1396,7 @@ const partnerAddress = isTestnet
             // Шаг обучалки "создать зону" (Блок 2, использует бесплатную
             // промо-попытку) — засчитывается по факту успешного деплоя.
             if (tutorial.active && !tutorial.isStepDone('zone_selected')) {
-              tutorial.recordStep('zone_selected');
+              tutorial.recordStep('zone_selected', `${domainName}.ton`);
             }
 
             // СПИСЫВАЕМ оплаченную попытку ПОСЛЕ успешного создания зоны
