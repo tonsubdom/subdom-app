@@ -1956,6 +1956,7 @@ const LANG = {
     // Поля уведомлений
     fieldName: '🏷️ Название',
     fieldDomain: '🌐 Домен',
+    fieldSubdomain: '🌐 Субдомен',
     fieldTitle: '📝 Заголовок',
     fieldDescription: '📄 Описание',
     fieldCategory: '🏷️ Категория',
@@ -1965,10 +1966,11 @@ const LANG = {
     recordFormatBagId: 'BagID',
     btnViewCatalog: '👀 Посмотреть',
     btnViewOnTonviewer: '👀 Посмотреть в Tonviewer',
-    btnViewSite: '🖥️ Посмотреть сайт',
-    btnDownloadTorrent: '📥 Скачать',
+    btnViewSite: '🖥️ Открыть сайт (adnl)',
+    btnDownloadTorrent: '📥 Скачать торрент (bagID)',
     fieldEditedBy: '✏️ Кто изменил',
     fieldBagId: '🎒 BagID',
+    fieldAdnl: '🔌 ADNL',
     fieldProviders: '🛰️ Провайдеров',
     fieldContractAddress: '📍 Адрес контракта',
     fieldStorageDays: '📅 Срок хранения',
@@ -2183,6 +2185,7 @@ const LANG = {
     // Поля уведомлений
     fieldName: '🏷️ Name',
     fieldDomain: '🌐 Domain',
+    fieldSubdomain: '🌐 Subdomain',
     fieldTitle: '📝 Title',
     fieldDescription: '📄 Description',
     fieldCategory: '🏷️ Category',
@@ -2192,10 +2195,11 @@ const LANG = {
     recordFormatBagId: 'BagID',
     btnViewCatalog: '👀 View',
     btnViewOnTonviewer: '👀 View on Tonviewer',
-    btnViewSite: '🖥️ View site',
-    btnDownloadTorrent: '📥 Download',
+    btnViewSite: '🖥️ Open site (adnl)',
+    btnDownloadTorrent: '📥 Download torrent (bagID)',
     fieldEditedBy: '✏️ Edited by',
     fieldBagId: '🎒 BagID',
+    fieldAdnl: '🔌 ADNL',
     fieldProviders: '🛰️ Providers',
     fieldContractAddress: '📍 Contract Address',
     fieldStorageDays: '📅 Storage Duration',
@@ -3693,6 +3697,13 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     }
   }
 
+  // "sub.zone.ton" (3+ части) — субдомен, "zone.ton" (2 части) — домен/зона.
+  // Та же логика, что уже используется на фронте (LupaButton.isSubdomainItem) —
+  // юзер попросил не подписывать субдомены как "Домен" в уведомлениях.
+  private domainFieldLabel($: typeof LANG.ru, domain: string): string {
+    return domain.split('.').filter(Boolean).length >= 3 ? $.fieldSubdomain : $.fieldDomain;
+  }
+
   // --- ПРИВЯЗКА DNS-ЗАПИСИ (в личку владельцу + паблик) ---
   // Значение записи (адрес кошелька, ADNL, bagID) сознательно не публикуется
   // и на бэкенд вообще не передаётся с фронта (см. /api/notifications/dns-record
@@ -3716,7 +3727,26 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     return [[{ text: LANG.ru.btnDownloadTorrent, url: DeeplinkUtils.generateTorrentDownloadLinkForDomain(domain) }]];
   }
 
-  async sendDnsRecordUpdatedNotification(domain: string, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean = true): Promise<void> {
+  // Значение записи в текст не льём вслепую с фронта (см. комментарий у
+  // dnsRecordActionButton) — но раз бэкенд всё равно читает site/storage с
+  // чейна для самой кнопки, заодно показываем ADNL/bagID текстом над ней,
+  // чтобы зрителям в паблик-чате было понятно, на что вообще ведёт кнопка
+  // (иначе "Посмотреть сайт"/"Скачать" без значения ничего не говорит).
+  // nftAddress опционален — если не передан или чтение не удалось, просто
+  // не показываем строку со значением, кнопка всё равно строится по domain.
+  private async dnsRecordValue(nftAddress: string | undefined, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean): Promise<string | null> {
+    if (action === 'delete' || !nftAddress || recordFormat === 'address') return null;
+    try {
+      const { siteAdnl, storageBagId } = await fetchSiteAndStorageRecords(nftAddress, isTestnet);
+      if (recordFormat === 'adnl') return siteAdnl;
+      if (recordFormat === 'bagId') return storageBagId;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async sendDnsRecordUpdatedNotification(domain: string, nftAddress: string | undefined, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean = true, silent: boolean = false): Promise<void> {
     if (!this.isBotAvailable()) return;
 
     try {
@@ -3727,14 +3757,16 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         : recordFormat === 'bagId'
           ? $.recordFormatBagId
           : $.recordFormatAddress;
+      const recordValue = await this.dnsRecordValue(nftAddress, recordFormat, action, isTestnet);
+      const valueFieldLabel = recordFormat === 'adnl' ? $.fieldAdnl : $.fieldBagId;
 
       const message = `
 ${action === 'set' ? $.dnsRecordSet : $.dnsRecordDeleted}
 
 ${network}
-${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
+${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>
 ${$.fieldRecordType}: ${formatLabel}
-
+${recordValue ? `${valueFieldLabel}: <code>${recordValue}</code>\n` : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
@@ -3745,7 +3777,12 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {}),
       });
 
-      await this.sendPublicDnsRecordUpdatedNotification(domain, recordFormat, action, isTestnet);
+      // silent — юзер выключил галочку "Отключить публичное уведомление об
+      // этом действии" на ManageDomainPage (по умолчанию выключена = идёт).
+      // Гасит только паблик-рассылку, владельцу площадки в личку выше уже ушло.
+      if (!silent) {
+        await this.sendPublicDnsRecordUpdatedNotification(domain, recordFormat, action, isTestnet, recordValue, inlineKeyboard);
+      }
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления о DNS-записи:', error);
     }
@@ -3753,11 +3790,13 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
 
   // --- ПРИВЯЗКА DNS-ЗАПИСИ (публично) ---
   // Раньше шло только владельцу в личку — юзер попросил тот же паритет
-  // паблик/личка, что уже есть у sendContentUpdatedNotification.
-  async sendPublicDnsRecordUpdatedNotification(domain: string, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean = true): Promise<boolean> {
+  // паблик/личка, что уже есть у sendContentUpdatedNotification. valueLine/
+  // inlineKeyboard приходят уже готовые от sendDnsRecordUpdatedNotification —
+  // не резолвим site/storage с чейна повторно.
+  async sendPublicDnsRecordUpdatedNotification(domain: string, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean = true, recordValue?: string | null, inlineKeyboard?: any[][]): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
-      const inlineKeyboard = this.dnsRecordActionButton(domain, recordFormat, action, isTestnet);
+      const resolvedKeyboard = inlineKeyboard ?? this.dnsRecordActionButton(domain, recordFormat, action, isTestnet);
 
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
@@ -3766,17 +3805,18 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
           : recordFormat === 'bagId'
             ? $.recordFormatBagId
             : $.recordFormatAddress;
+        const valueFieldLabel = recordFormat === 'adnl' ? $.fieldAdnl : $.fieldBagId;
 
         return `
 ${action === 'set' ? $.dnsRecordSet : $.dnsRecordDeleted}
 
 ${network}
-${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
+${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>
 ${$.fieldRecordType}: ${formatLabel}
-
+${recordValue ? `${valueFieldLabel}: <code>${recordValue}</code>\n` : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         `.trim();
-      }, inlineKeyboard);
+      }, resolvedKeyboard);
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления о DNS-записи:', error);
       return false;
@@ -3888,7 +3928,9 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     isTestnet: boolean = true,
     pictureUrl?: string | null,
     currentFields?: { title?: string | null; description?: string | null; category?: string | null },
-    actionButton?: any[][]
+    actionButton?: any[][],
+    siteAdnl?: string | null,
+    storageBagId?: string | null
   ): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
@@ -3900,6 +3942,10 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
           currentFields?.title ? `${$.fieldTitle}: ${currentFields.title}` : null,
           currentFields?.description ? `${$.fieldDescription}: ${currentFields.description}` : null,
           currentFields?.category ? `${$.fieldCategory}: ${currentFields.category}` : null,
+          // В порядке кнопок ниже (сайт первым рядом, торрент вторым) —
+          // чтобы зрителям в чате было понятно, на что вообще ведёт кнопка.
+          siteAdnl ? `${$.fieldAdnl}: <code>${siteAdnl}</code>` : null,
+          storageBagId ? `${$.fieldBagId}: <code>${storageBagId}</code>` : null,
         ].filter(Boolean);
 
         return `
@@ -3907,7 +3953,7 @@ ${$.contentUpdated}
 
 ${network}
 ${$.fieldEditedBy}: ${editorLink}
-${$.fieldDomain}: ${domain}
+${this.domainFieldLabel($, domain)}: ${domain}
 ${fieldLines.length ? fieldLines.join('\n') + '\n' : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         `.trim();
@@ -3925,7 +3971,8 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     editorAddress: string,
     isTestnet: boolean = true,
     pictureUrl?: string | null,
-    changedFields?: { title?: string; description?: string; category?: string }
+    changedFields?: { title?: string; description?: string; category?: string },
+    silent: boolean = false
   ): Promise<void> {
     if (!this.isBotAvailable()) return;
 
@@ -3955,31 +4002,21 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         /* остаёмся на том, что передал фронт (если передал) */
       }
 
-      const fieldLines = [
-        resolvedFields.title ? `${$.fieldTitle}: ${resolvedFields.title}` : null,
-        resolvedFields.description ? `${$.fieldDescription}: ${resolvedFields.description}` : null,
-        resolvedFields.category ? `${$.fieldCategory}: ${resolvedFields.category}` : null,
-      ].filter(Boolean);
-
-      const message = `
-${$.contentUpdated}
-
-${network}
-${$.fieldEditedBy}: ${editorLink}
-${$.fieldDomain}: ${domain}
-${fieldLines.length ? fieldLines.join('\n') + '\n' : ''}
-${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
-      `.trim();
-
       // Кнопки зависят от того, что РЕАЛЬНО привязано к этому домену/
       // субдомену — раньше "Посмотреть сайт" была захардкожена всегда,
       // юзер поймал вживую случай субдомена с привязанным торрентом (bagID),
       // а не сайтом (adnl): кнопка вела в никуда осмысленно. Если привязаны
       // оба сразу — показываем обе, отдельными рядами (не сжимаем в один
-      // ряд — так проще попасть пальцем на мобильном).
+      // ряд — так проще попасть пальцем на мобильном), и значения (ADNL/
+      // bagID) текстом над ними в том же порядке, чтобы было понятно, на
+      // что кнопка ведёт.
       let inlineKeyboard: any[][] | undefined;
+      let siteAdnl: string | null = null;
+      let storageBagId: string | null = null;
       try {
-        const { siteAdnl, storageBagId } = await fetchSiteAndStorageRecords(nftAddress, isTestnet);
+        const records = await fetchSiteAndStorageRecords(nftAddress, isTestnet);
+        siteAdnl = records.siteAdnl;
+        storageBagId = records.storageBagId;
         const rows: any[][] = [];
         if (siteAdnl) rows.push([{ text: $.btnViewSite, url: `https://${domain}` }]);
         if (storageBagId) rows.push([{ text: $.btnDownloadTorrent, url: DeeplinkUtils.generateTorrentDownloadLinkForDomain(domain) }]);
@@ -3988,6 +4025,24 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         /* ни сайта, ни торрента не определили — обойдёмся без кнопки */
       }
 
+      const fieldLines = [
+        resolvedFields.title ? `${$.fieldTitle}: ${resolvedFields.title}` : null,
+        resolvedFields.description ? `${$.fieldDescription}: ${resolvedFields.description}` : null,
+        resolvedFields.category ? `${$.fieldCategory}: ${resolvedFields.category}` : null,
+        siteAdnl ? `${$.fieldAdnl}: <code>${siteAdnl}</code>` : null,
+        storageBagId ? `${$.fieldBagId}: <code>${storageBagId}</code>` : null,
+      ].filter(Boolean);
+
+      const message = `
+${$.contentUpdated}
+
+${network}
+${$.fieldEditedBy}: ${editorLink}
+${this.domainFieldLabel($, domain)}: ${domain}
+${fieldLines.length ? fieldLines.join('\n') + '\n' : ''}
+${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
+      `.trim();
+
       await this.sendPhotoWithCaption(
         this.ownerId,
         resolvedPicture || this.getNotificationImageUrl(domain, false),
@@ -3995,7 +4050,11 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         inlineKeyboard
       );
 
-      await this.sendPublicContentUpdatedNotification(domain, editorAddress, isTestnet, resolvedPicture, resolvedFields, inlineKeyboard);
+      // silent — юзер выключил галочку "Отключить публичное уведомление об
+      // этом действии" на AvatarSecretPage (по умолчанию выключена = идёт).
+      if (!silent) {
+        await this.sendPublicContentUpdatedNotification(domain, editorAddress, isTestnet, resolvedPicture, resolvedFields, inlineKeyboard, siteAdnl, storageBagId);
+      }
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления об обновлении аватарки/контента:', error);
     }
@@ -4075,7 +4134,7 @@ ${$.fieldBidTime}: ${new Date().toLocaleString('ru-RU')}
 ${$.sbtSubdomainMinted}
 
 ${network}
-${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
+${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>
 ${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
 ${$.fieldPrice}: ${price} TON
@@ -4111,7 +4170,7 @@ ${$.hintCongrats}
 ${$.auctionEnded}
 
 ${network}
-${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
+${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>
 ${itemAddress ? `${$.fieldAddress}: ${await this.formatTonviewerLink(itemAddress, isTestnet)}\n` : ''}${$.fieldWinner}: ${await this.formatTonviewerLink(winner, isTestnet)}
 ${$.fieldFinalPrice}: ${finalPrice} TON
 
@@ -4407,7 +4466,7 @@ ${$.fieldBidTime}: ${new Date().toLocaleString('ru-RU')}
 ${$.sbtSubdomainMinted}
 
 ${network}
-${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
+${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>
 ${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
 ${$.fieldPrice}: ${price} TON
@@ -4438,7 +4497,7 @@ ${$.fieldMintTime}: ${new Date().toLocaleString('ru-RU')}
 ${$.auctionEnded}
 
 ${network}
-${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
+${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>
 ${itemAddress ? `${$.fieldAddress}: ${await this.formatTonviewerLink(itemAddress, isTestnet)}\n` : ''}${$.fieldWinner}: ${await this.formatTonviewerLink(winner, isTestnet)}
 ${$.fieldFinalPrice}: ${finalPrice} TON
 

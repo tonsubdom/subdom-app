@@ -786,16 +786,21 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
   // Relay-only: сообщает боту факт привязки/отвязки DNS-записи, ничего не
   // пишет в БД. Значение записи (адрес/ADNL/bagID) намеренно не передаётся —
   // это то же самое, что уже скрыто за самим доменом.
+  // silent — юзер сам выключил галочку "Отключить публичное уведомление об
+  // этом действии" (по умолчанию выключена = уведомления идут) — гасит
+  // только паблик-рассылку, владельцу площадки в личку всё равно уходит.
   async notifyDnsRecordUpdated(
     domain: string,
     recordFormat: 'address' | 'adnl' | 'bagId',
-    action: 'set' | 'delete'
+    action: 'set' | 'delete',
+    silent?: boolean,
+    nftAddress?: string
   ): Promise<void> {
     try {
       await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/dns-record`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain, recordFormat, action }),
+        body: JSON.stringify({ domain, recordFormat, action, silent, nftAddress }),
       });
     } catch (error) {
       console.error('Error notifying about DNS record update:', error);
@@ -886,6 +891,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     title?: string;
     description?: string;
     category?: string;
+    silent?: boolean;
   }): Promise<void> {
     try {
       await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/content-updated`), {

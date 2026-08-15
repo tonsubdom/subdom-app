@@ -4710,6 +4710,11 @@ export const ManageDomainPage: FC = () => {
   // ====== LOCAL STATE ======
   const [snackbar, setSnackbar] = useState<JSX.Element | null>(null);
   const [resolverAddress, setResolverAddress] = useState("");
+  // Галочка "Отключить публичное уведомление об этом действии" — по
+  // умолчанию выключена (уведомления идут), юзер сам решает молчать ли
+  // про конкретное действие. Гасит только паблик-рассылку в чаты, владельцу
+  // площадки в личку уходит всё равно (см. tgBot-sqlite.ts).
+  const [muteActionNotifications, setMuteActionNotifications] = useState(false);
   // Картинка итема, на который реально уходят транзакции (домен для SBT-
   // зоны, обёртка для proxy-зоны) — НЕ картинка самой зоны/коллекции,
   // которую раньше молча показывал getItemImageUrl (см. Log.md 2026-08-11).
@@ -5365,7 +5370,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "set");
+            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "set", muteActionNotifications, resolverAddress);
           }
           if (tutorial.active && !tutorial.isStepDone('domain_answered')) {
             await tutorial.recordStep('domain_answered', editingItem?.title);
@@ -5385,7 +5390,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "delete");
+            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "delete", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -5417,7 +5422,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "adnl", "set");
+            apiService.notifyDnsRecordUpdated(editingItem.title, "adnl", "set", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -5433,7 +5438,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "adnl", "delete");
+            apiService.notifyDnsRecordUpdated(editingItem.title, "adnl", "delete", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -5468,7 +5473,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "bagId", "set");
+            apiService.notifyDnsRecordUpdated(editingItem.title, "bagId", "set", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -5484,7 +5489,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "bagId", "delete");
+            apiService.notifyDnsRecordUpdated(editingItem.title, "bagId", "delete", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -5519,7 +5524,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "set");
+            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "set", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -5539,7 +5544,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "delete");
+            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "delete", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -6965,6 +6970,26 @@ export const ManageDomainPage: FC = () => {
                 {t("manageDNSRecords") || "Управление DNS записями"}
               </span>
             </div>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginBottom: "15px",
+                fontSize: "12px",
+                color: isDark ? "#aaaaaa" : "#666666",
+                cursor: "pointer",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={muteActionNotifications}
+                onChange={(e) => setMuteActionNotifications(e.target.checked)}
+                style={{ width: "16px", height: "16px", cursor: "pointer" }}
+              />
+              {t("muteActionNotifications") || "Отключить публичное уведомление об этом действии"}
+            </label>
 
             <div style={{ marginBottom: "15px" }}>
               <div

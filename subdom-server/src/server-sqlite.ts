@@ -3973,7 +3973,7 @@ app.get('/api/chats/domain/:domain', (req, res) => {
 // в бота просто пролетает насквозь, как и договорено для decentralization-миграции.
 app.post('/api/notifications/dns-record', (req, res) => {
   try {
-    const { domain, recordFormat, action } = req.body;
+    const { domain, nftAddress, recordFormat, action, silent } = req.body;
     const isTestnet = req.isTestnet;
 
     if (!domain || !['address', 'adnl', 'bagId'].includes(recordFormat) || !['set', 'delete'].includes(action)) {
@@ -3983,7 +3983,7 @@ app.post('/api/notifications/dns-record', (req, res) => {
       });
     }
 
-    telegramBot.sendDnsRecordUpdatedNotification(domain, recordFormat, action, isTestnet);
+    telegramBot.sendDnsRecordUpdatedNotification(domain, nftAddress, recordFormat, action, isTestnet, !!silent);
 
     return res.json({ success: true });
   } catch (error) {
@@ -4030,7 +4030,7 @@ app.post('/api/notifications/storage-deal-created', (req, res) => {
 // и так видимый в dApp-приложениях, поэтому изменившиеся значения передаются.
 app.post('/api/notifications/content-updated', (req, res) => {
   try {
-    const { domain, nftAddress, editorAddress, pictureUrl, title, description, category } = req.body;
+    const { domain, nftAddress, editorAddress, pictureUrl, title, description, category, silent } = req.body;
     const isTestnet = req.isTestnet;
 
     if (!domain || !nftAddress || !editorAddress) {
@@ -4040,7 +4040,7 @@ app.post('/api/notifications/content-updated', (req, res) => {
       });
     }
 
-    telegramBot.sendContentUpdatedNotification(domain, nftAddress, editorAddress, isTestnet, pictureUrl, { title, description, category });
+    telegramBot.sendContentUpdatedNotification(domain, nftAddress, editorAddress, isTestnet, pictureUrl, { title, description, category }, !!silent);
 
     return res.json({ success: true });
   } catch (error) {

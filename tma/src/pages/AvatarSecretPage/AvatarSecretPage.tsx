@@ -187,6 +187,10 @@ export const AvatarSecretPage: React.FC = () => {
   // боту, см. handleSave/notifyContentUpdated).
   const previousValuesRef = useRef({ title: '', description: '', category: '' });
   const [saving, setSaving] = useState(false);
+  // Галочка "Отключить публичное уведомление об этом действии" — по
+  // умолчанию выключена (уведомления идут), гасит только паблик-рассылку
+  // в чаты (см. tgBot-sqlite.ts), владельцу площадки в личку уходит всё равно.
+  const [muteActionNotifications, setMuteActionNotifications] = useState(false);
   const [snackbar, setSnackbar] = useState<React.ReactElement | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [dropNotice, setDropNotice] = useState<string | null>(null);
@@ -505,6 +509,7 @@ export const AvatarSecretPage: React.FC = () => {
           title: title.trim() && title.trim() !== prev.title ? title.trim() : undefined,
           description: description.trim() && description.trim() !== prev.description ? description.trim() : undefined,
           category: category.trim() && category.trim() !== prev.category ? category.trim() : undefined,
+          silent: muteActionNotifications,
         });
       }
       // Шаг "профиль" засчитывается только если домен/адрес кошелька уже
@@ -867,14 +872,36 @@ export const AvatarSecretPage: React.FC = () => {
             </Box>
 
             {isOwner && (
-              <Button
-                fullWidth
-                onClick={handleSave}
-                disabled={saving}
-                sx={buttonSx}
-              >
-                {saving ? (t('avatarSaving') || 'Сохранение...') : (t('avatarSave') || 'Сохранить onchain')}
-              </Button>
+              <>
+                <Box
+                  component="label"
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    mb: 1.5,
+                    fontSize: '12px',
+                    color: colors.textSecondary,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={muteActionNotifications}
+                    onChange={(e) => setMuteActionNotifications(e.target.checked)}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  {t('muteActionNotifications') || 'Отключить публичное уведомление об этом действии'}
+                </Box>
+                <Button
+                  fullWidth
+                  onClick={handleSave}
+                  disabled={saving}
+                  sx={buttonSx}
+                >
+                  {saving ? (t('avatarSaving') || 'Сохранение...') : (t('avatarSave') || 'Сохранить onchain')}
+                </Button>
+              </>
             )}
           </Box>
         )}
