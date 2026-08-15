@@ -3943,19 +3943,19 @@ ${fieldLines.length ? fieldLines.join('\n') + '\n' : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      // Кнопка зависит от того, что РЕАЛЬНО привязано к этому домену/
+      // Кнопки зависят от того, что РЕАЛЬНО привязано к этому домену/
       // субдомену — раньше "Посмотреть сайт" была захардкожена всегда,
       // юзер поймал вживую случай субдомена с привязанным торрентом (bagID),
-      // а не сайтом (adnl): кнопка вела в никуда осмысленно. Сайт в
-      // приоритете, если вдруг привязаны оба сразу.
+      // а не сайтом (adnl): кнопка вела в никуда осмысленно. Если привязаны
+      // оба сразу — показываем обе, отдельными рядами (не сжимаем в один
+      // ряд — так проще попасть пальцем на мобильном).
       let inlineKeyboard: any[][] | undefined;
       try {
         const { siteAdnl, storageBagId } = await fetchSiteAndStorageRecords(nftAddress, isTestnet);
-        if (siteAdnl) {
-          inlineKeyboard = [[{ text: $.btnViewSite, url: `https://${domain}` }]];
-        } else if (storageBagId) {
-          inlineKeyboard = [[{ text: $.btnDownloadTorrent, url: DeeplinkUtils.generateTorrentDownloadLink(domain) }]];
-        }
+        const rows: any[][] = [];
+        if (siteAdnl) rows.push([{ text: $.btnViewSite, url: `https://${domain}` }]);
+        if (storageBagId) rows.push([{ text: $.btnDownloadTorrent, url: DeeplinkUtils.generateTorrentDownloadLink(domain) }]);
+        if (rows.length > 0) inlineKeyboard = rows;
       } catch {
         /* ни сайта, ни торрента не определили — обойдёмся без кнопки */
       }
