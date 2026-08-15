@@ -22,10 +22,10 @@ const DeeplinkHandler: React.FC = () => {
 
   useEffect(() => {
     const handleDeeplink = () => {
+      // Вне try — нужен в catch для того же create-torrent-фолбэка, что и
+      // в ветке "Неизвестный роут" ниже (см. её комментарий).
+      const startappParam = launchParams.startParam;
       try {
-        // Получаем startapp параметр из launchParams
-        const startappParam = launchParams.startParam;
-
         if (!startappParam) {
           console.log('ℹ️ Нет startapp параметра, остаемся на текущей странице');
           return;
@@ -100,9 +100,24 @@ const DeeplinkHandler: React.FC = () => {
               : params.zone;
             queryParams.set('bagId', domain);
           }
-          if (params.tab) queryParams.set('tab', params.tab);
+          // Единственная существующая ссылка на этот роут — кнопка
+          // "Скачать торрент" (см. generateTorrentDownloadLink[ForDomain] на
+          // бэкенде), туда всегда шлют tab=download. Ставим download по
+          // умолчанию (а не только если params.tab распарсился) — если
+          // подстановка bagId/domain из query по какой-то причине не
+          // сработает, юзера всё равно должно донести хотя бы до вкладки
+          // "Загрузить", а не бросить на / без объяснений.
+          queryParams.set('tab', params.tab || 'download');
           const queryString = queryParams.toString();
           navigate(`/create-torrent${queryString ? `?${queryString}` : ''}`);
+
+        } else if (startappParam.startsWith('create-torrent')) {
+          // Фолбэк: роут распознан как create-torrent (первый токен startapp
+          // совпадает), но что-то в params выше пошло не так — не даём
+          // размену деталей увести на пустую главную, хотя бы вкладка
+          // "Загрузить" откроется, просто без готовой подстановки.
+          console.warn('⚠️ create-torrent роут распознан, но с проблемой в параметрах — фолбэк на вкладку Загрузить');
+          navigate('/create-torrent?tab=download');
 
         } else {
           // Неизвестный роут - перенаправляем на главную
@@ -114,7 +129,11 @@ const DeeplinkHandler: React.FC = () => {
         
       } catch (error) {
         console.error('❌ Ошибка при обработке deeplink:', error);
-        navigate('/');
+        if (startappParam && startappParam.startsWith('create-torrent')) {
+          navigate('/create-torrent?tab=download');
+        } else {
+          navigate('/');
+        }
       }
     };
 
