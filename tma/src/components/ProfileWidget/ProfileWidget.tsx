@@ -5781,14 +5781,22 @@ const ProfileWidget: React.FC = () => {
                     {filtersOpen && filtersDropdownPos && createPortal(
                       <>
                         <div
-                          onClick={() => setFiltersOpen(false)}
+                          onClick={(e) => {
+                            // Портал теперь живёт в document.body, а не внутри
+                            // панели виджета — без stopPropagation клик по
+                            // фону (закрыть фильтры) всплывал бы дальше и
+                            // попадал под "клик вне панели = закрыть весь
+                            // виджет", так что закрывать приходилось дважды.
+                            e.stopPropagation();
+                            setFiltersOpen(false);
+                          }}
                           style={{
                             position: "fixed",
                             top: 0,
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            zIndex: 997,
+                            zIndex: 1998,
                           }}
                         />
                         <div
@@ -5796,7 +5804,7 @@ const ProfileWidget: React.FC = () => {
                             position: "fixed",
                             top: `${filtersDropdownPos.top}px`,
                             left: `${filtersDropdownPos.left}px`,
-                            zIndex: 998,
+                            zIndex: 1999,
                             width: "320px",
                             maxWidth: "calc(100vw - 16px)",
                             background: colors.dropdownBg,
