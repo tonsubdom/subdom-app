@@ -14596,6 +14596,43 @@ export const AuctionPage: React.FC<{}> = () => {
             </div>
           )}
 
+        {/* Шаг 4: Настроить профиль — открывает AvatarSecretPage сразу с
+            только что созданным/захваченным итемом. address в приоритете
+            (см. тот же комментарий у handleOpenAvatarSecret в
+            ProfileWidget.tsx) — резолв субдоменов по одному имени через
+            tonapi.io/v2/dns/ не работает, там знают только корневые
+            .ton-домены, а nftAddress уже известен из sbtSubdomainInfo/
+            auctionInfo сразу после покупки/claim. */}
+        {(sbtPurchaseCompleted ||
+          (auctionInfo && !auctionInfo.isActive && canClaim)) && (
+          <div style={{ position: "relative", width: "280px" }}>
+            <button
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (nftAddress) params.set("address", nftAddress);
+                params.set("domain", `${subDomainName}.${selectedDomainZone}`);
+                navigate(`/avatar-secret?${params.toString()}`);
+              }}
+              style={{
+                display: "block",
+                width: "280px",
+                borderRadius: "25px",
+                padding: "11.75px 15px",
+                background: "linear-gradient(135deg, #f59e0b, #f97316)",
+                color: "white",
+                textDecoration: "none",
+                textAlign: "center",
+                fontWeight: "bold",
+                cursor: "pointer",
+                border: "none",
+                fontSize: "14px",
+              }}
+            >
+              🖼️ Настроить профиль {subDomainName}.{selectedDomainZone}
+            </button>
+          </div>
+        )}
+
         {/* Шаг 4: Создать торрент — сразу с привязкой к только что созданному
             субдомену (см. эффект чтения ?domain= в CreateTorrentPage). Идёт
             выше кнопки "Создать сайт" — это тоже способ занять субдомен
