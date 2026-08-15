@@ -1738,7 +1738,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import Database from 'better-sqlite3';
 import { Address } from '@ton/core';
-import { fetchAllOwnerDnsText } from '../services/dnsTextReader';
+import { fetchAllOwnerDnsText, fetchSiteAndStorageRecords } from '../services/dnsTextReader';
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -3859,12 +3859,12 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     editorAddress: string,
     isTestnet: boolean = true,
     pictureUrl?: string | null,
-    currentFields?: { title?: string | null; description?: string | null; category?: string | null }
+    currentFields?: { title?: string | null; description?: string | null; category?: string | null },
+    actionButton?: any[][]
   ): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
       const editorLink = await this.formatTonviewerLink(editorAddress, isTestnet);
-      const viewSiteUrl = `https://${domain}`; // Telegram резолвит .ton нативно, гейтвей нужен только вне Telegram (см. dnsRecordActionButton выше)
 
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
@@ -3883,7 +3883,7 @@ ${$.fieldDomain}: ${domain}
 ${fieldLines.length ? fieldLines.join('\n') + '\n' : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         `.trim();
-      }, [[{ text: LANG.ru.btnViewSite, url: viewSiteUrl }]], pictureUrl || this.getNotificationImageUrl(domain, false));
+      }, actionButton, pictureUrl || this.getNotificationImageUrl(domain, false));
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления об обновлении аватарки/контента:', error);
       return false;
@@ -3943,8 +3943,22 @@ ${fieldLines.length ? fieldLines.join('\n') + '\n' : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      const viewSiteUrl = `https://${domain}`; // Telegram резолвит .ton нативно, гейтвей нужен только вне Telegram (см. dnsRecordActionButton выше)
-      const inlineKeyboard = [[{ text: $.btnViewSite, url: viewSiteUrl }]];
+      // Кнопка зависит от того, что РЕАЛЬНО привязано к этому домену/
+      // субдомену — раньше "Посмотреть сайт" была захардкожена всегда,
+      // юзер поймал вживую случай субдомена с привязанным торрентом (bagID),
+      // а не сайтом (adnl): кнопка вела в никуда осмысленно. Сайт в
+      // приоритете, если вдруг привязаны оба сразу.
+      let inlineKeyboard: any[][] | undefined;
+      try {
+        const { siteAdnl, storageBagId } = await fetchSiteAndStorageRecords(nftAddress, isTestnet);
+        if (siteAdnl) {
+          inlineKeyboard = [[{ text: $.btnViewSite, url: `https://${domain}` }]];
+        } else if (storageBagId) {
+          inlineKeyboard = [[{ text: $.btnDownloadTorrent, url: DeeplinkUtils.generateTorrentDownloadLink(domain) }]];
+        }
+      } catch {
+        /* ни сайта, ни торрента не определили — обойдёмся без кнопки */
+      }
 
       await this.sendPhotoWithCaption(
         this.ownerId,
@@ -3953,7 +3967,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         inlineKeyboard
       );
 
-      await this.sendPublicContentUpdatedNotification(domain, editorAddress, isTestnet, resolvedPicture, resolvedFields);
+      await this.sendPublicContentUpdatedNotification(domain, editorAddress, isTestnet, resolvedPicture, resolvedFields, inlineKeyboard);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления об обновлении аватарки/контента:', error);
     }
