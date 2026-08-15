@@ -881,7 +881,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
   // description/category передаются, только если реально изменились
   // (сравнение — на стороне AvatarSecretPage, с тем что было прочитано ончейн
   // до правки).
-  async notifyContentUpdated(domain: string, extra?: {
+  async notifyContentUpdated(domain: string, nftAddress: string, editorAddress: string, extra?: {
     pictureUrl?: string;
     title?: string;
     description?: string;
@@ -891,7 +891,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
       await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/content-updated`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain, ...extra }),
+        body: JSON.stringify({ domain, nftAddress, editorAddress, ...extra }),
       });
     } catch (error) {
       console.error('Error notifying about content update:', error);

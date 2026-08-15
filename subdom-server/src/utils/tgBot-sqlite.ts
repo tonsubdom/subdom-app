@@ -1738,6 +1738,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import Database from 'better-sqlite3';
 import { Address } from '@ton/core';
+import { fetchOwnerAvatarUrl } from '../services/dnsTextReader';
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -1948,7 +1949,7 @@ const LANG = {
     paymentError: '❌ <b>ОШИБКА ПРИ ОПЛАТЕ ПОПЫТКИ!</b>',
     dnsRecordSet: '🔗 <b>DNS-ЗАПИСЬ ПРИВЯЗАНА!</b>',
     dnsRecordDeleted: '🔓 <b>DNS-ЗАПИСЬ ОТВЯЗАНА!</b>',
-    contentUpdated: '🖼️ Юзер {domain} обновил данные в ончейн-профиле {domain}',
+    contentUpdated: '🖼️ <b>ОБНОВЛЕНИЕ ОНЧЕЙН-ПРОФИЛЯ</b>',
     deactivationRequested: '⏳ <b>ЗАПРОС НА ДЕАКТИВАЦИЮ ЗОНЫ!</b>',
     storageDealCreated: '📦 <b>ТОРРЕНТ ОПЛАЧЕН, ХРАНЕНИЕ ЗАПУЩЕНО!</b>',
 
@@ -1963,6 +1964,10 @@ const LANG = {
     recordFormatAdnl: 'ADNL',
     recordFormatBagId: 'BagID',
     btnViewCatalog: '👀 Посмотреть',
+    btnViewOnTonviewer: '👀 Посмотреть в Tonviewer',
+    btnViewSite: '🖥️ Посмотреть сайт',
+    btnDownloadTorrent: '📥 Скачать',
+    fieldEditedBy: '✏️ Кто изменил',
     fieldBagId: '🎒 BagID',
     fieldProviders: '🛰️ Провайдеров',
     fieldContractAddress: '📍 Адрес контракта',
@@ -2171,7 +2176,7 @@ const LANG = {
     paymentError: '❌ <b>PAYMENT ATTEMPT ERROR!</b>',
     dnsRecordSet: '🔗 <b>DNS RECORD LINKED!</b>',
     dnsRecordDeleted: '🔓 <b>DNS RECORD UNLINKED!</b>',
-    contentUpdated: '🖼️ User {domain} updated their on-chain profile data {domain}',
+    contentUpdated: '🖼️ <b>ON-CHAIN PROFILE UPDATED</b>',
     deactivationRequested: '⏳ <b>ZONE DEACTIVATION REQUESTED!</b>',
     storageDealCreated: '📦 <b>TORRENT PAID, STORAGE STARTED!</b>',
 
@@ -2186,6 +2191,10 @@ const LANG = {
     recordFormatAdnl: 'ADNL',
     recordFormatBagId: 'BagID',
     btnViewCatalog: '👀 View',
+    btnViewOnTonviewer: '👀 View on Tonviewer',
+    btnViewSite: '🖥️ View site',
+    btnDownloadTorrent: '📥 Download',
+    fieldEditedBy: '✏️ Edited by',
     fieldBagId: '🎒 BagID',
     fieldProviders: '🛰️ Providers',
     fieldContractAddress: '📍 Contract Address',
@@ -3656,10 +3665,26 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     }
   }
 
-  // --- ПРИВЯЗКА DNS-ЗАПИСИ ---
-  // Значение записи (адрес кошелька, ADNL, bagID) сознательно не публикуется —
-  // это то же самое, что скрывается за самим доменом; уведомление сообщает
-  // только сам факт привязки/отвязки и формат записи.
+  // --- ПРИВЯЗКА DNS-ЗАПИСИ (в личку владельцу + паблик) ---
+  // Значение записи (адрес кошелька, ADNL, bagID) сознательно не публикуется
+  // и на бэкенд вообще не передаётся с фронта (см. /api/notifications/dns-record
+  // в server-sqlite.ts, "decentralization-миграция") — но кнопка всё равно
+  // может вести на реальное содержимое, потому что все три варианта
+  // резолвятся получателем САМ, по одному только domain, без участия бэкенда:
+  // tonviewer резолвит .ton-имя в адрес сам, гейтвей ton.run — по имени, а
+  // диплинк на скачивание торрента передаёт domain вместо bagID — фронт
+  // (CreateTorrentPage) сам умеет резолвить и то, и то в одном и том же поле.
+  private dnsRecordActionButton(domain: string, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean): any[][] | undefined {
+    if (action === 'delete') return undefined; // нечего смотреть — запись удалена
+    if (recordFormat === 'address') {
+      return [[{ text: LANG.ru.btnViewOnTonviewer, url: `${this.getTonviewerUrl(isTestnet)}/${domain}` }]];
+    }
+    if (recordFormat === 'adnl') {
+      return [[{ text: LANG.ru.btnViewSite, url: `https://${domain.replace(/\.ton$/i, '')}.ton.run` }]];
+    }
+    return [[{ text: LANG.ru.btnDownloadTorrent, url: DeeplinkUtils.generateTorrentDownloadLink(domain) }]];
+  }
+
   async sendDnsRecordUpdatedNotification(domain: string, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean = true): Promise<void> {
     if (!this.isBotAvailable()) return;
 
@@ -3682,14 +3707,48 @@ ${$.fieldRecordType}: ${formatLabel}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      const inlineKeyboard = [[{ text: $.btnViewCatalog, url: 'https://tonsitecatalog.ton' }]];
+      const inlineKeyboard = this.dnsRecordActionButton(domain, recordFormat, action, isTestnet);
 
       await this.bot!.sendMessage(this.ownerId, message, {
         parse_mode: 'HTML',
-        reply_markup: { inline_keyboard: inlineKeyboard }
+        ...(inlineKeyboard ? { reply_markup: { inline_keyboard: inlineKeyboard } } : {}),
       });
+
+      await this.sendPublicDnsRecordUpdatedNotification(domain, recordFormat, action, isTestnet);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления о DNS-записи:', error);
+    }
+  }
+
+  // --- ПРИВЯЗКА DNS-ЗАПИСИ (публично) ---
+  // Раньше шло только владельцу в личку — юзер попросил тот же паритет
+  // паблик/личка, что уже есть у sendContentUpdatedNotification.
+  async sendPublicDnsRecordUpdatedNotification(domain: string, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean = true): Promise<boolean> {
+    try {
+      const network = this.formatNetwork(isTestnet);
+      const inlineKeyboard = this.dnsRecordActionButton(domain, recordFormat, action, isTestnet);
+
+      return await this.sendGroupNotification(async (lang) => {
+        const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
+        const formatLabel = recordFormat === 'adnl'
+          ? $.recordFormatAdnl
+          : recordFormat === 'bagId'
+            ? $.recordFormatBagId
+            : $.recordFormatAddress;
+
+        return `
+${action === 'set' ? $.dnsRecordSet : $.dnsRecordDeleted}
+
+${network}
+${$.fieldDomain}: <a href="tonsite://${domain}">${domain}</a>
+${$.fieldRecordType}: ${formatLabel}
+
+${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
+        `.trim();
+      }, inlineKeyboard);
+    } catch (error) {
+      console.error('❌ Ошибка при отправке публичного уведомления о DNS-записи:', error);
+      return false;
     }
   }
 
@@ -3787,18 +3846,25 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
   // сознательно скрыто) — title/description/category это публичный профиль,
   // и так видимый в dApp (см. комментарий у роута /api/notifications/content-updated
   // в server-sqlite.ts), поэтому наравне с личкой владельцу шлём и в паблик-чаты.
+  // editorAddress — кошелёк, который реально сохранил правку (уже проверен
+  // как владелец на фронте, см. AvatarSecretPage isOwner) — показывается
+  // ПЕРВОЙ строкой ("кто"), domain — отдельно ("что отредактировано"), это
+  // не всегда один и тот же адрес визуально (домен-формат владельца может
+  // отличаться от конкретного отредактированного домена/субдомена).
   async sendPublicContentUpdatedNotification(
     domain: string,
+    editorAddress: string,
     isTestnet: boolean = true,
     pictureUrl?: string | null,
     changedFields?: { title?: string; description?: string; category?: string }
   ): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
+      const editorLink = await this.formatTonviewerLink(editorAddress, isTestnet);
+      const viewSiteUrl = `https://${domain.replace(/\.ton$/i, '')}.ton.run`;
 
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
-        const domainLink = `<a href="tonsite://${domain}">${domain}</a>`;
         const changedLines = [
           changedFields?.title ? `${$.fieldTitle}: ${changedFields.title}` : null,
           changedFields?.description ? `${$.fieldDescription}: ${changedFields.description}` : null,
@@ -3806,13 +3872,15 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         ].filter(Boolean);
 
         return `
-${$.contentUpdated.split('{domain}').join(domainLink)}
+${$.contentUpdated}
 
 ${network}
+${$.fieldEditedBy}: ${editorLink}
+${$.fieldDomain}: ${domain}
 ${changedLines.length ? changedLines.join('\n') + '\n' : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         `.trim();
-      }, undefined, pictureUrl || this.getNotificationImageUrl(domain, false));
+      }, [[{ text: LANG.ru.btnViewSite, url: viewSiteUrl }]], pictureUrl || this.getNotificationImageUrl(domain, false));
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления об обновлении аватарки/контента:', error);
       return false;
@@ -3822,6 +3890,8 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
   // --- ОБНОВЛЕНИЕ АВАТАРКИ/КОНТЕНТА ДОМЕНА (в личку владельцу) ---
   async sendContentUpdatedNotification(
     domain: string,
+    nftAddress: string,
+    editorAddress: string,
     isTestnet: boolean = true,
     pictureUrl?: string | null,
     changedFields?: { title?: string; description?: string; category?: string }
@@ -3831,7 +3901,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     try {
       const $ = LANG.ru;
       const network = this.formatNetwork(isTestnet);
-      const domainLink = `<a href="tonsite://${domain}">${domain}</a>`;
+      const editorLink = await this.formatTonviewerLink(editorAddress, isTestnet);
 
       // Только реально изменившиеся поля (фронт сравнивает с тем, что было
       // прочитано ончейн до правки, см. AvatarSecretPage.tsx) — не все три
@@ -3844,26 +3914,40 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       ].filter(Boolean);
 
       const message = `
-${$.contentUpdated.split('{domain}').join(domainLink)}
+${$.contentUpdated}
 
 ${network}
+${$.fieldEditedBy}: ${editorLink}
+${$.fieldDomain}: ${domain}
 ${changedLines.length ? changedLines.join('\n') + '\n' : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      const inlineKeyboard = [[{ text: $.btnViewCatalog, url: 'https://tonsitecatalog.ton' }]];
+      const viewSiteUrl = `https://${domain.replace(/\.ton$/i, '')}.ton.run`;
+      const inlineKeyboard = [[{ text: $.btnViewSite, url: viewSiteUrl }]];
 
-      // Реальная текущая аватарка (пришла с клиента в момент сохранения),
-      // не сгенерированная плейсхолдер-картинка — фолбэк на генератор, если
-      // юзер аватарку не задавал (только текстовые поля профиля поменял).
+      // Реальная картинка читается напрямую с чейна (dns_text "picture"/
+      // tsi_icon этого домена) — раньше зависели от того, что передал
+      // фронт в момент сохранения (пусто для tsi_icon-загрузки локального
+      // файла), теперь бэкенд сам знает актуальное состояние. pictureUrl
+      // от фронта — только фолбэк на случай, если чейн-чтение не удалось
+      // (например токен toncenter недоступен) или для генератора-плейсхолдера.
+      let resolvedPicture: string | null = pictureUrl || null;
+      try {
+        const chainAvatar = await fetchOwnerAvatarUrl(nftAddress, isTestnet);
+        if (chainAvatar) resolvedPicture = chainAvatar;
+      } catch {
+        /* остаёмся на том, что передал фронт (если передал) */
+      }
+
       await this.sendPhotoWithCaption(
         this.ownerId,
-        pictureUrl || this.getNotificationImageUrl(domain, false),
+        resolvedPicture || this.getNotificationImageUrl(domain, false),
         message,
         inlineKeyboard
       );
 
-      await this.sendPublicContentUpdatedNotification(domain, isTestnet, pictureUrl, changedFields);
+      await this.sendPublicContentUpdatedNotification(domain, editorAddress, isTestnet, resolvedPicture, changedFields);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления об обновлении аватарки/контента:', error);
     }

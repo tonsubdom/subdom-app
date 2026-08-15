@@ -4030,17 +4030,17 @@ app.post('/api/notifications/storage-deal-created', (req, res) => {
 // и так видимый в dApp-приложениях, поэтому изменившиеся значения передаются.
 app.post('/api/notifications/content-updated', (req, res) => {
   try {
-    const { domain, pictureUrl, title, description, category } = req.body;
+    const { domain, nftAddress, editorAddress, pictureUrl, title, description, category } = req.body;
     const isTestnet = req.isTestnet;
 
-    if (!domain) {
+    if (!domain || !nftAddress || !editorAddress) {
       return res.status(400).json({
         success: false,
-        message: 'domain обязателен'
+        message: 'domain, nftAddress и editorAddress обязательны'
       });
     }
 
-    telegramBot.sendContentUpdatedNotification(domain, isTestnet, pictureUrl, { title, description, category });
+    telegramBot.sendContentUpdatedNotification(domain, nftAddress, editorAddress, isTestnet, pictureUrl, { title, description, category });
 
     return res.json({ success: true });
   } catch (error) {

@@ -15,6 +15,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { fetchSiteAndStorageRecords } from '@/services/ownerMetaService';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -68,6 +69,7 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
   const { currentTheme } = useTheme();
   const isDark = currentTheme === 'dark';
   const { t } = useLanguage();
+  const navigate = useNavigate();
 
   // "sub.zone.ton" (3+ части) — субдомен, "zone.ton" (2 части) — домен/зона.
   // Для формулировки "не найдено": юзер попросил различать домен/субдомен
@@ -204,6 +206,16 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
     }
   };
 
+  // Ведёт в CreateTorrentPage, вкладка "Загрузить", с уже вбитым bagID —
+  // сама загрузка стартует только когда юзер жмёт "Загрузить" там (см.
+  // комментарий у эффекта чтения ?bagId= в CreateTorrentPage.tsx — раньше
+  // тут же автостартовало скачивание через бэкенд без явного клика).
+  const handleGoToDownload = (bagId: string) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpen(false);
+    navigate(`/create-torrent?bagId=${encodeURIComponent(bagId)}&tab=download`);
+  };
+
   const menuItemStyle = (key: string): React.CSSProperties => ({
     display: 'flex',
     alignItems: 'center',
@@ -286,11 +298,34 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
         <div style={{ padding: '12px 16px', fontSize: '12px', color: colors.textSecondary, wordBreak: 'break-all' }}>
           <div style={{ color: colors.text, fontWeight: 600, marginBottom: '4px' }}>bagID</div>
           <div>{result.bagId}</div>
-          {result.details && (
-            <div style={{ marginTop: '6px' }}>
-              {t('lupaTorrentSize') || 'Размер'}: {(result.details.bag_size / (1024 * 1024)).toFixed(2)} МБ
-            </div>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', gap: '8px' }}>
+            {result.details ? (
+              <span>
+                {t('lupaTorrentSize') || 'Размер'}: {(result.details.bag_size / (1024 * 1024)).toFixed(2)} МБ
+              </span>
+            ) : <span />}
+            <button
+              onClick={handleGoToDownload(result.bagId)}
+              title={t('lupaDownloadTorrent') || 'Скачать'}
+              style={{
+                flexShrink: 0,
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: 'none',
+                background: '#4ade80',
+                color: '#0a2e14',
+                fontSize: '15px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 6px rgba(74, 222, 128, 0.5)',
+              }}
+            >
+              ↓
+            </button>
+          </div>
         </div>
       )}
     </div>

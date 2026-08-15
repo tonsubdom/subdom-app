@@ -497,10 +497,10 @@ export const AvatarSecretPage: React.FC = () => {
       // форма, реально сматченная резолвером; domainName — сырой ввод
       // юзера, фолбэк только для пути "резолв по адресу" (там имя не сматчено).
       const notifyDomain = resolvedDomainName || domainName;
-      if (notifyDomain) {
+      if (notifyDomain && resolvedDomain && wallet?.account?.address) {
         apiService.setNetwork(isTestnet);
         const prev = previousValuesRef.current;
-        apiService.notifyContentUpdated(notifyDomain, {
+        apiService.notifyContentUpdated(notifyDomain, resolvedDomain.nftAddress, wallet.account.address, {
           pictureUrl: pictureUrl.trim() || undefined,
           title: title.trim() && title.trim() !== prev.title ? title.trim() : undefined,
           description: description.trim() && description.trim() !== prev.description ? description.trim() : undefined,

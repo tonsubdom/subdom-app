@@ -313,16 +313,18 @@ const CreateTorrentPage: React.FC = () => {
       setBindImmediately(true);
     }
 
-    // Кнопка "Поделиться" в завершающей модалке/уведомлении об оплате
-    // хранения торрента (см. DeeplinkUtils.generateTorrentDownloadLink на
-    // бэкенде, DeeplinkHandler.tsx) — сразу открывает вкладку "Загрузить" с
-    // вбитым bagID и запускает скачивание, юзеру не нужно копировать bagID
-    // руками и переключать вкладку самому.
+    // Кнопка "Поделиться"/уведомления бота (см. DeeplinkUtils.generateTorrentDownloadLink
+    // на бэкенде, DeeplinkHandler.tsx) — сразу открывает вкладку "Загрузить"
+    // с вбитым bagID (или доменом — handleDownloadStart резолвит оба
+    // формата сам, поэтому регэксп на bagID тут больше не гейт). Раньше
+    // тут же вызывался handleDownloadStart() автоматически — юзер видел
+    // "Скачивается X/X" ещё до того, как сам что-то нажал (бэкенд реально
+    // стартовал закачку через /api/storage/download при каждом заходе по
+    // ссылке). Теперь только подставляем значение — жмёт "Загрузить" сам.
     const bagIdFromUrl = params.get('bagId');
-    if (bagIdFromUrl && BAG_ID_RE.test(bagIdFromUrl) && params.get('tab') === 'download') {
+    if (bagIdFromUrl && params.get('tab') === 'download') {
       setTab('download');
       setDownloadInput(bagIdFromUrl);
-      handleDownloadStart(bagIdFromUrl);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

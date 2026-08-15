@@ -2264,6 +2264,7 @@
 // ⚠️ Импорты useZones / apiService сохранены ради info-блока — НЕ УДАЛЯТЬ.
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   useTonAddress,
@@ -2696,6 +2697,14 @@ const ProfileWidget: React.FC = () => {
   const PROFILE_PAGE_SIZE = 10;
   const [listPage, setListPage] = useState<number>(0);
   const [filtersOpen, setFiltersOpen] = useState<boolean>(false);
+  // Дропдаун фильтров раньше жил как обычный position:absolute ребёнок внутри
+  // прокручиваемой панели виджета (className="scrollPartWrapper", overflow:
+  // scroll) — обрезался её границами и/или уезжал за левый край экрана на
+  // узких мобильных вьюпортах (та же причина, что уже чинили в LupaButton —
+  // см. комментарий там). Портал в document.body + fixed-позиция с клампом
+  // по viewport, тот же паттерн.
+  const filtersButtonRef = useRef<HTMLDivElement>(null);
+  const [filtersDropdownPos, setFiltersDropdownPos] = useState<{ top: number; left: number } | null>(null);
   const [cardView, setCardView] = useState<"list" | "swipe">("list");
   const [swipeIndex, setSwipeIndex] = useState<number>(0);
 
@@ -5720,9 +5729,18 @@ const ProfileWidget: React.FC = () => {
                   }}
                 >
                   {/* Кнопка фильтра */}
-                  <div style={{ position: "relative" }}>
+                  <div style={{ position: "relative" }} ref={filtersButtonRef}>
                     <button
-                      onClick={() => setFiltersOpen(!filtersOpen)}
+                      onClick={() => {
+                        if (!filtersOpen && filtersButtonRef.current) {
+                          const rect = filtersButtonRef.current.getBoundingClientRect();
+                          const DROPDOWN_WIDTH = 320;
+                          let left = rect.left;
+                          left = Math.min(Math.max(left, 8), window.innerWidth - DROPDOWN_WIDTH - 8);
+                          setFiltersDropdownPos({ top: rect.bottom + 8, left });
+                        }
+                        setFiltersOpen(!filtersOpen);
+                      }}
                       title={t("filters") || "Фильтры"}
                       style={{
                         background: filtersOpen
@@ -5758,8 +5776,9 @@ const ProfileWidget: React.FC = () => {
                       {t("filters") || "Filter"}
                     </button>
 
-                    {/* Дропдаун фильтров */}
-                    {filtersOpen && (
+                    {/* Дропдаун фильтров — портал в body, см. комментарий у
+                        filtersButtonRef выше. */}
+                    {filtersOpen && filtersDropdownPos && createPortal(
                       <>
                         <div
                           onClick={() => setFiltersOpen(false)}
@@ -5774,13 +5793,12 @@ const ProfileWidget: React.FC = () => {
                         />
                         <div
                           style={{
-                            position: "absolute",
-                            top: "100%",
-                            left: 0,
-                            marginTop: "8px",
+                            position: "fixed",
+                            top: `${filtersDropdownPos.top}px`,
+                            left: `${filtersDropdownPos.left}px`,
                             zIndex: 998,
                             width: "320px",
-                            maxWidth: "calc(100vw - 80px)",
+                            maxWidth: "calc(100vw - 16px)",
                             background: colors.dropdownBg,
                             border: `1px solid ${colors.dropdownBorder}`,
                             borderRadius: "8px",
@@ -5800,7 +5818,8 @@ const ProfileWidget: React.FC = () => {
                             isDark={isDark}
                           />
                         </div>
-                      </>
+                      </>,
+                      document.body
                     )}
                   </div>
 
