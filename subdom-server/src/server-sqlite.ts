@@ -477,6 +477,24 @@ const initializeDatabase = (db: SqliteDatabase) => {
       executedAt TEXT
     );
 
+    -- Жалобы/"Скрыть контент" — кнопка под паблик-уведомлениями о смене
+    -- профиля/DNS-записей (см. tgBot-sqlite.ts, callback_data "report_*").
+    -- Один ряд на домен (жалоба и "скрытие" — одно и то же действие, разные
+    -- источники — content vs dns-record — не разводим по отдельным строкам).
+    -- reporterIds — JSON string[] telegram user id, чтобы один человек не
+    -- накручивал счётчик повторными кликами. status='reviewed' — админ
+    -- разобрался и снял с очереди (см. POST /api/admin/content-reports/:id/review).
+    CREATE TABLE IF NOT EXISTS content_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      domain TEXT NOT NULL UNIQUE,
+      reportCount INTEGER NOT NULL DEFAULT 0,
+      reporterIds TEXT NOT NULL DEFAULT '[]',
+      status TEXT DEFAULT 'open',
+      firstReportedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      lastReportedAt TEXT,
+      adminNotifiedAt TEXT
+    );
+
     -- Прогресс пошаговой обучалки. completedSteps — JSON string[] id шагов
     -- из TUTORIAL_STEPS. rewardGranted гарантирует, что вторая (за обучение,
     -- отдельно от промо-попытки при регистрации) SBT-награда выдаётся не
@@ -4276,6 +4294,47 @@ app.get('/api/admin/pending-actions', requireAdminAuth, (req, res) => {
   }
 });
 
+// Жалобы/"Скрыть контент" — заполняется из tgBot-sqlite.ts (callback_query
+// "report_*"), сюда только читаем и отмечаем разобранным. По умолчанию —
+// только те, что реально накопили порог (minCount, дефолт 5) и ещё не
+// разобраны — юзер прямо просил не шуметь единичными жалобами.
+app.get('/api/admin/content-reports', requireAdminAuth, (req, res) => {
+  try {
+    const db = req.db;
+    const minCount = req.query.minCount ? parseInt(req.query.minCount as string, 10) : 5;
+    const status = typeof req.query.status === 'string' ? req.query.status : 'open';
+
+    const rows = db.prepare(
+      'SELECT * FROM content_reports WHERE reportCount >= ? AND status = ? ORDER BY reportCount DESC, lastReportedAt DESC'
+    ).all(minCount, status);
+
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('❌ Ошибка при получении жалоб на контент:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+app.post('/api/admin/content-reports/:id/review', requireAdminAuth, (req, res) => {
+  try {
+    const db = req.db;
+    const { id } = req.params;
+
+    const updated = db.prepare(
+      `UPDATE content_reports SET status = 'reviewed' WHERE id = ? RETURNING *`
+    ).get(id);
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Жалоба не найдена' });
+    }
+
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('❌ Ошибка при разборе жалобы на контент:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
 // Читаемый HTML-слепок всей БД для админки — быстрая ручная сверка
 // состояния без похода в sqlite3 CLI. Список таблиц статичный (не
 // PRAGMA table_list) — так проще держать порядок вывода осмысленным
@@ -4292,6 +4351,7 @@ const DB_SNAPSHOT_TABLES = [
   'messages',
   'auctions',
   'pending_admin_actions',
+  'content_reports',
   'tutorial_progress',
 ] as const;
 

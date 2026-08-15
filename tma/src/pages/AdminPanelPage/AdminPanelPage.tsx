@@ -4,6 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { apiService } from '@/services/api';
 import { TransactionSender } from '@/pages/CreateCollectionPage/TransactionSender';
 import { PendingActionsPanel } from './PendingActionsPanel';
+import { ContentReportsPanel } from './ContentReportsPanel';
 import { encodeDomainForChain } from '@/utils/domainPunycode';
 
 
@@ -959,6 +960,20 @@ const AdminPanelPage: React.FC = () => {
         </h2>
 
         <PendingActionsPanel isTestnet={isTestnet} currentTheme={currentTheme} />
+      </div>
+
+      <div style={{ marginBottom: '40px' }}>
+        <h2 style={{
+          margin: '0 0 20px 0',
+          color: currentTheme === 'dark' ? '#FFD700' : '#3B82F6',
+          borderBottom: `3px solid ${currentTheme === 'dark' ? '#FFD700' : '#3B82F6'}`,
+          paddingBottom: '10px',
+          fontFamily: 'monospace'
+        }}>
+          🚩 ЖАЛОБЫ НА КОНТЕНТ
+        </h2>
+
+        <ContentReportsPanel isTestnet={isTestnet} currentTheme={currentTheme} />
       </div>
 
       {/* Часть 1: Управление оплаченными попытками */}

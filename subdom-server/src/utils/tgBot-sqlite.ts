@@ -1762,12 +1762,14 @@ interface TelegramMessage {
 interface TelegramCallbackQuery {
   id: string;
   data?: string;
+  from?: { id: number };
   message?: {
     chat: {
       id: number;
       type?: string;
     };
     message_id: number;
+    photo?: unknown[];
   };
 }
 
@@ -1969,6 +1971,10 @@ const LANG = {
     btnViewSite: '🖥️ Открыть сайт (adnl)',
     btnDownloadTorrent: '📥 Скачать торрент (bagID)',
     fieldEditedBy: '✏️ Кто изменил',
+    btnReportContent: '🚩 Скрыть контент',
+    contentReportAccepted: '🚩 Репорт отправлен, контент скрыт.',
+    fieldReportCount: '🚩 Жалоб',
+    contentReportsAlertTitle: '🚩 <b>МНОГО ЖАЛОБ НА КОНТЕНТ</b>',
     fieldBagId: '🎒 BagID',
     fieldAdnl: '🔌 ADNL',
     fieldProviders: '🛰️ Провайдеров',
@@ -2198,6 +2204,10 @@ const LANG = {
     btnViewSite: '🖥️ Open site (adnl)',
     btnDownloadTorrent: '📥 Download torrent (bagID)',
     fieldEditedBy: '✏️ Edited by',
+    btnReportContent: '🚩 Hide content',
+    contentReportAccepted: '🚩 Report submitted, content hidden.',
+    fieldReportCount: '🚩 Reports',
+    contentReportsAlertTitle: '🚩 <b>MULTIPLE CONTENT REPORTS</b>',
     fieldBagId: '🎒 BagID',
     fieldAdnl: '🔌 ADNL',
     fieldProviders: '🛰️ Providers',
@@ -3125,6 +3135,8 @@ ${$.connectWarning}
           await this.bot!.sendMessage(chatId, instructions, { parse_mode: 'HTML' });
         } else if (data.startsWith('reply_')) {
           await this.handleReplyCallback(callbackQuery);
+        } else if (data.startsWith('report_')) {
+          await this.handleContentReport(callbackQuery);
         }
 
         await this.bot!.answerCallbackQuery(callbackQuery.id);
@@ -3278,6 +3290,71 @@ ${text.substring(0, 1000)}${text.length > 1000 ? '...' : ''}
       }
     } catch (error) {
       console.error('❌ Ошибка при обработке callback:', error);
+    }
+  }
+
+  // --- ЖАЛОБА / "СКРЫТЬ КОНТЕНТ" (кнопка под паблик-уведомлениями о смене
+  // профиля/DNS-записей) --- Считаем только mainnetDb — жалобы на testnet-
+  // контент не имеют смысла как повод для реальной модерации. Один
+  // telegram-юзер засчитывается в reportCount только один раз на домен
+  // (reporterIds), повторные клики просто повторно правят то же сообщение.
+  private async handleContentReport(callbackQuery: TelegramCallbackQuery): Promise<void> {
+    try {
+      const data = callbackQuery.data;
+      const chatId = callbackQuery.message?.chat.id;
+      const messageId = callbackQuery.message?.message_id;
+      const reporterId = callbackQuery.from?.id;
+
+      if (!data || !chatId || !messageId) return;
+      const domain = data.slice('report_'.length);
+      if (!domain) return;
+
+      const existing = this.mainnetDb.prepare('SELECT * FROM content_reports WHERE domain = ?').get(domain) as
+        { id: number; reportCount: number; reporterIds: string; adminNotifiedAt: string | null } | undefined;
+      const reporterIds: number[] = existing ? JSON.parse(existing.reporterIds || '[]') : [];
+      const alreadyReported = reporterId !== undefined && reporterIds.includes(reporterId);
+
+      if (!alreadyReported && reporterId !== undefined) {
+        reporterIds.push(reporterId);
+        if (existing) {
+          this.mainnetDb.prepare(
+            `UPDATE content_reports SET reportCount = reportCount + 1, reporterIds = ?, lastReportedAt = CURRENT_TIMESTAMP WHERE domain = ?`
+          ).run(JSON.stringify(reporterIds), domain);
+        } else {
+          this.mainnetDb.prepare(
+            `INSERT INTO content_reports (domain, reportCount, reporterIds, lastReportedAt) VALUES (?, 1, ?, CURRENT_TIMESTAMP)`
+          ).run(domain, JSON.stringify(reporterIds));
+        }
+      }
+
+      // Правим само сообщение — снимаем кнопки, чтобы по кругу не жали и не
+      // накручивали (reporterIds и так дедуплицирует счётчик, но кнопки
+      // после первого клика уже не нужны никому).
+      const noticeText = LANG.ru.contentReportAccepted;
+      try {
+        if (callbackQuery.message?.photo) {
+          await (this.bot as any)!.editMessageCaption(noticeText, { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+        } else {
+          await (this.bot as any)!.editMessageText(noticeText, { chat_id: chatId, message_id: messageId, reply_markup: { inline_keyboard: [] } });
+        }
+      } catch {
+        /* сообщение могли уже отредактировать по другому клику — не критично */
+      }
+
+      const updated = this.mainnetDb.prepare('SELECT * FROM content_reports WHERE domain = ?').get(domain) as
+        { reportCount: number; adminNotifiedAt: string | null } | undefined;
+
+      if (updated && updated.reportCount >= 5 && !updated.adminNotifiedAt) {
+        this.mainnetDb.prepare(`UPDATE content_reports SET adminNotifiedAt = CURRENT_TIMESTAMP WHERE domain = ?`).run(domain);
+        const $ = LANG.ru;
+        await this.bot!.sendMessage(
+          this.ownerId,
+          `${$.contentReportsAlertTitle}\n\n${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>\n${$.fieldReportCount}: <b>${updated.reportCount}</b>\n\n${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}`,
+          { parse_mode: 'HTML' }
+        );
+      }
+    } catch (error) {
+      console.error('❌ Ошибка при обработке жалобы на контент:', error);
     }
   }
 
@@ -3796,7 +3873,13 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
   async sendPublicDnsRecordUpdatedNotification(domain: string, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean = true, recordValue?: string | null, inlineKeyboard?: any[][]): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
-      const resolvedKeyboard = inlineKeyboard ?? this.dnsRecordActionButton(domain, recordFormat, action, isTestnet);
+      const baseKeyboard = inlineKeyboard ?? this.dnsRecordActionButton(domain, recordFormat, action, isTestnet);
+      // Кнопка жалобы — только паблик (владельцу площадки в личку она не
+      // нужна) и только когда есть что смотреть (action==='set', delete
+      // и так уже без кнопок вообще, см. dnsRecordActionButton).
+      const resolvedKeyboard = action === 'set'
+        ? [...(baseKeyboard || []), [{ text: LANG.ru.btnReportContent, callback_data: `report_${domain}` }]]
+        : baseKeyboard;
 
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
@@ -3935,6 +4018,8 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     try {
       const network = this.formatNetwork(isTestnet);
       const editorLink = await this.formatTonviewerLink(editorAddress, isTestnet);
+      // Кнопка жалобы — только паблик, community-модерация (см. handleContentReport).
+      const resolvedKeyboard = [...(actionButton || []), [{ text: LANG.ru.btnReportContent, callback_data: `report_${domain}` }]];
 
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
@@ -3957,7 +4042,7 @@ ${this.domainFieldLabel($, domain)}: ${domain}
 ${fieldLines.length ? fieldLines.join('\n') + '\n' : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         `.trim();
-      }, actionButton, pictureUrl || this.getNotificationImageUrl(domain, false));
+      }, resolvedKeyboard, pictureUrl || this.getNotificationImageUrl(domain, false));
     } catch (error) {
       console.error('❌ Ошибка при отправке публичного уведомления об обновлении аватарки/контента:', error);
       return false;

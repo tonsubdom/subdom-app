@@ -1093,6 +1093,37 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
+  // Жалобы/"Скрыть контент" — очередь для админки (см. PendingActionsPanel-
+  // подобная ContentReportsPanel), заполняется ботом (tgBot-sqlite.ts,
+  // callback_data "report_*"), тут только читаем и отмечаем разобранным.
+  async getContentReports(minCount: number = 5): Promise<{ success: boolean; data?: any[]; message?: string }> {
+    try {
+      const response = await fetch(
+        this.addNetworkParam(`${this.baseUrl}/api/admin/content-reports?minCount=${minCount}`),
+        { headers: this.getHeaders() }
+      );
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error fetching content reports:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async reviewContentReport(id: number): Promise<{ success: boolean; data?: any; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/admin/content-reports/${id}/review`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error reviewing content report:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
   // ========== ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ ==========
   async checkDomainAvailability(domain: string): Promise<boolean> {
     try {
