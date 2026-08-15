@@ -274,6 +274,12 @@ const CreateTorrentPage: React.FC = () => {
   // Пришли по диплинку из бота с уже готовым значением (?bagId=&tab=download)
   // — акцент на кнопку "Загрузить", юзеру остаётся только нажать её.
   const [downloadButtonPulse, setDownloadButtonPulse] = useState(false);
+  // Пришли по диплинку на вкладку "Загрузить", но без значения (?tab=download
+  // без bagId — см. фолбэк в DeeplinkHandler.ts на случай, если разбор
+  // startapp-параметра выше по цепочке не долетел с готовым bagID/доменом) —
+  // явно просим ввести вручную, а не молча оставляем пустой инпут без
+  // объяснений, откуда юзер вообще тут оказался.
+  const [showManualEntryHint, setShowManualEntryHint] = useState(false);
   const downloadPollRef = useRef<number | null>(null);
   const downloadProgressRef = useRef<{ bytes: number; sinceMs: number }>({ bytes: 0, sinceMs: 0 });
 
@@ -325,10 +331,14 @@ const CreateTorrentPage: React.FC = () => {
     // стартовал закачку через /api/storage/download при каждом заходе по
     // ссылке). Теперь только подставляем значение — жмёт "Загрузить" сам.
     const bagIdFromUrl = params.get('bagId');
-    if (bagIdFromUrl && params.get('tab') === 'download') {
+    if (params.get('tab') === 'download') {
       setTab('download');
-      setDownloadInput(bagIdFromUrl);
-      setDownloadButtonPulse(true);
+      if (bagIdFromUrl) {
+        setDownloadInput(bagIdFromUrl);
+        setDownloadButtonPulse(true);
+      } else {
+        setShowManualEntryHint(true);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1258,11 +1268,31 @@ const CreateTorrentPage: React.FC = () => {
                 'Введи bagID или имя домена/субдомена, привязанного к bagID — скачаем содержимое через демон TON Storage.'}
             </p>
 
+            {showManualEntryHint && (
+              <div
+                style={{
+                  fontSize: '12px',
+                  color: colors.text,
+                  background: `${colors.accent}15`,
+                  border: `1px solid ${colors.accent}55`,
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  marginBottom: '12px',
+                }}
+              >
+                {t('createTorrentManualEntryHint') ||
+                  'Не удалось автоматически подставить bagID из ссылки — введите bagID или домен вручную ниже.'}
+              </div>
+            )}
+
             <input
               type="text"
               placeholder={t('createTorrentDownloadPlaceholder') || 'bagID или домен (например: mysite.ton)'}
               value={downloadInput}
-              onChange={(e) => setDownloadInput(e.target.value)}
+              onChange={(e) => {
+                setDownloadInput(e.target.value);
+                if (showManualEntryHint) setShowManualEntryHint(false);
+              }}
               style={inputStyle}
             />
 

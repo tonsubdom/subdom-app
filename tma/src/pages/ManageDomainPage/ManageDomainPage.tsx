@@ -4558,7 +4558,7 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { convertRawToUserFriendlyTest } from "@/utils/tonUtils";
-import { decodeDomainForDisplay, isPunycodeEncoded } from "@/utils/domainPunycode";
+import { decodeDomainForDisplay, encodeDomainForChain, isPunycodeEncoded } from "@/utils/domainPunycode";
 import { apiService } from "@/services/api";
 import { resolveDomainNftAddress } from "@/services/ownerMetaService";
 
@@ -5370,7 +5370,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "set", muteActionNotifications, resolverAddress);
+            apiService.notifyDnsRecordUpdated(encodeDomainForChain(editingItem.title), "address", "set", muteActionNotifications, resolverAddress);
           }
           if (tutorial.active && !tutorial.isStepDone('domain_answered')) {
             await tutorial.recordStep('domain_answered', editingItem?.title);
@@ -5390,7 +5390,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "delete", muteActionNotifications, resolverAddress);
+            apiService.notifyDnsRecordUpdated(encodeDomainForChain(editingItem.title), "address", "delete", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -5422,7 +5422,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "adnl", "set", muteActionNotifications, resolverAddress);
+            apiService.notifyDnsRecordUpdated(encodeDomainForChain(editingItem.title), "adnl", "set", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -5438,7 +5438,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "adnl", "delete", muteActionNotifications, resolverAddress);
+            apiService.notifyDnsRecordUpdated(encodeDomainForChain(editingItem.title), "adnl", "delete", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -5473,7 +5473,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "bagId", "set", muteActionNotifications, resolverAddress);
+            apiService.notifyDnsRecordUpdated(encodeDomainForChain(editingItem.title), "bagId", "set", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -5489,7 +5489,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "bagId", "delete", muteActionNotifications, resolverAddress);
+            apiService.notifyDnsRecordUpdated(encodeDomainForChain(editingItem.title), "bagId", "delete", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -5524,7 +5524,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "set", muteActionNotifications, resolverAddress);
+            apiService.notifyDnsRecordUpdated(encodeDomainForChain(editingItem.title), "address", "set", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
@@ -5544,7 +5544,7 @@ export const ManageDomainPage: FC = () => {
           );
           setOriginalFormData({ ...formData });
           if (editingItem?.title) {
-            apiService.notifyDnsRecordUpdated(editingItem.title, "address", "delete", muteActionNotifications, resolverAddress);
+            apiService.notifyDnsRecordUpdated(encodeDomainForChain(editingItem.title), "address", "delete", muteActionNotifications, resolverAddress);
           }
         } else {
           showSnackbar(String(result.payload || t("transactionNotConfirmed")), "error");
