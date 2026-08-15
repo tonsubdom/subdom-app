@@ -78,9 +78,22 @@ const DeeplinkHandler: React.FC = () => {
           // Кнопка "Поделиться" в уведомлении об оплате хранения торрента
           // (см. DeeplinkUtils.generateTorrentDownloadLink на бэкенде) —
           // сразу открывает вкладку "Загрузить" с вбитым bagID, читает
-          // CreateTorrentPage.tsx.
+          // CreateTorrentPage.tsx. zone/subdomain — альтернативный вариант
+          // (generateTorrentDownloadLinkForDomain), когда вместо реального
+          // bagID бэкенд шлёт ИМЯ ДОМЕНА — startapp не пропускает точки,
+          // поэтому домен дробился на zone/subdomain отдельными параметрами
+          // (см. комментарий там же) — здесь, уже вне startapp-чарсета,
+          // склеиваем обратно и кладём в тот же bagId (CreateTorrentPage
+          // одинаково резолвит и реальный bagID, и доменное имя).
           const queryParams = new URLSearchParams();
-          if (params.bagId) queryParams.set('bagId', params.bagId);
+          if (params.bagId) {
+            queryParams.set('bagId', params.bagId);
+          } else if (params.zone) {
+            const domain = params.subdomain
+              ? `${params.subdomain}.${params.zone}.ton`
+              : `${params.zone}.ton`;
+            queryParams.set('bagId', domain);
+          }
           if (params.tab) queryParams.set('tab', params.tab);
           const queryString = queryParams.toString();
           navigate(`/create-torrent${queryString ? `?${queryString}` : ''}`);

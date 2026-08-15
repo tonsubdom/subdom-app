@@ -2361,6 +2361,34 @@ class DeeplinkUtils {
     return this.generateTelegramDeeplink('/create-torrent', { bagId, tab: 'download' });
   }
 
+  // Вариант generateTorrentDownloadLink для случаев, когда вместо реального
+  // bagID (сознательно не передаём его на бэкенд, см. dnsRecordActionButton/
+  // sendContentUpdatedNotification) в поле "Загрузить" на фронте нужно
+  // подставить ИМЯ ДОМЕНА — а оно с точками, которые startapp не пропускает
+  // (см. stripTonTld выше). Дробим так же, как generateAddSubdomainLink —
+  // zone/subdomain отдельными параметрами, домен обратно склеивается уже на
+  // фронте (DeeplinkHandler.tsx), где ограничения startapp-чарсета больше
+  // не действуют (это обычный query-параметр после разбора диплинка).
+  static generateTorrentDownloadLinkForDomain(domain: string): string {
+    const stripped = this.stripTonTld(domain);
+    const parts = stripped.split('.');
+    const params: Record<string, string> = { tab: 'download' };
+    if (parts.length >= 2) {
+      params.zone = parts[parts.length - 1] || '';
+      // Многоуровневые поддомены (4+ частей вместе с .ton) на площадке не
+      // встречаются — LupaButton и другие места сами считают "3 части =
+      // один уровень субдомена". Не пытаемся кодировать точки для более
+      // глубокой вложенности каким-нибудь спецсимволом — дефис в реальных
+      // именах доменов легитимен сам по себе, подменять его нельзя, не
+      // ломая настоящие дефисы. Просто склеиваем без разделителя — для
+      // единственного (обычного) случая это и есть весь subdomain-лейбл.
+      params.subdomain = parts.slice(0, -1).join('');
+    } else {
+      params.zone = stripped;
+    }
+    return this.generateTelegramDeeplink('/create-torrent', params);
+  }
+
   static generateAdminPendingActionsLink(): string {
     return this.generateTelegramDeeplink('admin', { section: 'pending-actions' });
   }
@@ -3685,7 +3713,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       // всякой приписки, обычная https-ссылка на голый домен работает.
       return [[{ text: LANG.ru.btnViewSite, url: `https://${domain}` }]];
     }
-    return [[{ text: LANG.ru.btnDownloadTorrent, url: DeeplinkUtils.generateTorrentDownloadLink(domain) }]];
+    return [[{ text: LANG.ru.btnDownloadTorrent, url: DeeplinkUtils.generateTorrentDownloadLinkForDomain(domain) }]];
   }
 
   async sendDnsRecordUpdatedNotification(domain: string, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean = true): Promise<void> {
@@ -3954,7 +3982,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         const { siteAdnl, storageBagId } = await fetchSiteAndStorageRecords(nftAddress, isTestnet);
         const rows: any[][] = [];
         if (siteAdnl) rows.push([{ text: $.btnViewSite, url: `https://${domain}` }]);
-        if (storageBagId) rows.push([{ text: $.btnDownloadTorrent, url: DeeplinkUtils.generateTorrentDownloadLink(domain) }]);
+        if (storageBagId) rows.push([{ text: $.btnDownloadTorrent, url: DeeplinkUtils.generateTorrentDownloadLinkForDomain(domain) }]);
         if (rows.length > 0) inlineKeyboard = rows;
       } catch {
         /* ни сайта, ни торрента не определили — обойдёмся без кнопки */

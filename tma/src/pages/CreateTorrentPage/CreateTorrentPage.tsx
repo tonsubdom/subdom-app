@@ -271,6 +271,9 @@ const CreateTorrentPage: React.FC = () => {
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloadDetails, setDownloadDetails] = useState<BagDetails | null>(null);
   const [downloadStalled, setDownloadStalled] = useState(false);
+  // Пришли по диплинку из бота с уже готовым значением (?bagId=&tab=download)
+  // — акцент на кнопку "Загрузить", юзеру остаётся только нажать её.
+  const [downloadButtonPulse, setDownloadButtonPulse] = useState(false);
   const downloadPollRef = useRef<number | null>(null);
   const downloadProgressRef = useRef<{ bytes: number; sinceMs: number }>({ bytes: 0, sinceMs: 0 });
 
@@ -325,6 +328,7 @@ const CreateTorrentPage: React.FC = () => {
     if (bagIdFromUrl && params.get('tab') === 'download') {
       setTab('download');
       setDownloadInput(bagIdFromUrl);
+      setDownloadButtonPulse(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1262,10 +1266,24 @@ const CreateTorrentPage: React.FC = () => {
               style={inputStyle}
             />
 
+            {downloadButtonPulse && (
+              <style>{`
+                @keyframes downloadButtonPulse {
+                  0%, 100% { box-shadow: 0 0 4px rgba(76, 175, 80, 0.6); }
+                  50% { box-shadow: 0 0 16px rgba(76, 175, 80, 1); }
+                }
+              `}</style>
+            )}
             <button
-              onClick={() => handleDownloadStart()}
+              onClick={() => {
+                setDownloadButtonPulse(false);
+                handleDownloadStart();
+              }}
               disabled={!downloadInput.trim() || downloadResolving}
-              style={primaryButtonStyle(!downloadInput.trim() || downloadResolving)}
+              style={{
+                ...primaryButtonStyle(!downloadInput.trim() || downloadResolving),
+                ...(downloadButtonPulse ? { animation: 'downloadButtonPulse 1.3s ease-in-out infinite' } : {}),
+              }}
             >
               {downloadResolving ? (t('processing') || 'Обработка...') : (t('createTorrentDownloadButton') || 'Загрузить')}
             </button>
