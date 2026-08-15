@@ -1738,7 +1738,7 @@ import TelegramBot from 'node-telegram-bot-api';
 import dotenv from 'dotenv';
 import Database from 'better-sqlite3';
 import { Address } from '@ton/core';
-import { fetchOwnerAvatarUrl } from '../services/dnsTextReader';
+import { fetchAllOwnerDnsText } from '../services/dnsTextReader';
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -3680,7 +3680,10 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       return [[{ text: LANG.ru.btnViewOnTonviewer, url: `${this.getTonviewerUrl(isTestnet)}/${domain}` }]];
     }
     if (recordFormat === 'adnl') {
-      return [[{ text: LANG.ru.btnViewSite, url: `https://${domain.replace(/\.ton$/i, '')}.ton.run` }]];
+      // Юзер поймал вживую: гейтвей ton.run из ТГ открывает внешний браузер —
+      // внутри Telegram .ton-домены резолвятся нативно самим клиентом без
+      // всякой приписки, обычная https-ссылка на голый домен работает.
+      return [[{ text: LANG.ru.btnViewSite, url: `https://${domain}` }]];
     }
     return [[{ text: LANG.ru.btnDownloadTorrent, url: DeeplinkUtils.generateTorrentDownloadLink(domain) }]];
   }
@@ -3856,19 +3859,19 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     editorAddress: string,
     isTestnet: boolean = true,
     pictureUrl?: string | null,
-    changedFields?: { title?: string; description?: string; category?: string }
+    currentFields?: { title?: string | null; description?: string | null; category?: string | null }
   ): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
       const editorLink = await this.formatTonviewerLink(editorAddress, isTestnet);
-      const viewSiteUrl = `https://${domain.replace(/\.ton$/i, '')}.ton.run`;
+      const viewSiteUrl = `https://${domain}`; // Telegram резолвит .ton нативно, гейтвей нужен только вне Telegram (см. dnsRecordActionButton выше)
 
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
-        const changedLines = [
-          changedFields?.title ? `${$.fieldTitle}: ${changedFields.title}` : null,
-          changedFields?.description ? `${$.fieldDescription}: ${changedFields.description}` : null,
-          changedFields?.category ? `${$.fieldCategory}: ${changedFields.category}` : null,
+        const fieldLines = [
+          currentFields?.title ? `${$.fieldTitle}: ${currentFields.title}` : null,
+          currentFields?.description ? `${$.fieldDescription}: ${currentFields.description}` : null,
+          currentFields?.category ? `${$.fieldCategory}: ${currentFields.category}` : null,
         ].filter(Boolean);
 
         return `
@@ -3877,7 +3880,7 @@ ${$.contentUpdated}
 ${network}
 ${$.fieldEditedBy}: ${editorLink}
 ${$.fieldDomain}: ${domain}
-${changedLines.length ? changedLines.join('\n') + '\n' : ''}
+${fieldLines.length ? fieldLines.join('\n') + '\n' : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         `.trim();
       }, [[{ text: LANG.ru.btnViewSite, url: viewSiteUrl }]], pictureUrl || this.getNotificationImageUrl(domain, false));
@@ -3903,14 +3906,31 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       const network = this.formatNetwork(isTestnet);
       const editorLink = await this.formatTonviewerLink(editorAddress, isTestnet);
 
-      // Только реально изменившиеся поля (фронт сравнивает с тем, что было
-      // прочитано ончейн до правки, см. AvatarSecretPage.tsx) — не все три
-      // безусловно, чтобы не шуметь пустыми строками, если юзер поменял
-      // только картинку.
-      const changedLines = [
-        changedFields?.title ? `${$.fieldTitle}: ${changedFields.title}` : null,
-        changedFields?.description ? `${$.fieldDescription}: ${changedFields.description}` : null,
-        changedFields?.category ? `${$.fieldCategory}: ${changedFields.category}` : null,
+      // Читаем title/description/category/picture напрямую с чейна одним
+      // вызовом — раньше показывали только то, что фронт посчитал
+      // "изменившимся" (сравнение со старым значением на AvatarSecretPage),
+      // из-за чего юзер, поменявший например только аватарку, не видел в
+      // уведомлении остальные уже заполненные поля вообще. Теперь показываем
+      // полный текущий профиль, а не дельту. changedFields от фронта —
+      // только фолбэк на случай, если чтение с чейна не удалось целиком.
+      let resolvedPicture: string | null = pictureUrl || null;
+      let resolvedFields: { title?: string | null; description?: string | null; category?: string | null } = changedFields || {};
+      try {
+        const chainText = await fetchAllOwnerDnsText(nftAddress, isTestnet);
+        resolvedFields = {
+          title: chainText.title ?? changedFields?.title ?? null,
+          description: chainText.description ?? changedFields?.description ?? null,
+          category: chainText.category ?? changedFields?.category ?? null,
+        };
+        if (chainText.picture || chainText.icon) resolvedPicture = chainText.picture || chainText.icon;
+      } catch {
+        /* остаёмся на том, что передал фронт (если передал) */
+      }
+
+      const fieldLines = [
+        resolvedFields.title ? `${$.fieldTitle}: ${resolvedFields.title}` : null,
+        resolvedFields.description ? `${$.fieldDescription}: ${resolvedFields.description}` : null,
+        resolvedFields.category ? `${$.fieldCategory}: ${resolvedFields.category}` : null,
       ].filter(Boolean);
 
       const message = `
@@ -3919,26 +3939,12 @@ ${$.contentUpdated}
 ${network}
 ${$.fieldEditedBy}: ${editorLink}
 ${$.fieldDomain}: ${domain}
-${changedLines.length ? changedLines.join('\n') + '\n' : ''}
+${fieldLines.length ? fieldLines.join('\n') + '\n' : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      const viewSiteUrl = `https://${domain.replace(/\.ton$/i, '')}.ton.run`;
+      const viewSiteUrl = `https://${domain}`; // Telegram резолвит .ton нативно, гейтвей нужен только вне Telegram (см. dnsRecordActionButton выше)
       const inlineKeyboard = [[{ text: $.btnViewSite, url: viewSiteUrl }]];
-
-      // Реальная картинка читается напрямую с чейна (dns_text "picture"/
-      // tsi_icon этого домена) — раньше зависели от того, что передал
-      // фронт в момент сохранения (пусто для tsi_icon-загрузки локального
-      // файла), теперь бэкенд сам знает актуальное состояние. pictureUrl
-      // от фронта — только фолбэк на случай, если чейн-чтение не удалось
-      // (например токен toncenter недоступен) или для генератора-плейсхолдера.
-      let resolvedPicture: string | null = pictureUrl || null;
-      try {
-        const chainAvatar = await fetchOwnerAvatarUrl(nftAddress, isTestnet);
-        if (chainAvatar) resolvedPicture = chainAvatar;
-      } catch {
-        /* остаёмся на том, что передал фронт (если передал) */
-      }
 
       await this.sendPhotoWithCaption(
         this.ownerId,
@@ -3947,7 +3953,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         inlineKeyboard
       );
 
-      await this.sendPublicContentUpdatedNotification(domain, editorAddress, isTestnet, resolvedPicture, changedFields);
+      await this.sendPublicContentUpdatedNotification(domain, editorAddress, isTestnet, resolvedPicture, resolvedFields);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления об обновлении аватарки/контента:', error);
     }
