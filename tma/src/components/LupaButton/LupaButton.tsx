@@ -21,6 +21,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { isRealTelegramEnv } from '@/mockEnv';
 import { tonsiteToGatewayUrl } from '@/utils/tonUtils';
+import { CLOSE_PROFILE_WIDGET_EVENT } from '@/components/SearchWidget/SearchWidget';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 const MENU_WIDTH = 240;
@@ -213,6 +214,11 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
   const handleGoToDownload = (bagId: string) => (e: React.MouseEvent) => {
     e.stopPropagation();
     setOpen(false);
+    // Если карточка открыта внутри развёрнутой панели ProfileWidget
+    // (zIndex 999) — без этого события переход происходил в фоне, юзер
+    // видел ту же панель поверх новой страницы, "как будто ничего не
+    // произошло" (тот же класс бага, что уже чинили у дропдауна фильтров).
+    window.dispatchEvent(new Event(CLOSE_PROFILE_WIDGET_EVENT));
     navigate(`/create-torrent?bagId=${encodeURIComponent(bagId)}&tab=download`);
   };
 
@@ -313,17 +319,22 @@ export const LupaButton: React.FC<LupaButtonProps> = ({
                 height: '30px',
                 borderRadius: '50%',
                 border: 'none',
-                background: '#4ade80',
-                color: '#0a2e14',
-                fontSize: '15px',
+                background: '#FFFFFF',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 2px 6px rgba(74, 222, 128, 0.5)',
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.25)',
               }}
             >
-              ↓
+              {/* Классическая "лента" загрузки — стрелка в лоток, как в
+                  обычных загрузчиках файлов (юзер просил именно так, а не
+                  голую стрелку на цветном кружке). */}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3v12" />
+                <path d="M7 10l5 5 5-5" />
+                <path d="M4 19h16" />
+              </svg>
             </button>
           </div>
         </div>

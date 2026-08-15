@@ -20,6 +20,13 @@ import { tonsiteToGatewayUrl } from '@/utils/tonUtils';
 // стали, событие проще и ничего не ломает.
 export const OPEN_PROFILE_WIDGET_EVENT = 'subdom:open-profile-widget';
 
+// Обратное событие — закрыть развёрнутую панель. Нужно компонентам вроде
+// LupaButton (переиспользуется и внутри карточек ProfileWidget, и вне его),
+// которые сами по себе навигируют на другую страницу (например "Скачать
+// торрент" -> /create-torrent): без закрытия панель (zIndex 999) остаётся
+// поверх новой страницы, и снаружи выглядит как "ничего не произошло".
+export const CLOSE_PROFILE_WIDGET_EVENT = 'subdom:close-profile-widget';
+
 interface SearchIndexEntry {
   labelKey: string;
   labelFallback: string;

@@ -2328,7 +2328,7 @@ import { LupaButton } from "@/components/LupaButton/LupaButton";
 import { ShareButton } from "@/components/ShareButton/ShareButton";
 import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
 import { useTutorial } from "@/contexts/TutorialContext";
-import { OPEN_PROFILE_WIDGET_EVENT } from "@/components/SearchWidget/SearchWidget";
+import { OPEN_PROFILE_WIDGET_EVENT, CLOSE_PROFILE_WIDGET_EVENT } from "@/components/SearchWidget/SearchWidget";
 
 // ====================================================================
 // КОНСТАНТЫ
@@ -2594,6 +2594,16 @@ const ProfileWidget: React.FC = () => {
     const handler = () => setIsExpanded(true);
     window.addEventListener(OPEN_PROFILE_WIDGET_EVENT, handler);
     return () => window.removeEventListener(OPEN_PROFILE_WIDGET_EVENT, handler);
+  }, []);
+
+  // Обратное — см. CLOSE_PROFILE_WIDGET_EVENT: компоненты, живущие внутри
+  // развёрнутой панели (LupaButton на карточках зон/субдоменов), но
+  // навигирующие на другую страницу, просят панель закрыться, иначе она
+  // (zIndex 999) остаётся поверх новой страницы.
+  useEffect(() => {
+    const handler = () => setIsExpanded(false);
+    window.addEventListener(CLOSE_PROFILE_WIDGET_EVENT, handler);
+    return () => window.removeEventListener(CLOSE_PROFILE_WIDGET_EVENT, handler);
   }, []);
 
   const wallet = useTonWallet();
