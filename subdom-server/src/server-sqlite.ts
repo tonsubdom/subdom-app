@@ -889,18 +889,25 @@ app.get('/api/storage/details', async (req, res) => {
     const details = await getBagDetails(bagId);
 
     // Демон помечает bag completed:true на уровне торрента (все пиры/куски
-    // известны) РАНЬШЕ, чем реально дописывает файлы на диск в
-    // DOWNLOADS_DIR/bagId — фронт по этому флагу сразу показывал кнопку
-    // "Скачать" (см. вкладку "Загрузить" в CreateTorrentPage), а
-    // GET /api/storage/download-file ещё не находил файл (404 "Файл ещё не
-    // скачан на диск"). Актуально только для bag'ов, добавленных через
-    // POST /api/storage/download (папка в DOWNLOADS_DIR существует) — для
-    // собственных только что созданных bag'ов (вкладка "Создать") files/
-    // completed от демона не про то же самое, их не трогаем.
-    if (details.completed && Array.isArray(details.files)) {
-      const bagDownloadDir = path.join(DOWNLOADS_DIR, bagId);
-      if (fs.existsSync(bagDownloadDir)) {
-        const allFilesOnDisk = details.files.every((f) => fs.existsSync(path.join(bagDownloadDir, f.name)));
+    // известны) РАНЬШЕ, чем реально дописывает файлы на диск — фронт по
+    // этому флагу сразу показывал кнопку "Скачать" (см. вкладку "Загрузить"
+    // в CreateTorrentPage), а GET /api/storage/download-file ещё не находил
+    // файл (404 "Файл ещё не скачан на диск"). Актуально только для bag'ов,
+    // добавленных через POST /api/storage/download — для собственных только
+    // что созданных bag'ов (вкладка "Создать") files/completed от демона не
+    // про то же самое, их не трогаем.
+    //
+    // ВАЖНО: реальная директория с файлами — details.dir_name (внутренний
+    // хеш демона), НЕ bagId и НЕ DOWNLOADS_DIR/bagId — та папка демоном
+    // игнорируется, addBag() принимает diskPath только для вида (проверено
+    // вручную на сервере: файлы лежат в STORAGE_UPLOADS_PATH/<dir_name>/,
+    // DOWNLOADS_DIR/<bagId>/ остаётся пустой). Раньше это приводило к тому,
+    // что completed навсегда откатывался в false, даже когда файл реально
+    // полностью скачан.
+    if (details.completed && Array.isArray(details.files) && details.dir_name) {
+      const realBagDir = path.join(STORAGE_UPLOADS_PATH, details.dir_name);
+      if (fs.existsSync(realBagDir)) {
+        const allFilesOnDisk = details.files.every((f) => fs.existsSync(path.join(realBagDir, f.name)));
         if (!allFilesOnDisk) {
           details.completed = false;
         }
@@ -1142,9 +1149,15 @@ app.get('/api/storage/download-file', async (req, res) => {
     if (!fileInfo) {
       return res.status(404).json({ error: 'Файл не найден в этом bag' });
     }
+    if (!details.dir_name) {
+      return res.status(404).json({ error: 'Файл ещё не скачан на диск' });
+    }
 
-    const filePath = path.join(DOWNLOADS_DIR, bagId, fileInfo.name);
-    if (!filePath.startsWith(path.join(DOWNLOADS_DIR, bagId))) {
+    // Реальная директория — details.dir_name, не bagId (см. пояснение у
+    // GET /api/storage/details выше).
+    const realBagDir = path.join(STORAGE_UPLOADS_PATH, details.dir_name);
+    const filePath = path.join(realBagDir, fileInfo.name);
+    if (!filePath.startsWith(realBagDir)) {
       return res.status(400).json({ error: 'Некорректный путь файла' });
     }
     if (!fs.existsSync(filePath)) {

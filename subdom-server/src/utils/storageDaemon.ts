@@ -66,6 +66,13 @@ export interface BagDetails {
   downloaded?: number;
   active?: boolean;
   files?: BagFileInfo[];
+  // Реальная директория на диске, куда демон пишет содержимое бага — НЕ
+  // совпадает с bagId (внутренний хеш демона, отличный и от bagId, и от
+  // merkle_hash). addBag() принимает diskPath как подсказку, но демон его
+  // игнорирует и всегда кладёт файлы в STORAGE_UPLOADS_PATH/<dir_name>/ —
+  // проверено вручную (find по shared volume). Отсюда и нужно резолвить
+  // путь к уже скачанным файлам, а не из bagId.
+  dir_name?: string;
 }
 
 export async function getBagDetails(bagId: string): Promise<BagDetails> {
