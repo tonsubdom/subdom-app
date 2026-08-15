@@ -85,13 +85,19 @@ const DeeplinkHandler: React.FC = () => {
           // (см. комментарий там же) — здесь, уже вне startapp-чарсета,
           // склеиваем обратно и кладём в тот же bagId (CreateTorrentPage
           // одинаково резолвит и реальный bagID, и доменное имя).
+          // params.zone уже приходит с ".ton" на конце — MiniAppLinkGenerator.
+          // parseStartappParam сам дописывает TLD обратно ДЛЯ ЛЮБОГО роута,
+          // не только /add-subdomain (см. конец функции в miniAppLinks.ts).
+          // Раньше тут дописывался ЕЩЁ один ".ton" поверх — получался
+          // "author.ton.ton", домен не резолвился, а до вкладки "Загрузить"
+          // юзер вообще не долетал (см. Log.md, живой баг-репорт).
           const queryParams = new URLSearchParams();
           if (params.bagId) {
             queryParams.set('bagId', params.bagId);
           } else if (params.zone) {
             const domain = params.subdomain
-              ? `${params.subdomain}.${params.zone}.ton`
-              : `${params.zone}.ton`;
+              ? `${params.subdomain}.${params.zone}`
+              : params.zone;
             queryParams.set('bagId', domain);
           }
           if (params.tab) queryParams.set('tab', params.tab);
