@@ -1357,6 +1357,8 @@ const CreateTorrentPage: React.FC = () => {
                             {downloadDetails.completed && (
                               <a
                                 href={`${API_BASE_URL}/api/storage/download-file?bag_id=${encodeURIComponent(downloadBagId)}&file=${encodeURIComponent(f.name)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 style={{ color: colors.accent, whiteSpace: 'nowrap' }}
                               >
                                 {t('createTorrentDownloadFile') || 'Скачать'} ⬇️

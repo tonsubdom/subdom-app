@@ -12421,6 +12421,7 @@ import {
   List,
   IconButton,
 } from "@telegram-apps/telegram-ui";
+import { useNavigate } from "react-router-dom";
 import { useTonWallet, useTonAddress } from "@tonconnect/ui-react";
 import { useTonConnectUI } from "@tonconnect/ui-react";
 import TonWeb from "tonweb";
@@ -12581,6 +12582,7 @@ const dedupeByLatest = (cols: SimpleCollection[]): SimpleCollection[] => {
 // ====================================================================
 
 export const AuctionPage: React.FC<{}> = () => {
+  const navigate = useNavigate();
   const dispatch = useTypedDispatch();
   const wallet = useTonWallet();
   const userAddress = useTonAddress();
@@ -14593,6 +14595,39 @@ export const AuctionPage: React.FC<{}> = () => {
               </a>
             </div>
           )}
+
+        {/* Шаг 4: Создать торрент — сразу с привязкой к только что созданному
+            субдомену (см. эффект чтения ?domain= в CreateTorrentPage). Идёт
+            выше кнопки "Создать сайт" — это тоже способ занять субдомен
+            контентом, не только собственный сайт-конструктор. */}
+        {(sbtPurchaseCompleted ||
+          (auctionInfo && !auctionInfo.isActive && canClaim)) && (
+          <div style={{ position: "relative", width: "280px" }}>
+            <button
+              onClick={() =>
+                navigate(
+                  `/create-torrent?domain=${encodeURIComponent(`${subDomainName}.${selectedDomainZone}`)}`
+                )
+              }
+              style={{
+                display: "block",
+                width: "280px",
+                borderRadius: "25px",
+                padding: "11.75px 15px",
+                background: "linear-gradient(135deg, #16a34a, #22c55e)",
+                color: "white",
+                textDecoration: "none",
+                textAlign: "center",
+                fontWeight: "bold",
+                cursor: "pointer",
+                border: "none",
+                fontSize: "14px",
+              }}
+            >
+              📦 Создать торрент на {subDomainName}.{selectedDomainZone}
+            </button>
+          </div>
+        )}
 
         {/* Шаг 4: Создать сайт */}
         {(sbtPurchaseCompleted ||
