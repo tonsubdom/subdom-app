@@ -52,18 +52,31 @@ const IndexOnlyWidgets: React.FC = () => {
   );
 };
 
-// ВРЕМЕННЫЙ диагностический компонент вместо голого <Navigate to="/" />.
-// Гипотеза: на холодном старте до того как DeeplinkHandler успевает вызвать
-// navigate() на нужный роут, текущий hash ещё не устоялся и матчится в этот
-// wildcard — если он монтируется ПОСЛЕ DeeplinkHandler в том же цикле
-// эффектов, его собственный navigate('/') может затереть уже сделанный
-// переход. Alert покажет, monтировался ли этот fallback вообще и с каким
-// исходным путём.
+// Подтверждено 2026-08-16 (см. Log.md): на холодном старте через Telegram
+// deeplink Telegram кладёт СЫРОЙ пакет init-данных (tgWebAppData=...&
+// tgWebAppPlatform=...&...) прямо в hash — а у нас HashRouter тоже правит
+// роутинг через "#". Они физически конфликтуют за один и тот же кусок URL:
+// на самой первой отрисовке этот "путь" не совпадает ни с одним нашим
+// роутом → матчит этот wildcard → его navigate('/') монтируется в ТОМ ЖЕ
+// цикле эффектов, что и DeeplinkHandler, и срабатывает ПОСЛЕ него — затирая
+// уже сделанный переход на реальный диплинк обратно на голую "/". Раньше
+// голый <Navigate to="/" /> тут был безусловным. Если "путь" похож на
+// сырые Telegram launch-данные — не вмешиваемся вообще, оставляем
+// DeeplinkHandler единственным источником навигации (он и так корректно
+// читает эти же данные через retrieveLaunchParams(), в обход роутера).
+// Настоящие 404 (реально неизвестный путь без Telegram-мусора) всё ещё
+// уводятся на главную как раньше.
 const NotFoundRedirect: React.FC = () => {
   const location = useLocation();
+  const looksLikeTelegramInitData =
+    location.pathname.includes('tgWebAppData=') ||
+    location.pathname.includes('tgWebAppPlatform=');
   useEffect(() => {
-    alert(`DEBUG: wildcard-роут сработал (path не совпал ни с чем), location=${location.pathname}${location.search} — уходим на /`);
-  }, []);
+    if (!looksLikeTelegramInitData) {
+      console.warn(`⚠️ Неизвестный путь "${location.pathname}" — перенаправление на главную`);
+    }
+  }, [looksLikeTelegramInitData, location.pathname]);
+  if (looksLikeTelegramInitData) return null;
   return <Navigate to="/" />;
 };
 
