@@ -10,6 +10,7 @@ import { getAuctionInfo } from '@/pages/AddSubdomainPage/flipTimer/getAuctionInf
 import { getAuctionBidHistory } from '@/pages/AddSubdomainPage/flipTimer/getAuctionBidHistory';
 import { mapWithConcurrency } from '@/utils/concurrency';
 import { ScanProgressLoader } from '@/components/ScanProgressLoader';
+import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-items-utils';
 
 // Сколько запросов get_auction_info держим в полёте одновременно. get_auction_info
 // сам по себе — это 2 последовательных v2-запроса на айтем, поэтому берём с запасом
@@ -892,7 +893,12 @@ const loadActiveAuctions = useCallback(async () => {
 
           const parts = item.domain.replace(/\.ton$/, '').split('.');
           const subdomainName = parts[0] || subName;
-          const zoneName = item.zone;
+          // item.zone — как и subdomain.zoneId в ProfileWidget.tsx, это сырое
+          // имя коллекции с ончейна (например "Materials DNS Domains"), не
+          // готовый под селект/URL идентификатор. Без очистки клик "Перейти"
+          // уводил на AddSubdomainPage с зоной, которую select не находил в
+          // списке ("Зона ... не найдена").
+          const zoneName = cleanZoneDisplayName(item.zone).toLowerCase().replace(/\.ton$/i, '');
 
           foundSoFarRef.current += 1;
 

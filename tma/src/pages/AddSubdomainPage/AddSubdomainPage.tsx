@@ -13056,13 +13056,20 @@ export const AuctionPage: React.FC<{}> = () => {
 
   const loadAuctionFromParams = useCallback(
     (zoneName: string, subdomainName: string) => {
+      // Та же гонка кэша, что и в selectZoneFromParams ниже — если zoneName
+      // ещё не попал в allZones, setSelectedDomainZone всё равно проставлял
+      // значение, которого нет ни в одной option селекта (визуально пусто/
+      // "не найдена"), хотя эффект-вызывающий (см. deeplink-эффект выше) и
+      // так перезапустится сам на следующее обновление allZones — просто
+      // выходим и ждём этого перезапуска, не портя стейт раньше времени.
+      const zone = allZones.find((z) => z.name === zoneName);
+      if (!zone) return;
       setOpenedViaDeeplink(true);
       setActiveTab("proxy");
       setSelectedDomainZone(zoneName);
       setSubDomainName(subdomainName);
       setSubDomainNameDisplay(decodeDomainLabel(subdomainName));
-      const zone = allZones.find((z) => z.name === zoneName);
-      if (zone?.collectionAddress) setCollectionAddress(zone.collectionAddress);
+      if (zone.collectionAddress) setCollectionAddress(zone.collectionAddress);
       updateUrlWithCurrentAuction();
       setTimeout(() => handleCheckItem(), 500);
     },
