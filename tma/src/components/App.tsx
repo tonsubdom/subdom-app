@@ -3,7 +3,7 @@
 //с провайдером для выгрузки итемов ончейн
 
 // src/components/App.tsx - обновленная версия с DeeplinkHandler
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useLaunchParams, miniApp, useSignal } from '@telegram-apps/sdk-react';
 import { AppRoot } from "@telegram-apps/telegram-ui";
 import { Navigate, Route, Routes, HashRouter, useLocation } from 'react-router-dom';
@@ -50,6 +50,21 @@ const IndexOnlyWidgets: React.FC = () => {
       <TutorialEntryWidget />
     </>
   );
+};
+
+// ВРЕМЕННЫЙ диагностический компонент вместо голого <Navigate to="/" />.
+// Гипотеза: на холодном старте до того как DeeplinkHandler успевает вызвать
+// navigate() на нужный роут, текущий hash ещё не устоялся и матчится в этот
+// wildcard — если он монтируется ПОСЛЕ DeeplinkHandler в том же цикле
+// эффектов, его собственный navigate('/') может затереть уже сделанный
+// переход. Alert покажет, monтировался ли этот fallback вообще и с каким
+// исходным путём.
+const NotFoundRedirect: React.FC = () => {
+  const location = useLocation();
+  useEffect(() => {
+    alert(`DEBUG: wildcard-роут сработал (path не совпал ни с чем), location=${location.pathname}${location.search} — уходим на /`);
+  }, []);
+  return <Navigate to="/" />;
 };
 
 export const App: React.FC = () => {
@@ -103,7 +118,7 @@ export const App: React.FC = () => {
                         {routes.map(({ path, Component }) => (
                           <Route key={path} path={path} element={<Component />} />
                         ))}
-                        <Route path="*" element={<Navigate to="/" />} />
+                        <Route path="*" element={<NotFoundRedirect />} />
                       </Routes>
                       <Footer/>
                     </div>
