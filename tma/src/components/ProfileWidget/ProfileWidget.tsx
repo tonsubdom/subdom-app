@@ -2897,6 +2897,15 @@ const ProfileWidget: React.FC = () => {
       );
     }, 300);
   };
+  // subdomain.zoneId — вопреки названию, это НЕ идентификатор, а сырое имя
+  // коллекции с ончейна с суффиксом вида "Materials DNS Domains" (см. тот же
+  // паттерн в getSubdomainImage выше) — если сунуть его прямо в zone-параметр
+  // диплинка, AddSubdomainPage не находит такую зону в списке (там зоны
+  // хранятся под чистым "materials.ton"), select остаётся пустым и вылетает
+  // "Зона не найдена". Раньше это не заметили, потому что handleGoToAuction
+  // звали именно так почти везде без очистки.
+  const cleanZoneId = (zoneId: string): string =>
+    cleanZoneDisplayName(zoneId).toLowerCase().replace(/\.ton$/i, "");
   const handleGoToAuction = (zoneName: string, subdomainName: string) => {
     if (typeof window === "undefined") return;
     // Та же схема, что и переход "Перейти" из ActiveAuctions в AddSubdomainPage:
@@ -4447,7 +4456,7 @@ const ProfileWidget: React.FC = () => {
               <button
                 onClick={() =>
                   handleGoToAuction(
-                    String(subdomain.zoneId ?? ""),
+                    cleanZoneId(String(subdomain.zoneId ?? "")),
                     subdomain.name.split(".")[0]
                   )
                 }
@@ -4716,7 +4725,7 @@ const ProfileWidget: React.FC = () => {
             <button
               onClick={() =>
                 handleGoToAuction(
-                  String(auction.subdomain?.zoneId ?? ""),
+                  cleanZoneId(String(auction.subdomain?.zoneId ?? "")),
                   auction.name.split(".")[0]
                 )
               }
@@ -4728,7 +4737,7 @@ const ProfileWidget: React.FC = () => {
             <button
               onClick={() =>
                 handleGoToAuction(
-                  String(auction.subdomain?.zoneId ?? ""),
+                  cleanZoneId(String(auction.subdomain?.zoneId ?? "")),
                   auction.name.split(".")[0]
                 )
               }
