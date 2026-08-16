@@ -898,7 +898,10 @@ const loadActiveAuctions = useCallback(async () => {
           // готовый под селект/URL идентификатор. Без очистки клик "Перейти"
           // уводил на AddSubdomainPage с зоной, которую select не находил в
           // списке ("Зона ... не найдена").
-          const zoneName = cleanZoneDisplayName(item.zone).toLowerCase().replace(/\.ton$/i, '');
+          // allZones[].name в AddSubdomainPage всегда ЗАКАНЧИВАЕТСЯ на
+          // ".ton" (см. collectionToZone там же) — дописываем, а не отрезаем.
+          const cleanedZone = cleanZoneDisplayName(item.zone).toLowerCase();
+          const zoneName = cleanedZone.endsWith('.ton') ? cleanedZone : `${cleanedZone}.ton`;
 
           foundSoFarRef.current += 1;
 

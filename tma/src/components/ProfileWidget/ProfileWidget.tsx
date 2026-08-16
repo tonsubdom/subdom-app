@@ -2904,8 +2904,15 @@ const ProfileWidget: React.FC = () => {
   // хранятся под чистым "materials.ton"), select остаётся пустым и вылетает
   // "Зона не найдена". Раньше это не заметили, потому что handleGoToAuction
   // звали именно так почти везде без очистки.
-  const cleanZoneId = (zoneId: string): string =>
-    cleanZoneDisplayName(zoneId).toLowerCase().replace(/\.ton$/i, "");
+  const cleanZoneId = (zoneId: string): string => {
+    // Формат должен точь-в-точь совпадать с allZones[].name — тот всегда
+    // заканчивается на ".ton" (см. collectionToZone в AddSubdomainPage.tsx),
+    // а не наоборот, как было тут раньше — отрезание .ton вместо
+    // дописывания ломало ровно тот же select точно так же, только с другим
+    // текстом ошибки ("materials" вместо "Materials DNS Domains").
+    const cleaned = cleanZoneDisplayName(zoneId).toLowerCase();
+    return cleaned.endsWith(".ton") ? cleaned : `${cleaned}.ton`;
+  };
   const handleGoToAuction = (zoneName: string, subdomainName: string) => {
     if (typeof window === "undefined") return;
     // Та же схема, что и переход "Перейти" из ActiveAuctions в AddSubdomainPage:
