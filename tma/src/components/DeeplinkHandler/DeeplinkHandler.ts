@@ -1,7 +1,7 @@
 // src/components/DeeplinkHandler/DeeplinkHandler.tsx
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLaunchParams } from '@telegram-apps/sdk-react';
+import { retrieveLaunchParams } from '@telegram-apps/sdk-react';
 import { MiniAppLinkGenerator } from '@/utils/miniAppLinks';
 
 /**
@@ -18,13 +18,30 @@ let lastHandledStartParam: string | null = null;
 
 const DeeplinkHandler: React.FC = () => {
   const navigate = useNavigate();
-  const launchParams = useLaunchParams();
 
   useEffect(() => {
     const handleDeeplink = () => {
-      // Вне try — нужен в catch для того же create-torrent-фолбэка, что и
-      // в ветке "Неизвестный роут" ниже (см. её комментарий).
-      const startappParam = launchParams.startParam;
+      // ВАЖНО: НЕ useLaunchParams() — это React.useMemo(retrieveLaunchParams, [])
+      // внутри SDK (проверено по исходнику), значение вычисляется РОВНО ОДИН
+      // РАЗ за жизнь этого компонента и никогда не обновляется. DeeplinkHandler
+      // смонтирован единожды на всё приложение — если Telegram не делает
+      // полную перезагрузку страницы при повторном открытии уже закешированного
+      // мини-аппа (частый случай), новый startapp от второго клика по
+      // уведомлению был физически невидим для этого кода: мы каждый раз читали
+      // ЗАМОРОЖЕННОЕ значение с самого первого захода в этой WebView-сессии.
+      // Отсюда и симптом "первая ссылка сработала, все следующие — на
+      // главную". retrieveLaunchParams() вызывается тут заново при каждом
+      // срабатывании handleDeeplink (см. слушатели visibilitychange/focus
+      // ниже) — читает текущее состояние, а не кэш React.
+      let startappParam: string | null = null;
+      try {
+        startappParam = retrieveLaunchParams().startParam ?? null;
+      } catch (error) {
+        // retrieveLaunchParams() кидает, если приложение открыто вне
+        // Telegram — не диплинк-сценарий, тихо остаёмся на месте.
+        console.log('ℹ️ Не удалось получить launch params (не Telegram-окружение?):', error);
+        return;
+      }
       try {
         if (!startappParam) {
           console.log('ℹ️ Нет startapp параметра, остаемся на текущей странице');
@@ -138,7 +155,21 @@ const DeeplinkHandler: React.FC = () => {
     };
 
     handleDeeplink();
-  }, [launchParams.startParam, navigate]);
+
+    // Telegram может "оживить" уже открытый (не перезагруженный) мини-апп
+    // вместо холодного старта при повторном клике по диплинку — единственный
+    // надёжный сигнал с нашей стороны, что стоит перепроверить launch params
+    // заново, это возврат вкладки/окна на передний план.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') handleDeeplink();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', handleDeeplink);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', handleDeeplink);
+    };
+  }, [navigate]);
 
   return null; // Этот компонент не рендерит ничего
 };
