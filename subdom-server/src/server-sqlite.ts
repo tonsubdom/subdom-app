@@ -4645,7 +4645,14 @@ app.post('/api/tutorial/complete', (req, res) => {
     }
 
     if (progress.rewardGranted) {
-      return res.json({ success: true, data: { rewardGranted: true, rewardLength: progress.rewardLength } });
+      // alreadyCompleted — юзер зашёл в тур повторно (например, кнопка
+      // "Пройти обучение" в боте не проверяет, что тур уже пройден) и снова
+      // дошёл до "Завершить". Награду второй раз НЕ выдаём (см. запись выше
+      // в этот же if) — но фронт раньше не различал этот случай и свежую
+      // выдачу, показывая один и тот же праздничный экран "получена
+      // попытка" на каждый повторный проход. Юзер решил, что ему реально
+      // насыпает попытки при каждом входе через уведомление.
+      return res.json({ success: true, data: { rewardGranted: true, rewardLength: progress.rewardLength, alreadyCompleted: true } });
     }
 
     const completedSteps: string[] = JSON.parse(progress.completedSteps || '[]');

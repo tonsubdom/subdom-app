@@ -142,7 +142,12 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
     if (result.rewardGranted) {
       setRewardGranted(true);
       setRewardLength(result.rewardLength || null);
-      setShowRewardReveal(true);
+      // alreadyCompleted — тур уже был пройден и награда выдана раньше
+      // (например, юзер зашёл повторно через кнопку "Пройти обучение" в
+      // боте). Бэкенд второй раз ничего не начисляет, но раньше фронт всё
+      // равно показывал один и тот же праздничный "получена попытка" экран
+      // на каждый повторный проход — выглядело как будто выдаётся заново.
+      if (!result.alreadyCompleted) setShowRewardReveal(true);
       return { success: true };
     }
     if (result.error) {

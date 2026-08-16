@@ -862,7 +862,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
-  async completeTutorial(address: string): Promise<{ rewardGranted: boolean; rewardLength?: string; error?: string }> {
+  async completeTutorial(address: string): Promise<{ rewardGranted: boolean; rewardLength?: string; alreadyCompleted?: boolean; error?: string }> {
     try {
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/tutorial/complete`), {
         method: 'POST',
