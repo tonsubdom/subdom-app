@@ -12582,6 +12582,15 @@ const dedupeByLatest = (cols: SimpleCollection[]): SimpleCollection[] => {
 // ====================================================================
 
 export const AuctionPage: React.FC<{}> = () => {
+  // ВРЕМЕННЫЙ диагностический alert — убрать вместе с той же меткой в
+  // DeeplinkHandler.ts. navigate() из DeeplinkHandler подтверждённо
+  // вызывается с правильным /add-subdomain?zone=...&subdomain=..., но юзер
+  // всё равно оказывается на главной — нужно увидеть, домонтируется ли
+  // вообще этот компонент с этим URL, или что-то перехватывает раньше.
+  if (typeof window !== 'undefined' && window.location.hash.includes('subdomain=') && !(window as any).__deeplinkMountAlerted) {
+    (window as any).__deeplinkMountAlerted = true;
+    alert(`DEBUG: AuctionPage смонтирован, hash=${window.location.hash}`);
+  }
   const navigate = useNavigate();
   const dispatch = useTypedDispatch();
   const wallet = useTonWallet();
