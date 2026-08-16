@@ -15,8 +15,6 @@ import { MiniAppLinkGenerator } from '@/utils/miniAppLinks';
 // navigate(), затирая то, куда пользователь только что перешёл сам —
 // ощущалось как "застревание" на странице после перехода по deeplink.
 let lastHandledStartParam: string | null = null;
-// ВРЕМЕННЫЙ — для диагностического alert() ниже, убрать вместе с ним.
-let lastAlertedValue: string | null = 'unset';
 
 const DeeplinkHandler: React.FC = () => {
   const navigate = useNavigate();
@@ -45,18 +43,7 @@ const DeeplinkHandler: React.FC = () => {
         retrieveError = error instanceof Error ? error.message : String(error);
         console.log('ℹ️ Не удалось получить launch params (не Telegram-окружение?):', error);
       }
-      // ВРЕМЕННЫЙ диагностический alert — убрать после того как найдём
-      // причину "диплинк из уведомления бота открывает главную". Показываем
-      // раз на новое значение (не спамим на каждый visibilitychange/focus с
-      // тем же самым результатом).
-      if (startappParam !== lastAlertedValue) {
-        lastAlertedValue = startappParam;
-        alert(
-          retrieveError
-            ? `DEBUG: retrieveLaunchParams() упал: ${retrieveError}`
-            : `DEBUG: startParam = ${JSON.stringify(startappParam)}`
-        );
-      }
+      if (retrieveError) return;
       if (!startappParam) return;
       try {
         if (!startappParam) {
@@ -85,8 +72,9 @@ const DeeplinkHandler: React.FC = () => {
           if (params.subdomain) queryParams.set('subdomain', params.subdomain);
           
           const queryString = queryParams.toString();
+          alert(`DEBUG: навигация на /add-subdomain?${queryString}`);
           navigate(`/add-subdomain${queryString ? `?${queryString}` : ''}`);
-          
+
         } else if (route === '/market') {
           // Для маркета — если ссылка сгенерирована для конкретного
           // завершённого аукциона (zone/subdomain), прокидываем их в query,
@@ -155,6 +143,7 @@ const DeeplinkHandler: React.FC = () => {
         } else {
           // Неизвестный роут - перенаправляем на главную
           console.warn(`⚠️ Неизвестный роут: ${route}, перенаправление на главную`);
+          alert(`DEBUG: неизвестный роут "${route}", params=${JSON.stringify(params)} — уходим на главную`);
           navigate('/');
         }
         
@@ -162,6 +151,7 @@ const DeeplinkHandler: React.FC = () => {
         
       } catch (error) {
         console.error('❌ Ошибка при обработке deeplink:', error);
+        alert(`DEBUG: исключение при обработке диплинка: ${error instanceof Error ? error.message : String(error)}`);
         if (startappParam && startappParam.startsWith('create-torrent')) {
           navigate('/create-torrent?tab=download');
         } else {
