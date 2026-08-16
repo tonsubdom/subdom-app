@@ -12421,7 +12421,7 @@ import {
   List,
   IconButton,
 } from "@telegram-apps/telegram-ui";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useTonWallet, useTonAddress } from "@tonconnect/ui-react";
 import { useTonConnectUI } from "@tonconnect/ui-react";
 import TonWeb from "tonweb";
@@ -12583,6 +12583,7 @@ const dedupeByLatest = (cols: SimpleCollection[]): SimpleCollection[] => {
 
 export const AuctionPage: React.FC<{}> = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useTypedDispatch();
   const wallet = useTonWallet();
   const userAddress = useTonAddress();
@@ -12927,8 +12928,16 @@ export const AuctionPage: React.FC<{}> = () => {
         console.error("deeplink parse error:", e);
       }
     }
+    // location.search добавлен намеренно: без него, если юзер уже стоит на
+    // этой же странице (компонент не размонтируется — тот же роут) и
+    // кликает НОВУЮ карточку аукциона с других query-параметров (например,
+    // из ProfileWidget/ActiveAuctions), navigate() меняет URL, но этот
+    // эффект не перезапускался — allZones/launchParams.startParam не
+    // менялись, а на сам location.search эффект не был подписан. Юзер видел
+    // "ничего не произошло", пока не уходил со страницы и не возвращался
+    // заново (полный ремонт компонента).
     // eslint-disable-next-line
-  }, [allZones, launchParams.startParam]);
+  }, [allZones, launchParams.startParam, location.search]);
 
   // Домен владельца + время/хэш последней транзакции — для карточки уже
   // занятого сабдомена (реальная история вместо пустой "доступен"-заглушки,
