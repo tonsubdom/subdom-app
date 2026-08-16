@@ -11,6 +11,7 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./tma/dist:/usr/share/nginx/html
+      - ./nginx/logs:/var/log/nginx
     depends_on:
       - backend
     restart: always
