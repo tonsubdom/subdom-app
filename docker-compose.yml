@@ -56,6 +56,13 @@ services:
       # 2026-08-06). PLATFORM_OWNER_* этот же баг не задел, они уже были
       # прописаны ниже.
       - TONCENTER_API_KEY=${TONCENTER_API_KEY:-}
+      # Отдельный ключ только для кроулера (platformCache/toncenter-api-config.ts
+      # берёт его с приоритетом, падая на TONCENTER_API_KEY если пусто) — не
+      # делит rate limit toncenter с VITE_TONCENTER_API_KEY, которым бьют
+      # напрямую браузеры всех юзеров разом (лимит у toncenter общий на ключ,
+      # см. живой инцидент 2026-08-16 — под реальной параллельной нагрузкой
+      # общий лимит улетал в 429 у всех сразу).
+      - PLATFORM_CACHE_TONCENTER_API_KEY=${PLATFORM_CACHE_TONCENTER_API_KEY:-}
       # Тот же класс бага, что и с TONCENTER_API_KEY выше: deploy.yml
       # экспортирует эти HASH_*-переменные на хосте, но без явного
       # проброса сюда SubdomainClassifier (crawler.ts/toncenter-api-config.ts)

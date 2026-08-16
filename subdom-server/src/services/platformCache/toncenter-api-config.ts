@@ -35,7 +35,14 @@ export interface GetItemsByCollectionResponse {
 export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
   testnet: {
     API_URL: 'https://testnet.toncenter.com/api/v3',
-    API_KEY: process.env.TONCENTER_API_KEY,
+    // Отдельный ключ для кроулера — если не задан, падаем на общий
+    // TONCENTER_API_KEY (тот же, что и на фронте). Раздельный ключ важен:
+    // toncenter считает rate limit по значению ключа СУММАРНО по всем, кто
+    // им пользуется — если кроулер (раз в CRAWL_INTERVAL_MS) и все клиенты
+    // юзеров стучатся одним и тем же ключом, при реальной параллельной
+    // нагрузке (много юзеров одновременно) общий лимit улетает в 429 даже
+    // без злого умысла — просто складывается. См. живой инцидент 2026-08-16.
+    API_KEY: process.env.PLATFORM_CACHE_TONCENTER_API_KEY || process.env.TONCENTER_API_KEY,
     DEFAULT_ADDRESSES: {
       PLATFORM_OWNER: process.env.PLATFORM_OWNER_TESTNET || '',
       NFT_WRAPPER_COLLECTION: process.env.NFT_WRAPPER_COLLECTION_TESTNET || '',
@@ -52,7 +59,14 @@ export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
   },
   mainnet: {
     API_URL: 'https://toncenter.com/api/v3',
-    API_KEY: process.env.TONCENTER_API_KEY,
+    // Отдельный ключ для кроулера — если не задан, падаем на общий
+    // TONCENTER_API_KEY (тот же, что и на фронте). Раздельный ключ важен:
+    // toncenter считает rate limit по значению ключа СУММАРНО по всем, кто
+    // им пользуется — если кроулер (раз в CRAWL_INTERVAL_MS) и все клиенты
+    // юзеров стучатся одним и тем же ключом, при реальной параллельной
+    // нагрузке (много юзеров одновременно) общий лимit улетает в 429 даже
+    // без злого умысла — просто складывается. См. живой инцидент 2026-08-16.
+    API_KEY: process.env.PLATFORM_CACHE_TONCENTER_API_KEY || process.env.TONCENTER_API_KEY,
     DEFAULT_ADDRESSES: {
       PLATFORM_OWNER: process.env.PLATFORM_OWNER_MAINNET || '',
       NFT_WRAPPER_COLLECTION: process.env.NFT_WRAPPER_COLLECTION_MAINNET || '',
