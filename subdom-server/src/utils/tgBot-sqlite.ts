@@ -2016,7 +2016,7 @@ const LANG = {
 
     // Подсказки
     hintProxyZone: '💡 Теперь можно создавать субдомены в этой Proxy-зоне!',
-    hintAuctionEnds: '59 минут',
+    hintAuctionEnds: '23 часа 59 минут',
     hintHurryUp: '🎯 Успейте сделать ставку!',
     hintCongrats: '🎊 Поздравляем нового владельца!',
     hintCongratsWinner: 'Поздравляем победителя! 🎊',
@@ -2249,7 +2249,7 @@ const LANG = {
 
     // Подсказки
     hintProxyZone: '💡 You can now create subdomains in this Proxy zone!',
-    hintAuctionEnds: '59 minutes',
+    hintAuctionEnds: '23 hours 59 minutes',
     hintHurryUp: '🎯 Place your bid!',
     hintCongrats: '🎊 Congratulations to the new owner!',
     hintCongratsWinner: 'Congratulations to the winner! 🎊',
