@@ -2310,7 +2310,6 @@ import { getAuctionBidHistory } from "@/pages/AddSubdomainPage/flipTimer/getAuct
 import { mapWithConcurrency } from "@/utils/concurrency";
 import { createAuctionUrl } from "@/utils/urlParams";
 import { MiniAppLinks } from "@/utils/miniAppLinks";
-import { openTelegramLink } from "@telegram-apps/sdk-react";
 import { tonDnsPreviewImage } from "@/store/nft/actions";
 import { useBlockchainScanUi } from "@/hooks/useBlockchainLoadProgress";
 
@@ -4176,7 +4175,7 @@ const ProfileWidget: React.FC = () => {
                   e.stopPropagation();
                   setIsExpanded(false);
                   setTimeout(() => {
-                    openTelegramLink(MiniAppLinks.siteBuilder(zone.name));
+                    window.open(MiniAppLinks.siteBuilder(zone.name), "_blank");
                   }, 300);
                 }}
                 style={{
@@ -4494,7 +4493,10 @@ const ProfileWidget: React.FC = () => {
                   e.stopPropagation();
                   setIsExpanded(false);
                   setTimeout(() => {
-                    openTelegramLink(MiniAppLinks.siteBuilder(subdomain.name));
+                    window.open(
+                      MiniAppLinks.siteBuilder(subdomain.name),
+                      "_blank"
+                    );
                   }, 300);
                 }}
                 style={{
