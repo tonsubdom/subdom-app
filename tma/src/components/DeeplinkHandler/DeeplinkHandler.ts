@@ -72,7 +72,6 @@ const DeeplinkHandler: React.FC = () => {
           if (params.subdomain) queryParams.set('subdomain', params.subdomain);
           
           const queryString = queryParams.toString();
-          alert(`DEBUG: навигация на /add-subdomain?${queryString}`);
           navigate(`/add-subdomain${queryString ? `?${queryString}` : ''}`);
 
         } else if (route === '/market') {
@@ -143,7 +142,6 @@ const DeeplinkHandler: React.FC = () => {
         } else {
           // Неизвестный роут - перенаправляем на главную
           console.warn(`⚠️ Неизвестный роут: ${route}, перенаправление на главную`);
-          alert(`DEBUG: неизвестный роут "${route}", params=${JSON.stringify(params)} — уходим на главную`);
           navigate('/');
         }
         
@@ -151,7 +149,6 @@ const DeeplinkHandler: React.FC = () => {
         
       } catch (error) {
         console.error('❌ Ошибка при обработке deeplink:', error);
-        alert(`DEBUG: исключение при обработке диплинка: ${error instanceof Error ? error.message : String(error)}`);
         if (startappParam && startappParam.startsWith('create-torrent')) {
           navigate('/create-torrent?tab=download');
         } else {
