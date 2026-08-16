@@ -15,6 +15,8 @@ import { MiniAppLinkGenerator } from '@/utils/miniAppLinks';
 // navigate(), затирая то, куда пользователь только что перешёл сам —
 // ощущалось как "застревание" на странице после перехода по deeplink.
 let lastHandledStartParam: string | null = null;
+// ВРЕМЕННЫЙ — для диагностического alert() ниже, убрать вместе с ним.
+let lastAlertedValue: string | null = 'unset';
 
 const DeeplinkHandler: React.FC = () => {
   const navigate = useNavigate();
@@ -34,14 +36,28 @@ const DeeplinkHandler: React.FC = () => {
       // срабатывании handleDeeplink (см. слушатели visibilitychange/focus
       // ниже) — читает текущее состояние, а не кэш React.
       let startappParam: string | null = null;
+      let retrieveError: string | null = null;
       try {
         startappParam = retrieveLaunchParams().startParam ?? null;
       } catch (error) {
         // retrieveLaunchParams() кидает, если приложение открыто вне
         // Telegram — не диплинк-сценарий, тихо остаёмся на месте.
+        retrieveError = error instanceof Error ? error.message : String(error);
         console.log('ℹ️ Не удалось получить launch params (не Telegram-окружение?):', error);
-        return;
       }
+      // ВРЕМЕННЫЙ диагностический alert — убрать после того как найдём
+      // причину "диплинк из уведомления бота открывает главную". Показываем
+      // раз на новое значение (не спамим на каждый visibilitychange/focus с
+      // тем же самым результатом).
+      if (startappParam !== lastAlertedValue) {
+        lastAlertedValue = startappParam;
+        alert(
+          retrieveError
+            ? `DEBUG: retrieveLaunchParams() упал: ${retrieveError}`
+            : `DEBUG: startParam = ${JSON.stringify(startappParam)}`
+        );
+      }
+      if (!startappParam) return;
       try {
         if (!startappParam) {
           console.log('ℹ️ Нет startapp параметра, остаемся на текущей странице');
