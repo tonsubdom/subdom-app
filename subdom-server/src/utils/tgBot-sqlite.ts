@@ -2474,6 +2474,12 @@ const API_PAYLOAD_URL = process.env.VITE_API_SC_PAYLOAD_URL || 'https://api.subd
 
 class TelegramBotService {
   private bot: TelegramBot | null = null;
+  // Числовой id самого бота — префикс токена до ":" (совпадает с
+  // from.id в апдейтах, которые шлёт сам бот). Нужен, чтобы отличить
+  // "ответ на сообщение БОТА" (реальный support-reply) от "юзер просто
+  // ответил кому-то ещё в общем чате" — раньше это не проверялось, см.
+  // условие в setupHandlers() ниже.
+  private botId: number | null = null;
   private ownerId: string = process.env.TELEGRAM_OWNER_ID || '';
   private groupId: string = process.env.TELEGRAM_GROUP_ID || '';
   private replyContext = new Map<number, MessageContext>();
@@ -2923,6 +2929,7 @@ class TelegramBotService {
       this.bot = new TelegramBot(token, {
         polling: true
       });
+      this.botId = parseInt(token.split(':')[0] || '', 10) || null;
 
       this.setupHandlers();
       console.log('✅ Telegram Bot инициализирован и запущен');
@@ -3162,8 +3169,13 @@ ${$.connectWarning}
         if (context && msg.text) {
           console.log(`✅ Найден активный контекст! Обрабатываем как ответ техподдержки...`);
           await this.handleSupportReply(msg);
-        } else if (msg.reply_to_message && msg.text) {
-          console.log(`📨 Это ответ на сообщение ${msg.reply_to_message.message_id}`);
+        } else if (msg.reply_to_message && msg.text && msg.reply_to_message.from?.id === this.botId) {
+          // Раньше тут проверялся только сам факт reply_to_message — юзер,
+          // отвечающий кому-то ДРУГОМУ в общем чате (не боту), тоже попадал
+          // сюда, контекста для него закономерно не было, и в чат летело
+          // "Контекст не найден" на ровном месте. Теперь реагируем только на
+          // реальный reply именно на сообщение бота.
+          console.log(`📨 Это ответ на сообщение бота ${msg.reply_to_message.message_id}`);
           await this.handleSupportReply(msg);
         } else {
           console.log(`❌ Нет активного контекста и не ответ на сообщение`);
@@ -3180,8 +3192,21 @@ ${$.connectWarning}
       }
     });
 
-    this.bot.on('polling_error', (error: Error) => {
-      if (error.message.includes('ESOCKETTIMEDOUT') || error.message.includes('ETIMEDOUT')) {
+    this.bot.on('polling_error', (error: any) => {
+      if (error.message?.includes('ESOCKETTIMEDOUT') || error.message?.includes('ETIMEDOUT')) {
+        return;
+      }
+      // 502/504 от api.telegram.org на getUpdates — временный сбой на
+      // стороне Telegram (не нашего сервера), проходит сам собой на
+      // следующем цикле поллинга. node-telegram-bot-api кладёт в error.response
+      // весь IncomingMessage целиком (сотни свойств, TLS-сокет и т.д.) —
+      // console.error(error) печатал это ЦЕЛИКОМ на каждый такой сбой,
+      // раздувая логи до бессмысленного объёма (проверено: ~193 таких дампа
+      // дали ~50 тысяч строк из 55 тысяч в subdom_logs.txt). Одна короткая
+      // строка вместо этого достаточно — сам факт всё равно виден в логе.
+      const status = error.response?.statusCode;
+      if (error.code === 'ETELEGRAM' && (status === 502 || status === 504)) {
+        console.warn(`⚠️ Telegram polling: временный ${status} от api.telegram.org (getUpdates), пропускаем`);
         return;
       }
       console.error('❌ Ошибка Telegram polling:', error);
