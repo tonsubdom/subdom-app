@@ -13063,6 +13063,22 @@ export const AuctionPage: React.FC<{}> = () => {
     resolveOccupiedInfo,
   ]);
 
+  // handleCheckItem меняет identity на каждое изменение selectedDomainZone/
+  // subDomainName/collectionAddress (они же в его deps). Если звать его из
+  // setTimeout, замыкание держит ту версию, что была на момент СОЗДАНИЯ
+  // setTimeout — то есть ДО того как synchronous setSelectedDomainZone/
+  // setSubDomainName/setCollectionAddress чуть выше успеют перерендерить
+  // компонент. Через 500мс срабатывала СТАРАЯ (пустая) версия — отсюда
+  // "Зона не выбрана" при первом клике из ProfileWidget (карточка "Перейти"
+  // в табе Аукционы), хотя в селектах уже всё стояло правильно, и повторный
+  // ручной клик по "Проверить итем" (уже с актуальным handleCheckItem)
+  // срабатывал нормально. Ref всегда даёт САМУЮ свежую версию на момент
+  // реального вызова, а не на момент постановки в очередь.
+  const handleCheckItemRef = useRef(handleCheckItem);
+  useEffect(() => {
+    handleCheckItemRef.current = handleCheckItem;
+  }, [handleCheckItem]);
+
   const loadAuctionFromParams = useCallback(
     (zoneName: string, subdomainName: string) => {
       // Та же гонка кэша, что и в selectZoneFromParams ниже — если zoneName
@@ -13080,9 +13096,18 @@ export const AuctionPage: React.FC<{}> = () => {
       setSubDomainNameDisplay(decodeDomainLabel(subdomainName));
       if (zone.collectionAddress) setCollectionAddress(zone.collectionAddress);
       updateUrlWithCurrentAuction();
-      setTimeout(() => handleCheckItem(), 500);
+      setTimeout(() => {
+        handleCheckItemRef.current();
+        // Тот же автоскролл до таймера/кнопки "Сделать ставку", что уже
+        // есть в useAuctionIntegration.ts (клик из ActiveAuctions) — тут
+        // его не было вообще, юзер из уведомления бота видел заполненную
+        // форму, но должен был сам скроллить вниз, чтобы увидеть результат.
+        setTimeout(() => {
+          window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+        }, 300);
+      }, 500);
     },
-    [allZones, handleCheckItem, updateUrlWithCurrentAuction]
+    [allZones, updateUrlWithCurrentAuction]
   );
 
   // Для перехода "Создать субдомен" с карточки зоны в профиле — известна
