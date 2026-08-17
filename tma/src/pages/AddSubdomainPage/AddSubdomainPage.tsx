@@ -13144,8 +13144,15 @@ export const AuctionPage: React.FC<{}> = () => {
       setSubDomainNameDisplay(decodeDomainLabel(subdomainName));
       if (zone.collectionAddress) setCollectionAddress(zone.collectionAddress);
       updateUrlWithCurrentAuction();
-      setTimeout(() => {
-        handleCheckItemRef.current();
+      setTimeout(async () => {
+        // await, а не fire-and-forget — handleCheckItemRef.current() реально
+        // ходит в сеть (getAuctionInfo и т.д.), и скролл ниже раньше срабатывал
+        // через фиксированные 300мс ПОСЛЕ ЗАПУСКА проверки, а не после её
+        // завершения. Юзер видел один скролл до кнопки "Проверить итем" (пока
+        // страница ещё не выросла на реальный результат), а после появления
+        // кнопки "Сделать ставку"/таймера — уже никакого второго скролла, надо
+        // было листать руками.
+        await handleCheckItemRef.current();
         // Тот же автоскролл до таймера/кнопки "Сделать ставку", что уже
         // есть в useAuctionIntegration.ts (клик из ActiveAuctions) — тут
         // его не было вообще, юзер из уведомления бота видел заполненную
@@ -14772,23 +14779,13 @@ export const AuctionPage: React.FC<{}> = () => {
           </div>
         )}
 
-        {/* Шаг 4: Создать сайт */}
+        {/* Создать сайт — без номера шага, как у соседних кнопок профиль/
+            торрент: раньше тут стояла та же "4", что и у "Посмотреть в
+            маркете" выше — оба блока теперь показываются ОДНОВРЕМЕННО
+            (см. !canClaim), и цифра дублировалась на экране. */}
         {(sbtPurchaseCompleted ||
           (auctionInfo && !auctionInfo.isActive && !canClaim)) && (
           <div style={{ position: "relative", width: "280px" }}>
-            <div
-              style={{
-                position: "absolute",
-                left: "-30px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                fontSize: "18px",
-                fontWeight: "bold",
-                color: isDark ? "white" : "black",
-              }}
-            >
-              4
-            </div>
             <a
               href="https://t.me/Ton_site_builder_bot?startapp"
               target="_blank"
