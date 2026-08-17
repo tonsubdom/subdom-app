@@ -1,6 +1,6 @@
 // src/components/DeeplinkHandler/DeeplinkHandler.tsx
 import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { retrieveLaunchParams } from '@telegram-apps/sdk-react';
 import { MiniAppLinkGenerator } from '@/utils/miniAppLinks';
 
@@ -18,6 +18,7 @@ let lastHandledStartParam: string | null = null;
 
 const DeeplinkHandler: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleDeeplink = () => {
@@ -44,7 +45,24 @@ const DeeplinkHandler: React.FC = () => {
         console.log('ℹ️ Не удалось получить launch params (не Telegram-окружение?):', error);
       }
       if (retrieveError) return;
-      if (!startappParam) return;
+      if (!startappParam) {
+        // Нет startapp — не диплинк-сценарий. НО на холодном старте Telegram
+        // всё равно может засорить hash сырыми init-данными
+        // (tgWebAppData=...&tgWebAppPlatform=...), с которыми конфликтует
+        // HashRouter (см. NotFoundRedirect в App.tsx). В этом случае
+        // NotFoundRedirect намеренно ничего не делает, ожидая, что именно
+        // DeeplinkHandler разрулит URL — но без startapp сюда раньше никто
+        // не доходил, и приложение оставалось на пустом wildcard-роуте
+        // навсегда (реальный баг-репорт: "на старте пусто, помогает только
+        // клик на домой"). Уводим сами.
+        const looksLikeTelegramInitData =
+          location.pathname.includes('tgWebAppData=') ||
+          location.pathname.includes('tgWebAppPlatform=');
+        if (looksLikeTelegramInitData) {
+          navigate('/');
+        }
+        return;
+      }
       try {
         if (!startappParam) {
           console.log('ℹ️ Нет startapp параметра, остаемся на текущей странице');
@@ -172,7 +190,7 @@ const DeeplinkHandler: React.FC = () => {
       document.removeEventListener('visibilitychange', onVisible);
       window.removeEventListener('focus', handleDeeplink);
     };
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   return null; // Этот компонент не рендерит ничего
 };
