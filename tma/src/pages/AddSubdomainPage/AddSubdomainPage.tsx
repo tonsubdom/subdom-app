@@ -13092,6 +13092,18 @@ export const AuctionPage: React.FC<{}> = () => {
       // выходим и ждём этого перезапуска, не портя стейт раньше времени.
       const zone = allZones.find((z) => z.name === zoneName);
       if (!zone) return;
+      // Сбрасываем состояние ПРЕДЫДУЩЕГО проверенного итема сразу, а не
+      // ждём результата handleCheckItemRef ниже (он приходит через 500мс+
+      // сетевого запроса) — иначе в этом окне на экране ещё висят auctionInfo/
+      // hasChecked от прошлого итема (например, кнопка "Посмотреть в маркете"
+      // или таймер "аукцион не начат") и выглядят так, будто относятся к
+      // новому. Тот же баг был со стороны "Сделать ставку" из уведомления
+      // бота — оба пути идут через эту функцию.
+      setAuctionInfo(null);
+      setSbtSubdomainInfo(null);
+      setNftAddress("");
+      setOccupiedInfo(null);
+      setHasChecked(false);
       setOpenedViaDeeplink(true);
       setActiveTab("proxy");
       setSelectedDomainZone(zoneName);
@@ -13562,6 +13574,12 @@ export const AuctionPage: React.FC<{}> = () => {
       }
       track('auction_claimed');
       showSnackbar(t("subdomainClaimedSuccess"), "success");
+      // Та же схема, что у START_AUCTION/PLACE_BID выше — canClaim читает
+      // maxBidderOwner из auctionInfo, а claim-транзакция не обновляет этот
+      // стейт сама. Без перепроверки кнопка "Посмотреть в маркете" и
+      // профиль/торрент/сайт-кнопки оставались в состоянии "ещё не
+      // заклеймлено" до ручного повторного клика "Проверить итем".
+      setTimeout(() => handleCheckItem(), 2000);
     } catch (error) {
       track('auction_claim_failed', {
         reason: (error instanceof Error ? error.message : 'unknown').slice(0, 120),
