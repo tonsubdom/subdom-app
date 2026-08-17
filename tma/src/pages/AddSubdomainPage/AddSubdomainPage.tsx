@@ -12899,6 +12899,20 @@ export const AuctionPage: React.FC<{}> = () => {
     if (sp) setOpenedViaDeeplink(true);
   }, [launchParams.startParam]);
 
+  // allZones — не только зависимость от реальной навигации: она пересчитывается
+  // и когда фоновый ensureData()/loadAllData() (на маунте страницы) резолвится
+  // и просто обновляет ссылку на proxyCollections/sbtCollections БЕЗ смены
+  // фактических zone/subdomain в URL. Без этого guard'а эффект ниже видел
+  // "новую" allZones и заново дёргал loadAuctionFromParams ДЛЯ ТЕХ ЖЕ
+  // параметров — второй полный сброс+перепроверка итема через 1-3с после
+  // первой, гоняя два независимых async-запроса вперегонки (кто последний
+  // ответит, тот и остаётся на экране). Юзер видел это как "загрузилось
+  // правильно, а через 2-3 секунды само перепроверило и откатило на
+  // дефолтный таймер". Ключ — только по фактическим zone/subdomain, а не по
+  // allZones/startParam, поэтому реальная смена итема (другой zone/subdomain
+  // в URL) всё ещё проходит через guard нормально.
+  const lastAutoLoadedKeyRef = useRef<string | null>(null);
+
   useEffect(() => {
     const hasUrlParams = isAuctionPage();
     const hasDeeplink = !!launchParams.startParam;
@@ -12914,14 +12928,21 @@ export const AuctionPage: React.FC<{}> = () => {
     // никогда не подставлялись тому, кто открыл ссылку не из Telegram.
     if (hasUrlParams) {
       const p = getAuctionParamsFromUrl();
-      if (p.zone && p.subdomain) loadAuctionFromParams(p.zone, p.subdomain);
-      else if (p.zone) selectZoneFromParams(p.zone);
+      if (p.zone && p.subdomain) {
+        const key = `${p.zone}::${p.subdomain}`;
+        if (lastAutoLoadedKeyRef.current === key) return;
+        lastAutoLoadedKeyRef.current = key;
+        loadAuctionFromParams(p.zone, p.subdomain);
+      } else if (p.zone) selectZoneFromParams(p.zone);
     } else if (hasDeeplink) {
       const sp = launchParams.startParam!;
       try {
         const { route, params } = MiniAppLinks.parseStartapp(sp);
         if (route === "/add-subdomain") {
           if (params.zone && params.subdomain) {
+            const key = `${params.zone}::${params.subdomain}`;
+            if (lastAutoLoadedKeyRef.current === key) return;
+            lastAutoLoadedKeyRef.current = key;
             loadAuctionFromParams(params.zone, params.subdomain);
           } else if (params.zone) {
             selectZoneFromParams(params.zone);
