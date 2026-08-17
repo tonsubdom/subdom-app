@@ -14645,7 +14645,7 @@ export const AuctionPage: React.FC<{}> = () => {
             .ton-домены, а nftAddress уже известен из sbtSubdomainInfo/
             auctionInfo сразу после покупки/claim. */}
         {(sbtPurchaseCompleted ||
-          (auctionInfo && !auctionInfo.isActive && canClaim)) && (
+          (auctionInfo && !auctionInfo.isActive && !canClaim)) && (
           <div style={{ position: "relative", width: "280px" }}>
             <button
               onClick={() => {
@@ -14679,7 +14679,7 @@ export const AuctionPage: React.FC<{}> = () => {
             выше кнопки "Создать сайт" — это тоже способ занять субдомен
             контентом, не только собственный сайт-конструктор. */}
         {(sbtPurchaseCompleted ||
-          (auctionInfo && !auctionInfo.isActive && canClaim)) && (
+          (auctionInfo && !auctionInfo.isActive && !canClaim)) && (
           <div style={{ position: "relative", width: "280px" }}>
             <button
               onClick={() =>
@@ -14709,7 +14709,7 @@ export const AuctionPage: React.FC<{}> = () => {
 
         {/* Шаг 4: Создать сайт */}
         {(sbtPurchaseCompleted ||
-          (auctionInfo && !auctionInfo.isActive && canClaim)) && (
+          (auctionInfo && !auctionInfo.isActive && !canClaim)) && (
           <div style={{ position: "relative", width: "280px" }}>
             <div
               style={{
