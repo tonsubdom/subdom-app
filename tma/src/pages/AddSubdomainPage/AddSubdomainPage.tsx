@@ -12931,8 +12931,12 @@ export const AuctionPage: React.FC<{}> = () => {
       if (p.zone && p.subdomain) {
         const key = `${p.zone}::${p.subdomain}`;
         if (lastAutoLoadedKeyRef.current === key) return;
-        lastAutoLoadedKeyRef.current = key;
-        loadAuctionFromParams(p.zone, p.subdomain);
+        // Помечаем ключ ТОЛЬКО при реальном успехе — если zoneName ещё нет в
+        // allZones (см. loadAuctionFromParams), это не "обработано", а
+        // "надо повторить, когда allZones обновится".
+        if (loadAuctionFromParams(p.zone, p.subdomain)) {
+          lastAutoLoadedKeyRef.current = key;
+        }
       } else if (p.zone) selectZoneFromParams(p.zone);
     } else if (hasDeeplink) {
       const sp = launchParams.startParam!;
@@ -12942,8 +12946,9 @@ export const AuctionPage: React.FC<{}> = () => {
           if (params.zone && params.subdomain) {
             const key = `${params.zone}::${params.subdomain}`;
             if (lastAutoLoadedKeyRef.current === key) return;
-            lastAutoLoadedKeyRef.current = key;
-            loadAuctionFromParams(params.zone, params.subdomain);
+            if (loadAuctionFromParams(params.zone, params.subdomain)) {
+              lastAutoLoadedKeyRef.current = key;
+            }
           } else if (params.zone) {
             selectZoneFromParams(params.zone);
           }
@@ -13104,15 +13109,22 @@ export const AuctionPage: React.FC<{}> = () => {
   }, [handleCheckItem]);
 
   const loadAuctionFromParams = useCallback(
-    (zoneName: string, subdomainName: string) => {
+    (zoneName: string, subdomainName: string): boolean => {
       // Та же гонка кэша, что и в selectZoneFromParams ниже — если zoneName
       // ещё не попал в allZones, setSelectedDomainZone всё равно проставлял
       // значение, которого нет ни в одной option селекта (визуально пусто/
       // "не найдена"), хотя эффект-вызывающий (см. deeplink-эффект выше) и
       // так перезапустится сам на следующее обновление allZones — просто
       // выходим и ждём этого перезапуска, не портя стейт раньше времени.
+      // Возвращаем false в этом случае — вызывающий эффект должен ЗНАТЬ,
+      // что попытка не удалась, и не помечать zone::subdomain как уже
+      // обработанные (см. lastAutoLoadedKeyRef) — иначе холодный старт по
+      // диплинку из уведомления бота (allZones ещё пустая/неполная в момент
+      // первого прогона эффекта) навсегда терял загрузку итема: повторный
+      // прогон эффекта на обновлённую allZones видел уже "обработанный" ключ
+      // и молча пропускал реальную попытку.
       const zone = allZones.find((z) => z.name === zoneName);
-      if (!zone) return;
+      if (!zone) return false;
       // Сбрасываем состояние ПРЕДЫДУЩЕГО проверенного итема сразу, а не
       // ждём результата handleCheckItemRef ниже (он приходит через 500мс+
       // сетевого запроса) — иначе в этом окне на экране ещё висят auctionInfo/
@@ -13142,6 +13154,7 @@ export const AuctionPage: React.FC<{}> = () => {
           window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
         }, 300);
       }, 500);
+      return true;
     },
     [allZones, updateUrlWithCurrentAuction]
   );
@@ -13201,9 +13214,19 @@ export const AuctionPage: React.FC<{}> = () => {
       const zone = allZones.find((z) => z.name === zoneName);
       setCollectionAddress(zone?.collectionAddress || "");
       await new Promise((r) => setTimeout(r, 100));
-      await handleCheckItem();
+      // handleCheckItemRef, не handleCheckItem напрямую — та же ловушка, что
+      // уже описана у loadAuctionFromParams/handleCheckItemRef выше:
+      // checkItemByName сама пересоздаётся с задержкой относительно
+      // setSelectedDomainZone/setSubDomainName чуть выше (её deps —
+      // [allZones, handleCheckItem], а handleCheckItem меняет identity на
+      // каждое изменение zone/subdomain/collectionAddress), поэтому прямой
+      // вызов handleCheckItem() тут держал ЗАМЫКАНИЕ на ПРЕДЫДУЩИЙ
+      // выбранный итем — переход из встроенного ActiveAuctions показывал
+      // состояние старого лота вместо только что выбранного. Ref всегда
+      // даёт самую свежую версию на момент реального вызова.
+      await handleCheckItemRef.current();
     },
-    [allZones, handleCheckItem]
+    [allZones]
   );
 
   const { handleAuctionClick, setSelectedZoneName, setSubdomainName } =
