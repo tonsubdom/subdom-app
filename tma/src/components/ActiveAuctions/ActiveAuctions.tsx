@@ -690,6 +690,14 @@ const ActiveAuctions: React.FC<ActiveAuctionsProps> = ({
 }) => {
   const [activeAuctions, setActiveAuctions] = useState<ActiveAuction[]>([]);
   const [filteredAuctions, setFilteredAuctions] = useState<ActiveAuction[]>([]);
+  // Ref, а не activeAuctions напрямую в deps loadActiveAuctions — добавление
+  // activeAuctions в deps пересоздавало бы этот useCallback на каждый
+  // setActiveAuctions внутри него же (сам себя инвалидирует). Ref всегда
+  // даёт актуальное "есть ли уже данные на экране" без этой проблемы.
+  const hasAuctionsRef = useRef(false);
+  useEffect(() => {
+    hasAuctionsRef.current = activeAuctions.length > 0;
+  }, [activeAuctions]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
@@ -849,7 +857,14 @@ const fetchDomainsForBidders = useCallback(async (bidders: string[]) => {
   // Оптимизированная загрузка активных аукционов
 const loadActiveAuctions = useCallback(async () => {
   console.log(`🔄 Начинаем загрузку аукционов (ончейн), текущий кэш изображений: ${imageCache.size}`);
-  setLoading(true);
+  // Фоновый 30-секундный poll (см. интервал ниже) звал эту же функцию, и
+  // setLoading(true) сносил уже отрисованный список на полноэкранный
+  // ScanProgressLoader КАЖДЫЙ раз — юзер видел "список моргает и опять
+  // грузится" без единого своего клика. Полноэкранный лоадер нужен только
+  // когда экран реально пуст (первая загрузка); если данные уже на экране,
+  // обновляем их молча и просто подменяем activeAuctions в конце.
+  const isBackgroundRefresh = hasAuctionsRef.current;
+  if (!isBackgroundRefresh) setLoading(true);
   setError(null);
   foundSoFarRef.current = 0;
   setScanProgress({ done: 0, total: proxySubdomains.length, found: 0 });
