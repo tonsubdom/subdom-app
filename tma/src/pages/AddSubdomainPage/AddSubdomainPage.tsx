@@ -12447,7 +12447,7 @@ import { calculateProxyNFTAddress } from "./CalculateProxyNFTAddress";
 // ====== ONCHAIN ======
 import { useBlockchainItems } from "@/services/blockchainItems/blockchain-items-context.tsx";
 import { SimpleCollection } from "@/services/blockchainItems/blockchain-items-types";
-import { cleanZoneDisplayName } from "@/services/blockchainItems/blockchain-items-utils";
+import { cleanZoneDisplayName, isZoneMarkedInactive } from "@/services/blockchainItems/blockchain-items-utils";
 
 import ActiveAuctions from "@/components/ActiveAuctions/ActiveAuctions";
 import { useAuctionIntegration } from "@/hooks/useAuctionIntegration";
@@ -12541,10 +12541,7 @@ const dedupeSbtAgainstProxy = (
 // ====== collectionToZone ======
 const collectionToZone = (col: SimpleCollection): Zone => {
   const rawName = col.name || "";
-  const zoneName = rawName
-    .replace(" DNS Domains", "")
-    .replace(" Proxy Domains", "")
-    .toLowerCase();
+  const zoneName = cleanZoneDisplayName(rawName).toLowerCase();
   return {
     id: col.address.slice(0, 10),
     name: zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`,
@@ -12554,7 +12551,13 @@ const collectionToZone = (col: SimpleCollection): Zone => {
     createdAt: col.created_at || col.lastUpdated || new Date().toISOString(),
     subdomainsAmount: col.item_count || 0,
     proxy: col.type === "proxy" ? 1 : 0,
-    status: "active",
+    // Реальная деактивация зоны дописывает "[INACTIVE]" в сырое имя
+    // коллекции (см. isZoneMarkedInactive) — раньше status тут был всегда
+    // захардкожен "active", поэтому фильтры "!== inactive" ниже по файлу
+    // ничего не отсеивали, и юзер видел деактивированную зону в селекте с
+    // сырым маркером в названии (".4044[inactive]"). Тот же паттерн, что
+    // уже применён в ProfileWidget.tsx (collectionToZone).
+    status: isZoneMarkedInactive(rawName) ? "inactive" : "active",
     image: col.metadata?.token_info?.[0]?.image || col.image,
     description: col.metadata?.token_info?.[0]?.description || col.description,
     zoneLength: zoneName.length,
