@@ -2029,8 +2029,8 @@ const LANG = {
     // Кнопки уведомлений
     btnCreateSubdomain: '🔗 Создать субдомен',
     btnPlaceBid: '💰 Сделать ставку',
-    btnViewMarket: '💰 Посмотреть в subdom',
-    btnViewGetGems: '💎 Посмотреть на getgems.io',
+    btnViewMarket: '💰 subdom',
+    btnViewGetGems: '💎 getgems',
     btnReply: '↩️ Ответить',
 
     // Техподдержка
@@ -2262,8 +2262,8 @@ const LANG = {
     // Кнопки уведомлений
     btnCreateSubdomain: '🔗 Create Subdomain',
     btnPlaceBid: '💰 Place Bid',
-    btnViewMarket: '💰 View on subdom',
-    btnViewGetGems: '💎 View on getgems.io',
+    btnViewMarket: '💰 subdom',
+    btnViewGetGems: '💎 getgems',
     btnReply: '↩️ Reply',
 
     // Техподдержка
