@@ -341,9 +341,27 @@ export const filterNftsByCollection = createAsyncThunk<
  *   имени домена: previews[].url вида cache.tonapi.io/imgproxy/.../<base64
  *   от https://cache.tonapi.io/dns/preview/{domain}.png>.webp. Раз URL
  *   предсказуемый по имени — строим его сами, без похода в tonapi.io.
+ *
+ *   ВАЖНО: cache.tonapi.io/dns/preview рендерит превью только для
+ *   одобренной/вайтлистнутой коллекции *.ton (approved_by содержит
+ *   "getgems" — проверено через tonapi.io/v2/nfts/collections). Сторонние
+ *   TLD-коллекции того же DNS-интерфейса (approved_by: [], trust: "none")
+ *   этот рендер-сервис не поддерживает — картинка 404-ит, юзер видит
+ *   fallback-гифку вместо домена. У .gram картинки на самом деле есть,
+ *   просто с ДРУГОГО хоста — собственный CDN проекта gramcoin.org:
+ *   https://dns-cdn.gramcoin.org/dnsimage/{имя_без_.gram}.png (проверено
+ *   на реальных айтемах коллекции 0:22737ccf71ee3deae9050e16dca36f0556c28a9765945ff889c1a2fcec20714a
+ *   через tonapi.io/v2/nfts/collections/.../items). Другие сторонние TLD
+ *   (.t.me/.tonnel/.getgems) не проверялись — для них URL не меняем,
+ *   рискованно гадать домен CDN без подтверждения.
  */
-export const tonDnsPreviewImage = (domain: string): string =>
-  `https://cache.tonapi.io/dns/preview/${domain}.png`;
+export const tonDnsPreviewImage = (domain: string): string => {
+  if (domain.endsWith('.gram')) {
+    const nameWithoutTld = domain.slice(0, -'.gram'.length);
+    return `https://dns-cdn.gramcoin.org/dnsimage/${nameWithoutTld}.png`;
+  }
+  return `https://cache.tonapi.io/dns/preview/${domain}.png`;
+};
 
 function toncenterItemToNft(
   item: any,
