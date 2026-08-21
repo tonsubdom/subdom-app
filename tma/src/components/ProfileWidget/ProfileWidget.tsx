@@ -2303,7 +2303,7 @@ import {
   SimpleEnrichedItem,
   ItemType,
 } from "@/services/blockchainItems/blockchain-items-types";
-import { cleanZoneDisplayName, isZoneMarkedInactive } from "@/services/blockchainItems/blockchain-items-utils";
+import { cleanZoneDisplayName, isZoneMarkedInactive, rememberZoneName, getRememberedZoneName } from "@/services/blockchainItems/blockchain-items-utils";
 import { decodeDomainForDisplay } from "@/utils/domainPunycode";
 import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInfo";
 import { getAuctionBidHistory } from "@/pages/AddSubdomainPage/flipTimer/getAuctionBidHistory";
@@ -2317,7 +2317,7 @@ import { useBlockchainScanUi } from "@/hooks/useBlockchainLoadProgress";
 // import { useZones } from "@/hooks/useZones";
 import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
-import { convertUserFriendlyToRaw } from "@/utils/tonUtils";
+import { convertUserFriendlyToRaw, getZoneImageUrl } from "@/utils/tonUtils";
 import { ScanProgressLoader } from "@/components/ScanProgressLoader";
 import {
   resolveDomainNftAddress,
@@ -2375,28 +2375,56 @@ const collectionToZone = (col: SimpleCollection): Zone => {
     `🔍 collectionToZone: raw="${rawName}", address=${col.address.slice(0, 10)}`
   );
 
-  const zoneName = cleanZoneDisplayName(rawName).toLowerCase();
+  let zoneName = cleanZoneDisplayName(rawName).toLowerCase();
+
+  // Свежесозданная/только что пересозданная коллекция иногда приходит с
+  // toncenter с ещё не проиндексированными метаданными (rawName пустой) —
+  // раньше это давало голое ".ton" в карточке (см. пересоздание SBT→Proxy
+  // на одном домене). Настоящее имя уже известно СРАЗУ в момент деплоя
+  // (см. rememberZoneName в CreateCollectionPage) и лежит в персистентном
+  // localStorage-кэше независимо от toncenter — юзер не видит вообще
+  // никакого шва, пока индексация не подтянется сама. Адрес как
+  // плейсхолдер — только самый последний фолбэк, если даже локальной
+  // памяти об этой коллекции нет (например, зона создана на другом
+  // устройстве/до этого фикса).
+  if (!zoneName.replace(/\.ton$/, "")) {
+    const remembered = getRememberedZoneName(col.address);
+    zoneName = remembered
+      ? remembered.toLowerCase()
+      : `${col.address.slice(-6).toLowerCase()}.ton`;
+  } else {
+    rememberZoneName(col.address, zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`);
+  }
 
   console.log(
     `   zoneName="${zoneName}", endsWith('.ton')=${zoneName.endsWith(".ton")}`
   );
 
+  const finalName = zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`;
+  const isProxy = col.type === "proxy";
+
   return {
     id: col.address.slice(0, 10),
-    name: zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`,
+    name: finalName,
     address: col.address,
     owner: col.creator_address || col.owner_address,
     collectionAddress: col.address,
     createdAt: col.created_at || col.lastUpdated || new Date().toISOString(),
     subdomainsAmount: col.item_count || 0,
-    proxy: col.type === "proxy" ? 1 : 0,
+    proxy: isProxy ? 1 : 0,
     // Раньше всегда хардкожено "active" — теперь читает реальный маркер
     // "[INACTIVE]", который change_content дописывает в название коллекции
     // на настоящей деактивации (см. isZoneMarkedInactive, Log.md 2026-08-11).
     status: isZoneMarkedInactive(rawName) ? "inactive" : "active",
-    image: col.metadata?.token_info?.[0]?.image || col.image,
+    // getZoneImageUrl строит URL детерминированно из имени+типа зоны (не
+    // ждёт индексации toncenter-метаданных) — фолбэк на случай, если
+    // col.metadata/col.image ещё пустые сразу после (пере)деплоя коллекции.
+    image:
+      col.metadata?.token_info?.[0]?.image ||
+      col.image ||
+      getZoneImageUrl({ name: finalName, proxy: isProxy ? 1 : 0 }),
     description: col.metadata?.token_info?.[0]?.description || col.description,
-    zoneLength: zoneName.length,
+    zoneLength: zoneName.replace(/\.ton$/, "").length,
     siteResolves: col.siteResolves,
   } as any as Zone;
 };
@@ -3919,7 +3947,8 @@ const ProfileWidget: React.FC = () => {
     );
   };
 
-  const renderZoneCard = (zone: Zone) => {
+  const renderZoneCard = (zone: Zone, idx: number = 0) => {
+    const isAboveFold = idx < 4;
     const zoneType = getZoneTypeInfo(zone);
     const zoneStatus = getZoneStatusInfo(zone);
     const isSbtZone = Number(zone.proxy) === 0;
@@ -3970,7 +3999,8 @@ const ProfileWidget: React.FC = () => {
               <img
                 src={(zone as any).image}
                 alt={zone.name}
-                loading="lazy"
+                loading={isAboveFold ? "eager" : "lazy"}
+                fetchPriority={isAboveFold ? "high" : "auto"}
                 decoding="async"
                 style={{
                   width: "100%",
@@ -4274,7 +4304,8 @@ const ProfileWidget: React.FC = () => {
     );
   };
 
-  const renderSubdomainCard = (subdomain: Subdomain) => {
+  const renderSubdomainCard = (subdomain: Subdomain, idx: number = 0) => {
+    const isAboveFold = idx < 4;
     const statusInfo = getSubdomainStatusInfo(subdomain);
     const isSbt = isSbtSubdomain(subdomain);
     const imgUri = getSubdomainImage(subdomain);
@@ -4317,7 +4348,8 @@ const ProfileWidget: React.FC = () => {
               <img
                 src={imgUri}
                 alt={subdomain.name}
-                loading="lazy"
+                loading={isAboveFold ? "eager" : "lazy"}
+                fetchPriority={isAboveFold ? "high" : "auto"}
                 decoding="async"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 onError={(e) => {
@@ -4578,6 +4610,7 @@ const ProfileWidget: React.FC = () => {
 
   // === renderAuctionCard (без существенных изменений) ===
   const renderAuctionCard = (auction: Auction, idx: number) => {
+    const isAboveFold = idx < 4;
     const endDate = new Date(auction.ends);
     const now = new Date();
     const isEnded = endDate < now;
@@ -4618,7 +4651,8 @@ const ProfileWidget: React.FC = () => {
               <img
                 src={getSubdomainImage(auction.subdomain)}
                 alt={auction.name}
-                loading="lazy"
+                loading={isAboveFold ? "eager" : "lazy"}
+                fetchPriority={isAboveFold ? "high" : "auto"}
                 decoding="async"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 onError={(e) => {
@@ -6020,8 +6054,8 @@ const ProfileWidget: React.FC = () => {
                         </div>
                       ) : (
                         <>
-                          {paginateList(getFilteredZones()).map((zone) =>
-                            renderZoneCard(zone)
+                          {paginateList(getFilteredZones()).map((zone, idx) =>
+                            renderZoneCard(zone, idx)
                           )}
                           {renderListPager(getFilteredZones().length)}
                         </>
@@ -6108,7 +6142,7 @@ const ProfileWidget: React.FC = () => {
                       ) : (
                         <>
                           {paginateList(getFilteredSubdomains()).map(
-                            (subdomain) => renderSubdomainCard(subdomain)
+                            (subdomain, idx) => renderSubdomainCard(subdomain, idx)
                           )}
                           {renderListPager(getFilteredSubdomains().length)}
                         </>

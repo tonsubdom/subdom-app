@@ -162,12 +162,20 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
       (collectionAddress, name, domain, isProxy, wrapperAddress, ownerAddress, image, description, totalItems, status, lastSyncedAt, chainCreatedAt, source)
     VALUES (@collectionAddress, @name, @domain, @isProxy, @wrapperAddress, @ownerAddress, @image, @description, @totalItems, 'active', @lastSyncedAt, @chainCreatedAt, 'crawler')
     ON CONFLICT(collectionAddress) DO UPDATE SET
-      name = excluded.name,
-      domain = excluded.domain,
+      -- NULLIF+COALESCE вместо голого excluded.X — свежесозданная/только
+      -- что пересозданная коллекция может ещё не быть проиндексирована
+      -- toncenter'ом на момент очередного обхода кроулера (раз в ~15 мин),
+      -- и слепой excluded.name затирал бы уже известное правильное имя
+      -- (записанное в момент деплоя через upsertSinglePlatformEntity)
+      -- пустой строкой. Пустое новое значение теперь просто не трогает
+      -- то, что уже есть в БД — не хуже старого поведения там, где
+      -- метаданные реально не менялись, и чинит регресс там, где менялись.
+      name = COALESCE(NULLIF(excluded.name, ''), platform_zones_cache.name),
+      domain = COALESCE(NULLIF(excluded.domain, ''), platform_zones_cache.domain),
       isProxy = excluded.isProxy,
       ownerAddress = excluded.ownerAddress,
-      image = excluded.image,
-      description = excluded.description,
+      image = COALESCE(NULLIF(excluded.image, ''), platform_zones_cache.image),
+      description = COALESCE(NULLIF(excluded.description, ''), platform_zones_cache.description),
       totalItems = excluded.totalItems,
       status = 'active',
       lastSyncedAt = excluded.lastSyncedAt,
@@ -179,12 +187,14 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
       (itemAddress, name, collectionAddress, zoneName, isProxy, itemType, ownerAddress, image, description, onSale, lastTransactionLt, status, lastSyncedAt, source)
     VALUES (@itemAddress, @name, @collectionAddress, @zoneName, @isProxy, @itemType, @ownerAddress, @image, @description, @onSale, @lastTransactionLt, 'active', @lastSyncedAt, 'crawler')
     ON CONFLICT(itemAddress) DO UPDATE SET
-      name = excluded.name,
+      -- См. тот же NULLIF+COALESCE-комментарий у upsertZone выше — тот же
+      -- риск индексационного лага для только что заминченных айтемов.
+      name = COALESCE(NULLIF(excluded.name, ''), platform_subdomains_cache.name),
       zoneName = excluded.zoneName,
       itemType = excluded.itemType,
       ownerAddress = excluded.ownerAddress,
-      image = excluded.image,
-      description = excluded.description,
+      image = COALESCE(NULLIF(excluded.image, ''), platform_subdomains_cache.image),
+      description = COALESCE(NULLIF(excluded.description, ''), platform_subdomains_cache.description),
       onSale = excluded.onSale,
       lastTransactionLt = excluded.lastTransactionLt,
       status = 'active',

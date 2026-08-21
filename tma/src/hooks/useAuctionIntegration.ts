@@ -1,5 +1,5 @@
 // hooks/useAuctionIntegration.ts
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Zone } from '@/services/api';
 
 interface UseAuctionIntegrationProps {
@@ -15,19 +15,36 @@ export const useAuctionIntegration = ({
   const [subdomainName, setSubdomainName] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
+  // zonesRef всегда даёт САМЫЙ свежий список зон на момент повторной попытки
+  // ниже, а не тот, что был на момент создания handleAuctionClick — та же
+  // причина, по которой AddSubdomainPage.loadAuctionFromParams использует
+  // handleCheckItemRef вместо прямого handleCheckItem.
+  const zonesRef = useRef(zones);
+  useEffect(() => {
+    zonesRef.current = zones;
+  }, [zones]);
+
   // Функция для обработки клика из ActiveAuctions
   const handleAuctionClick = useCallback(async (zoneName: string, subdomain: string) => {
     console.log(`🎯 Обработка клика из ActiveAuctions: зона=${zoneName}, субдомен=${subdomain}`);
-    
-    // Проверяем, существует ли такая зона
-    const zoneExists = zones.some(z => z.name === zoneName);
-    
+
+    // Только что созданная/пересозданная зона может ещё не попасть в общий
+    // список зон (тот же кэш-race, что уже чинили для loadAuctionFromParams
+    // в AddSubdomainPage) — вместо мгновенного alert'а на первом промахе
+    // даём списку несколько секунд догрузиться, прежде чем реально считать
+    // зону отсутствующей.
+    let zoneExists = zonesRef.current.some(z => z.name === zoneName);
+    for (let attempt = 0; !zoneExists && attempt < 5; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      zoneExists = zonesRef.current.some(z => z.name === zoneName);
+    }
+
     if (!zoneExists) {
-      console.error(`❌ Зона "${zoneName}" не найдена в списке зон:`, zones.map(z => z.name));
+      console.error(`❌ Зона "${zoneName}" не найдена в списке зон:`, zonesRef.current.map(z => z.name));
       alert(`Зона "${zoneName}" не найдена в списке доступных зон`);
       return;
     }
-    
+
     console.log(`✅ Зона "${zoneName}" найдена в списке зон`);
     
     // 1. Устанавливаем значения
