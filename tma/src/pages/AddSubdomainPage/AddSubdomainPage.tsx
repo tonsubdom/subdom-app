@@ -12447,7 +12447,7 @@ import { calculateProxyNFTAddress } from "./CalculateProxyNFTAddress";
 // ====== ONCHAIN ======
 import { useBlockchainItems } from "@/services/blockchainItems/blockchain-items-context.tsx";
 import { SimpleCollection } from "@/services/blockchainItems/blockchain-items-types";
-import { cleanZoneDisplayName, isZoneMarkedInactive } from "@/services/blockchainItems/blockchain-items-utils";
+import { cleanZoneDisplayName, isZoneMarkedInactive, rememberZoneName, getRememberedZoneName } from "@/services/blockchainItems/blockchain-items-utils";
 
 import ActiveAuctions from "@/components/ActiveAuctions/ActiveAuctions";
 import { useAuctionIntegration } from "@/hooks/useAuctionIntegration";
@@ -12464,7 +12464,7 @@ import {
 import { useLaunchParams } from "@telegram-apps/sdk-react";
 import { MiniAppLinks } from "@/utils/miniAppLinks";
 import { AuctionCollectionSelector } from "./AuctionCollectionSelector";
-import { convertUserFriendlyToRaw, resolveAddressToDomain, getAddressLastTransaction } from "@/utils/tonUtils";
+import { convertUserFriendlyToRaw, resolveAddressToDomain, getAddressLastTransaction, getZoneImageUrl } from "@/utils/tonUtils";
 import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
 import { useTutorial } from "@/contexts/TutorialContext";
 import { track } from "@/utils/analytics";
@@ -12541,16 +12541,37 @@ const dedupeSbtAgainstProxy = (
 // ====== collectionToZone ======
 const collectionToZone = (col: SimpleCollection): Zone => {
   const rawName = col.name || "";
-  const zoneName = cleanZoneDisplayName(rawName).toLowerCase();
+  let zoneName = cleanZoneDisplayName(rawName).toLowerCase();
+
+  // Та же гонка индексации, что уже чинили в ProfileWidget.tsx
+  // (collectionToZone) — свежесозданная/пересозданная коллекция может
+  // прийти с toncenter с пустым именем (ещё не проиндексировано). Раньше
+  // это давало буквальное ".ton" здесь — не отличимое от настоящего имени,
+  // из-за чего эта зона не находилась по имени нигде ниже по файлу (селект
+  // создания субдомена, поиск зоны при клике на аукцион). Тот же
+  // персистентный localStorage-кэш (rememberZoneName пишется в
+  // CreateCollectionPage в момент деплоя), что уже читает ProfileWidget.
+  if (!zoneName.replace(/\.ton$/, "")) {
+    const remembered = getRememberedZoneName(col.address);
+    zoneName = remembered
+      ? remembered.toLowerCase()
+      : `${col.address.slice(-6).toLowerCase()}.ton`;
+  } else {
+    rememberZoneName(col.address, zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`);
+  }
+
+  const finalName = zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`;
+  const isProxy = col.type === "proxy";
+
   return {
     id: col.address.slice(0, 10),
-    name: zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`,
+    name: finalName,
     address: col.address,
     owner: col.creator_address || col.owner_address,
     collectionAddress: col.address,
     createdAt: col.created_at || col.lastUpdated || new Date().toISOString(),
     subdomainsAmount: col.item_count || 0,
-    proxy: col.type === "proxy" ? 1 : 0,
+    proxy: isProxy ? 1 : 0,
     // Реальная деактивация зоны дописывает "[INACTIVE]" в сырое имя
     // коллекции (см. isZoneMarkedInactive) — раньше status тут был всегда
     // захардкожен "active", поэтому фильтры "!== inactive" ниже по файлу
@@ -12558,9 +12579,12 @@ const collectionToZone = (col: SimpleCollection): Zone => {
     // сырым маркером в названии (".4044[inactive]"). Тот же паттерн, что
     // уже применён в ProfileWidget.tsx (collectionToZone).
     status: isZoneMarkedInactive(rawName) ? "inactive" : "active",
-    image: col.metadata?.token_info?.[0]?.image || col.image,
+    image:
+      col.metadata?.token_info?.[0]?.image ||
+      col.image ||
+      getZoneImageUrl({ name: finalName, proxy: isProxy ? 1 : 0 }),
     description: col.metadata?.token_info?.[0]?.description || col.description,
-    zoneLength: zoneName.length,
+    zoneLength: zoneName.replace(/\.ton$/, "").length,
   } as any as Zone;
 };
 
