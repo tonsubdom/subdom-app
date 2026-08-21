@@ -13215,6 +13215,12 @@ export const AuctionPage: React.FC<{}> = () => {
       setShowCustomInput(false);
       setManualBidValue("");
       setSbtPurchaseCompleted(false);
+      // Аукционы бывают только у proxy-зон (SBT не продаются и не участвуют
+      // в аукционах) — без этого таб мог остаться на дефолтном "sbt", и
+      // селект зоны показывал значение, которого нет среди SBT-опций (то
+      // же ощущение "не переключился таб и не вбил", что уже чинили для
+      // deeplink-пути в loadAuctionFromParams).
+      setActiveTab("proxy");
       setSelectedDomainZone(zoneName);
       setSubDomainName(subdomain);
       setSubDomainNameDisplay(decodeDomainLabel(subdomain));

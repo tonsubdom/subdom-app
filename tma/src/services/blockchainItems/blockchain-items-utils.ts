@@ -71,6 +71,41 @@ const INACTIVE_MARKER_RE = /\s*\[\s*inactive\s*\]\s*/i;
 export const isZoneMarkedInactive = (rawName: string): boolean =>
   INACTIVE_MARKER_RE.test(rawName || '');
 
+// Персистентный (localStorage, без TTL) кэш "адрес коллекции → настоящее
+// имя зоны" — отдельно от обычного 20-минутного blockchain-снимка
+// (blockchain-items-slice.ts:persistAppData). Имя известно СРАЗУ в момент
+// деплоя зоны (юзер его только что ввёл и он подтверждён транзакцией) —
+// задолго до того, как тонцентр проиндексирует content коллекции. Пишем
+// его сюда сразу же (CreateCollectionPage), чтобы collectionToZone мог
+// показать настоящее имя без видимого "шва"-плейсхолдера, даже если
+// тонцентр ещё долго отдаёт пустые метаданные для этого адреса.
+const ZONE_NAME_CACHE_KEY = 'subdom:knownZoneNames';
+
+export const rememberZoneName = (collectionAddress: string, name: string): void => {
+  if (!collectionAddress || !name) return;
+  try {
+    const raw = localStorage.getItem(ZONE_NAME_CACHE_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    if (map[collectionAddress] === name) return;
+    map[collectionAddress] = name;
+    localStorage.setItem(ZONE_NAME_CACHE_KEY, JSON.stringify(map));
+  } catch (e) {
+    console.warn('⚠️ Не удалось сохранить имя зоны в localStorage:', e);
+  }
+};
+
+export const getRememberedZoneName = (collectionAddress: string): string | null => {
+  try {
+    const raw = localStorage.getItem(ZONE_NAME_CACHE_KEY);
+    if (!raw) return null;
+    const map = JSON.parse(raw);
+    return map[collectionAddress] || null;
+  } catch (e) {
+    console.warn('⚠️ Не удалось прочитать кэш имён зон из localStorage:', e);
+    return null;
+  }
+};
+
 export const cleanZoneDisplayName = (rawName: string): string => {
   return rawName
     // trimEnd отдельным шагом — replace оставлял висящий пробел на месте

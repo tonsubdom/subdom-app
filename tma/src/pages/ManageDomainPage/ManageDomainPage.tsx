@@ -6312,7 +6312,9 @@ export const ManageDomainPage: FC = () => {
               </div>
             ))} */}
 
-            {displayItems.map((item: DisplayItem) => (
+            {displayItems.map((item: DisplayItem, index: number) => {
+              const isAboveFold = index < 4;
+              return (
               <div
                 key={item.id}
                 onClick={() => handleItemClick(item)}
@@ -6345,7 +6347,8 @@ export const ManageDomainPage: FC = () => {
                   <img
                     src={getItemImageUrl(item)}
                     alt={item.title}
-                    loading="lazy"
+                    loading={isAboveFold ? "eager" : "lazy"}
+                    fetchPriority={isAboveFold ? "high" : "auto"}
                     decoding="async"
                     style={{
                       width: "100%",
@@ -6511,7 +6514,8 @@ export const ManageDomainPage: FC = () => {
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             {totalPages > 1 && (
               <div

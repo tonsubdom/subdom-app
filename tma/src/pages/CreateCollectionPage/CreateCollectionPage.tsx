@@ -61,7 +61,7 @@ import { CustomDomainSelector } from './CustomDomainSelector';
 import { ShareButton } from '@/components/ShareButton/ShareButton';
 import { useTutorial } from '@/contexts/TutorialContext';
 import { addOptimisticCollection } from '@/services/blockchainItems/blockchain-items-slice';
-import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-items-utils';
+import { cleanZoneDisplayName, rememberZoneName } from '@/services/blockchainItems/blockchain-items-utils';
 import { upsertPlatformCacheEntity } from '@/services/blockchainItems/platformCacheClient';
 import { TutorialTooltip } from '@/components/Tutorial/TutorialTooltip';
 
@@ -1197,6 +1197,14 @@ const partnerAddress = isTestnet
 
             await createZoneInDatabase(zoneData);
 
+            // Настоящее имя известно ПРЯМО СЕЙЧАС (юзер его только что ввёл,
+            // подтверждено транзакцией) — задолго до того, как тонцентр
+            // проиндексирует content новой коллекции. Пишем сразу в
+            // персистентный кэш (см. rememberZoneName), чтобы карточка зоны
+            // никогда не показала голое ".ton"/адрес вместо домена, пока
+            // индексация не подтянется.
+            rememberZoneName(collectionAddr, `${domainName}.ton`);
+
             // Кэш платформы (бэкенд) обновляется кроулером раз в 15 мин — без
             // этого только что созданная зона не видна в селекторе на странице
             // создания субдомена, пока не пройдёт следующий цикл. Апсертим
@@ -1370,6 +1378,10 @@ const partnerAddress = isTestnet
             };
 
             await createZoneInDatabase(zoneData);
+
+            // См. аналогичный комментарий в Proxy-ветке выше — пишем
+            // настоящее имя в персистентный кэш сразу, до индексации тонцентром.
+            rememberZoneName(sbtCollectionAddr, `${domainName}.ton`);
 
             // См. аналогичный комментарий в Proxy-ветке выше — апсерт в
             // бэкенд-кэш + оптимистичная вставка в Redux сразу после деплоя.
