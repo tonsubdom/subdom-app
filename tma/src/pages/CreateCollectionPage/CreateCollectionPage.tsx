@@ -1182,6 +1182,19 @@ const partnerAddress = isTestnet
           setCollectionAddress(collectionAddr);
           console.log(`Адрес бандла: ${collectionAddr}`);
 
+          // txResult.success/hash значит только "кошелёк отправил и вернул
+          // хеш" — не то же самое, что реальное подтверждение в блокчейне
+          // (см. confirmedInBlock из checkTransactionWithRetry выше). Раньше
+          // запись в БД (а с ней и бот-уведомление о созданной зоне) уходила
+          // безусловно на одном только хеше — юзер получал уведомление "зона
+          // создана", когда транзакция по факту не подтвердилась/зависла.
+          // Не пишем в БД и не уведомляем, пока нет реального подтверждения.
+          if (!txResult.confirmedInBlock) {
+            track('zone_creation_failed', { type: 'proxy', reason: (txResult.error || 'not_confirmed').slice(0, 120) });
+            showSnackbar(t('bundleDeployedSentNotConfirmed'), "error");
+            return;
+          }
+
           // Создаем зону в базе данных
           try {
             const zoneData = {
@@ -1247,12 +1260,10 @@ const partnerAddress = isTestnet
               console.log('✅ Оплаченная попытка для Proxy зоны списана');
             }
 
-            if (txResult.confirmedInBlock) {
-              track('zone_created', { type: 'proxy' });
-              showSnackbar(t('bundleDeployedSuccessfullyConfirmed'), "success");
-            } else {
-              showSnackbar(t('bundleDeployedSentNotConfirmed'), "error");
-            }
+            // confirmedInBlock уже проверен выше (см. return до этого try) —
+            // сюда попадаем только при реальном подтверждении в блокчейне.
+            track('zone_created', { type: 'proxy' });
+            showSnackbar(t('bundleDeployedSuccessfullyConfirmed'), "success");
 
             setActiveStep(3);
 
@@ -1367,6 +1378,14 @@ const partnerAddress = isTestnet
         });
 
         if (txResult.success && txResult.hash) {
+          // См. аналогичный комментарий в Proxy-ветке выше — не пишем в БД
+          // и не уведомляем бота, пока нет реального подтверждения в
+          // блокчейне, а не только хеша отправленной транзакции.
+          if (!txResult.confirmedInBlock) {
+            track('zone_creation_failed', { type: 'sbt', reason: (txResult.error || 'not_confirmed').slice(0, 120) });
+            showSnackbar(t('sbtDeployedSentNotConfirmed'), "error");
+            return;
+          }
           try {
             // Создаем SBT зону в базе данных
             // Raw-формат — см. аналогичный комментарий в Proxy-ветке выше.
@@ -1428,12 +1447,10 @@ const partnerAddress = isTestnet
               console.log('✅ Оплаченная попытка для SBT зоны списана');
             }
 
-            if (txResult.confirmedInBlock) {
-              track('zone_created', { type: 'sbt' });
-              showSnackbar(t('sbtCollectionDeployedSuccessfullyConfirmed'), "success");
-            } else {
-              showSnackbar(t('sbtDeployedSentNotConfirmed'), "error");
-            }
+            // confirmedInBlock уже проверен выше (см. return до этого try) —
+            // сюда попадаем только при реальном подтверждении в блокчейне.
+            track('zone_created', { type: 'sbt' });
+            showSnackbar(t('sbtCollectionDeployedSuccessfullyConfirmed'), "success");
 
             setActiveStep(3);
 
