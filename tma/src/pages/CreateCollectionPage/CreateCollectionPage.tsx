@@ -1221,6 +1221,13 @@ const partnerAddress = isTestnet
               // только что созданная зона не найдётся в селекторе.
               owner_address: convertUserFriendlyToRaw(address),
               creator_address: convertUserFriendlyToRaw(address),
+              // Без created_at это поле в dedupeByLatest/dedupeSbtAgainstProxy
+              // (AddSubdomainPage.tsx) сравнивалось как new Date(0) — ЛЮБАЯ
+              // старая одноимённая зона (например прежняя SBT-версия того же
+              // домена) с реальной датой всегда "побеждала" в дедупе, и
+              // селектор создания субдомена продолжал показывать старую зону
+              // вместо только что созданной/пересозданной.
+              created_at: new Date().toISOString(),
             }));
             upsertPlatformCacheEntity('zones', isTestnet, {
               collectionAddress: collectionAddr,
@@ -1393,6 +1400,9 @@ const partnerAddress = isTestnet
               // должен быть в raw-формате, как у реальных ончейн-записей.
               owner_address: convertUserFriendlyToRaw(address),
               creator_address: convertUserFriendlyToRaw(address),
+              // См. аналогичный комментарий в Proxy-ветке выше — без этого
+              // старая одноимённая зона всегда выигрывала дедуп в селекте.
+              created_at: new Date().toISOString(),
             }));
             upsertPlatformCacheEntity('zones', isTestnet, {
               collectionAddress: sbtCollectionAddr,
