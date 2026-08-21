@@ -12561,9 +12561,17 @@ const collectionToZone = (col: SimpleCollection): Zone => {
   const cleanedBase = zoneName.replace(/\.ton$/, "");
   const isPlaceholderName = !cleanedBase || cleanedBase === "без названия";
   if (isPlaceholderName) {
+    // col.domain — из collection_content.uri (extractDomainAndZone),
+    // доступен независимо от индексации toncenter и от устройства, в
+    // отличие от remembered (localStorage). См. тот же фикс и комментарий
+    // в ProfileWidget.tsx.collectionToZone — проверено вживую на зоне
+    // EQDin7Zk...AUF6V4S (toncenter is_indexed: false), где col.domain уже
+    // отдавал "ator.ton", а фолбэк раньше прыгал сразу на хеш адреса.
     const remembered = getRememberedZoneName(col.address);
     zoneName = remembered
       ? remembered.toLowerCase()
+      : col.domain
+      ? col.domain.toLowerCase()
       : `${col.address.slice(-6).toLowerCase()}.ton`;
   } else {
     rememberZoneName(col.address, zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`);

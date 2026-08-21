@@ -372,12 +372,22 @@ function toncenterItemToNft(
   const collectionMeta = collectionAddress ? metadataByAddress[item.collection_address]?.token_info?.[0] : undefined;
 
   const name: string | undefined = item.content?.domain || itemMeta?.name || itemMeta?.extra?.domain;
-  const isPlainTonDomain = !!item.content?.domain;
+  // Раньше фолбэк на tonDnsPreviewImage был заперт за isPlainTonDomain
+  // (item.content?.domain) — но toncenter отдаёт content.domain ТОЛЬКО для
+  // *.ton (проверено на реальном ответе /nft/items для коллекции Gram DNS
+  // Domains: content там содержит name/description/image, но НЕ domain).
+  // Для .gram имя приходит только через itemMeta?.name (off-chain
+  // метаданные) — а они есть лишь когда toncenter уже проиндексировал айтем
+  // (is_indexed: true). Пока не проиндексировано, itemMeta пуст, гейт был
+  // false, и весь image оставался undefined — юзер видел fallback-гифку в
+  // ManageDomainPage/"Другое" именно для свежих/ещё не проиндексированных
+  // .gram-доменов. Гейтуем просто на наличии name, а не на источнике имени —
+  // tonDnsPreviewImage сама умеет ветвиться по TLD.
   const image: string | undefined =
     itemMeta?.image ||
     itemMeta?.extra?._image_medium ||
     itemMeta?.extra?._image_small ||
-    (isPlainTonDomain && name ? tonDnsPreviewImage(name) : undefined);
+    (name ? tonDnsPreviewImage(name) : undefined);
 
   return {
     address: (item.address as string)?.toLowerCase(),

@@ -4261,12 +4261,21 @@ app.post('/api/admin/pending-actions', (req, res) => {
       });
     }
 
+    // Адрес приходит в разном регистре в зависимости от того, откуда фронт
+    // взял zone.address (прямой ответ toncenter — как есть, часто в верхнем
+    // регистре; toncenterItemToNft — принудительно lowercase) — нигде в
+    // проекте нет единой нормализации адресов. Юзер поймал вживую: 3 заявки
+    // на деактивацию одного и того же домена, созданные в разное время, не
+    // задедупились именно из-за разного регистра targetAddress — сравниваем
+    // и пишем в lowercase, чтобы дедуп ниже реально ловил повтор.
+    const normalizedTargetAddress = String(targetAddress).toLowerCase();
+
     // Не плодим дубликаты — если по этому адресу уже есть необработанная заявка
     // того же типа, просто возвращаем её.
     const existing = db.prepare(`
       SELECT * FROM pending_admin_actions
-      WHERE targetAddress = ? AND actionType = ? AND status = 'pending'
-    `).get(targetAddress, actionType);
+      WHERE LOWER(targetAddress) = ? AND actionType = ? AND status = 'pending'
+    `).get(normalizedTargetAddress, actionType);
 
     if (existing) {
       return res.json({ success: true, data: existing, alreadyPending: true });
@@ -4277,7 +4286,7 @@ app.post('/api/admin/pending-actions', (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?)
       RETURNING *
     `);
-    const created = stmt.get(actionType, targetType, targetAddress, targetCollectionAddress || null, targetName, requestedBy);
+    const created = stmt.get(actionType, targetType, normalizedTargetAddress, targetCollectionAddress ? String(targetCollectionAddress).toLowerCase() : null, targetName, requestedBy);
 
     if (actionType === 'deactivate_zone') {
       telegramBot.sendPendingDeactivationNotification(targetName, targetAddress, requestedBy, isTestnet);
@@ -4450,7 +4459,9 @@ app.get('/api/admin/pending-actions/pending-map', (req, res) => {
     `).all(actionType) as { targetAddress: string }[];
 
     const map: Record<string, boolean> = {};
-    rows.forEach((r) => { map[r.targetAddress] = true; });
+    // lowercase — фронт (ProfileWidget) сравнивает по zone.address, у
+    // которого регистр не гарантирован (см. фикс дедупа выше в этом файле).
+    rows.forEach((r) => { map[r.targetAddress.toLowerCase()] = true; });
 
     return res.json({ success: true, data: map });
   } catch (error) {
@@ -4488,8 +4499,22 @@ app.post('/api/admin/pending-actions/:id/complete', requireAdminAuth, (req, res)
     // это не трогает.
     if (existing.actionType === 'deactivate_zone') {
       const collectionAddress = existing.targetCollectionAddress || existing.targetAddress;
-      db.prepare(`UPDATE platform_zones_cache SET status = 'inactive' WHERE collectionAddress = ?`).run(collectionAddress);
+      db.prepare(`UPDATE platform_zones_cache SET status = 'inactive' WHERE LOWER(collectionAddress) = LOWER(?)`).run(collectionAddress);
       telegramBot.sendZoneStatusChangedNotification(existing.targetName, existing.targetAddress, 'inactive', req.isTestnet);
+
+      // Осиротевшие дубликаты той же заявки: юзер мог отправлять заявку на
+      // деактивацию того же домена несколько раз в разное время (например,
+      // targetAddress не задедупился из-за разницы в регистре до фикса выше,
+      // или зона была передеплоена) — тогда старые pending-заявки того же
+      // юзера на тот же домен никогда не попадут в этот complete-хендлер
+      // (он бьёт только по своему id) и вечно висят "в процессе" в админке и
+      // на карточке зоны у юзера. Раз юзер подтвердил актуальную — закрываем
+      // остальные как superseded (не executed — по ним реально не было tx).
+      db.prepare(`
+        UPDATE pending_admin_actions
+        SET status = 'superseded', executedAt = CURRENT_TIMESTAMP
+        WHERE actionType = 'deactivate_zone' AND targetName = ? AND requestedBy = ? AND status = 'pending' AND id != ?
+      `).run(existing.targetName, existing.requestedBy, id);
     }
 
     return res.json({ success: true, data: updated });
