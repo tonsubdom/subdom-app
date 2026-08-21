@@ -2399,9 +2399,18 @@ const collectionToZone = (col: SimpleCollection): Zone => {
   // последний фолбэк, если даже локальной памяти об этой коллекции нет
   // (например, зона создана на другом устройстве/до этого фикса).
   if (isPlaceholderName) {
+    // col.domain извлекается из collection_content.uri
+    // (extractDomainAndZone/extractDomainFromUri) и доступен НЕЗАВИСИМО от
+    // индексации toncenter и от того, на каком устройстве создавалась
+    // зона — в отличие от remembered (localStorage, только это же
+    // устройство/браузер). Проверено вживую на зоне EQDin7Zk...AUF6V4S
+    // (is_indexed: false у toncenter) — col.domain уже отдавал "ator.ton",
+    // а фолбэк раньше прыгал сразу на хеш адреса, не заглянув сюда.
     const remembered = getRememberedZoneName(col.address);
     zoneName = remembered
       ? remembered.toLowerCase()
+      : col.domain
+      ? col.domain.toLowerCase()
       : `${col.address.slice(-6).toLowerCase()}.ton`;
   } else {
     rememberZoneName(col.address, zoneName.endsWith(".ton") ? zoneName : `${zoneName}.ton`);
@@ -3249,7 +3258,7 @@ const ProfileWidget: React.FC = () => {
 
       setPendingDeactivationAddresses((prev) => {
         const next = new Set(prev);
-        next.add(zone.address);
+        next.add(zone.address.toLowerCase());
         return next;
       });
       showSnackbar(
@@ -3283,10 +3292,21 @@ const ProfileWidget: React.FC = () => {
     useState<Set<string>>(new Set());
 
   useEffect(() => {
-    apiService
-      .getPendingActionsMap("deactivate_zone")
-      .then((map) => setPendingDeactivationAddresses(new Set(Object.keys(map))))
-      .catch(() => {});
+    const loadPendingDeactivations = () => {
+      apiService
+        .getPendingActionsMap("deactivate_zone")
+        .then((map) => setPendingDeactivationAddresses(new Set(Object.keys(map))))
+        .catch(() => {});
+    };
+    // Раньше грузилось один раз при монтировании — если админ исполнял
+    // заявку (или чистил осиротевшие дубликаты того же домена, см. фикс
+    // /complete на бэкенде) пока вкладка юзера уже открыта, лейбл "в
+    // процессе" на карточке зоны не обновлялся без ручного перезахода.
+    // Юзер поймал именно этот случай вживую — карточка "слепо" держала
+    // состояние с момента монтирования вместо проверки в моменте.
+    loadPendingDeactivations();
+    const intervalId = setInterval(loadPendingDeactivations, 30_000);
+    return () => clearInterval(intervalId);
   }, []);
 
   // ====== [NEW] СУБДОМЕНЫ ПОЛЬЗОВАТЕЛЯ — ИЗ БЛОКЧЕЙНА ======
@@ -3974,7 +3994,9 @@ const ProfileWidget: React.FC = () => {
     // реальный inactiveSbtZoneAddresses (пришедший с ончейна) главнее: как
     // только он реально появится там, "в процессе" уступает настоящему INACTIVE.
     const isDeactivationPending =
-      isSbtZone && !isInactiveDuplicate && pendingDeactivationAddresses.has(zone.address);
+      isSbtZone &&
+      !isInactiveDuplicate &&
+      pendingDeactivationAddresses.has(zone.address.toLowerCase());
 
     return (
       <div
