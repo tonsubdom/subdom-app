@@ -12440,6 +12440,7 @@ import { getAuctionInfo, ParsedAuctionInfo } from "./flipTimer/getAuctionInfo";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { apiService, Zone } from "@/services/api";
+import { TransactionService } from "@/services/transactionService";
 
 import { checkSBTSubdomain, SBTSubdomainInfo } from "./checkSBTSubdomain";
 import { calculateProxyNFTAddress } from "./CalculateProxyNFTAddress";
@@ -12551,7 +12552,15 @@ const collectionToZone = (col: SimpleCollection): Zone => {
   // создания субдомена, поиск зоны при клике на аукцион). Тот же
   // персистентный localStorage-кэш (rememberZoneName пишется в
   // CreateCollectionPage в момент деплоя), что уже читает ProfileWidget.
-  if (!zoneName.replace(/\.ton$/, "")) {
+  //
+  // "без названия" — второй вид мусора (см. тот же комментарий в
+  // ProfileWidget.tsx.collectionToZone): convertToSimpleCollection
+  // (blockchain-items-utils.ts) при пустых метаданных возвращает литерал
+  // 'Без названия', не пустую строку — без этой проверки он не ловился
+  // как "имени нет" и затирал уже сохранённое хорошее имя в кэше.
+  const cleanedBase = zoneName.replace(/\.ton$/, "");
+  const isPlaceholderName = !cleanedBase || cleanedBase === "без названия";
+  if (isPlaceholderName) {
     const remembered = getRememberedZoneName(col.address);
     zoneName = remembered
       ? remembered.toLowerCase()
@@ -13364,6 +13373,28 @@ export const AuctionPage: React.FC<{}> = () => {
 
   const getValidUntil = (): number => Math.floor(Date.now() / 1000) + 120;
 
+  // Раньше старт аукциона/ставка/покупка SBT/клейм звали
+  // tonConnectUI.sendTransaction() напрямую и слали bot-уведомление сразу
+  // после резолва промиса — а промис резолвится, как только КОШЕЛЁК
+  // подписал и отправил, это НЕ значит, что транзакция реально
+  // подтвердилась в блокчейне (могла зависнуть/бампнуться). Юзер получал
+  // уведомление "аукцион начат"/"ставка сделана" на транзакцию, которая по
+  // факту не прошла. Тот же паттерн, что уже есть в CreateCollectionPage.tsx
+  // (sendTransactionWithVerification): извлекаем хеш из BOC и ждём
+  // реального подтверждения ВТОРЫМ хопом именно на целевом контракте
+  // (TransactionService.waitForConfirmation), не только на пересылке
+  // кошелька.
+  const sendTransactionWithVerification = async (
+    transaction: { validUntil: number; messages: any[] },
+    action: string
+  ) => {
+    return TransactionService.sendTransaction(tonConnectUI, transaction, {
+      network: isTestnet ? "testnet" : "mainnet",
+      verifyBlockchain: true,
+      action,
+    });
+  };
+
   const logTx = (label: string, msgs: any[]) => {
     console.log(
       `📦 [${label}] Тело транзакции:`,
@@ -13423,10 +13454,16 @@ export const AuctionPage: React.FC<{}> = () => {
       ];
       logTx("START_AUCTION", messages);
 
-      await tonConnectUI.sendTransaction({
-        validUntil: getValidUntil(),
-        messages,
-      });
+      const txResult = await sendTransactionWithVerification(
+        { validUntil: getValidUntil(), messages },
+        "start_auction"
+      );
+
+      if (!txResult.success || !txResult.confirmedInBlock) {
+        track('subdomain_creation_failed', { type: 'proxy_auction_started', reason: (txResult.error || 'not_confirmed').slice(0, 120) });
+        showSnackbar(txResult.error || t("transactionNotConfirmed"), "error");
+        return;
+      }
 
       const full = `${subDomainName}.${selectedDomainZone}`;
       try {
@@ -13492,10 +13529,16 @@ export const AuctionPage: React.FC<{}> = () => {
       ];
       logTx("PLACE_BID", messages);
 
-      await tonConnectUI.sendTransaction({
-        validUntil: getValidUntil(),
-        messages,
-      });
+      const txResult = await sendTransactionWithVerification(
+        { validUntil: getValidUntil(), messages },
+        "place_bid"
+      );
+
+      if (!txResult.success || !txResult.confirmedInBlock) {
+        track('bid_failed', { reason: (txResult.error || 'not_confirmed').slice(0, 120) });
+        showSnackbar(txResult.error || t("transactionNotConfirmed"), "error");
+        return;
+      }
 
       const full = `${subDomainName}.${selectedDomainZone}`;
       try {
@@ -13574,17 +13617,24 @@ export const AuctionPage: React.FC<{}> = () => {
       ];
       logTx("PURCHASE_SBT", messages);
 
-      await tonConnectUI.sendTransaction({
-        validUntil: getValidUntil(),
-        messages,
-      });
+      const txResult = await sendTransactionWithVerification(
+        { validUntil: getValidUntil(), messages },
+        "purchase_sbt"
+      );
+
+      if (!txResult.success || !txResult.confirmedInBlock) {
+        track('subdomain_creation_failed', { type: 'sbt', reason: (txResult.error || 'not_confirmed').slice(0, 120) });
+        showSnackbar(txResult.error || t("transactionNotConfirmed"), "error");
+        return;
+      }
 
       const full = `${subDomainName}.${selectedDomainZone}`;
       if (!userAddress) throw new Error("No user address");
       const nftAddr = sbtSubdomainInfo?.nftAddress || userAddress;
-      // Минт на чейне уже прошёл (транзакция выше подтверждена) — запись в
-      // бэкенд-БД дальше чисто для статистики (см. остальные хендлеры выше),
-      // не должна валить успешный флоу, если бэкенд недоступен/ответил ошибкой.
+      // Минт на чейне уже реально подтверждён (см. sendTransactionWithVerification
+      // выше) — запись в бэкенд-БД дальше чисто для статистики (см. остальные
+      // хендлеры выше), не должна валить успешный флоу, если бэкенд
+      // недоступен/ответил ошибкой.
       try {
         apiService.setNetwork(isTestnet);
         await apiService.notifySubdomainCreated({
@@ -13636,10 +13686,17 @@ export const AuctionPage: React.FC<{}> = () => {
           isTestnet,
         })
       ).unwrap();
-      await tonConnectUI.sendTransaction({
-        validUntil: result.validUntil,
-        messages: result.messages,
-      });
+      const txResult = await sendTransactionWithVerification(
+        { validUntil: result.validUntil, messages: result.messages },
+        "claim_subdomain"
+      );
+
+      if (!txResult.success || !txResult.confirmedInBlock) {
+        track('auction_claim_failed', { reason: (txResult.error || 'not_confirmed').slice(0, 120) });
+        showSnackbar(txResult.error || t("transactionNotConfirmed"), "error");
+        return;
+      }
+
       const full = `${subDomainName}.${selectedDomainZone}`;
       try {
         apiService.setNetwork(isTestnet);
