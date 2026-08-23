@@ -254,8 +254,19 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
           const { creator, chainCreatedAt } = await getCollectionCreatorAndTime(api, col.address);
           const ownerAddress = creator || col.owner_address || null;
           const colMeta = metaFor(collectionsMetadata, col.address);
-          const zoneName: string = colMeta?.name || '';
           const zoneDomain = extractDomainFromUri(col.collection_content?.uri);
+          // Тот же класс бага, что и у subdomain.name выше: colMeta?.name
+          // (метадата-название коллекции, "Ator DNS Domains") зависит от
+          // того, успел ли toncenter зарезолвить offchain JSON — для
+          // свежесозданной/только что пересозданной зоны это может ещё не
+          // произойти. zoneName пишется не только в platform_zones_cache.name,
+          // но и в platform_subdomains_cache.zoneName у каждого субдомена
+          // этой зоны — именно по нему ActiveAuctions строит URL картинки и
+          // AddSubdomainPage ищет зону в allZones при переходе "Забрать" с
+          // карточки аукциона; пустая строка там давала "Зона '.ton' не
+          // найдена" и отсутствие картинки. zoneDomain (детерминированный,
+          // доступен сразу после деплоя) — фолбэк вместо пустой строки.
+          const zoneName: string = colMeta?.name || zoneDomain || '';
 
           // 3) Субдомены внутри зоны — считаем заодно totalItems для зоны
           let itemsCount = 0;
