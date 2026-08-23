@@ -265,9 +265,18 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
               if (!classifier.isSubdomainItem(item)) continue;
               itemsCount++;
               const itemMeta = metaFor(itemsMetadata, item.address);
+              // Как и у зон (zoneDomain выше) — имя субдомена детерминированно
+              // выводится из content.uri (сам путь метадата-эндпоинта, известен
+              // сразу после минта) в приоритете перед itemMeta?.name, который
+              // требует, чтобы toncenter уже сходил и зарезолвил offchain JSON
+              // по этому URI — для свежесозданных SBT/proxy-субдоменов это
+              // может отставать (или не произойти вовсе на момент прохода),
+              // из-за чего name/domain оставались пустыми в кэше и карточка
+              // в ProfileWidget показывала пустое имя и без картинки.
+              const itemUriDomain = extractDomainFromUri(item.content?.uri);
               upsertSubdomain.run({
                 itemAddress: toRawAddress(item.address),
-                name: itemMeta?.name || '',
+                name: itemUriDomain || itemMeta?.name || '',
                 collectionAddress: toRawAddress(col.address),
                 zoneName,
                 isProxy: isProxy ? 1 : 0,
