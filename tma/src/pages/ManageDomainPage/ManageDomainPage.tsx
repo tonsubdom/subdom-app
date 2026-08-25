@@ -6312,8 +6312,7 @@ export const ManageDomainPage: FC = () => {
               </div>
             ))} */}
 
-            {displayItems.map((item: DisplayItem, index: number) => {
-              const isAboveFold = index < 4;
+            {displayItems.map((item: DisplayItem) => {
               return (
               <div
                 key={item.id}
@@ -6347,8 +6346,7 @@ export const ManageDomainPage: FC = () => {
                   <img
                     src={getItemImageUrl(item)}
                     alt={item.title}
-                    loading={isAboveFold ? "eager" : "lazy"}
-                    fetchPriority={isAboveFold ? "high" : "auto"}
+                    loading="lazy"
                     decoding="async"
                     style={{
                       width: "100%",
