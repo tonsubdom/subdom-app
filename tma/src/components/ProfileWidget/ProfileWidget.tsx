@@ -3978,8 +3978,7 @@ const ProfileWidget: React.FC = () => {
     );
   };
 
-  const renderZoneCard = (zone: Zone, idx: number = 0) => {
-    const isAboveFold = idx < 4;
+  const renderZoneCard = (zone: Zone, _idx: number = 0) => {
     const zoneType = getZoneTypeInfo(zone);
     const zoneStatus = getZoneStatusInfo(zone);
     const isSbtZone = Number(zone.proxy) === 0;
@@ -4032,8 +4031,7 @@ const ProfileWidget: React.FC = () => {
               <img
                 src={(zone as any).image}
                 alt={zone.name}
-                loading={isAboveFold ? "eager" : "lazy"}
-                fetchPriority={isAboveFold ? "high" : "auto"}
+                loading="lazy"
                 decoding="async"
                 style={{
                   width: "100%",
@@ -4337,8 +4335,7 @@ const ProfileWidget: React.FC = () => {
     );
   };
 
-  const renderSubdomainCard = (subdomain: Subdomain, idx: number = 0) => {
-    const isAboveFold = idx < 4;
+  const renderSubdomainCard = (subdomain: Subdomain, _idx: number = 0) => {
     const statusInfo = getSubdomainStatusInfo(subdomain);
     const isSbt = isSbtSubdomain(subdomain);
     const imgUri = getSubdomainImage(subdomain);
@@ -4381,8 +4378,7 @@ const ProfileWidget: React.FC = () => {
               <img
                 src={imgUri}
                 alt={subdomain.name}
-                loading={isAboveFold ? "eager" : "lazy"}
-                fetchPriority={isAboveFold ? "high" : "auto"}
+                loading="lazy"
                 decoding="async"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 onError={(e) => {
@@ -4643,7 +4639,6 @@ const ProfileWidget: React.FC = () => {
 
   // === renderAuctionCard (без существенных изменений) ===
   const renderAuctionCard = (auction: Auction, idx: number) => {
-    const isAboveFold = idx < 4;
     const endDate = new Date(auction.ends);
     const now = new Date();
     const isEnded = endDate < now;
@@ -4684,8 +4679,7 @@ const ProfileWidget: React.FC = () => {
               <img
                 src={getSubdomainImage(auction.subdomain)}
                 alt={auction.name}
-                loading={isAboveFold ? "eager" : "lazy"}
-                fetchPriority={isAboveFold ? "high" : "auto"}
+                loading="lazy"
                 decoding="async"
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 onError={(e) => {

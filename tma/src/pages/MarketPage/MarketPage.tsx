@@ -1088,8 +1088,7 @@ const MarketPage: React.FC = () => {
           ) : (
             <div>
               {/* Строки таблицы */}
-              {pagedMarketItems.map((item, index) => {
-                const isAboveFold = index < 4;
+              {pagedMarketItems.map((item) => {
                 return (
                   <div
                     key={item.id}
@@ -1117,8 +1116,7 @@ const MarketPage: React.FC = () => {
                       <img
                         src={item.imgUri}
                         alt={item.name}
-                        loading={isAboveFold ? 'eager' : 'lazy'}
-                        fetchPriority={isAboveFold ? 'high' : 'auto'}
+                        loading="lazy"
                         decoding="async"
                         style={{
                           width: '140px',
