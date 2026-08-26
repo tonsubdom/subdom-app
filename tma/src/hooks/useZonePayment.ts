@@ -3,11 +3,10 @@
 // CreateCollectionPage, чтобы её же мог использовать интерактивный
 // PaymentAttemptsSection в профиле — без дублирования транзакционной логики.
 
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useTonWallet, useTonAddress, useTonConnectUI } from '@tonconnect/ui-react';
 import { apiService, ZoneLength } from '@/services/api';
 import { TransactionService } from '@/services/transactionService';
-import { TonUtilsEnhanced } from '@/utils/tonUtilsEnhanced';
 import { track } from '@/utils/analytics';
 
 export type ZoneType = 'proxy' | 'sbt';
@@ -52,11 +51,6 @@ export const useZonePayment = () => {
     ? (import.meta.env.VITE_PAYMENT_PARTNER_TESTNET || '')
     : (import.meta.env.VITE_PAYMENT_PARTNER_MAINNET || '');
 
-  const tonUtils = useMemo(
-    () => new TonUtilsEnhanced({ network: isTestnet ? 'testnet' : 'mainnet' }),
-    [isTestnet]
-  );
-
   const payForZone = useCallback(
     async (
       zoneType: ZoneType,
@@ -97,15 +91,13 @@ export const useZonePayment = () => {
           return { success: false, error: result.error };
         }
 
-        let confirmedInBlock = false;
-        if (result.hash) {
-          onStatusUpdate?.('Проверка подтверждения в блокчейне...');
-          const verification = await tonUtils.checkTransactionWithRetry(result.hash, {
-            maxAttempts: 5,
-            timeout: 30000,
-          });
-          confirmedInBlock = !!verification.confirmed;
-        }
+        // TransactionService.sendTransaction(verifyBlockchain: true) уже
+        // авторитетно определяет confirmedInBlock (двухходовая проверка,
+        // см. тот же комментарий в CreateCollectionPage.tsx) — раньше здесь
+        // ПОВЕРХ гонялась вторая, более старая проверка
+        // (tonUtils.checkTransactionWithRetry), которая могла перекрыть уже
+        // корректный положительный результат ложным "не подтверждено".
+        const confirmedInBlock = !!result.confirmedInBlock;
 
         const recordResponse = await apiService.addPaymentAttempt(address, zoneType, length);
         if (!recordResponse.success) {
@@ -118,7 +110,7 @@ export const useZonePayment = () => {
         return { success: false, error: error?.message || 'paymentFailed' };
       }
     },
-    [wallet, address, isTestnet, tonConnectUI, ownerAddress, partnerAddress, tonUtils]
+    [wallet, address, isTestnet, tonConnectUI, ownerAddress, partnerAddress]
   );
 
   return { payForZone, isTestnet, address };
