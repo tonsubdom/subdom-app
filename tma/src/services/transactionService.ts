@@ -5,6 +5,7 @@
 import { TonConnectUI } from '@tonconnect/ui-react';
 import { Cell, Address } from 'ton-core';
 import { trackTxFailed } from '@/utils/analytics';
+import { logEvent } from '@/utils/structuredLog';
 import { NETWORK_CONFIGS } from '@/services/blockchainItems/toncenter-api-config';
 
 export interface TransactionOptions {
@@ -76,6 +77,7 @@ export class TransactionService {
 
       if (!sendResult?.boc) {
         trackTxFailed(action, 'no_boc_returned');
+        logEvent({ event: action, status: 'error', error: 'no_boc_returned', isTestnet: network === 'testnet' });
         return { success: false, error: 'Транзакция не вернула BOC' };
       }
 
@@ -107,6 +109,7 @@ export class TransactionService {
 
         if (confirmed.success) {
           console.log('✅ Транзакция подтверждена в блокчейне');
+          logEvent({ event: action, status: 'success', context: { hash: txHash }, isTestnet: network === 'testnet' });
           return {
             success: true,
             boc: sendResult.boc,
@@ -120,6 +123,13 @@ export class TransactionService {
         // вызывающему коду, чтобы UI мог показать "отправлено, не подтверждено"
         // вместо повторной отправки.
         trackTxFailed(action, confirmed.error || 'not_confirmed_in_time');
+        logEvent({
+          event: action,
+          status: 'error',
+          error: confirmed.error || 'not_confirmed_in_time',
+          context: { hash: txHash },
+          isTestnet: network === 'testnet',
+        });
         return {
           success: false,
           boc: sendResult.boc,
@@ -140,6 +150,7 @@ export class TransactionService {
       const message = this.normalizeError(error);
       console.error('❌ Ошибка при отправке транзакции:', message);
       trackTxFailed(action, message);
+      logEvent({ event: action, status: 'error', error: message, isTestnet: network === 'testnet' });
       return { success: false, error: message };
     }
   }

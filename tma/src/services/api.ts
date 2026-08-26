@@ -904,6 +904,20 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
+  // Relay-only: сообщает боту об ошибке на клиенте (failed-транзакция и
+  // т.д.) — см. structuredLog.ts. Best-effort, не бросает исключение.
+  async notifyClientError(data: { event: string; error: string; context?: Record<string, unknown> }): Promise<void> {
+    try {
+      await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/client-error`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+    } catch (error) {
+      console.error('Error notifying about client error:', error);
+    }
+  }
+
   // Relay-only: сообщает боту о создании зоны (proxy/SBT), ничего не пишет в
   // БД — старый createZone()/POST /api/zones остаётся отдельно для легаси-читателей.
   async notifyZoneCreated(zoneData: {

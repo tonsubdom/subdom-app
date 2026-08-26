@@ -4784,6 +4784,47 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     }
   }
 
+  // ==================== ОБСЕРВАБИЛИТИ: ОШИБКИ КЛИЕНТА (TG Mini App) ====================
+  // Фронтенд не может писать в docker-логи (браузер, не контейнер) — вместо
+  // грепа логов этот relay-эндпоинт (POST /api/notifications/client-error,
+  // см. server-sqlite.ts) шлёт структурированную ошибку сюда, боту, тем же
+  // паттерном, что и остальные админ-уведомления. Не персистится в БД —
+  // это алерт, не история; при нужде в истории см. Plausible/структурные
+  // console.log на фронте (structuredLog.ts).
+
+  async sendClientErrorNotification(
+    event: string,
+    errorMessage: string,
+    context: Record<string, unknown> | undefined,
+    isTestnet: boolean = true
+  ): Promise<void> {
+    if (!this.isBotAvailable()) return;
+
+    const escapeHtml = (s: string): string =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    try {
+      const network = this.formatNetwork(isTestnet);
+      const contextText = context && Object.keys(context).length > 0
+        ? `\n\n📎 Контекст:\n<code>${escapeHtml(JSON.stringify(context)).slice(0, 500)}</code>`
+        : '';
+
+      const message = `
+🚨 <b>Ошибка на клиенте</b>
+
+${network}
+Событие: <code>${escapeHtml(event).slice(0, 120)}</code>
+Ошибка: ${escapeHtml(errorMessage).slice(0, 500)}${contextText}
+
+Время: ${new Date().toLocaleString('ru-RU')}
+      `.trim();
+
+      await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
+    } catch (error) {
+      console.error('❌ Ошибка при отправке уведомления об ошибке клиента:', error);
+    }
+  }
+
   async sendPaymentConsumedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true): Promise<void> {
     if (!this.isBotAvailable()) return;
 
