@@ -53,7 +53,6 @@ import { convertUserFriendlyToRaw, getNftOwnerAddress } from '@/utils/tonUtils';
 
 // Импортируем новый сервис транзакций
 import { TransactionService, TransactionResult } from '@/services/transactionService';
-import { TonUtilsEnhanced } from '@/utils/tonUtilsEnhanced';
 import { track } from '@/utils/analytics';
 import { createAuctionUrl } from '@/utils/urlParams';
 import { sanitizeDomainLabelInput, encodeDomainLabel } from '@/utils/domainPunycode';
@@ -472,13 +471,6 @@ const partnerAddress = isTestnet
     message?: string;
   }>({});
 
-  // Инициализируем утилиты TON
-  const tonUtils = React.useMemo(() => {
-    return new TonUtilsEnhanced({
-      network: isTestnet ? 'testnet' : 'mainnet'
-    });
-  }, [isTestnet]);
-
   // Устанавливаем сеть в API service
   useEffect(() => {
     apiService.setNetwork(isTestnet);
@@ -670,36 +662,33 @@ const partnerAddress = isTestnet
         }
       );
 
-      if (result.success && result.hash) {
-        onStatusUpdate?.(`${description} отправлена, проверка статуса...`);
-        setTransactionStatus({
-          hash: result.hash,
-          status: 'pending',
-          message: 'Проверка подтверждения в блокчейне...'
-        });
-
-        // Дополнительная проверка через утилиты TON
-        const verification = await tonUtils.checkTransactionWithRetry(result.hash, {
-          maxAttempts: 5,
-          timeout: 30000
-        });
-
-        if (verification.confirmed) {
+      // TransactionService.sendTransaction(verifyBlockchain: true) уже делает
+      // полную двухходовую проверку (кошелёк → реальное исполнение на целевом
+      // контракте, см. комментарий в transactionService.ts и Log.md
+      // 2026-08-13) — result.confirmedInBlock уже авторитетен. Раньше здесь
+      // ПОВЕРХ этого гонялась вторая, более старая проверка через
+      // tonUtils.checkTransactionWithRetry (TonApi/TonCenter/TonViewer,
+      // первый ответивший побеждает, без hop-2 destination-check) — и именно
+      // её результат побеждал. Если эта вторая проверка ошибочно/медленно
+      // отвечала "не подтверждено", она перекрывала уже корректный
+      // положительный результат первой — юзер видел "задеплоено, но не
+      // подтверждено" на реально успешном деплое, попытка не списывалась.
+      // Убрано — доверяем единственной точке проверки.
+      if (result.hash) {
+        if (result.confirmedInBlock) {
           onStatusUpdate?.(`✅ ${description} подтверждена в блокчейне`);
           setTransactionStatus({
             hash: result.hash,
             status: 'confirmed',
             message: 'Транзакция подтверждена'
           });
-          return { ...result, confirmedInBlock: true };
         } else {
           onStatusUpdate?.(`⚠️ ${description} отправлена, но не подтверждена`);
           setTransactionStatus({
             hash: result.hash,
             status: 'failed',
-            message: verification.error || 'Не удалось подтвердить транзакцию'
+            message: result.error || 'Не удалось подтвердить транзакцию'
           });
-          return { ...result, confirmedInBlock: false, error: verification.error };
         }
       }
 
@@ -717,7 +706,7 @@ const partnerAddress = isTestnet
         error: errorMsg
       };
     }
-  }, [tonConnectUI, isTestnet, tonUtils]);
+  }, [tonConnectUI, isTestnet]);
 
   // Функция для записи оплаченной попытки
   const recordPaymentAttempt = useCallback(async (zoneType: ActiveTab, length: ZoneLength): Promise<boolean> => {
