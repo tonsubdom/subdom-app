@@ -1,0 +1,84 @@
+name: Billing monitor
+
+on:
+  schedule:
+    # каждый понедельник в 09:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  check-billing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Parse billing.md and open/update issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'billing.md';
+            if (!fs.existsSync(path)) {
+              core.setFailed(`${path} not found`);
+              return;
+            }
+            const text = fs.readFileSync(path, 'utf8');
+            const rowRe = /^\|\s*(.+?)\s*\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*(.*?)\s*\|\s*$/gm;
+            const now = new Date();
+            const WARN_DAYS = 7;
+            const label = 'billing';
+
+            // Убедиться, что лейбл существует (иначе issues.create падает).
+            try {
+              await github.rest.issues.getLabel({ owner: context.repo.owner, repo: context.repo.repo, name: label });
+            } catch (e) {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner, repo: context.repo.repo,
+                name: label, color: 'D73A4A', description: 'Скоро истекает оплата/сертификат/домен'
+              });
+            }
+
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner, repo: context.repo.repo, state: 'open', labels: label, per_page: 100
+            });
+
+            let match;
+            let checked = 0;
+            let alerted = 0;
+            while ((match = rowRe.exec(text)) !== null) {
+              const [, item, dateStr, note] = match;
+              if (item.toLowerCase().startsWith('item')) continue; // заголовок таблицы
+              if (item.trim().replace(/[:*_]/g, '') === '---') continue;
+              checked++;
+
+              const dueDate = new Date(dateStr + 'T00:00:00Z');
+              const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / 86400000);
+              if (daysLeft > WARN_DAYS) continue;
+
+              const title = `⚠️ BILLING: ${item} — ${daysLeft < 0 ? 'просрочено' : `осталось ${daysLeft} дн.`} (до ${dateStr})`;
+              const already = openIssues.find(i => i.title.includes(item));
+              if (already) continue; // уже есть открытый алерт по этой позиции
+
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                labels: [label],
+                body: [
+                  `**Позиция:** ${item}`,
+                  `**Дата:** ${dateStr}`,
+                  `**Осталось дней:** ${daysLeft}`,
+                  note ? `**Заметка:** ${note}` : '',
+                  '',
+                  'После продления — обновить дату в `billing.md` и закрыть этот Issue.',
+                ].filter(Boolean).join('\n'),
+              });
+              alerted++;
+            }
+
+            core.summary.addHeading('Billing monitor').addRaw(`Проверено позиций: ${checked}. Создано алертов: ${alerted}.`).write();
