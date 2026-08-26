@@ -4120,6 +4120,38 @@ app.post('/api/notifications/zone-created', (req, res) => {
   }
 });
 
+// Обсервабилити: клиент (TG Mini App) не может писать в docker-логи —
+// шлёт сюда факт ошибки (failed-транзакция, DNS-операция и т.д.), relay
+// напрямую боту тем же паттерном, что остальные уведомления. Не персистится
+// в БД — это just-in-time алерт админу, не история инцидентов.
+app.post('/api/notifications/client-error', (req, res) => {
+  try {
+    const { event, error, context } = req.body;
+    const isTestnet = req.isTestnet;
+
+    if (!event || typeof event !== 'string') {
+      return res.status(400).json({ success: false, message: 'event обязателен' });
+    }
+
+    const safeContext =
+      context && typeof context === 'object' && !Array.isArray(context)
+        ? Object.fromEntries(Object.entries(context).slice(0, 20))
+        : undefined;
+
+    telegramBot.sendClientErrorNotification(
+      event.slice(0, 120),
+      String(error || 'unknown').slice(0, 500),
+      safeContext,
+      isTestnet
+    );
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при отправке уведомления об ошибке клиента:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
 // Субдомен создан: SBT-минт (status=active) или старт proxy-аукциона (status=auction).
 // Старый POST /api/subdomains аналогично не трогаем — тот же принцип, что и выше.
 app.post('/api/notifications/subdomain-created', (req, res) => {
