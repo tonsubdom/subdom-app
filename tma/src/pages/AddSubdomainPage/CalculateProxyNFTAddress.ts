@@ -4,6 +4,13 @@
 import { getDnsItemIndex } from "./flipTimer/indexByDNSName";
 import { parseB64Address } from "./flipTimer/getAddressFromBoc";
 
+/** Ключ toncenter теперь только на сервере — фронт бьёт в бэкенд-прокси. */
+function toncenterApiUrl(isTestnet: boolean, path: string): string {
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+  const network = isTestnet ? 'testnet' : 'mainnet';
+  return `${apiBase}/api/toncenter-proxy/${network}/api/${path}`;
+}
+
 /**
  * Рассчитывает адрес NFT для Proxy субдомена
  * Используется для первой ставки, когда аукцион еще не создан
@@ -55,19 +62,8 @@ const getNFTAddressByIndex = async (
   isTestnet: boolean
 ): Promise<string | null> => {
   try {
-    const apiUrl = isTestnet
-      ? "https://testnet.toncenter.com/api/v2/runGetMethod"
-      : "https://toncenter.com/api/v2/runGetMethod";
-    
-    // API ключ для testnet (из UniversalBlockchainService)
-    const apiKey = import.meta.env.VITE_TONCENTER_API_KEY;
-    
-    // Создаем URL с API ключом как query параметром
-    const url = new URL(apiUrl);
-    if (apiKey) {
-      url.searchParams.append('api_key', apiKey);
-    }
-    
+    const url = new URL(toncenterApiUrl(isTestnet, "v2/runGetMethod"), window.location.origin);
+
     console.log(`📡 Запрос NFT адреса по индексу ${index} с API ключом (для первой ставки)`);
     
     const response = await fetch(url.toString(), {
@@ -264,19 +260,9 @@ const getAddressInformationWithAPIKey = async (
   isTestnet: boolean
 ): Promise<{ state: string; owner?: string } | null> => {
   try {
-    const apiUrl = isTestnet
-      ? "https://testnet.toncenter.com/api/v2/getAddressInformation"
-      : "https://toncenter.com/api/v2/getAddressInformation";
-    
-    // API ключ для testnet
-    const apiKey = import.meta.env.VITE_TONCENTER_API_KEY;
-    
-    const url = new URL(apiUrl);
+    const url = new URL(toncenterApiUrl(isTestnet, "v2/getAddressInformation"), window.location.origin);
     url.searchParams.append('address', address);
-    if (apiKey) {
-      url.searchParams.append('api_key', apiKey);
-    }
-    
+
     const response = await fetch(url.toString());
     
     if (!response.ok) {

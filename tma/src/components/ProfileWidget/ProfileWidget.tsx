@@ -2817,14 +2817,12 @@ const ProfileWidget: React.FC = () => {
       return;
     }
     try {
-      const baseUrl = isTestnet
-        ? "https://testnet.toncenter.com/api/v3/addressInformation"
-        : "https://toncenter.com/api/v3/addressInformation";
-      const apiKey = import.meta.env.VITE_TONCENTER_API_KEY;
-      const url = new URL(baseUrl);
+      const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+      const network = isTestnet ? 'testnet' : 'mainnet';
+      const baseUrl = `${apiBase}/api/toncenter-proxy/${network}/api/v3/addressInformation`;
+      const url = new URL(baseUrl, window.location.origin);
       url.searchParams.append("address", address);
       url.searchParams.append("use_v2", "true");
-      if (apiKey) url.searchParams.append("api_key", apiKey);
       const response = await fetch(url.toString());
       if (!response.ok) {
         setBalance("0");
@@ -2985,15 +2983,12 @@ const ProfileWidget: React.FC = () => {
     if (!wallet || !address) return null;
     try {
       const hexAddress = wallet.account.address;
-      const modeFetchDomainUrl = isTestnet
-        ? "testnet.toncenter.com"
-        : "toncenter.com";
-      const apiKey = import.meta.env.VITE_TONCENTER_API_KEY;
-      const url = new URL(`https://${modeFetchDomainUrl}/api/v3/dns/records`);
+      const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+      const network = isTestnet ? 'testnet' : 'mainnet';
+      const url = new URL(`${apiBase}/api/toncenter-proxy/${network}/api/v3/dns/records`, window.location.origin);
       url.searchParams.append("wallet", hexAddress);
       url.searchParams.append("limit", "100");
       url.searchParams.append("offset", "0");
-      if (apiKey) url.searchParams.append("api_key", apiKey);
       const response = await fetch(url.toString());
       if (isStale?.()) return null;
       if (!response.ok) {

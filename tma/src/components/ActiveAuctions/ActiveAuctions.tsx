@@ -630,20 +630,17 @@ const fetchDomain = async (address: string, isTestnet: boolean): Promise<DomainI
   if (!address) return null;
   
   try {
-    const modeFetchDomainUrl = isTestnet ? 'testnet.toncenter.com' : 'toncenter.com';
-    const apiKey = import.meta.env.VITE_TONCENTER_API_KEY; // Добавьте mainnet ключ если нужно
-    
-    // Создаем URL с API ключом
-    const url = new URL(`https://${modeFetchDomainUrl}/api/v3/dns/records`);
+    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+    const network = isTestnet ? 'testnet' : 'mainnet';
+
+    // Ключ toncenter подставляется на бэкенде (см. toncenterProxy/routes.ts) —
+    // фронт больше не носит и не отправляет его.
+    const url = new URL(`${apiBase}/api/toncenter-proxy/${network}/api/v3/dns/records`, window.location.origin);
     url.searchParams.append('wallet', address);
     url.searchParams.append('limit', '100');
     url.searchParams.append('offset', '0');
-    
-    if (apiKey) {
-      url.searchParams.append('api_key', apiKey);
-    }
-    
-    console.log(`📡 Запрос DNS записей для адреса: ${address} с API ключом`);
+
+    console.log(`📡 Запрос DNS записей для адреса: ${address}`);
     
     const response = await fetch(url.toString());
     

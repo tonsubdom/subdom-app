@@ -36,8 +36,9 @@ export interface GetItemsByCollectionResponse {
 
 export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
   testnet: {
-    API_URL: 'https://testnet.toncenter.com/api/v3',
-    API_KEY: import.meta.env.VITE_TONCENTER_API_KEY,
+    // Ключ toncenter больше не шьётся во фронт (см. toncenterProxy/routes.ts
+    // на бэкенде) — API_URL смотрит на прокси, который сам подставляет ключ.
+    API_URL: `${import.meta.env.VITE_API_BASE_URL || ''}/api/toncenter-proxy/testnet/api/v3`,
     DEFAULT_ADDRESSES: {
       PLATFORM_OWNER: import.meta.env.VITE_PLATFORM_OWNER_TESTNET,
       NFT_WRAPPER_COLLECTION: import.meta.env.VITE_NFT_WRAPPER_COLLECTION_TESTNET,
@@ -58,9 +59,7 @@ export const NETWORK_CONFIGS: Record<'mainnet' | 'testnet', NetworkConfig> = {
     }
   },
   mainnet: {
-    API_URL: 'https://toncenter.com/api/v3',
-    // API_KEY: process.env.REACT_APP_TONCENTER_API_KEY,
-    API_KEY: import.meta.env.VITE_TONCENTER_API_KEY,
+    API_URL: `${import.meta.env.VITE_API_BASE_URL || ''}/api/toncenter-proxy/mainnet/api/v3`,
     DEFAULT_ADDRESSES: {
       PLATFORM_OWNER: import.meta.env.VITE_PLATFORM_OWNER_MAINNET,
       NFT_WRAPPER_COLLECTION: import.meta.env.VITE_NFT_WRAPPER_COLLECTION_MAINNET,
