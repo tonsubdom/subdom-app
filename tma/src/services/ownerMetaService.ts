@@ -14,12 +14,16 @@
 
 import { Address, Builder, Cell, Dictionary, beginCell } from '@ton/core';
 
-// Тот же ключ, что и в services/blockchainItems/toncenter-api-config.ts —
-// без него публичный toncenter даёт 429 уже на 2-3 запросе подряд, а полный
-// TEP-81 резолв поддомена (dnsResolveChain) делает по одному запросу на
-// каждый уровень вложенности, так что без ключа он почти всегда падает на
-// последнем прыжке (подтверждено вживую 2026-08-02 на resistor.tondev.ton).
-const TONCENTER_API_KEY = import.meta.env.VITE_TONCENTER_API_KEY as string | undefined;
+// Ключ toncenter больше не отправляется с фронта (2026-08-29: ключ из
+// клиентского бандла кто-то скопировал и дёргал toncenter напрямую — отсюда
+// 429 даже без реальной нагрузки от юзеров приложения). Все runGetMethod-вызовы
+// теперь идут через бэкенд-прокси (subdom-server/src/services/toncenterProxy),
+// который сам подставляет ключ на сервере.
+function toncenterApiUrl(isTestnet: boolean, path: string): string {
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+  const network = isTestnet ? 'testnet' : 'mainnet';
+  return `${apiBase}/api/toncenter-proxy/${network}/api/${path}`;
+}
 
 const DNS_CHANGE_RECORD_OP = 0x4eb1f0f9;
 
@@ -199,8 +203,7 @@ function domainToBytes(domain: string): Buffer {
 }
 
 async function runGetMethodV3(address: string, method: string, stack: Array<{ type: string; value: string }>, isTestnet: boolean) {
-  const base = isTestnet ? 'https://testnet.toncenter.com/api/v3/runGetMethod' : 'https://toncenter.com/api/v3/runGetMethod';
-  const apiUrl = TONCENTER_API_KEY ? `${base}?api_key=${encodeURIComponent(TONCENTER_API_KEY)}` : base;
+  const apiUrl = toncenterApiUrl(isTestnet, 'v3/runGetMethod');
   const response = await fetch(apiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -356,10 +359,7 @@ async function fetchSelfDnsRecordsDict(
   isTestnet: boolean
 ): Promise<Dictionary<bigint, Cell> | null> {
   const rawAddress = Address.parse(nftAddress).toRawString();
-  const base = isTestnet
-    ? 'https://testnet.toncenter.com/api/v3/runGetMethod'
-    : 'https://toncenter.com/api/v3/runGetMethod';
-  const apiUrl = TONCENTER_API_KEY ? `${base}?api_key=${encodeURIComponent(TONCENTER_API_KEY)}` : base;
+  const apiUrl = toncenterApiUrl(isTestnet, 'v3/runGetMethod');
 
   // self-маркер по TEP-81: subdomain — слайс из одного нулевого байта (НЕ
   // пустой слайс), category = 0.

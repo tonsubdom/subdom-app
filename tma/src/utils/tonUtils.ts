@@ -2,6 +2,12 @@
 import { Address } from "ton-core";
 
 const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+/** Ключ toncenter теперь только на сервере — фронт всегда бьёт в бэкенд-прокси. */
+function toncenterApiUrl(isTestnet: boolean, path: string): string {
+  return `${API_BASE_URL}/api/toncenter-proxy/${isTestnet ? 'testnet' : 'mainnet'}/api/${path}`;
+}
 
 /**
  * Конвертирует user-friendly адрес (kQ...) в raw формат (0:...)
@@ -61,9 +67,7 @@ export async function getNftOwnerAddress(
   isTestnet: boolean
 ): Promise<string | null> {
   try {
-    const apiUrl = isTestnet 
-      ? 'https://testnet.toncenter.com/api/v3/nft/items'
-      : 'https://toncenter.com/api/v3/nft/items';
+    const apiUrl = toncenterApiUrl(isTestnet, 'v3/nft/items');
     
     // Конвертируем адрес в raw формат если нужно
     const rawAddress = convertUserFriendlyToRaw(nftAddress);
@@ -98,9 +102,7 @@ export async function checkDomainDNSRecord(
   isTestnet: boolean
 ): Promise<string | null> {
   try {
-    const apiUrl = isTestnet 
-      ? 'https://testnet.toncenter.com/api/v3/runGetMethod'
-      : 'https://toncenter.com/api/v3/runGetMethod';
+    const apiUrl = toncenterApiUrl(isTestnet, 'v3/runGetMethod');
     
     const rawAddress = convertUserFriendlyToRaw(domainAddress);
     
@@ -161,9 +163,7 @@ export async function getNftInfo(
   isTestnet: boolean
 ): Promise<any> {
   try {
-    const apiUrl = isTestnet 
-      ? 'https://testnet.toncenter.com/api/v3/nft/items'
-      : 'https://toncenter.com/api/v3/nft/items';
+    const apiUrl = toncenterApiUrl(isTestnet, 'v3/nft/items');
     
     const rawAddress = convertUserFriendlyToRaw(nftAddress);
     
@@ -357,14 +357,10 @@ export async function resolveAddressToDomain(address: string, isTestnet: boolean
   if (!address) return null;
 
   try {
-    const host = isTestnet ? 'testnet.toncenter.com' : 'toncenter.com';
-    const apiKey = import.meta.env.VITE_TONCENTER_API_KEY;
-
-    const url = new URL(`https://${host}/api/v3/dns/records`);
+    const url = new URL(toncenterApiUrl(isTestnet, 'v3/dns/records'), window.location.origin);
     url.searchParams.append('wallet', address);
     url.searchParams.append('limit', '100');
     url.searchParams.append('offset', '0');
-    if (apiKey) url.searchParams.append('api_key', apiKey);
 
     const response = await fetch(url.toString());
     if (!response.ok) return null;
@@ -404,15 +400,11 @@ export async function getAddressLastTransaction(
   if (!address) return null;
 
   try {
-    const host = isTestnet ? 'testnet.toncenter.com' : 'toncenter.com';
-    const apiKey = import.meta.env.VITE_TONCENTER_API_KEY;
-
-    const url = new URL(`https://${host}/api/v3/transactions`);
+    const url = new URL(toncenterApiUrl(isTestnet, 'v3/transactions'), window.location.origin);
     url.searchParams.append('account', address);
     url.searchParams.append('limit', '1');
     url.searchParams.append('offset', '0');
     url.searchParams.append('sort', 'desc');
-    if (apiKey) url.searchParams.append('api_key', apiKey);
 
     const response = await fetch(url.toString());
     if (!response.ok) return null;

@@ -199,21 +199,15 @@ export async function getAuctionInfo(
     const index = getDnsItemIndex(subdomainName);
     console.log("Subdomain index:", index.toString());
 
-    const apiUrl = isTestnet
-      ? "https://testnet.toncenter.com/api/v2/runGetMethod"
-      : "https://toncenter.com/api/v2/runGetMethod";
-
-    // API ключ для testnet
-    const apiKey = import.meta.env.VITE_TONCENTER_API_KEY;
+    const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+    const network = isTestnet ? 'testnet' : 'mainnet';
+    const apiUrl = `${apiBase}/api/toncenter-proxy/${network}/api/v2/runGetMethod`;
 
     console.log("Fetching NFT address by index...");
-    
-    // Создаем URL с API ключом как query параметром
-    const nftAddressUrl = new URL(apiUrl);
-    if (apiKey) {
-      nftAddressUrl.searchParams.append('api_key', apiKey);
-    }
-    
+
+    // Ключ toncenter теперь подставляется на бэкенде, не во фронте.
+    const nftAddressUrl = new URL(apiUrl, window.location.origin);
+
     const nftAddressResponse = await fetch(nftAddressUrl.toString(), {
       method: "POST",
       headers: {
@@ -267,12 +261,8 @@ export async function getAuctionInfo(
 
     console.log("Fetching auction info...");
     
-    // Создаем URL с API ключом для второго запроса
-    const auctionInfoUrl = new URL(apiUrl);
-    if (apiKey) {
-      auctionInfoUrl.searchParams.append('api_key', apiKey);
-    }
-    
+    const auctionInfoUrl = new URL(apiUrl, window.location.origin);
+
     const auctionInfoResponse = await fetch(auctionInfoUrl.toString(), {
       method: "POST",
       headers: {

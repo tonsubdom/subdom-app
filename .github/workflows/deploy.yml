@@ -26,7 +26,6 @@ jobs:
           VITE_API_BASE_URL: https://subdom.zone
           VITE_PUBLIC_URL: https://subdom.zone
           VITE_API_SC_PAYLOAD_URL: https://api.subdom.zone
-          VITE_TONCENTER_API_KEY: ${{ secrets.TONCENTER_API_KEY }}
           VITE_PLATFORM_OWNER_TESTNET: ${{ vars.PLATFORM_OWNER_TESTNET }}
           VITE_NFT_WRAPPER_COLLECTION_TESTNET: ${{ vars.NFT_WRAPPER_COLLECTION_TESTNET }}
           VITE_PROXY_COLLECTION_TESTNET: ${{ vars.PROXY_COLLECTION_TESTNET }}

@@ -3,7 +3,6 @@
 interface ImportMetaEnv {
   readonly VITE_API_BASE_URL: string;
   readonly VITE_PUBLIC_URL: string;
-  readonly VITE_TONCENTER_API_KEY: string;
   readonly VITE_TONCENTER_API_URL: string;
   readonly VITE_PLATFORM_OWNER_TESTNET: string;
   readonly VITE_NFT_WRAPPER_COLLECTION_TESTNET: string;

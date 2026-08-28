@@ -23,6 +23,7 @@ import { createBag, getBagDetails, addBag } from './utils/storageDaemon';
 import { startStorageDealsChecker } from './services/storageDealsChecker';
 import platformCacheRouter from './services/platformCache/routes';
 import { startPlatformCacheCrawler } from './services/platformCache/crawler';
+import toncenterProxyRouter from './services/toncenterProxy/routes';
 // Flat JSON tool manifest for LLM/MCP tool-use (same file as
 // agent-manifest/subdom-tools.json in the subdom-sdk repo, copied here so it
 // ships with the backend deploy) — imported (not fs.readFileSync'd) so
@@ -811,6 +812,7 @@ app.use('/api/*', networkMiddleware);
 // Платформенный read-cache (Group 3.3) — монтируется после networkMiddleware,
 // чтобы req.db/req.isTestnet были уже выставлены.
 app.use('/api/platform', platformCacheRouter);
+app.use('/api/toncenter-proxy', toncenterProxyRouter);
 startPlatformCacheCrawler(testnetDb, mainnetDb);
 startStorageDealsChecker(testnetDb, mainnetDb);
 
