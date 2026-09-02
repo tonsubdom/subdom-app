@@ -6,10 +6,10 @@
 // вылететь из приложения посреди блока, и при возврате тур должен
 // продолжиться с того же места, а не начаться заново.
 //
-// Смонтирован внутри HashRouter (см. App.tsx) — resumeStep() ходит по
+// Смонтирован внутри роутера (см. App.tsx) — resumeStep() ходит по
 // роутам через useNavigate(), которому нужен контекст роутера.
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTonWallet } from '@tonconnect/ui-react';
 import { apiService } from '@/services/api';
 import { OPEN_PROFILE_WIDGET_EVENT } from '@/components/SearchWidget/SearchWidget';
@@ -91,6 +91,7 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
   const walletAddress = wallet?.account?.address || null;
   const isTestnet = wallet?.account?.chain === '-3';
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [active, setActive] = useState(false);
   const [started, setStarted] = useState(false);
@@ -229,15 +230,12 @@ export const TutorialProvider: React.FC<TutorialProviderProps> = ({ children }) 
   const [tutorialDeeplinkConsumed, setTutorialDeeplinkConsumed] = useState(false);
   useEffect(() => {
     if (tutorialDeeplinkConsumed) return;
-    const hash = window.location.hash;
-    const queryString = hash.includes('?') ? hash.split('?')[1] : '';
-    const params = new URLSearchParams(queryString);
-    if (params.get('tutorial') === '1') {
+    if (searchParams.get('tutorial') === '1') {
       setTutorialDeeplinkConsumed(true);
       openEntry();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tutorialDeeplinkConsumed]);
+  }, [tutorialDeeplinkConsumed, searchParams]);
 
   const closeIntroModal = useCallback(() => setShowIntroModal(false), []);
   const openProgressPanel = useCallback(() => setShowProgressPanel(true), []);

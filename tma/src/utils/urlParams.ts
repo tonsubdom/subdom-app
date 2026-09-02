@@ -1,7 +1,15 @@
 // src/utils/urlParams.ts
 
 /**
- * Утилиты для работы с URL параметрами аукционов (hash routing)
+ * Утилиты для работы с URL параметрами аукционов.
+ *
+ * До 2026-09 роутинг шёл через HashRouter, и все функции здесь читали/писали
+ * window.location.hash напрямую (формат "/#/add-subdomain?zone=..."). После
+ * миграции на BrowserRouter (SEO — многостраничная индексация, см. Log.md
+ * 2026-09-02) реальные параметры живут в normal query string
+ * (window.location.search), а не в hash. Сигнатуры и имена экспортов
+ * намеренно не менялись — только внутренняя реализация — чтобы не трогать
+ * все вызовы в AddSubdomainPage.tsx/ProfileWidget.tsx/CreateCollectionPage.tsx.
  */
 
 // Типы параметров для аукциона
@@ -12,19 +20,11 @@ export interface AuctionUrlParams {
 }
 
 /**
- * Получить параметры аукциона из URL (hash routing)
+ * Получить параметры аукциона из URL
  */
 export function getAuctionParamsFromUrl(): AuctionUrlParams {
-  // Для hash routing: /#/add-subdomain?zone=...&subdomain=...
-  const hash = window.location.hash;
-  
-  if (!hash.includes('?')) {
-    return {};
-  }
-  
-  const queryString = hash.split('?')[1];
-  const params = new URLSearchParams(queryString);
-  
+  const params = new URLSearchParams(window.location.search);
+
   return {
     zone: params.get('zone') || undefined,
     subdomain: params.get('subdomain') || undefined,
@@ -33,32 +33,31 @@ export function getAuctionParamsFromUrl(): AuctionUrlParams {
 }
 
 /**
- * Создать URL для аукциона с параметрами (hash routing)
+ * Создать URL для аукциона с параметрами
  */
 export function createAuctionUrl(params: AuctionUrlParams): string {
   const searchParams = new URLSearchParams();
-  
+
   if (params.zone) {
     searchParams.set('zone', params.zone);
   }
-  
+
   if (params.subdomain) {
     searchParams.set('subdomain', params.subdomain);
   }
-  
+
   // Не добавляем tab - только для proxy
   // if (params.tab) {
   //   searchParams.set('tab', params.tab);
   // }
-  
+
   const queryString = searchParams.toString();
-  
-  // Hash routing формат: /#/add-subdomain?zone=...&subdomain=...
-  return queryString ? `/#/add-subdomain?${queryString}` : '/#/add-subdomain';
+
+  return queryString ? `/add-subdomain?${queryString}` : '/add-subdomain';
 }
 
 /**
- * Обновить URL с параметрами аукциона (hash routing)
+ * Обновить URL с параметрами аукциона
  */
 export function updateAuctionUrl(params: AuctionUrlParams): void {
   // Только для proxy таба - обновляем URL
@@ -68,14 +67,14 @@ export function updateAuctionUrl(params: AuctionUrlParams): void {
 }
 
 /**
- * Очистить параметры аукциона из URL (hash routing)
+ * Очистить параметры аукциона из URL
  */
 export function clearAuctionUrl(): void {
-  window.history.pushState({}, '', '/#/add-subdomain');
+  window.history.pushState({}, '', '/add-subdomain');
 }
 
 /**
- * Получить полный URL для аукциона (hash routing)
+ * Получить полный URL для аукциона
  */
 export function getFullAuctionUrl(params: AuctionUrlParams): string {
   const baseUrl = window.location.origin;
@@ -167,13 +166,12 @@ export async function shareUrl(
  * Проверить, является ли текущая страница страницей аукциона
  */
 export function isAuctionPage(): boolean {
-  return window.location.hash.includes('/add-subdomain');
+  return window.location.pathname.includes('/add-subdomain');
 }
 
 /**
- * Получить текущий hash путь
+ * Получить текущий путь (без query-параметров)
  */
 export function getCurrentHashPath(): string {
-  const hash = window.location.hash;
-  return hash.split('?')[0]; // Без query параметров
+  return window.location.pathname;
 }
