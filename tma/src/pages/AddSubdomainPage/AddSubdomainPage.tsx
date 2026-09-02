@@ -12472,6 +12472,7 @@ import { track } from "@/utils/analytics";
 import { sanitizeDomainLabelInput, encodeDomainLabel, decodeDomainLabel } from "@/utils/domainPunycode";
 import { CopyLinkIcon, ShareArrowIcon } from "@/components/icons/CopyShareIcons";
 import { fetchPlatformCache } from "@/services/blockchainItems/platformCacheClient";
+import ConnectWalletPrompt from "@/components/ConnectWalletPrompt/ConnectWalletPrompt";
 
 // Единый акцентный стиль для копировать-ссылку/поделиться — раньше это были
 // серые прямоугольные кнопки (#333 фон, #555 бордер), визуально "чопорные" на
@@ -12648,6 +12649,13 @@ export const AuctionPage: React.FC<{}> = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>(() =>
     new URLSearchParams(location.search).get("tab") === "proxy" ? "proxy" : "sbt"
   );
+  // Неподключённый юзер может свободно листать зоны, вводить имя, проверять
+  // итем и видеть реальный статус аукциона — гейт стоит только на самой
+  // кнопке действия (старт/ставка/минт/клейм), см. onClick ниже.
+  const [showConnectPrompt, setShowConnectPrompt] = useState(false);
+  useEffect(() => {
+    if (wallet) setShowConnectPrompt(false);
+  }, [wallet]);
   const [selectedDomainZone, setSelectedDomainZone] = useState("");
   // subDomainName остаётся punycode/ASCII-формой (её же используют payload'ы
   // минта/ставки и URL); subDomainNameDisplay — то, что видит и печатает
@@ -13153,6 +13161,40 @@ export const AuctionPage: React.FC<{}> = () => {
   useEffect(() => {
     handleCheckItemRef.current = handleCheckItem;
   }, [handleCheckItem]);
+
+  // Баг «Сделать ставку» из уведомления бота показывает дефолтный таймер
+  // вместо реальных данных (Log.md 2026-08-29/2026-09-03) — при холодном
+  // старте по диплинку до подключения кошелька `isTestnet` (см. выше,
+  // `wallet?.account?.chain === "-3"`) читается как mainnet по умолчанию,
+  // и первая автопроверка в loadAuctionFromParams может уйти в сеть ДО
+  // того, как TonConnect восстановит соединение и сеть определится верно.
+  // lastAutoLoadedKeyRef после первой попытки блокирует повторный заход по
+  // тому же диплинку (см. комментарий в loadAuctionFromParams) — трогать
+  // это нельзя, иначе вернётся гонка двух параллельных проверок (см. тот
+  // же комментарий). Вместо этого — узкий, безопасный повтор ТОЛЬКО самой
+  // проверки (не всего диплинк-флоу) ровно один раз в момент, когда
+  // кошелёк реально подключается, если к этому моменту экран уже
+  // показывает "нет данных" после чека.
+  const wasWalletConnectedRef = useRef(false);
+  useEffect(() => {
+    const isConnected = !!wallet;
+    const justConnected = isConnected && !wasWalletConnectedRef.current;
+    wasWalletConnectedRef.current = isConnected;
+    if (
+      justConnected &&
+      activeTab === "proxy" &&
+      hasChecked &&
+      !auctionInfo &&
+      !sbtSubdomainInfo
+    ) {
+      console.debug("[AddSubdomainPage] Перепроверяю аукцион после подключения кошелька", {
+        selectedDomainZone,
+        subDomainName,
+        isTestnet,
+      });
+      handleCheckItemRef.current();
+    }
+  }, [wallet, activeTab, hasChecked, auctionInfo, sbtSubdomainInfo, selectedDomainZone, subDomainName, isTestnet]);
 
   const loadAuctionFromParams = useCallback(
     (zoneName: string, subdomainName: string): boolean => {
@@ -14738,7 +14780,13 @@ export const AuctionPage: React.FC<{}> = () => {
               3
             </div>
             <Button
-              onClick={getActionButtonHandler()}
+              onClick={() => {
+                if (!wallet) {
+                  setShowConnectPrompt(true);
+                  return;
+                }
+                getActionButtonHandler()?.();
+              }}
               disabled={getActionButtonDisabled()}
               style={{
                 width: "280px",
@@ -14948,6 +14996,36 @@ export const AuctionPage: React.FC<{}> = () => {
               style={{ position: 'static' }}
             />
           )}
+        </div>
+      )}
+
+      {showConnectPrompt && (
+        <div
+          onClick={() => setShowConnectPrompt(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 1001,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: isDark ? "#1F2937" : "#FFFFFF",
+              border: `1px solid ${isDark ? "#374151" : "#E5E7EB"}`,
+              borderRadius: "16px",
+              maxWidth: "320px",
+              width: "100%",
+              boxShadow: "0 8px 28px rgba(0,0,0,0.4)",
+            }}
+          >
+            <ConnectWalletPrompt />
+          </div>
         </div>
       )}
     </Page>
