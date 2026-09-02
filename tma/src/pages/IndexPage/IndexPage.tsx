@@ -429,7 +429,11 @@ export const IndexPage: React.FC = () => {
       ),
       cornerIcon: "plus",
       actionText: t('create'),
-      to: "/add-subdomain",
+      // ?tab=proxy — сразу открывает вкладку аукционов (см. AddSubdomainPage.tsx),
+      // а не дефолтную SBT-вкладку, чтобы неподключённый юзер увидел живые
+      // аукционы сразу, не тыкая по вкладкам.
+      to: "/add-subdomain?tab=proxy",
+      exemptFromWalletGate: true,
     },
     {
       title: t('avatarSecretTitle') || 'Аватар / Секрет',
@@ -530,7 +534,11 @@ export const IndexPage: React.FC = () => {
       ),
       cornerIcon: "edit",
       actionText: t('open'),
-      to: "/create-torrent",
+      // ?tab=download — CreateTorrentPage уже умеет это читать (см.
+      // тот же паттерн для диплинков из уведомлений бота) — открывает
+      // вкладку "Загрузить" сразу, а не дефолтную "Создать".
+      to: "/create-torrent?tab=download",
+      exemptFromWalletGate: true,
     },
     {
       title: t('tonsiteCatalogTitle') || "Каталог .ton-сайтов",

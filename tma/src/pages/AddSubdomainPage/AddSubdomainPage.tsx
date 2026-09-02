@@ -12641,8 +12641,13 @@ export const AuctionPage: React.FC<{}> = () => {
   const { t } = useLanguage();
 
   // По умолчанию SBT — обычный субдомен без аукционных рисков, чтобы юзер,
-  // тыкающий не глядя, не попал сразу на Proxy-аукцион.
-  const [activeTab, setActiveTab] = useState<ActiveTab>("sbt");
+  // тыкающий не глядя, не попал сразу на Proxy-аукцион. Явный `?tab=proxy`
+  // в URL (карточка "Создать субдомен" на IndexPage, см. exemptFromWalletGate)
+  // переопределяет дефолт — там заход намеренно ведёт сразу на аукционы,
+  // чтобы неподключённый юзер их увидел, не тыкая по вкладкам вслепую.
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() =>
+    new URLSearchParams(location.search).get("tab") === "proxy" ? "proxy" : "sbt"
+  );
   const [selectedDomainZone, setSelectedDomainZone] = useState("");
   // subDomainName остаётся punycode/ASCII-формой (её же используют payload'ы
   // минта/ставки и URL); subDomainNameDisplay — то, что видит и печатает
