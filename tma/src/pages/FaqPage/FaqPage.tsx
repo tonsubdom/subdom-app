@@ -1,12 +1,18 @@
 // tma/src/pages/FaqPage/FaqPage.tsx
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Page } from '@/components/Page';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { openLink } from '@telegram-apps/sdk-react';
 
 interface FaqLink {
   label: string;
   href: string;
+  // true — реальный роут приложения (навигация через react-router, без
+  // перезагрузки страницы); иначе — внешняя ссылка (Telegram/npm/сайт),
+  // открывается через openLink/window.open.
+  internal?: boolean;
 }
 
 interface FaqEntry {
@@ -15,72 +21,90 @@ interface FaqEntry {
   links?: FaqLink[];
 }
 
-const FAQ_ENTRIES: FaqEntry[] = [
-  {
-    question: 'Как создать СУБДОМЕН .ton?',
-    answer: 'Откройте subdom, подключите кошелёк через TonConnect и зайдите в раздел «Добавить субдомен» — выберите свободное имя на одной из готовых зон или найдите зону в Маркете. После оплаты (аукцион или фиксированная цена) субдомен зачеканится вам на кошелёк как NFT.',
-    links: [
-      { label: 'Открыть @subdom', href: 'https://t.me/subdom' },
-      { label: 'subdom.zone', href: 'https://subdom.zone' },
-    ],
-  },
-  {
-    question: 'Как сделать из ДОМЕНА субдоменную ЗОНУ и получать с неё доход 90% от каждого аукциона субдомена, оставаясь владельцем домена?',
-    answer: 'В разделе «Создать зону» укажите свой .ton домен — платформа развернёт SBT- или Proxy-коллекцию субдоменов, привязанную к этому домену, не забирая сам домен. С каждой продажи субдомена в вашей зоне 90% суммы автоматически уходит вам как владельцу зоны.',
-  },
-  {
-    question: 'Как на вашем домене или субдомене .ton создать БЛОКЧЕЙН-ПРОФИЛЬ со своим АВАТАРОМ, ОПИСАНИЕМ и КАТЕГОРИЕЙ, который определяет вашу цифровую идентичность для индексации роботом каталога тонсайтов и отображения в dApp?',
-    answer: 'Откройте карточку «Аватар / Секрет» (или виджет профиля в углу главной страницы), подключите кошелёк, выберите домен/субдомен, загрузите аватар, добавьте описание и категорию. Данные записываются прямо в DNS text-записи домена — их видит каталог tonsite и любой dApp без необходимости подключать кошелёк.',
-  },
-  {
-    question: 'Как создать сайт на субдомене .ton, юзернейме Telegram, прокси-обёртке, на NFT субдоменных коллекций .tonnel, .getgems, .gram, .vipx и др.?',
-    answer: 'Перейдите в карточку «Создать сайт» на главной или откройте TonSite Builder напрямую — конструктор работает поверх любого поддерживаемого DNS-ресолвера: субдомена, юзернейма Telegram, прокси-обёртки или NFT из перечисленных коллекций, — и выдаёт готовую ссылку на сайт.',
-    links: [{ label: 'TonSite Builder bot', href: 'https://t.me/Ton_site_builder_bot' }],
-  },
-  {
-    question: 'Как загрузить, создать ТОРРЕНТ на субдомене .ton и иных NFT со стандартом dnsresolve?',
-    answer: 'В разделе «Создать торрент» загрузите файлы — платформа помещает их в TON Storage, получает bagID и привязывает его к DNS-записи вашего домена или субдомена по стандарту dnsresolve, чтобы контент можно было раздавать напрямую из TON Storage.',
-  },
-  {
-    question: 'Где посмотреть каталог доменов .ton с сайтами, торрентами, аватаром, описанием, категорией?',
-    answer: 'В TonSite Catalog — робот каталога регулярно сканирует DNS-записи доменов платформы subdom и собирает профили (аватар, описание, категория, сайт, торрент) в единый поисковый каталог tonsite.',
-    links: [{ label: 'TonSite Catalog', href: 'tonsite://tonsitecatalog.ton' }],
-  },
-  {
-    question: 'Как добавить бота-уведомителя @subdom в другой чат для привлечения трафика вокруг субдоменов?',
-    answer: 'Добавьте @subdom как участника нужного чата или канала и выдайте ему право отправлять сообщения — бот будет публиковать уведомления о создании зон, продажах субдоменов и аукционах, привлекая внимание к активности вокруг субдоменов.',
-    links: [{ label: 'Открыть @subdom', href: 'https://t.me/subdom' }],
-  },
-  {
-    question: 'Как установить и использовать SDK-библиотеку subdom в своих проектах другим билдерам, оставаясь в формате стандарта экосистемы subdom?',
-    answer: 'Установите пакет — он оборачивает вызовы Swagger API платформы и типовые TON-транзакции (создание зоны, покупка субдомена, чтение DNS-записей), позволяя интегрироваться со стандартом subdom из любого TypeScript/JavaScript-проекта.\nyarn add @subdom/sdk (или npm install @subdom/sdk)',
-    links: [{ label: '@subdom/sdk на npm', href: 'https://www.npmjs.com/package/@subdom/sdk' }],
-  },
-  {
-    question: 'Как использовать Swagger-сайт subdom билдерам или AI-агентам?',
-    answer: 'На странице документации собраны все эндпоинты платформы с готовым генератором payload для смарт-контрактных транзакций — их можно вызывать напрямую или скормить OpenAPI-схему AI-агенту как список доступных функций.',
-    links: [{ label: 'api.subdom.zone/docs', href: 'https://api.subdom.zone/docs' }],
-  },
-  {
-    question: 'Есть ли manifest для AI-агента у subdom для Remote Calling? Как его скормить для работы с функционалом subdom по запросам?',
-    answer: 'Отдельного manifest-файла для автообнаружения агентами пока нет — как обходной вариант агент может использовать OpenAPI-схему со страницы документации в качестве списка доступных функций. Полноценный manifest для Remote Calling — в планах, анонс появится в канале.',
-    links: [{ label: 'api.subdom.zone/docs', href: 'https://api.subdom.zone/docs' }],
-  },
-  {
-    question: 'Какие итоги по аудиту экосистемы смарт-контрактов от Acton?',
-    answer: 'Итоги аудита ещё не опубликованы официально — как только разбор будет готов, он выйдет в канале, чтобы не публиковать неподтверждённые выводы раньше времени.',
-    links: [{ label: '@subdom_blog', href: 'https://t.me/subdom_blog' }],
-  },
-  {
-    question: 'Какие продуктовые идеи можно оформить на своей зоне?',
-    answer: 'Зона — это, по сути, ваше собственное пространство имён внутри .ton: можно продавать субдомены как никнеймы для комьюнити, собрать под своим брендом каталог сайтов участников, запустить NFT-коллекцию под фандом, сделать зонт-маркетплейс поддоменов для проекта или каталог цифровых профилей через блокчейн-профиль на каждом субдомене.',
-  },
-  {
-    question: 'Кто ещё в экосистеме TON DNS и какой новый функционал планирует вводить @subdom?',
-    answer: 'Анонсы новых интеграций, партнёрских dapp-сервисов и функций платформы публикуются в канале первыми — там же можно следить за тем, кто ещё присоединяется к экосистеме TON DNS.',
-    links: [{ label: '@subdom_blog', href: 'https://t.me/subdom_blog' }],
-  },
-];
+// Вопросы/ответы переведены на все 10 языков (t('faqQ1'..'faqQ12'/'faqA1'..'faqA12'),
+// см. contexts/translations/*.ts) — сама структура (какие вопросы, какие
+// ссылки) одна на все языки, различается только текст. Часть лейблов ссылок
+// намеренно НЕ через t() — это бренд-имена/URL (subdom.zone, TonSite Builder
+// bot, api.subdom.zone/docs, @subdom_blog), одинаковые независимо от языка.
+function buildFaqEntries(t: (key: string) => string): FaqEntry[] {
+  return [
+    {
+      question: t('faqQ1'),
+      answer: t('faqA1'),
+      links: [
+        { label: t('faqLinkTryNow'), href: '/add-subdomain', internal: true },
+        { label: t('faqLinkOpenSubdom'), href: 'https://t.me/subdom' },
+      ],
+    },
+    {
+      question: t('faqQ2'),
+      answer: t('faqA2'),
+      links: [{ label: t('faqLinkCreateZone'), href: '/create-collection', internal: true }],
+    },
+    {
+      question: t('faqQ3'),
+      answer: t('faqA3'),
+      links: [{ label: t('faqLinkOpenProfile'), href: '/avatar-secret', internal: true }],
+    },
+    {
+      question: t('faqQ4'),
+      answer: t('faqA4'),
+      links: [{ label: 'TonSite Builder bot', href: 'https://t.me/Ton_site_builder_bot' }],
+    },
+    {
+      question: t('faqQ5'),
+      answer: t('faqA5'),
+      links: [{ label: t('faqLinkCreateTorrent'), href: '/create-torrent', internal: true }],
+    },
+    {
+      question: t('faqQ6'),
+      answer: t('faqA6'),
+      links: [{ label: 'TonSite Catalog', href: 'tonsite://tonsitecatalog.ton' }],
+    },
+    {
+      question: t('faqQ7'),
+      answer: t('faqA7'),
+      links: [{ label: t('faqLinkOpenSubdom'), href: 'https://t.me/subdom' }],
+    },
+    {
+      question: t('faqQ8'),
+      answer: `${t('faqA8')}\nyarn add @subdom/sdk (${t('faqOr')} npm install @subdom/sdk)`,
+      links: [{ label: t('faqLinkSdkNpm'), href: 'https://www.npmjs.com/package/@subdom/sdk' }],
+    },
+    {
+      question: t('faqQ9'),
+      answer: t('faqA9'),
+      links: [{ label: 'api.subdom.zone/docs', href: 'https://api.subdom.zone/docs' }],
+    },
+    {
+      // Было (устарело): "manifest-файла пока нет". Живой MCP-манифест
+      // существует и отдаётся боевым бэкендом — см. subdom-server/src/
+      // server-sqlite.ts (app.get('/mcp/manifest', ...)) и
+      // nginx/conf.d/subdom.conf (location /mcp/). Проверено вживую
+      // 2026-09-03: curl https://subdom.zone/mcp/manifest отдаёт реальный
+      // непустой JSON со списком функций (claim_subdomain, deploy_proxy_zone
+      // и др.), не заглушку.
+      question: t('faqQ10'),
+      answer: t('faqA10'),
+      links: [{ label: 'subdom.zone/mcp/manifest', href: 'https://subdom.zone/mcp/manifest' }],
+    },
+    {
+      question: t('faqQ11'),
+      answer: t('faqA11'),
+      links: [{ label: '@subdom_blog', href: 'https://t.me/subdom_blog' }],
+    },
+    {
+      question: t('faqQ12'),
+      answer: t('faqA12'),
+      links: [{ label: t('faqLinkCreateZone'), href: '/create-collection', internal: true }],
+    },
+    {
+      question: t('faqQ13'),
+      answer: t('faqA13'),
+      links: [{ label: '@subdom_blog', href: 'https://t.me/subdom_blog' }],
+    },
+  ];
+}
 
 const handleLink = (href: string) => {
   try {
@@ -92,8 +116,19 @@ const handleLink = (href: string) => {
 
 export const FaqPage: React.FC = () => {
   const { currentTheme } = useTheme();
+  const { t } = useLanguage();
+  const navigate = useNavigate();
   const isDark = currentTheme === 'dark';
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const FAQ_ENTRIES = buildFaqEntries(t);
+
+  const handleLinkClick = (link: FaqLink) => {
+    if (link.internal) {
+      navigate(link.href);
+      return;
+    }
+    handleLink(link.href);
+  };
 
   const colors = {
     background: isDark ? '#121212' : '#FFFFFF',
@@ -108,10 +143,10 @@ export const FaqPage: React.FC = () => {
     <Page>
       <div style={{ padding: '16px 16px 120px 16px', maxWidth: '520px', margin: '0 auto' }}>
         <h1 style={{ fontSize: '22px', fontWeight: 700, color: colors.text, textAlign: 'center', margin: '0 0 4px 0' }}>
-          FAQ
+          {t('faqPageTitle')}
         </h1>
         <p style={{ fontSize: '13px', color: colors.textSecondary, textAlign: 'center', margin: '0 0 20px 0' }}>
-          Частые вопросы про subdom
+          {t('faqPageSubtitle')}
         </p>
 
         {FAQ_ENTRIES.map((entry, index) => {
@@ -155,7 +190,7 @@ export const FaqPage: React.FC = () => {
                       {entry.links.map((link) => (
                         <button
                           key={link.href}
-                          onClick={() => handleLink(link.href)}
+                          onClick={() => handleLinkClick(link)}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -170,7 +205,7 @@ export const FaqPage: React.FC = () => {
                             cursor: 'pointer',
                           }}
                         >
-                          {link.label} ↗
+                          {link.label}{!link.internal && ' ↗'}
                         </button>
                       ))}
                     </div>
