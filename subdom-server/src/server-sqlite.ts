@@ -69,6 +69,18 @@ const getDatabase = (isTestnet: boolean): SqliteDatabase => {
   return isTestnet ? testnetDb : mainnetDb;
 };
 
+// networkMiddleware ниже доверяет isTestnet, который присылает КЛИЕНТ (сам
+// вычисляет его из wallet?.account?.chain на своей стороне) — если фронт
+// поймал его в момент, когда TonConnect ещё не успел восстановить сессию
+// (кошелёк ещё null), клиент по умолчанию присылает isTestnet=false, даже
+// если реальный адрес юзера — testnet. Сам user-friendly адрес при этом
+// содержит правду в первых двух символах (EQ/UQ — mainnet, kQ/0Q —
+// testnet, см. https://docs.ton.org/participate/wallets/contracts#smart-contract-addresses),
+// поэтому там, где адрес уже известен (например, регистрация нового
+// пользователя), сверяем с ним, а не слепо доверяем клиенту.
+const isTestnetAddressPrefix = (address: string): boolean =>
+  address.startsWith('kQ') || address.startsWith('0Q');
+
 // Интерфейсы для типизации
 // interface User {
 //   id: number;
@@ -1692,15 +1704,23 @@ app.get('/api/users/:address/payments', (req, res) => {
 app.post('/api/users', (req, res) => {
   try {
     const { address, name } = req.body;
-    const db = req.db;
-    const isTestnet = req.isTestnet;
-    
+
     if (!address) {
       return res.status(400).json({
         success: false,
         message: 'Адрес обязателен'
       });
     }
+
+    // req.isTestnet присылает клиент и ему нельзя всегда доверять (см.
+    // комментарий у isTestnetAddressPrefix) — на регистрации, где адрес уже
+    // есть, сверяем и берём правду из самого адреса, если они разошлись.
+    const addressIsTestnet = isTestnetAddressPrefix(address);
+    if (addressIsTestnet !== req.isTestnet) {
+      console.warn(`⚠️  [POST /api/users] Клиент прислал isTestnet=${req.isTestnet}, но адрес ${address} по префиксу — ${addressIsTestnet ? 'testnet' : 'mainnet'}. Использую значение по адресу.`);
+    }
+    const isTestnet = addressIsTestnet;
+    const db = getDatabase(isTestnet);
 
     const existingUser = db.prepare('SELECT * FROM users WHERE address = ?').get(address) as User;
     
