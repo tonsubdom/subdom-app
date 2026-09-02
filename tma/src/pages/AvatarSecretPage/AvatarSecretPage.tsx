@@ -6,7 +6,7 @@
 // формат, без похода на свой бэкенд.
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Input } from '@telegram-apps/telegram-ui';
 import { Address } from '@ton/core';
 import { useTonWallet, useTonConnectUI } from '@tonconnect/ui-react';
@@ -100,6 +100,7 @@ export const AvatarSecretPage: React.FC = () => {
   const [tonConnectUI] = useTonConnectUI();
   const isTestnet = wallet?.account?.chain === '-3';
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const tutorial = useTutorial();
   const { proxyCollections, sbtCollections } = useBlockchainItems();
 
@@ -432,11 +433,8 @@ export const AvatarSecretPage: React.FC = () => {
   // резолвим им напрямую (resolveByAddressValue, в обход tonapi); domain
   // используется только для отображения имени в поле поиска.
   useEffect(() => {
-    const hash = window.location.hash;
-    const queryString = hash.includes('?') ? hash.split('?')[1] : '';
-    const params = new URLSearchParams(queryString);
-    const addressFromUrl = params.get('address');
-    const domainFromUrl = params.get('domain');
+    const addressFromUrl = searchParams.get('address');
+    const domainFromUrl = searchParams.get('domain');
     if (domainFromUrl) setDomainName(domainFromUrl);
     if (addressFromUrl) {
       resolveByAddressValue(addressFromUrl);

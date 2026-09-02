@@ -6,7 +6,7 @@
 import React, { useEffect } from 'react';
 import { useLaunchParams, miniApp, useSignal } from '@telegram-apps/sdk-react';
 import { AppRoot } from "@telegram-apps/telegram-ui";
-import { Navigate, Route, Routes, HashRouter, useLocation } from 'react-router-dom';
+import { Navigate, Route, Routes, BrowserRouter, useLocation } from 'react-router-dom';
 
 import { routes } from '@/navigation/routes.tsx';
 import DeeplinkHandler from '@/components/DeeplinkHandler/DeeplinkHandler'; // Импортируем обработчик
@@ -52,31 +52,20 @@ const IndexOnlyWidgets: React.FC = () => {
   );
 };
 
-// Подтверждено 2026-08-16 (см. Log.md): на холодном старте через Telegram
-// deeplink Telegram кладёт СЫРОЙ пакет init-данных (tgWebAppData=...&
-// tgWebAppPlatform=...&...) прямо в hash — а у нас HashRouter тоже правит
-// роутинг через "#". Они физически конфликтуют за один и тот же кусок URL:
-// на самой первой отрисовке этот "путь" не совпадает ни с одним нашим
-// роутом → матчит этот wildcard → его navigate('/') монтируется в ТОМ ЖЕ
-// цикле эффектов, что и DeeplinkHandler, и срабатывает ПОСЛЕ него — затирая
-// уже сделанный переход на реальный диплинк обратно на голую "/". Раньше
-// голый <Navigate to="/" /> тут был безусловным. Если "путь" похож на
-// сырые Telegram launch-данные — не вмешиваемся вообще, оставляем
-// DeeplinkHandler единственным источником навигации (он и так корректно
-// читает эти же данные через retrieveLaunchParams(), в обход роутера).
-// Настоящие 404 (реально неизвестный путь без Telegram-мусора) всё ещё
-// уводятся на главную как раньше.
+// До 2026-09 здесь была проверка на "похоже на сырые Telegram init-данные"
+// (tgWebAppData=.../tgWebAppPlatform=...) — при HashRouter Telegram кладёт
+// эти данные в hash, а HashRouter тоже читает роут из hash, так что на
+// холодном старте они физически конфликтовали за один кусок URL (см.
+// Log.md 2026-08-16). После миграции на BrowserRouter (см. Log.md
+// 2026-09-02, ради многостраничной SEO-индексации) роутинг матчит только
+// pathname — Telegram-данные остаются в hash, которого BrowserRouter не
+// касается, так что этот путь сюда больше не может попасть. Проверка
+// снята как мёртвый код; настоящие 404 уводятся на главную как раньше.
 const NotFoundRedirect: React.FC = () => {
   const location = useLocation();
-  const looksLikeTelegramInitData =
-    location.pathname.includes('tgWebAppData=') ||
-    location.pathname.includes('tgWebAppPlatform=');
   useEffect(() => {
-    if (!looksLikeTelegramInitData) {
-      console.warn(`⚠️ Неизвестный путь "${location.pathname}" — перенаправление на главную`);
-    }
-  }, [looksLikeTelegramInitData, location.pathname]);
-  if (looksLikeTelegramInitData) return null;
+    console.warn(`⚠️ Неизвестный путь "${location.pathname}" — перенаправление на главную`);
+  }, [location.pathname]);
   return <Navigate to="/" />;
 };
 
@@ -105,12 +94,16 @@ export const App: React.FC = () => {
                   position: "relative"
                 }}
               >
-                {/* HashRouter оборачивает весь контент AppRoot — Header использует роутерный
+                {/* BrowserRouter оборачивает весь контент AppRoot — Header использует роутерный
                     Link (react-router-dom), которому нужен Router-контекст, а раньше был
                     просто <a>. Заодно ChatWidget/ProfileWidget/Footer получают доступ к
-                    router-хукам, если он им когда-нибудь понадобится. */}
-                <HashRouter>
-                  {/* TutorialProvider — внутри HashRouter (не снаружи, как
+                    router-хукам, если он им когда-нибудь понадобится.
+                    До 2026-09 здесь был HashRouter — сменили на BrowserRouter ради
+                    многостраничной SEO-индексации (/market, /faq и т.д. как реальные
+                    серверные пути, не /#/market). nginx SPA-фолбэк (try_files ... /index.html)
+                    уже поддерживает прямые заходы на вложенные пути без изменений. */}
+                <BrowserRouter>
+                  {/* TutorialProvider — внутри роутера (не снаружи, как
                       остальные провайдеры): resumeStep() ходит по роутам
                       через useNavigate(), которому нужен контекст роутера. */}
                   <TutorialProvider>
@@ -150,7 +143,7 @@ export const App: React.FC = () => {
                       testnetAddress={testnetAddress}
                     />
                   </TutorialProvider>
-                </HashRouter>
+                </BrowserRouter>
               </AppRoot>
             </BlockchainItemsProvider>
           </UserProvider>

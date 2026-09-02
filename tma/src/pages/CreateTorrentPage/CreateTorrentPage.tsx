@@ -17,6 +17,7 @@
 // /api/storage/upload-status).
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useTonAddress, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import { Page } from '@/components/Page';
@@ -223,6 +224,7 @@ const CreateTorrentPage: React.FC = () => {
   const { currentTheme } = useTheme();
   const isDark = currentTheme === 'dark';
   const { t } = useLanguage();
+  const [searchParams] = useSearchParams();
   const dispatch = useDispatch<AppDispatch>();
   const [tonConnectUI] = useTonConnectUI();
   const userAddress = useTonAddress();
@@ -313,9 +315,7 @@ const CreateTorrentPage: React.FC = () => {
   // (handleCreateTorrent) — сразу подставляет имя в поле привязки и включает
   // чекбокс, а не пустую форму без параметров.
   useEffect(() => {
-    const hash = window.location.hash;
-    const queryString = hash.includes('?') ? hash.split('?')[1] : '';
-    const params = new URLSearchParams(queryString);
+    const params = searchParams;
     const domainFromUrl = params.get('domain');
     if (domainFromUrl) {
       setDomainInput(domainFromUrl);
