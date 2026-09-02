@@ -58,28 +58,25 @@ const ProtectedCreateCollectionPage = () => (
   </ProtectedRoute>
 );
 
-const ProtectedAuctionPage = () => (
-  <ProtectedRoute>
-    <AuctionPage />
-  </ProtectedRoute>
-);
-
 const ProtectedManageDomainPage = () => (
   <ProtectedRoute>
     <ManageDomainPage />
   </ProtectedRoute>
 );
 
-// Market и Блокчейн-Профиль сознательно БЕЗ ProtectedRoute — обе страницы
-// read-only без кошелька (Market: список + переход на Getgems, AvatarSecretPage:
-// резолв домена и чтение DNS-текст-записей, гейт на кошелёк уже стоит внутри
-// самого handleSave). Открыты неподключенным юзерам, чтобы был смысл заходить
-// и смотреть, не коннектясь заранее — см. Log.md 2026-08-09.
-const ProtectedCreateTorrentPage = () => (
-  <ProtectedRoute>
-    <CreateTorrentPage />
-  </ProtectedRoute>
-);
+// Market, Блокчейн-Профиль, "Добавить субдомен" и "Создать торрент"
+// сознательно БЕЗ ProtectedRoute — все четыре read-only без кошелька
+// (Market: список + переход на Getgems; AvatarSecretPage: резолв домена и
+// чтение DNS-текст-записей; AuctionPage/CreateTorrentPage: просмотр зон,
+// активных аукционов, проверка итема, скачивание торрента — сам гейт на
+// кошелёк стоит внутри страниц, на кнопках реального действия, см.
+// ConnectWalletPrompt в AddSubdomainPage.tsx). Раньше AuctionPage и
+// CreateTorrentPage были обёрнуты в ProtectedRoute — это рендерило
+// ConnectWalletPrompt ДО монтирования самой страницы, так что снятие гейта
+// на кнопках внутри компонентов ни на что не влияло (юзер продолжал видеть
+// розетку сразу на роуте, 2026-09-03). Открыты неподключенным юзерам, чтобы
+// был смысл заходить и смотреть, не коннектясь заранее — см. Log.md
+// 2026-08-09.
 
 export const routes: RouteType[] = [
   { 
@@ -93,11 +90,10 @@ export const routes: RouteType[] = [
     title: 'Создать коллекцию',
     protected: true
   },
-  { 
-    path: '/add-subdomain', 
-    Component: ProtectedAuctionPage,
-    title: 'Добавить субдомен',
-    protected: true
+  {
+    path: '/add-subdomain',
+    Component: AuctionPage,
+    title: 'Добавить субдомен'
   },
   { 
     path: '/manage', 
@@ -117,9 +113,8 @@ export const routes: RouteType[] = [
   },
   {
     path: '/create-torrent',
-    Component: ProtectedCreateTorrentPage,
-    title: 'Создать торрент',
-    protected: true
+    Component: CreateTorrentPage,
+    title: 'Создать торрент'
   },
   {
     path: '/faq',
