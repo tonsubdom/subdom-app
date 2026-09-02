@@ -11,7 +11,9 @@
     <link rel="icon" type="image/png" href="/subdom_logo.png"/>
 
     <!-- Open Graph / Telegram / соцсети — двуязычно (RU/EN), т.к. отдельных
-         локализованных URL под hreflang нет (single-page, HashRouter). -->
+         локализованных URL под hreflang нет (пока один статический
+         index.html на все пути — см. комментарий у #seo-snapshot ниже про
+         билд-тайм пререндер). -->
     <meta property="og:type" content="website"/>
     <meta property="og:title" content="Создать NFT субдомен .ton | Create NFT Subdomain .ton — Subdom"/>
     <meta property="og:description" content="Независимые NFT-субдомены в TON — своя зона, ончейн-профиль, сайты и торренты. / Independent NFT subdomains on TON — your own zone, on-chain profile, sites and torrents. Домен принадлежит вам, а не платформе / The domain belongs to you, not the platform."/>
@@ -65,15 +67,14 @@
       <!--
         Реальный список блоков стартовой страницы (см. createCards() в
         src/pages/IndexPage/IndexPage.tsx) — не общий маркетинговый текст, а
-        то же самое содержимое, что покажет React после гидратации. Ссылки —
-        в hash-формате (/#/...), как того требует HashRouter приложения
-        (см. src/components/App.tsx); клик по ним и прямой заход на такой URL
-        одинаково открывают нужный экран. Важная оговорка (юзеру): Google
-        принципиально не индексирует hash-фрагменты как отдельные страницы
-        (устаревшая AJAX-crawling схема) — так что каждый из этих разделов
-        сам по себе не появится в поиске отдельной строкой, только "/"
-        целиком. Полноценная многостраничная индексация потребует перехода на
-        BrowserRouter — отдельная задача, не в этом релизе.
+        то же самое содержимое, что покажет React после гидратации. С
+        2026-09 приложение на BrowserRouter (см. src/components/App.tsx) —
+        ссылки настоящие пути (/market и т.д.), не hash-фрагменты. Это
+        по-прежнему статический снимок "/" (краулер видит один и тот же
+        HTML на любом пути, пока не сделан билд-тайм пререндер под каждый
+        публичный роут — отдельная задача, см. Kanban Board), но сами
+        ссылки теперь как минимум рабочие и не ломаются при клике/прямом
+        заходе.
       -->
       <div id="seo-snapshot">
         <section lang="ru">
@@ -84,12 +85,12 @@
           </p>
           <nav aria-label="Разделы Subdom">
             <ul>
-              <li><a href="/#/create-collection">Добавить Subdom Zone — создать коллекцию субдоменов (SBT или Proxy)</a></li>
-              <li><a href="/#/add-subdomain">Создать субдомен — добавить субдомен в коллекцию</a></li>
-              <li><a href="/#/avatar-secret">Блокчейн-Профиль — цифровая идентичность и функционал для доменов, субдоменов .ton и юзернеймов @ в Telegram. Загрузи аватар, категорию, описание прямо в txt записи домена</a></li>
-              <li><a href="/#/manage">Управление DNS записями — привязать кошелёк, сайт, хранилище для любого субдомена</a></li>
-              <li><a href="/#/create-torrent">Создать торрент — загрузите файлы, выберите провайдера TON Storage, получите bagID</a></li>
-              <li><a href="/#/market">Рынок — продайте субдомен, прокси-домен или сделайте оффер</a></li>
+              <li><a href="/create-collection">Добавить Subdom Zone — создать коллекцию субдоменов (SBT или Proxy)</a></li>
+              <li><a href="/add-subdomain">Создать субдомен — добавить субдомен в коллекцию</a></li>
+              <li><a href="/avatar-secret">Блокчейн-Профиль — цифровая идентичность и функционал для доменов, субдоменов .ton и юзернеймов @ в Telegram. Загрузи аватар, категорию, описание прямо в txt записи домена</a></li>
+              <li><a href="/manage">Управление DNS записями — привязать кошелёк, сайт, хранилище для любого субдомена</a></li>
+              <li><a href="/create-torrent">Создать торрент — загрузите файлы, выберите провайдера TON Storage, получите bagID</a></li>
+              <li><a href="/market">Рынок — продайте субдомен, прокси-домен или сделайте оффер</a></li>
             </ul>
           </nav>
         </section>
@@ -101,12 +102,12 @@
           </p>
           <nav aria-label="Subdom sections">
             <ul>
-              <li><a href="/#/create-collection">Add a Subdom Zone — create an SBT or Proxy subdomain collection</a></li>
-              <li><a href="/#/add-subdomain">Create a Subdomain — add a subdomain to a collection</a></li>
-              <li><a href="/#/avatar-secret">Blockchain Profile — digital identity and functionality for .ton domains, subdomains, and Telegram @usernames. Upload an avatar, category and description straight into the domain's txt records</a></li>
-              <li><a href="/#/manage">Manage DNS Records — link a wallet, site, or storage to any subdomain</a></li>
-              <li><a href="/#/create-torrent">Create a Torrent — upload files, pick a TON Storage provider, get a bagID</a></li>
-              <li><a href="/#/market">Market — sell a subdomain, proxy domain, or make an offer</a></li>
+              <li><a href="/create-collection">Add a Subdom Zone — create an SBT or Proxy subdomain collection</a></li>
+              <li><a href="/add-subdomain">Create a Subdomain — add a subdomain to a collection</a></li>
+              <li><a href="/avatar-secret">Blockchain Profile — digital identity and functionality for .ton domains, subdomains, and Telegram @usernames. Upload an avatar, category and description straight into the domain's txt records</a></li>
+              <li><a href="/manage">Manage DNS Records — link a wallet, site, or storage to any subdomain</a></li>
+              <li><a href="/create-torrent">Create a Torrent — upload files, pick a TON Storage provider, get a bagID</a></li>
+              <li><a href="/market">Market — sell a subdomain, proxy domain, or make an offer</a></li>
             </ul>
           </nav>
         </section>
