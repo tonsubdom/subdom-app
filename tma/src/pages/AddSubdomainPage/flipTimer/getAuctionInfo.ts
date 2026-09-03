@@ -160,6 +160,7 @@
 
 import { getDnsItemIndex } from "./indexByDNSName";
 import { parseB64Address } from "./getAddressFromBoc";
+import { fetchWithRetry } from "./fetchWithRetry";
 
 /**
  * Ответ API при получении информации об аукционе
@@ -208,7 +209,7 @@ export async function getAuctionInfo(
     // Ключ toncenter теперь подставляется на бэкенде, не во фронте.
     const nftAddressUrl = new URL(apiUrl, window.location.origin);
 
-    const nftAddressResponse = await fetch(nftAddressUrl.toString(), {
+    const nftAddressResponse = await fetchWithRetry(nftAddressUrl.toString(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -263,7 +264,7 @@ export async function getAuctionInfo(
     
     const auctionInfoUrl = new URL(apiUrl, window.location.origin);
 
-    const auctionInfoResponse = await fetch(auctionInfoUrl.toString(), {
+    const auctionInfoResponse = await fetchWithRetry(auctionInfoUrl.toString(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
