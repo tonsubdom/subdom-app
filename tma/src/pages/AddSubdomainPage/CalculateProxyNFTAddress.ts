@@ -3,6 +3,7 @@
 // src/pages/AuctionPage/calculateProxyNFTAddress.ts
 import { getDnsItemIndex } from "./flipTimer/indexByDNSName";
 import { parseB64Address } from "./flipTimer/getAddressFromBoc";
+import { fetchWithRetry } from "./flipTimer/fetchWithRetry";
 
 /** Ключ toncenter теперь только на сервере — фронт бьёт в бэкенд-прокси. */
 function toncenterApiUrl(isTestnet: boolean, path: string): string {
@@ -66,9 +67,9 @@ const getNFTAddressByIndex = async (
 
     console.log(`📡 Запрос NFT адреса по индексу ${index} с API ключом (для первой ставки)`);
     
-    const response = await fetch(url.toString(), {
+    const response = await fetchWithRetry(url.toString(), {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
         'accept': 'application/json'
       },
