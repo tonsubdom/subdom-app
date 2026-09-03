@@ -54,6 +54,27 @@ const PUBLIC_ROUTES = {
     h1En: 'Subdom FAQ',
     ogDescription: 'Ответы на частые вопросы про Subdom. / Answers to frequently asked questions about Subdom.',
   },
+  // /create-collection и /manage сознательно не пререндерятся — под
+  // ProtectedRoute, требуют кошелёк для любого осмысленного действия (см.
+  // routes.tsx), краулеру там нечего индексировать без wallet-контекста.
+  'add-subdomain': {
+    title: 'Создать субдомен .ton — проверить доступность и сделать ставку | Subdom',
+    description: 'Добавьте субдомен в SBT- или Proxy-коллекцию .ton: проверка доступности, аукцион с живыми ставками, мгновенный клейм SBT-субдомена.',
+    h1: 'Создать субдомен .ton',
+    titleEn: 'Create a .ton Subdomain — Check Availability and Bid | Subdom',
+    descriptionEn: 'Add a subdomain to an SBT or Proxy .ton collection: check availability, bid in a live auction, or instantly claim an SBT subdomain.',
+    h1En: 'Create a .ton Subdomain',
+    ogDescription: 'Проверка доступности и аукцион для субдоменов .ton. / Availability check and auction for .ton subdomains.',
+  },
+  'create-torrent': {
+    title: 'Создать торрент в TON Storage — загрузка и BagID | Subdom',
+    description: 'Загрузите файлы в децентрализованное хранилище TON Storage, выберите провайдера и получите BagID торрента для субдомена .ton.',
+    h1: 'Создать торрент в TON Storage',
+    titleEn: 'Create a TON Storage Torrent — Upload and BagID | Subdom',
+    descriptionEn: 'Upload files to the decentralized TON Storage network, pick a provider, and get a torrent BagID for your .ton subdomain.',
+    h1En: 'Create a TON Storage Torrent',
+    ogDescription: 'Загрузка файлов в TON Storage и получение BagID. / Upload files to TON Storage and get a BagID.',
+  },
 };
 
 function escapeHtml(value) {
