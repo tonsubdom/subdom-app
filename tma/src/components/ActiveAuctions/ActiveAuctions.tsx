@@ -9,13 +9,16 @@ import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-
 import { getAuctionInfo } from '@/pages/AddSubdomainPage/flipTimer/getAuctionInfo';
 import { getAuctionBidHistory } from '@/pages/AddSubdomainPage/flipTimer/getAuctionBidHistory';
 import { mapWithConcurrency } from '@/utils/concurrency';
+import { toncenterScanSemaphore } from '@/utils/toncenterScanSemaphore';
 import { ScanProgressLoader } from '@/components/ScanProgressLoader';
 import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-items-utils';
 
-// Сколько запросов get_auction_info держим в полёте одновременно. get_auction_info
-// сам по себе — это 2 последовательных v2-запроса на айтем, поэтому берём с запасом
-// ниже, чем maxConcurrentRequests=5 в universal-blockchain-service.ts (тот бьёт по
-// более тяжёлому v3 listing) — под тот же потолок ключа (~25 rps, см. Group 4 perf).
+// Локальный потолок воркеров этого конкретного скана (не даёт ему одному
+// расползтись на весь proxySubdomains разом). Реальный кросс-компонентный
+// лимит — toncenterScanSemaphore (см. импорт выше): если параллельно
+// работает ещё и ProfileWidget-скан, они делят один и тот же бюджет вместо
+// того, чтобы каждый бить в потолок ключа по отдельности (см. Log.md
+// 2026-09-04, баг "Сделать ставку").
 const AUCTION_CHECK_CONCURRENCY = 10;
 
 // Импорт SVG иконок
@@ -937,7 +940,8 @@ const loadActiveAuctions = useCallback(async () => {
           return null;
         }
       },
-      (done, total) => setScanProgress({ done, total, found: foundSoFarRef.current })
+      (done, total) => setScanProgress({ done, total, found: foundSoFarRef.current }),
+      toncenterScanSemaphore
     );
 
     const auctions = results.filter((a): a is ActiveAuction => a !== null);

@@ -2308,6 +2308,7 @@ import { decodeDomainForDisplay } from "@/utils/domainPunycode";
 import { getAuctionInfo } from "@/pages/AddSubdomainPage/flipTimer/getAuctionInfo";
 import { getAuctionBidHistory } from "@/pages/AddSubdomainPage/flipTimer/getAuctionBidHistory";
 import { mapWithConcurrency } from "@/utils/concurrency";
+import { toncenterScanSemaphore } from "@/utils/toncenterScanSemaphore";
 import { createAuctionUrl } from "@/utils/urlParams";
 import { MiniAppLinks } from "@/utils/miniAppLinks";
 import { tonDnsPreviewImage } from "@/store/nft/actions";
@@ -2526,17 +2527,21 @@ const getSubdomainPrice = (length: number, isProxy: boolean): number => {
 
 // "Прибыль" (доход с чужих ставок на proxy-зонах юзера) считается отдельно от
 // profitStats — по истории транзакций (последний бид = выигрышный), не по
-// статичной таблице. Столько же воркеров, сколько уже держит ActiveAuctions
-// под тот же toncenter-ключ (см. AUCTION_CHECK_CONCURRENCY там же).
+// статичной таблице. Локальный потолок этого конкретного скана — реальный
+// кросс-компонентный лимит теперь toncenterScanSemaphore (см. импорт выше и
+// AUCTION_CHECK_CONCURRENCY ниже) — делится с ActiveAuctions.tsx и вторым
+// сканом этого же файла, а не бьёт в потолок ключа независимо от них.
 const PROFIT_CHECK_CONCURRENCY = 10;
 
 // ====================================================================
 // ОНЧЕЙН-АУКЦИОНЫ
 // ====================================================================
 
-// См. AUCTION_CHECK_CONCURRENCY в ActiveAuctions.tsx — тот же принцип: get_auction_info
-// это 2 последовательных v2-запроса на айтем, держим пул под потолок ключа (~25 rps).
-// Раньше цикл был последовательным (await в for-of) — на ~80 субдоменах давало ~27 сек.
+// Локальный потолок воркеров этого скана. get_auction_info — это 2
+// последовательных v2-запроса на айтем; раньше цикл был последовательным
+// (await в for-of) — на ~80 субдоменах давало ~27 сек. Реальный лимит на
+// ВСЕ toncenter-сканы разом (этот + ActiveAuctions.tsx + PROFIT_CHECK выше)
+// — toncenterScanSemaphore, см. Log.md 2026-09-04.
 const AUCTION_CHECK_CONCURRENCY = 10;
 
 const loadAuctionsFromBlockchain = async (
@@ -2595,7 +2600,8 @@ const loadAuctionsFromBlockchain = async (
         return null;
       }
     },
-    (done, total) => onProgress?.(done, total, foundSoFar)
+    (done, total) => onProgress?.(done, total, foundSoFar),
+    toncenterScanSemaphore
   );
 
   return results.filter((a): a is Auction => a !== null);
@@ -3458,7 +3464,9 @@ const ProfileWidget: React.FC = () => {
           } catch {
             return 0;
           }
-        }
+        },
+        undefined,
+        toncenterScanSemaphore
       );
 
       if (cancelled) return;
