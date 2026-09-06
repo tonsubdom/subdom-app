@@ -3812,13 +3812,18 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
   // в server-sqlite.ts, "decentralization-миграция") — но кнопка всё равно
   // может вести на реальное содержимое, потому что все три варианта
   // резолвятся получателем САМ, по одному только domain, без участия бэкенда:
-  // tonviewer резолвит .ton-имя в адрес сам, гейтвей ton.run — по имени, а
-  // диплинк на скачивание торрента передаёт domain вместо bagID — фронт
-  // (CreateTorrentPage) сам умеет резолвить и то, и то в одном и том же поле.
-  private dnsRecordActionButton(domain: string, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean): any[][] | undefined {
+  // гейтвей ton.run — по имени, а диплинк на скачивание торрента передаёт
+  // domain вместо bagID — фронт (CreateTorrentPage) сам умеет резолвить и то,
+  // и то в одном и том же поле. Кнопка на Tonviewer — исключение: Tonviewer
+  // резолвит диплинком только .ton-имена, а у платформы есть и другие TLD
+  // (.gram и т.д.), для которых такой диплинк не поддерживается и ведёт в
+  // никуда — поэтому она строится по адресу итема, с которым совершена
+  // операция (nftAddress), а не по имени домена, как остальные кнопки здесь.
+  private dnsRecordActionButton(domain: string, nftAddress: string | undefined, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean): any[][] | undefined {
     if (action === 'delete') return undefined; // нечего смотреть — запись удалена
     if (recordFormat === 'address') {
-      return [[{ text: LANG.ru.btnViewOnTonviewer, url: `${this.getTonviewerUrl(isTestnet)}/${domain}` }]];
+      if (!nftAddress) return undefined;
+      return [[{ text: LANG.ru.btnViewOnTonviewer, url: `${this.getTonviewerUrl(isTestnet)}/${nftAddress}` }]];
     }
     if (recordFormat === 'adnl') {
       // Юзер поймал вживую: гейтвей ton.run из ТГ открывает внешний браузер —
@@ -3872,7 +3877,7 @@ ${recordValue ? `${valueFieldLabel}: <code>${recordValue}</code>\n` : ''}
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
 
-      const inlineKeyboard = this.dnsRecordActionButton(domain, recordFormat, action, isTestnet);
+      const inlineKeyboard = this.dnsRecordActionButton(domain, nftAddress, recordFormat, action, isTestnet);
 
       await this.bot!.sendMessage(this.ownerId, message, {
         parse_mode: 'HTML',
@@ -3898,7 +3903,10 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
   async sendPublicDnsRecordUpdatedNotification(domain: string, recordFormat: 'address' | 'adnl' | 'bagId', action: 'set' | 'delete', isTestnet: boolean = true, recordValue?: string | null, inlineKeyboard?: any[][]): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
-      const baseKeyboard = inlineKeyboard ?? this.dnsRecordActionButton(domain, recordFormat, action, isTestnet);
+      // nftAddress тут не в скоупе — этот вызов доходит только если функцию
+      // дёрнут напрямую без готовой inlineKeyboard, единственный текущий
+      // вызывающий (sendDnsRecordUpdatedNotification) всегда передаёт готовую.
+      const baseKeyboard = inlineKeyboard ?? this.dnsRecordActionButton(domain, undefined, recordFormat, action, isTestnet);
       // Кнопка жалобы — только паблик (владельцу площадки в личку она не
       // нужна) и только когда есть что смотреть (action==='set', delete
       // и так уже без кнопок вообще, см. dnsRecordActionButton).
