@@ -2319,7 +2319,6 @@ import { useBlockchainScanUi } from "@/hooks/useBlockchainLoadProgress";
 import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
 import { convertUserFriendlyToRaw, getZoneImageUrl } from "@/utils/tonUtils";
-import { handleImageErrorWithRetry } from "@/utils/imageRetry";
 import { ScanProgressLoader } from "@/components/ScanProgressLoader";
 import {
   resolveDomainNftAddress,
@@ -4043,7 +4042,9 @@ const ProfileWidget: React.FC = () => {
                   objectFit: "contain",
                   opacity: isInactiveDuplicate ? 0.5 : 1,
                 }}
-                onError={(e) => handleImageErrorWithRetry(e, (zone as any).image)}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
               />
               <LupaButton
                 domain={zone.name}
