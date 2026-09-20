@@ -5,6 +5,7 @@ import { RootState } from '../rootReducer';
 import { getNFTCollections, getServiceCollections, CollectionKey, NFTCollectionKey } from './constants';
 import axios from 'axios';
 import { TonCenterAPI } from '../../services/blockchainItems/toncenter-api-config';
+import { buildDeploySbtCollectionWithDns as buildDeploySbtCollectionWithDnsLocal } from '../../services/payloadBuilder';
 
 const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL;
 
@@ -752,29 +753,32 @@ export const deploySBTCollection = createAsyncThunk<
 // от Proxy, где это уже входит в deploy_bundle. Бэкенд-эндпоинт
 // deploy_collection_and_set_dns уже существует и делает ровно это (см.
 // builder-api-master/app/api/v1/routers/sbt_subdomain.py).
+// 2026-09-20: переведено на локальную (клиентскую) сборку payload'а —
+// см. tma/src/services/payloadBuilder (порт builder-api-master 1:1). Больше
+// не зависит от аптайма Python-бэкенда для этой операции. Бэкенд
+// (api.subdom.zone) остаётся источником метаданных/картинок (content.uri
+// в CreateCollectionPage.tsx), только payload-сборка ушла на клиент.
 export const deploySBTCollectionWithDns = createAsyncThunk<
   DeploySBTCollectionResponse,
-  DeploySBTCollectionPayload & { dns_item_address: string },
+  DeploySBTCollectionPayload & { dns_item_address: string; isTestnet: boolean },
   { state: RootState }
 >(
   'blockchain/deploySBTCollectionWithDns',
-  async ({ dns_item_address, ...payload }, { rejectWithValue }) => {
+  async ({ isTestnet, ...payload }, { rejectWithValue }) => {
     try {
-      const queryParams = new URLSearchParams({
-        dns_item_address,
-        query_id: (payload.query_id ?? 0).toString(),
-      });
-      const response = await axios.post<DeploySBTCollectionResponse>(
-        `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/deploy_collection_and_set_dns?${queryParams.toString()}`,
-        payload
-      );
-      return response.data;
+      const result = buildDeploySbtCollectionWithDnsLocal(payload, isTestnet);
+      return {
+        validUntil: result.validUntil,
+        messages: result.messages.map((m) => ({
+          address: m.address,
+          amount: m.amount,
+          payload: m.payload,
+          stateInit: m.stateInit ?? '',
+        })),
+      };
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('SBT deployment (with DNS) error:', error.response?.data);
-        return rejectWithValue(error.response?.data || 'SBT collection deployment failed');
-      }
-      return rejectWithValue('An unknown error occurred');
+      console.error('SBT deployment (with DNS) local build error:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'SBT collection deployment failed');
     }
   }
 );
