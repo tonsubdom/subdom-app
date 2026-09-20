@@ -1347,7 +1347,7 @@ const partnerAddress = isTestnet
       // деплоилась без привязки резолвера вообще (в отличие от Proxy, где это
       // уже часть deployBundle).
       const result = await dispatch(
-        deploySBTCollectionWithDns({ ...sbtPayload, dns_item_address: domainAddress })
+        deploySBTCollectionWithDns({ ...sbtPayload, dns_item_address: domainAddress, isTestnet })
       ).unwrap();
 
       if (result.messages && result.messages.length > 0) {
