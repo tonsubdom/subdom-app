@@ -585,7 +585,7 @@ export interface DeploySBTCollectionResponse {
     address: string;
     amount: string;
     payload: string;
-    stateInit: string;
+    stateInit?: string;
   }>;
   validUntil: number;
 }
@@ -769,11 +769,15 @@ export const deploySBTCollectionWithDns = createAsyncThunk<
       const result = buildDeploySbtCollectionWithDnsLocal(payload, isTestnet);
       return {
         validUntil: result.validUntil,
+        // stateInit опущен там, где его нет (второе сообщение —
+        // set_next_resolver) — TonConnect валидирует его как настоящий BOC
+        // или требует отсутствия поля вообще, пустая строка проваливает
+        // валидацию ("Invalid 'stateInit'").
         messages: result.messages.map((m) => ({
           address: m.address,
           amount: m.amount,
           payload: m.payload,
-          stateInit: m.stateInit ?? '',
+          ...(m.stateInit ? { stateInit: m.stateInit } : {}),
         })),
       };
     } catch (error) {
