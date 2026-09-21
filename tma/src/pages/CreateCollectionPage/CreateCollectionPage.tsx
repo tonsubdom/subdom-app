@@ -1142,7 +1142,7 @@ const partnerAddress = isTestnet
         }
       };
 
-      const result = await dispatch(deployBundle(bundlePayload)).unwrap();
+      const result = await dispatch(deployBundle({ ...bundlePayload, isTestnet })).unwrap();
 
       if (result.messages && result.messages.length > 0) {
         console.log('Отправляю транзакцию Bundle в TonConnect...');
