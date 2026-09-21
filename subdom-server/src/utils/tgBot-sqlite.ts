@@ -1739,9 +1739,11 @@ import dotenv from 'dotenv';
 import Database from 'better-sqlite3';
 import { Address } from '@ton/core';
 import { fetchAllOwnerDnsText, fetchSiteAndStorageRecords } from '../services/dnsTextReader';
+import { getAllSecurityStats } from './fail2banStats';
 
 // Загружаем переменные окружения
 dotenv.config();
+
 
 // Интерфейсы для типизации
 interface TelegramMessage {
@@ -1861,6 +1863,16 @@ const LANG = {
     btnStats: '📊 Статистика платформы',
     btnStartTutorial: '🎓 Пройти обучение',
     btnReportBug: '🐞 Сообщить о баге',
+    btnSecurityStats: '🛡 Кибербезопасность',
+    securityStatsTitle: '🛡 <b>Кибербезопасность</b>',
+    securityStatsJail: 'Jail',
+    securityStatsPeriod1d: 'за 1д',
+    securityStatsPeriod7d: 'за 7д',
+    securityStatsPeriod30d: 'за 30д',
+    securityStatsCurrentlyBanned: 'Сейчас забанено',
+    securityStatsUpdatedAt: 'Обновлено',
+    securityStatsHallOfShameLink: '📜 Полная история банов (Hall of Shame)',
+    securityStatsNoData: 'Нет данных — сервер недоступен или fail2ban не настроен.',
 
     // /subscribe
     subscribedAs: '✅ Вы подписаны на уведомления как',
@@ -1998,6 +2010,7 @@ const LANG = {
     fieldAuctionTypeProxy: 'Proxy аукцион',
     fieldWinner: '👑 Победитель',
     fieldFinalPrice: '🏆 Финальная цена',
+    fieldOwnerCommission: '💰 Комиссия владельца зоны',
     fieldZoneType: '🏷️ Тип зоны',
     fieldLength: '📏 Длина',
     fieldError: '⚠️ Ошибка',
@@ -2098,6 +2111,16 @@ const LANG = {
     btnStats: '📊 Platform Stats',
     btnStartTutorial: '🎓 Take the Tutorial',
     btnReportBug: '🐞 Report a Bug',
+    btnSecurityStats: '🛡 Cybersecurity',
+    securityStatsTitle: '🛡 <b>Cybersecurity</b>',
+    securityStatsJail: 'Jail',
+    securityStatsPeriod1d: 'last 1d',
+    securityStatsPeriod7d: 'last 7d',
+    securityStatsPeriod30d: 'last 30d',
+    securityStatsCurrentlyBanned: 'Currently banned',
+    securityStatsUpdatedAt: 'Updated',
+    securityStatsHallOfShameLink: '📜 Full ban history (Hall of Shame)',
+    securityStatsNoData: 'No data — server unreachable or fail2ban not configured.',
 
     // /subscribe
     subscribedAs: '✅ You are subscribed to notifications as',
@@ -2231,6 +2254,7 @@ const LANG = {
     fieldAuctionTypeProxy: 'Proxy Auction',
     fieldWinner: '👑 Winner',
     fieldFinalPrice: '🏆 Final Price',
+    fieldOwnerCommission: '💰 Zone Owner Commission',
     fieldZoneType: '🏷️ Zone Type',
     fieldLength: '📏 Length',
     fieldError: '⚠️ Error',
@@ -2356,6 +2380,17 @@ class DeeplinkUtils {
 
   static generateHomeLink(): string {
     return this.generateTelegramDeeplink('/');
+  }
+
+  // Кнопка "Кибербезопасность" (/security_stats) — открывает Hall of Shame
+  // ВНУТРИ Mini App (HallOfShamePage.tsx, iframe на /security) вместо выхода
+  // во внешний браузер. Юзер явно попросил (2026-09-12): страница должна
+  // открываться и как обычный URL (для шаринга/внешних ссылок — /security
+  // как отдавал раньше), и внутри приложения — в зависимости от того, где
+  // сидит юзер. Диплинк — единственная точка входа внутри аппа, карточки на
+  // IndexPage нет (осознанно, юзер выбрал этот вариант).
+  static generateHallOfShameLink(): string {
+    return this.generateTelegramDeeplink('/hall-of-shame');
   }
 
   // Открывает главную и сразу поднимает вводную модалку обучалки (см.
@@ -3012,8 +3047,19 @@ ${$.startSubStatus} ${isSubscribed ? $.active : $.inactive}
         [
           { text: $.btnOpenSubdom, url: DeeplinkUtils.generateHomeLink() }
         ],
+        // Три статистические кнопки друг под другом одним блоком (по месту
+        // среди остальных кнопок — юзер попросил именно так, не вперемешку
+        // с непарными действиями): платформа → подписки/система → security.
         [
-          { text: $.btnStats, callback_data: 'cmd_stats' },
+          { text: $.btnStats, callback_data: 'cmd_stats' }
+        ],
+        [
+          { text: $.btnStatus, callback_data: 'cmd_status' }
+        ],
+        [
+          { text: $.btnSecurityStats, callback_data: 'cmd_security_stats' }
+        ],
+        [
           { text: $.btnStartTutorial, url: DeeplinkUtils.generateTutorialLink() }
         ],
         [
@@ -3027,7 +3073,6 @@ ${$.startSubStatus} ${isSubscribed ? $.active : $.inactive}
           { text: $.btnUnsubscribe, callback_data: 'cmd_unsubscribe' }
         ],
         [
-          { text: $.btnStatus, callback_data: 'cmd_status' },
           { text: $.btnLang, callback_data: 'cmd_lang' }
         ],
       ];
@@ -3123,6 +3168,8 @@ ${$.startSubStatus} ${isSubscribed ? $.active : $.inactive}
           await this.setupBotMenu();
         } else if (data === 'cmd_stats') {
           await this.sendStatsMessage(chatId);
+        } else if (data === 'cmd_security_stats') {
+          await this.sendSecurityStatsMessage(chatId);
         } else if (data === 'cmd_report_bug') {
           await this.promptBugReport(chatId);
         } else if (data === 'cmd_connect_chat') {
@@ -3238,6 +3285,64 @@ ${$.statsTime}: ${new Date().toLocaleString('ru-RU')}
       await this.bot!.sendMessage(chatId, message, { parse_mode: 'HTML' });
     } catch (error) {
       console.error('❌ Ошибка при сборе статистики:', error);
+    }
+  }
+
+  // Кнопка "Кибербезопасность" — сводка по банам со всей инфраструктуры
+  // (subdom-app читается напрямую из смонтированной fail2ban.sqlite3,
+  // subdom-api — из последнего пуша, см. fail2banStats.ts). Никаких per-ban
+  // сообщений сюда больше не шлётся (см. Kanban subdom, 2026-09-12 —
+  // telegram-notify action убран из jail'ов именно из-за флуда), это
+  // единственный канал по банам. Намеренно НЕ показываем, с какого именно
+  // сервера какой jail — по прямому требованию юзера: название/топология
+  // инфраструктуры (Aeza/Timeweb) не должна светиться нигде, где это могут
+  // прочитать (в т.ч. случайным скриншотом) — это подсказка пентестеру/
+  // атакующему. Считаем по jail-агрегату сразу со всех источников разом.
+  private async sendSecurityStatsMessage(chatId: number): Promise<void> {
+    const $ = this.t(chatId.toString());
+    try {
+      const servers = getAllSecurityStats();
+      if (servers.length === 0) {
+        await this.bot!.sendMessage(chatId, `${$.securityStatsTitle}\n\n${$.securityStatsNoData}`, { parse_mode: 'HTML' });
+        return;
+      }
+
+      const byJail = new Map<string, { last1d: number; last7d: number; last30d: number }>();
+      let currentlyBanned = 0;
+      let latestUpdate = 0;
+      for (const s of servers) {
+        currentlyBanned += s.currentlyBanned;
+        latestUpdate = Math.max(latestUpdate, new Date(s.updatedAt).getTime());
+        for (const j of s.jails) {
+          const acc = byJail.get(j.jail) || { last1d: 0, last7d: 0, last30d: 0 };
+          acc.last1d += j.last1d;
+          acc.last7d += j.last7d;
+          acc.last30d += j.last30d;
+          byJail.set(j.jail, acc);
+        }
+      }
+
+      const jailLines = Array.from(byJail.entries())
+        .map(
+          ([jail, c]) =>
+            `   <b>${jail}</b> — ${$.securityStatsPeriod1d}: ${c.last1d}, ${$.securityStatsPeriod7d}: ${c.last7d}, ${$.securityStatsPeriod30d}: ${c.last30d}`
+        )
+        .join('\n');
+
+      const message = `
+${$.securityStatsTitle}
+
+${jailLines || '   —'}
+
+${$.securityStatsCurrentlyBanned}: <b>${currentlyBanned}</b>
+${$.securityStatsUpdatedAt}: ${new Date(latestUpdate).toLocaleString('ru-RU')}
+
+<a href="${DeeplinkUtils.generateHallOfShameLink()}">${$.securityStatsHallOfShameLink}</a>
+      `.trim();
+
+      await this.bot!.sendMessage(chatId, message, { parse_mode: 'HTML', disable_web_page_preview: true });
+    } catch (error) {
+      console.error('❌ Ошибка при сборе security-статистики:', error);
     }
   }
 
@@ -4179,7 +4284,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
   }
 
   // --- АУКЦИОН ---
-  async sendPublicAuctionStartedNotification(domain: string, address: string, price: number, isTestnet: boolean = true): Promise<boolean> {
+  async sendPublicAuctionStartedNotification(domain: string, address: string, price: number, isTestnet: boolean = true, bidder?: string): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
       const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(domain);
@@ -4188,12 +4293,13 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
 
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
+        const bidderLine = bidder ? `\n${$.fieldBidder}: ${await this.formatTonviewerLink(bidder, isTestnet)}` : '';
         return `
 ${$.auctionStarted}
 
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
-${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}${bidderLine}
 ${$.fieldPrice}: ${price} TON
 ${$.fieldAuctionType}: ${$.fieldAuctionTypeProxy}
 
@@ -4269,7 +4375,7 @@ ${$.hintCongrats}
   }
 
   // --- АУКЦИОН ЗАВЕРШЕН ---
-  async sendPublicAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true, itemAddress?: string, collectionAddress?: string): Promise<boolean> {
+  async sendPublicAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true, itemAddress?: string, collectionAddress?: string, ownerCommission?: number): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
       const miniAppLink = DeeplinkUtils.generateMarketLink(domain);
@@ -4284,13 +4390,14 @@ ${$.hintCongrats}
 
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
+        const commissionLine = ownerCommission !== undefined ? `\n${$.fieldOwnerCommission}: ${ownerCommission} TON` : '';
         return `
 ${$.auctionEnded}
 
 ${network}
 ${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>
 ${itemAddress ? `${$.fieldAddress}: ${await this.formatTonviewerLink(itemAddress, isTestnet)}\n` : ''}${$.fieldWinner}: ${await this.formatTonviewerLink(winner, isTestnet)}
-${$.fieldFinalPrice}: ${finalPrice} TON
+${$.fieldFinalPrice}: ${finalPrice} TON${commissionLine}
 
 ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
 
@@ -4496,20 +4603,21 @@ ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
     }
   }
 
-  async sendAuctionStartedNotification(domain: string, address: string, price: number, isTestnet: boolean = true): Promise<void> {
+  async sendAuctionStartedNotification(domain: string, address: string, price: number, isTestnet: boolean = true, bidder?: string): Promise<void> {
     if (!this.isBotAvailable()) return;
 
     try {
       const $ = LANG.ru;
       const network = this.formatNetwork(isTestnet);
       const [subdomainName, zoneName] = DeeplinkUtils.formatDomainForUrl(domain);
+      const bidderLine = bidder ? `\n${$.fieldBidder}: ${await this.formatTonviewerLink(bidder, isTestnet)}` : '';
 
       const message = `
 ${$.auctionStarted}
 
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
-${$.fieldOwner}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldOwner}: ${await this.formatTonviewerLink(address, isTestnet)}${bidderLine}
 ${$.fieldPrice}: ${price} TON
 ${$.fieldAuctionType}: ${$.fieldAuctionTypeProxy}
 
@@ -4529,7 +4637,7 @@ ${$.hintHurryUp}
         inlineKeyboard
       );
 
-      await this.sendPublicAuctionStartedNotification(domain, address, price, isTestnet);
+      await this.sendPublicAuctionStartedNotification(domain, address, price, isTestnet, bidder);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления о старте аукциона:', error);
     }
@@ -4604,12 +4712,13 @@ ${$.fieldMintTime}: ${new Date().toLocaleString('ru-RU')}
     }
   }
 
-  async sendAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true, itemAddress?: string, collectionAddress?: string): Promise<void> {
+  async sendAuctionEndedNotification(domain: string, winner: string, finalPrice: number, isTestnet: boolean = true, itemAddress?: string, collectionAddress?: string, ownerCommission?: number): Promise<void> {
     if (!this.isBotAvailable()) return;
 
     try {
       const $ = LANG.ru;
       const network = this.formatNetwork(isTestnet);
+      const commissionLine = ownerCommission !== undefined ? `\n${$.fieldOwnerCommission}: ${ownerCommission} TON` : '';
 
       const message = `
 ${$.auctionEnded}
@@ -4617,7 +4726,7 @@ ${$.auctionEnded}
 ${network}
 ${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>
 ${itemAddress ? `${$.fieldAddress}: ${await this.formatTonviewerLink(itemAddress, isTestnet)}\n` : ''}${$.fieldWinner}: ${await this.formatTonviewerLink(winner, isTestnet)}
-${$.fieldFinalPrice}: ${finalPrice} TON
+${$.fieldFinalPrice}: ${finalPrice} TON${commissionLine}
 
 ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
@@ -4636,7 +4745,7 @@ ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
         inlineKeyboard
       );
 
-      await this.sendPublicAuctionEndedNotification(domain, winner, finalPrice, isTestnet, itemAddress, collectionAddress);
+      await this.sendPublicAuctionEndedNotification(domain, winner, finalPrice, isTestnet, itemAddress, collectionAddress, ownerCommission);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления о завершении аукциона:', error);
     }
@@ -4734,7 +4843,7 @@ ${$.fieldRegisteredAt}: ${new Date().toLocaleString('ru-RU')}
 
   // ==================== УВЕДОМЛЕНИЯ О ПЛАТЕЖАХ ====================
 
-  async sendPaymentRecordedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true): Promise<void> {
+  async sendPaymentRecordedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true, price?: number): Promise<void> {
     if (!this.isBotAvailable()) return;
 
     try {
@@ -4742,6 +4851,7 @@ ${$.fieldRegisteredAt}: ${new Date().toLocaleString('ru-RU')}
       const network = this.formatNetwork(isTestnet);
       const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
       const formattedLength = length === 9 ? '9+' : String(length);
+      const priceLine = price !== undefined ? `\n${$.fieldPrice}: ${price} TON` : '';
 
       const message = `
 ${$.paymentRecorded}
@@ -4749,7 +4859,7 @@ ${$.paymentRecorded}
 ${network}
 ${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldZoneType}: ${zoneTypeText}
-${$.fieldLength}: ${formattedLength} символов
+${$.fieldLength}: ${formattedLength} символов${priceLine}
 
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
 
@@ -4758,13 +4868,13 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
 
       await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
 
-      await this.sendPublicPaymentRecordedNotification(address, zoneType, length, isTestnet);
+      await this.sendPublicPaymentRecordedNotification(address, zoneType, length, isTestnet, price);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления об оплаченной попытке:', error);
     }
   }
 
-  async sendPublicPaymentRecordedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true): Promise<boolean> {
+  async sendPublicPaymentRecordedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true, price?: number): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
 
@@ -4772,6 +4882,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
         const formattedLength = length === 9 ? '9+' : String(length);
+        const priceLine = price !== undefined ? `\n${$.fieldPrice}: ${price} TON` : '';
 
         return `
 ${$.paymentRecorded}
@@ -4779,7 +4890,7 @@ ${$.paymentRecorded}
 ${network}
 ${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldZoneType}: ${zoneTypeText}
-${$.fieldLength}: ${formattedLength} символов
+${$.fieldLength}: ${formattedLength} символов${priceLine}
 
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
 
@@ -4833,7 +4944,7 @@ ${network}
     }
   }
 
-  async sendPaymentConsumedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true): Promise<void> {
+  async sendPaymentConsumedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true, price?: number): Promise<void> {
     if (!this.isBotAvailable()) return;
 
     try {
@@ -4841,6 +4952,7 @@ ${network}
       const network = this.formatNetwork(isTestnet);
       const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
       const formattedLength = length === 9 ? '9+' : String(length);
+      const priceLine = price !== undefined ? `\n${$.fieldPrice}: ${price} TON` : '';
 
       const message = `
 ${$.paymentConsumed}
@@ -4848,7 +4960,7 @@ ${$.paymentConsumed}
 ${network}
 ${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldZoneType}: ${zoneTypeText}
-${$.fieldLength}: ${formattedLength} символов
+${$.fieldLength}: ${formattedLength} символов${priceLine}
 
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
 
@@ -4857,19 +4969,20 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
 
       await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
 
-      await this.sendPublicPaymentConsumedNotification(address, zoneType, length, isTestnet);
+      await this.sendPublicPaymentConsumedNotification(address, zoneType, length, isTestnet, price);
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления об использовании оплаченной попытки:', error);
     }
   }
 
-  async sendPublicPaymentConsumedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true): Promise<boolean> {
+  async sendPublicPaymentConsumedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true, price?: number): Promise<boolean> {
     try {
       const network = this.formatNetwork(isTestnet);
 
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
+        const priceLine = price !== undefined ? `\n${$.fieldPrice}: ${price} TON` : '';
 
         return `
 ${$.paymentConsumed}
@@ -4877,7 +4990,7 @@ ${$.paymentConsumed}
 ${network}
 ${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldZoneType}: ${zoneTypeText}
-${$.fieldLength}: ${length} символов
+${$.fieldLength}: ${length} символов${priceLine}
 
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
 

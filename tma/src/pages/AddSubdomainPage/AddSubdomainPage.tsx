@@ -13753,18 +13753,37 @@ export const AuctionPage: React.FC<{}> = () => {
       }
 
       const full = `${subDomainName}.${selectedDomainZone}`;
-      try {
-        apiService.setNetwork(isTestnet);
-        await apiService.notifyAuctionEnded({
-          domain: full,
-          winner: userAddress,
-          finalPrice: auctionInfo ? Number(auctionInfo.maxBid) / 1_000_000_000 : 0,
-          itemAddress: nftAddress,
-          collectionAddress,
-        });
-      } catch (e) {
-        console.error("Notify claim error:", e);
-      }
+      apiService.setNetwork(isTestnet);
+      const finalPriceTon = auctionInfo ? Number(auctionInfo.maxBid) / 1_000_000_000 : 0;
+      const claimTxHash = txResult.hash;
+      // Не блокируем UI — settlement (item → коллекция → 90%/5%/5% сплит,
+      // см. traceProxyAuctionCommission) идёт двумя ОТДЕЛЬНЫМИ транзакциями
+      // ПОСЛЕ claim, трейсу нужно время на индексацию (до ~12с). Уведомление
+      // уходит асинхронно, отдельно от снекбара/трека успеха ниже.
+      (async () => {
+        let ownerCommission: number | undefined;
+        if (claimTxHash && nftAddress && collectionAddress) {
+          const traced = await TransactionService.traceProxyAuctionCommission(
+            claimTxHash,
+            isTestnet ? "testnet" : "mainnet",
+            nftAddress,
+            collectionAddress
+          );
+          if (traced !== null) ownerCommission = traced;
+        }
+        try {
+          await apiService.notifyAuctionEnded({
+            domain: full,
+            winner: userAddress,
+            finalPrice: finalPriceTon,
+            itemAddress: nftAddress,
+            collectionAddress,
+            ownerCommission,
+          });
+        } catch (e) {
+          console.error("Notify claim error:", e);
+        }
+      })();
       track('auction_claimed');
       showSnackbar(t("subdomainClaimedSuccess"), "success");
       // Та же схема, что у START_AUCTION/PLACE_BID выше — canClaim читает

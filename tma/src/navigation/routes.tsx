@@ -36,6 +36,7 @@ import MarketPage from '@/pages/MarketPage/MarketPage';
 import AvatarSecretPage from '@/pages/AvatarSecretPage/AvatarSecretPage';
 import CreateTorrentPage from '@/pages/CreateTorrentPage/CreateTorrentPage';
 import FaqPage from '@/pages/FaqPage/FaqPage';
+import HallOfShamePage from '@/pages/HallOfShamePage/HallOfShamePage';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ProtectedAdminPanel from '@/pages/AdminPanelPage';
 
@@ -120,6 +121,12 @@ export const routes: RouteType[] = [
     path: '/faq',
     Component: FaqPage,
     title: 'FAQ'
+  },
+  {
+    // Не в IndexPage-меню, только по диплинку из бота (см. HallOfShamePage.tsx).
+    path: '/hall-of-shame',
+    Component: HallOfShamePage,
+    title: 'Hall of Shame'
   },
   {
     path: 'admin',

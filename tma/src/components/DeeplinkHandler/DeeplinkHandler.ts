@@ -149,6 +149,12 @@ const DeeplinkHandler: React.FC = () => {
           const queryString = queryParams.toString();
           navigate(`/create-torrent${queryString ? `?${queryString}` : ''}`);
 
+        } else if (route === '/hall-of-shame') {
+          // Кнопка "Кибербезопасность" в боте (см. DeeplinkUtils.
+          // generateHallOfShameLink на бэкенде) — без параметров, страница
+          // сама тянет уже готовый /security (HallOfShamePage.tsx).
+          navigate('/hall-of-shame');
+
         } else if (startappParam.startsWith('create-torrent')) {
           // Фолбэк: роут распознан как create-torrent (первый токен startapp
           // совпадает), но что-то в params выше пошло не так — не даём

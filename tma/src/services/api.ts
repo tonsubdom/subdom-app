@@ -1012,6 +1012,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     finalPrice: number;
     itemAddress?: string;
     collectionAddress?: string;
+    ownerCommission?: number;
   }): Promise<void> {
     try {
       await fetch(this.addNetworkParam(`${this.baseUrl}/api/notifications/auction-ended`), {

@@ -12,6 +12,10 @@ services:
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - ./tma/dist:/usr/share/nginx/html
       - ./nginx/logs:/var/log/nginx
+      # Hall of Shame (см. scripts/generate-hall-of-shame.py, cron раз в 15
+      # мин на хосте) — отдельная от tma/dist директория намеренно, чтобы
+      # каждый фронтенд-деплой (перезаписывающий dist/) не сносил страницу.
+      - ./hall-of-shame:/usr/share/nginx/hall-of-shame:ro
     depends_on:
       - backend
     restart: always
@@ -39,6 +43,11 @@ services:
       - PLATFORM_OWNER_TESTNET=${PLATFORM_OWNER_TESTNET:-}
       - PLATFORM_OWNER_MAINNET=${PLATFORM_OWNER_MAINNET:-}
       - ADMIN_JWT_SECRET=${ADMIN_JWT_SECRET:-}
+      # Общий секрет для приёма пуша fail2ban-статистики с subdom-api (см.
+      # fail2banStats.ts) — серверы не в одной сети, cron на subdom-api
+      # шлёт сюда по HTTPS через уже открытый /api/, авторизация — этим
+      # заголовком, не TonProof (там нет кошелька).
+      - SECURITY_STATS_INGEST_SECRET=${SECURITY_STATS_INGEST_SECRET:-}
       # Тот же класс бага, что и с TONCENTER_API_KEY/HASH_* ниже: deploy.yml
       # экспортирует эти переменные на хосте (строки export
       # NFT_WRAPPER_COLLECTION_*), но без явного проброса сюда crawler.ts
@@ -120,6 +129,17 @@ services:
       - ./subdom-server/nft-domains.db-shm:/app/nft-domains.db-shm
       # Checkpoint на SIGTERM в server-sqlite.ts остаётся как доп. подстраховка
       # на передеплое — теперь просто перестал быть единственной защитой.
+      #
+      # fail2banStats.ts (кнопка "Кибербезопасность" в боте) — read-only
+      # доступ к хостовой базе fail2ban. journal_mode этой базы = delete
+      # (не WAL, проверено вживую), поэтому одного файла достаточно, не
+      # нужны -wal/-shm компаньоны как для nft-domains.db выше.
+      - /var/lib/fail2ban/fail2ban.sqlite3:/fail2ban/fail2ban.sqlite3:ro
+      # Пуш от subdom-api переживает передеплой — тот же паттерн
+      # плейсхолдер-файла, что и nft-domains*.db-wal/-shm выше (пустой файл
+      # должен существовать на хосте заранее, иначе Docker смонтирует
+      # директорию вместо файла).
+      - ./subdom-server/security-stats-remote.json:/app/security-stats-remote.json
 
   storage:
     build:

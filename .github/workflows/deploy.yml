@@ -68,6 +68,9 @@ jobs:
             --exclude='*.db-wal' \
             --exclude='*.db.backup*' \
             --exclude='db/' \
+            --exclude='hall-of-shame/' \
+            --exclude='subdom-server/security-stats-remote.json' \
+            --exclude='scripts/.hall-of-shame-geo-cache.json' \
             ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/root/subdom-deployment/
 
       - name: Rebuild and restart Docker containers
@@ -101,6 +104,7 @@ jobs:
              export HASH_PROXY_SUBDOMAIN_NEW_MAINNET='${{ vars.HASH_PROXY_SUBDOMAIN_NEW_MAINNET }}' && \
              export HASH_SBT_SUBDOMAIN_MAINNET='${{ vars.HASH_SBT_SUBDOMAIN_MAINNET }}' && \
              export HASH_NFT_WRAPPER_MAINNET='${{ vars.HASH_NFT_WRAPPER_MAINNET }}' && \
+             export SECURITY_STATS_INGEST_SECRET='${{ secrets.SECURITY_STATS_INGEST_SECRET }}' && \
              docker-compose build backend && \
              docker-compose down && \
              docker-compose up -d && \

@@ -24,6 +24,7 @@ import { startStorageDealsChecker } from './services/storageDealsChecker';
 import platformCacheRouter from './services/platformCache/routes';
 import { startPlatformCacheCrawler } from './services/platformCache/crawler';
 import toncenterProxyRouter from './services/toncenterProxy/routes';
+import { getAllSecurityStats, saveRemoteSecurityPush } from './utils/fail2banStats';
 // Flat JSON tool manifest for LLM/MCP tool-use (same file as
 // agent-manifest/subdom-tools.json in the subdom-sdk repo, copied here so it
 // ships with the backend deploy) — imported (not fs.readFileSync'd) so
@@ -1390,7 +1391,7 @@ app.post('/api/users/:address/payments', (req, res) => {
     
     // Отправляем уведомление в Telegram
     if (telegramBot && telegramBot.sendPaymentRecordedNotification) {
-      telegramBot.sendPaymentRecordedNotification(address, zoneType, lengthNum, isTestnet);
+      telegramBot.sendPaymentRecordedNotification(address, zoneType, lengthNum, isTestnet, amount);
     }
     
     return res.json({
@@ -1623,10 +1624,12 @@ app.delete('/api/users/:address/payments', (req, res) => {
     const updatedUser = stmt.get(JSON.stringify(nftAccessAmount), address) as User;
     
     console.log('✅ [CONSUME PAYMENT] Пользователь обновлен:', updatedUser.address);
-    
+
     // Отправляем уведомление в Telegram
     if (telegramBot && telegramBot.sendPaymentConsumedNotification) {
-      telegramBot.sendPaymentConsumedNotification(address, zoneType, lengthNum, isTestnet);
+      const dummyDomainConsumed = 'x'.repeat(lengthNum);
+      const consumedAmount = calculateZonePrice(dummyDomainConsumed, zoneType === 'proxy');
+      telegramBot.sendPaymentConsumedNotification(address, zoneType, lengthNum, isTestnet, consumedAmount);
     }
     
     return res.json({
@@ -4194,7 +4197,7 @@ app.post('/api/notifications/subdomain-created', (req, res) => {
     }
 
     if (status === 'auction') {
-      telegramBot.sendAuctionStartedNotification(name, address, mintPrice, isTestnet);
+      telegramBot.sendAuctionStartedNotification(name, address, mintPrice, isTestnet, owner);
     } else {
       telegramBot.sendSBTSubdomainMintedNotification(name, address, owner, mintPrice, isTestnet);
     }
@@ -4240,7 +4243,7 @@ app.post('/api/notifications/bid', (req, res) => {
 // on-chain auctionInfo.maxBid — бэкенду тут искать/обновлять нечего.
 app.post('/api/notifications/auction-ended', (req, res) => {
   try {
-    const { domain, winner, finalPrice, itemAddress, collectionAddress } = req.body;
+    const { domain, winner, finalPrice, itemAddress, collectionAddress, ownerCommission } = req.body;
     const isTestnet = req.isTestnet;
 
     if (!domain || !winner || finalPrice === undefined) {
@@ -4250,7 +4253,7 @@ app.post('/api/notifications/auction-ended', (req, res) => {
       });
     }
 
-    telegramBot.sendAuctionEndedNotification(domain, winner, finalPrice, isTestnet, itemAddress, collectionAddress);
+    telegramBot.sendAuctionEndedNotification(domain, winner, finalPrice, isTestnet, itemAddress, collectionAddress, ownerCommission);
 
     return res.json({ success: true });
   } catch (error) {
@@ -4815,6 +4818,43 @@ app.post('/api/tutorial/complete', (req, res) => {
     return res.json({ success: true, data: { rewardGranted: true, rewardLength } });
   } catch (error) {
     console.error('❌ Ошибка при завершении обучалки:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// ========== БЕЗОПАСНОСТЬ (fail2ban-статистика для бота) ==========
+
+// Приём периодического пуша от cron на subdom-api (там своя, недоступная
+// отсюда напрямую, база fail2ban — общей сети между серверами нет). Не
+// requireAdminAuth (тот рассчитан на TonProof кошелька владельца, тут нет
+// кошелька вообще) — отдельный shared secret в заголовке, по аналогии с тем,
+// как /api/notifications/* защищены самим фактом, что формат пишет только
+// код платформы, только тут ещё и cross-server.
+app.post('/api/internal/security-stats', (req, res) => {
+  const secret = req.headers['x-security-stats-secret'];
+  if (!process.env.SECURITY_STATS_INGEST_SECRET || secret !== process.env.SECURITY_STATS_INGEST_SECRET) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  try {
+    const { server, jails, currentlyBanned, recentBans } = req.body;
+    if (typeof server !== 'string' || !Array.isArray(jails) || typeof currentlyBanned !== 'number') {
+      return res.status(400).json({ success: false, message: 'Invalid payload' });
+    }
+    saveRemoteSecurityPush({ server, jails, currentlyBanned, recentBans });
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при приёме security-stats с subdom-api:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Для бота (cmd_security_stats) и будущего генератора Hall of Shame — сводка
+// со всех серверов разом (сейчас: subdom-app напрямую + subdom-api через пуш).
+app.get('/api/internal/security-stats', (req, res) => {
+  try {
+    return res.json({ success: true, data: getAllSecurityStats() });
+  } catch (error) {
+    console.error('❌ Ошибка при сборке security-stats:', error);
     return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
   }
 });
