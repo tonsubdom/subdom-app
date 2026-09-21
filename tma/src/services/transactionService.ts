@@ -322,6 +322,78 @@ export class TransactionService {
   }
 
   /**
+   * Трейс реальной суммы комиссии владельца зоны с proxy-аукциона —
+   * отдельный запрос ПОСЛЕ подтверждения claim (не хоп 2 из sendTransaction/
+   * waitForConfirmation, тот не прокидывает наружу hash сообщений для
+   * следующего хопа). Settlement идёт в 2 транзакции ПОСЛЕ обработки claim
+   * item-контрактом (item.fc): item пересылает весь остаток баланса
+   * (op::fill_up, send mode 130 — "нести весь остаток") в коллекцию;
+   * коллекция (collection.fc, ветка op::fill_up) делит его на 3 исходящих
+   * сообщения — partner_addr (зона-овнер, ~90% по конфигу partner_share),
+   * second_owner_addr (~5%) и owner_addr (остаток, ~5%). Берём максимальное
+   * по value исходящее сообщение хопа 3 — по конструкции контракта доля
+   * владельца зоны всегда самая большая (90% > 5% > 5%), поэтому не нужно
+   * заранее знать сам адрес partner_addr, чтобы его найти.
+   */
+  static async traceProxyAuctionCommission(
+    claimTxHash: string,
+    network: 'mainnet' | 'testnet',
+    itemAddress: string,
+    collectionAddress: string,
+    attempts = 5,
+    delayMs = 2500
+  ): Promise<number | null> {
+    const config = NETWORK_CONFIGS[network];
+
+    const fetchTxByMsgHash = async (msgHash: string): Promise<any | null> => {
+      const url = new URL(`${config.API_URL}/transactionsByMessage`);
+      url.searchParams.set('msg_hash', msgHash);
+      url.searchParams.set('direction', 'in');
+      url.searchParams.set('limit', '1');
+      if (config.API_KEY) url.searchParams.set('api_key', config.API_KEY);
+      const response = await fetch(url.toString());
+      if (!response.ok) return null;
+      const data = await response.json();
+      return data?.transactions?.[0] ?? null;
+    };
+
+    const findOutMsgTo = (tx: any, address: string): any | null => {
+      let raw: string;
+      try {
+        raw = Address.parse(address).toRawString().toLowerCase();
+      } catch {
+        return null;
+      }
+      return (tx.out_msgs || []).find((m: any) => (m.destination || '').toLowerCase() === raw) || null;
+    };
+
+    for (let i = 0; i < attempts; i++) {
+      try {
+        const walletTx = await fetchTxByMsgHash(claimTxHash);
+        const itemOutMsg = walletTx && findOutMsgTo(walletTx, itemAddress);
+        if (itemOutMsg) {
+          const itemTx = await fetchTxByMsgHash(itemOutMsg.hash);
+          const fillUpOutMsg = itemTx && findOutMsgTo(itemTx, collectionAddress);
+          if (fillUpOutMsg) {
+            const collectionTx = await fetchTxByMsgHash(fillUpOutMsg.hash);
+            const outMsgs = collectionTx?.out_msgs || [];
+            let maxValue = 0n;
+            for (const m of outMsgs) {
+              const v = BigInt(m.value || '0');
+              if (v > maxValue) maxValue = v;
+            }
+            if (maxValue > 0n) return Number(maxValue) / 1_000_000_000;
+          }
+        }
+      } catch (error) {
+        console.warn('traceProxyAuctionCommission: попытка не удалась', error);
+      }
+      if (i < attempts - 1) await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    return null;
+  }
+
+  /**
    * Проверка нескольких транзакций одновременно
    */
   static async verifyTransactions(

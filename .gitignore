@@ -4,4 +4,13 @@ build/
 *.log
 .env
 .DS_Store
-Thumbs.dbsubdom-server/other_scripts/all_ton_domains.csv
+Thumbs.db
+__pycache__/
+*.pyc
+subdom-server/other_scripts/all_ton_domains.csv
+
+# Hall of Shame (scripts/generate-hall-of-shame.py, см. deploy.yml — та же
+# директория/файлы исключены из rsync --delete, чтобы не стереть прод-данные
+# при каждом деплое) — сгенерированный вывод и geo-кэш, не исходники.
+hall-of-shame/
+scripts/.hall-of-shame-geo-cache.json

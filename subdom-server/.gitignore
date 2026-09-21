@@ -29,7 +29,10 @@ db/
 logs
 *.log
 
-# Runtime data
+# Runtime data — пуш fail2ban-статистики с subdom-api (см. fail2banStats.ts),
+# плейсхолдер создаётся вручную на хосте перед docker-compose up, как и
+# nft-domains*.db-wal/-shm выше
+security-stats-remote.json
 pids
 *.pid
 *.seed
