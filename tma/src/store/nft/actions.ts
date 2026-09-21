@@ -5,7 +5,11 @@ import { RootState } from '../rootReducer';
 import { getNFTCollections, getServiceCollections, CollectionKey, NFTCollectionKey } from './constants';
 import axios from 'axios';
 import { TonCenterAPI } from '../../services/blockchainItems/toncenter-api-config';
-import { buildDeploySbtCollectionWithDns as buildDeploySbtCollectionWithDnsLocal } from '../../services/payloadBuilder';
+import {
+  buildDeploySbtCollectionWithDns as buildDeploySbtCollectionWithDnsLocal,
+  buildDeployBundle as buildDeployBundleLocal,
+  buildClaimSubdomain as buildClaimSubdomainLocal,
+} from '../../services/payloadBuilder';
 
 const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL;
 
@@ -565,7 +569,7 @@ export interface ClaimSubdomainResponse {
     address: string;
     amount: string;
     payload: string;
-    stateInit: string;
+    stateInit?: string;
   }>;
   validUntil: number;
 }
@@ -575,7 +579,7 @@ export interface DeployBundleResponse {
     address: string;
     amount: string;
     payload: string;
-    stateInit: string;
+    stateInit?: string;
   }>;
   validUntil: number;
 }
@@ -687,38 +691,34 @@ export const deployProxy = createAsyncThunk<
   }
 );
 
+// 2026-09-21: переведено на локальную (клиентскую) сборку payload'а — тот же
+// принцип, что и deploySBTCollectionWithDns (см. ниже). Больше не зависит от
+// аптайма Python-бэкенда для этой операции.
 export const deployBundle = createAsyncThunk<
-  DeployBundleResponse, 
-  DeployBundlePayload, 
+  DeployBundleResponse,
+  DeployBundlePayload & { isTestnet: boolean },
   { state: RootState }
 >(
   'blockchain/deployBundle',
-  async (payload, { rejectWithValue }) => {
+  async ({ isTestnet, ...payload }, { rejectWithValue }) => {
     try {
-      const queryParams = new URLSearchParams({
-        proxy_collection_address: payload.proxy_collection_address,
-        dns_item_address: payload.dns_item_address,
-        dns_item_name: payload.dns_item_name,
-        user_wallet_address: payload.user_wallet_address,
-        query_id: payload.query_id?.toString() || '0'
-      });
-
-      const response = await axios.post<DeployBundleResponse>(
-        `${API_PAYLOAD_URL}/api/v1/deploy_bundle?${queryParams.toString()}`,
-        {
-          owner_address: payload.owner_address,
-          second_owner_address: payload.second_owner_address,
-          content: payload.content,
-          royalty_params: payload.royalty_params,
-          config: payload.config
-        }
-      );
-      return response.data;
+      const result = buildDeployBundleLocal(payload, isTestnet);
+      return {
+        validUntil: result.validUntil,
+        // stateInit опущен там, где его нет (2-е и 3-е сообщения — set_next_resolver
+        // и минт итема) — TonConnect валидирует его как настоящий BOC или требует
+        // отсутствия поля вообще, пустая строка проваливает валидацию (см. фикс
+        // deploySBTCollectionWithDns, тот же класс бага).
+        messages: result.messages.map((m) => ({
+          address: m.address,
+          amount: m.amount,
+          payload: m.payload,
+          ...(m.stateInit ? { stateInit: m.stateInit } : {}),
+        })),
+      };
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        return rejectWithValue(error.response?.data || 'Bundle deployment failed');
-      }
-      return rejectWithValue('An unknown error occurred');
+      console.error('Bundle deployment local build error:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Bundle deployment failed');
     }
   }
 );
@@ -824,34 +824,25 @@ export const parseAuctionInfo = createAsyncThunk<
   }
 );
 
+// 2026-09-21: переведено на локальную (клиентскую) сборку payload'а — тот же
+// принцип, что и deploySBTCollectionWithDns/deployBundle выше.
 export const claimSubdomain = createAsyncThunk<
-  ClaimSubdomainResponse, 
-  { 
-    subdomain_item_address: string; 
+  ClaimSubdomainResponse,
+  {
+    subdomain_item_address: string;
     query_id?: number;
     isTestnet: boolean;
-  }, 
+  },
   { state: RootState }
 >(
   'blockchain/claimSubdomain',
   async ({ subdomain_item_address, query_id = 0, isTestnet }, { rejectWithValue }) => {
     try {
-      const params = new URLSearchParams();
-      params.append('subdomain_item_address', subdomain_item_address);
-      params.append('query_id', String(query_id));
-      params.append('isTestnet', String(isTestnet));
-
-      const response = await axios.post<ClaimSubdomainResponse>(
-        `${API_PAYLOAD_URL}/api/v1/claim_subdomain?${params.toString()}`
-      );
-      return response.data;
+      const result = buildClaimSubdomainLocal(subdomain_item_address, query_id, isTestnet);
+      return { validUntil: result.validUntil, messages: result.messages };
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const message = error.response?.data?.detail || error.message;
-        console.error('Claim subdomain error:', message);
-        return rejectWithValue(message || 'Failed to claim subdomain');
-      }
-      return rejectWithValue('Failed to claim subdomain');
+      console.error('Claim subdomain local build error:', error);
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to claim subdomain');
     }
   }
 );

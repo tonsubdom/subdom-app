@@ -11,6 +11,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { apiService } from '@/services/api';
+import { buildChangeContent } from '@/services/payloadBuilder';
 
 const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL || '';
 
@@ -67,19 +68,14 @@ export const PendingActionsPanel: React.FC<PendingActionsPanelProps> = ({ isTest
         : action.targetName;
       const metadataBase = `${API_PAYLOAD_URL}/api/v1/inactive-subdomain/metadata/ton/${zoneNameWithoutTld}`;
 
-      const changeContentUrl = `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/${collectionAddress}/change_content?query_id=0`;
-      const response = await fetch(changeContentUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({
-          new_content: {
-            content: { uri: metadataBase },
-            common_content: { suffix_uri: `${metadataBase}/` },
-          },
-        }),
-      });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const result = await response.json();
+      const result = buildChangeContent(
+        collectionAddress,
+        {
+          content: { uri: metadataBase },
+          common_content: { suffix_uri: `${metadataBase}/` },
+        },
+        isTestnet
+      );
       if (!result.messages || result.messages.length === 0) {
         throw new Error('empty messages from change_content');
       }

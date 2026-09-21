@@ -19,7 +19,7 @@ import * as Dns from './dns';
 import * as ProxyItem from './proxyItem';
 import * as SubdomainItem from './subdomainItem';
 import { prepareSubdomainCollection, buildTopUpBody as buildSubdomainTopUpBody, type SubdomainCollectionData } from './subdomainCollection';
-import { prepareSbtSubdomainCollection, buildTopUpBody as buildSbtTopUpBody, type SbtSubdomainCollectionData } from './sbtSubdomainCollection';
+import { prepareSbtSubdomainCollection, buildTopUpBody as buildSbtTopUpBody, buildChangeContentBody, type SbtSubdomainCollectionData, type SbtOffchainContent } from './sbtSubdomainCollection';
 
 export interface TonConnectMessage {
   address: string;
@@ -139,6 +139,26 @@ export function buildDeploySbtCollectionWithDns(payload: DeploySBTCollectionPayl
         address: dnsItemAddress,
         amount: '25000000', // 0.025 TON
         payload: cellToBase64(Dns.buildSetNextResolverBody(collection.address, queryId)),
+      },
+    ],
+  };
+}
+
+// ============ sbt-subdomain/{address}/change_content (деактивация зоны, PendingActionsPanel) ============
+
+export function buildChangeContent(
+  collectionAddress: string,
+  newContent: SbtOffchainContent,
+  isTestnet: boolean,
+  queryId = 0
+): TransactionResponse {
+  return {
+    validUntil: validUntil(),
+    messages: [
+      {
+        address: friendly(Address.parse(collectionAddress), isTestnet),
+        amount: '50000000', // 0.05 TON
+        payload: cellToBase64(buildChangeContentBody(newContent, queryId)),
       },
     ],
   };

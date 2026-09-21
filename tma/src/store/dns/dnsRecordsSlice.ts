@@ -4,14 +4,16 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { Address } from 'ton-core';
 import { TransactionService } from '@/services/transactionService';
 import { track } from '@/utils/analytics';
-
-// ============ API CONFIG ============
-const siteApiAddr = import.meta.env.VITE_API_SC_PAYLOAD_URL;
-// Лишний "$" перед интерполяцией ("$${siteApiAddr}") склеивал URL с
-// буквальным "$" в начале — new URL("$https://...") падал с
-// "cannot be parsed as a URL", Save в Manager молча ничего не отправлял
-// (см. Log.md 2026-08-11).
-const API_BASE_URL = `${siteApiAddr}/api/v1/dns`;
+import {
+  buildSetWalletRecord,
+  buildSetSiteRecord,
+  buildSetStorageRecord,
+  buildSetNextResolverRecord,
+  buildDeleteWalletRecord,
+  buildDeleteSiteRecord,
+  buildDeleteStorageRecord,
+  buildDeleteNextResolverRecord,
+} from '@/services/payloadBuilder';
 
 // ============ ТИПЫ ============
 
@@ -227,26 +229,7 @@ export const setWalletRecord = createAsyncThunk(
   ) => {
     try {
       const normalizedAddress = Address.parse(dnsItemAddress).toString();
-      const url = new URL(`${API_BASE_URL}/${normalizedAddress}/set_wallet_record`);
-      url.searchParams.append('user_wallet_address', userWalletAddress);
-      url.searchParams.append('query_id', queryId.toString());
-
-      console.log('📌 PUT запрос (setWalletRecord):', url.toString());
-      
-      const response = await fetch(url.toString(), { 
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`API Error: ${response.status} - ${errorData}`);
-      }
-
-      const data: APIResponse = await response.json();
-      console.log('✅ API Response:', data);
+      const data = buildSetWalletRecord(normalizedAddress, userWalletAddress, queryId);
 
       await sendDnsTransaction(tonConnectUI, data, isTestnet, 'set_wallet_record');
 
@@ -268,26 +251,7 @@ export const setSiteRecord = createAsyncThunk(
   ) => {
     try {
       const normalizedAddress = Address.parse(dnsItemAddress).toString();
-      const url = new URL(`${API_BASE_URL}/${normalizedAddress}/set_site_record`);
-      url.searchParams.append('adnl_adress_hex', adnlAddressHex);
-      url.searchParams.append('query_id', queryId.toString());
-
-      console.log('📌 PUT запрос (setSiteRecord):', url.toString());
-      
-      const response = await fetch(url.toString(), { 
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`API Error: ${response.status} - ${errorData}`);
-      }
-
-      const data: APIResponse = await response.json();
-      console.log('✅ API Response:', data);
+      const data = buildSetSiteRecord(normalizedAddress, adnlAddressHex, queryId);
 
       await sendDnsTransaction(tonConnectUI, data, isTestnet, 'set_site_record');
 
@@ -309,26 +273,7 @@ export const setStorageRecord = createAsyncThunk(
   ) => {
     try {
       const normalizedAddress = Address.parse(dnsItemAddress).toString();
-      const url = new URL(`${API_BASE_URL}/${normalizedAddress}/set_storage_record`);
-      url.searchParams.append('bag_id_hex', bagIdHex);
-      url.searchParams.append('query_id', queryId.toString());
-
-      console.log('📌 PUT запрос (setStorageRecord):', url.toString());
-      
-      const response = await fetch(url.toString(), { 
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`API Error: ${response.status} - ${errorData}`);
-      }
-
-      const data: APIResponse = await response.json();
-      console.log('✅ API Response:', data);
+      const data = buildSetStorageRecord(normalizedAddress, bagIdHex, queryId);
 
       await sendDnsTransaction(tonConnectUI, data, isTestnet, 'set_storage_record');
 
@@ -351,26 +296,7 @@ export const setNextResolverRecord = createAsyncThunk(
     try {
       const normalizedAddress = Address.parse(dnsItemAddress).toString();
       const normalizedResolverAddress = Address.parse(resolverAddress).toString();
-      const url = new URL(`${API_BASE_URL}/${normalizedAddress}/set_next_resolver_record`);
-      url.searchParams.append('resolver_address', normalizedResolverAddress);
-      url.searchParams.append('query_id', queryId.toString());
-
-      console.log('📌 PUT запрос (setNextResolverRecord):', url.toString());
-      
-      const response = await fetch(url.toString(), { 
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`API Error: ${response.status} - ${errorData}`);
-      }
-
-      const data: APIResponse = await response.json();
-      console.log('✅ API Response:', data);
+      const data = buildSetNextResolverRecord(normalizedAddress, normalizedResolverAddress, queryId);
 
       await sendDnsTransaction(tonConnectUI, data, isTestnet, 'set_next_resolver_record');
 
@@ -392,20 +318,7 @@ export const deleteWalletRecord = createAsyncThunk(
   ) => {
     try {
       const normalizedAddress = Address.parse(dnsItemAddress).toString();
-      const url = new URL(`${API_BASE_URL}/${normalizedAddress}/delete_wallet_record`);
-      url.searchParams.append('query_id', queryId.toString());
-
-      console.log('📌 DELETE запрос (deleteWalletRecord):', url.toString());
-      
-      const response = await fetch(url.toString(), { method: 'DELETE' });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`API Error: ${response.status} - ${errorData}`);
-      }
-
-      const data: APIResponse = await response.json();
-      console.log('✅ API Response:', data);
+      const data = buildDeleteWalletRecord(normalizedAddress, queryId);
 
       await sendDnsTransaction(tonConnectUI, data, isTestnet, 'delete_wallet_record');
 
@@ -427,20 +340,7 @@ export const deleteSiteRecord = createAsyncThunk(
   ) => {
     try {
       const normalizedAddress = Address.parse(dnsItemAddress).toString();
-      const url = new URL(`${API_BASE_URL}/${normalizedAddress}/delete_site_record`);
-      url.searchParams.append('query_id', queryId.toString());
-
-      console.log('📌 DELETE запрос (deleteSiteRecord):', url.toString());
-      
-      const response = await fetch(url.toString(), { method: 'DELETE' });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`API Error: ${response.status} - ${errorData}`);
-      }
-
-      const data: APIResponse = await response.json();
-      console.log('✅ API Response:', data);
+      const data = buildDeleteSiteRecord(normalizedAddress, queryId);
 
       await sendDnsTransaction(tonConnectUI, data, isTestnet, 'delete_site_record');
 
@@ -462,20 +362,7 @@ export const deleteStorageRecord = createAsyncThunk(
   ) => {
     try {
       const normalizedAddress = Address.parse(dnsItemAddress).toString();
-      const url = new URL(`${API_BASE_URL}/${normalizedAddress}/delete_storage_record`);
-      url.searchParams.append('query_id', queryId.toString());
-
-      console.log('📌 DELETE запрос (deleteStorageRecord):', url.toString());
-      
-      const response = await fetch(url.toString(), { method: 'DELETE' });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`API Error: ${response.status} - ${errorData}`);
-      }
-
-      const data: APIResponse = await response.json();
-      console.log('✅ API Response:', data);
+      const data = buildDeleteStorageRecord(normalizedAddress, queryId);
 
       await sendDnsTransaction(tonConnectUI, data, isTestnet, 'delete_storage_record');
 
@@ -497,20 +384,7 @@ export const deleteNextResolverRecord = createAsyncThunk(
   ) => {
     try {
       const normalizedAddress = Address.parse(dnsItemAddress).toString();
-      const url = new URL(`${API_BASE_URL}/${normalizedAddress}/delete_next_resolver_record`);
-      url.searchParams.append('query_id', queryId.toString());
-
-      console.log('📌 DELETE запрос (deleteNextResolverRecord):', url.toString());
-      
-      const response = await fetch(url.toString(), { method: 'DELETE' });
-
-      if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`API Error: ${response.status} - ${errorData}`);
-      }
-
-      const data: APIResponse = await response.json();
-      console.log('✅ API Response:', data);
+      const data = buildDeleteNextResolverRecord(normalizedAddress, queryId);
 
       await sendDnsTransaction(tonConnectUI, data, isTestnet, 'delete_next_resolver_record');
 

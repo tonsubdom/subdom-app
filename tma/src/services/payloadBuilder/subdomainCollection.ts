@@ -45,10 +45,10 @@ function serializePartnerShare(p: PartnerShare): Cell {
 }
 
 // Ключ "0".."6" -> цена в TON (0 — цена по умолчанию для длин вне таблицы).
-function serializePrices(prices: Record<string, number>): Cell {
+function serializePrices(prices: Record<string, string | number>): Cell {
   const dict = Dictionary.empty(Dictionary.Keys.Uint(4), Dictionary.Values.BigVarUint(4));
   for (const [lenKey, ton] of Object.entries(prices)) {
-    dict.set(Number(lenKey), BigInt(Math.round(ton * 1_000_000_000)));
+    dict.set(Number(lenKey), BigInt(Math.round(Number(ton) * 1_000_000_000)));
   }
   return beginCell().storeDictDirect(dict).endCell();
 }
@@ -56,7 +56,7 @@ function serializePrices(prices: Record<string, number>): Cell {
 export interface SubdomainCollectionConfig {
   tld: string;
   domain: string;
-  prices: { prices: Record<string, number> };
+  prices: { prices: Record<string, string | number> };
   partner_share: PartnerShare;
 }
 
