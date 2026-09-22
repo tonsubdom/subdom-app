@@ -11,7 +11,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { apiService } from '@/services/api';
-import { buildChangeContent, buildChangePartnerShare } from '@/services/payloadBuilder';
+import { buildChangeContent, buildBeneficiaryTransferAndRelease } from '@/services/payloadBuilder';
 import { getPartnerShare } from '@/utils/tonUtils';
 
 const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL || '';
@@ -27,6 +27,7 @@ interface PendingAction {
   status: string;
   requestedAt: string;
   newPartnerAddress: string | null;
+  escrowAddress: string | null;
 }
 
 interface PendingActionsPanelProps {
@@ -97,9 +98,16 @@ export const PendingActionsPanel: React.FC<PendingActionsPanelProps> = ({ isTest
     }
   };
 
-  // Продажа бенефициарства (Market -> Коллекции) — меняем только partner_addr
-  // (получатель 90% с аукционов), share/denominator читаем свежими с ончейна
-  // и передаём как есть, чтобы не пересмотреть процент при смене адреса.
+  // Продажа бенефициарства (Market -> Коллекции) — ОДНОЙ транзакцией (два
+  // сообщения) одновременно: (1) release на эскроу-контракте — высвобождает
+  // депозит покупателя продавцу, (2) change_partner_share на зоне — меняет
+  // получателя 90%. Оба действия связаны намеренно: раньше (без эскроу)
+  // деньги уходили продавцу сразу при клике "Забрать", а смена бенефициара
+  // ждала этого клика отдельно — если бы админ задержался, покупатель уже
+  // заплатил, но ничего не получил (репутационный риск, см. Log.md
+  // 2026-09-22). Теперь деньги у эскроу до этого самого клика, share/
+  // denominator читаем свежими с ончейна и передаём как есть, чтобы не
+  // пересмотреть процент при смене адреса.
   const executeTransferBeneficiary = async (action: PendingAction) => {
     setExecutingId(action.id);
     setErrorById((prev) => ({ ...prev, [action.id]: '' }));
@@ -107,19 +115,23 @@ export const PendingActionsPanel: React.FC<PendingActionsPanelProps> = ({ isTest
       if (!action.newPartnerAddress) {
         throw new Error('newPartnerAddress отсутствует в заявке');
       }
+      if (!action.escrowAddress) {
+        throw new Error('escrowAddress отсутствует в заявке');
+      }
       const collectionAddress = action.targetCollectionAddress || action.targetAddress;
       const current = await getPartnerShare(collectionAddress, isTestnet);
       if (!current) {
         throw new Error('Не удалось прочитать текущий partner_share из блокчейна');
       }
 
-      const result = buildChangePartnerShare(
+      const result = buildBeneficiaryTransferAndRelease(
+        action.escrowAddress,
         collectionAddress,
         { address: action.newPartnerAddress, share: current.share, denominator: current.denominator },
         isTestnet
       );
       if (!result.messages || result.messages.length === 0) {
-        throw new Error('empty messages from change_partner_share');
+        throw new Error('empty messages from buildBeneficiaryTransferAndRelease');
       }
 
       const sendResult = await tonConnectUI.sendTransaction({
@@ -192,6 +204,14 @@ export const PendingActionsPanel: React.FC<PendingActionsPanelProps> = ({ isTest
                 <strong>Новый бенефициар:</strong>{' '}
                 <a href={tonviewerLink(action.newPartnerAddress)} target="_blank" rel="noopener noreferrer" style={{ color: isDark ? '#FFD700' : '#3B82F6' }}>
                   {action.newPartnerAddress.slice(0, 6)}...{action.newPartnerAddress.slice(-4)}
+                </a>
+              </div>
+            )}
+            {action.escrowAddress && (
+              <div>
+                <strong>Эскроу:</strong>{' '}
+                <a href={tonviewerLink(action.escrowAddress)} target="_blank" rel="noopener noreferrer" style={{ color: isDark ? '#FFD700' : '#3B82F6' }}>
+                  {action.escrowAddress.slice(0, 6)}...{action.escrowAddress.slice(-4)}
                 </a>
               </div>
             )}

@@ -1052,6 +1052,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     targetName: string;
     requestedBy: string;
     newPartnerAddress?: string;
+    escrowAddress?: string;
   }): Promise<{ success: boolean; data?: any; alreadyPending?: boolean; message?: string }> {
     try {
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/admin/pending-actions`), {
@@ -1165,12 +1166,12 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
-  async confirmBeneficiaryListingPayment(id: number, buyerAddress: string, paymentTxHash?: string): Promise<{ success: boolean; data?: any; message?: string }> {
+  async confirmBeneficiaryListingPayment(id: number, buyerAddress: string, escrowAddress: string, paymentTxHash?: string): Promise<{ success: boolean; data?: any; message?: string }> {
     try {
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/listings/${id}/confirm-payment`), {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ buyerAddress, paymentTxHash }),
+        body: JSON.stringify({ buyerAddress, escrowAddress, paymentTxHash }),
       });
       const json = await response.json();
       if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
@@ -1266,12 +1267,12 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
-  async payBeneficiaryOffer(id: number, buyerAddress: string, paymentTxHash?: string): Promise<{ success: boolean; data?: any; message?: string }> {
+  async payBeneficiaryOffer(id: number, buyerAddress: string, escrowAddress: string, paymentTxHash?: string): Promise<{ success: boolean; data?: any; message?: string }> {
     try {
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers/${id}/pay`), {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ buyerAddress, paymentTxHash }),
+        body: JSON.stringify({ buyerAddress, escrowAddress, paymentTxHash }),
       });
       const json = await response.json();
       if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };

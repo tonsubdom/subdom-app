@@ -1,23 +1,32 @@
 // src/pages/MarketPage/BeneficiariesTab.tsx
 //
 // Market -> "Коллекции" — продажа бенефициарства (получателя 90% с аукционов)
-// Proxy-зоны. Без эскроу-контракта (осознанный выбор — сессия 2026-09-22):
-// покупатель платит продавцу напрямую двухходовой верификацией
-// (TransactionService.sendTransaction), смену partner_addr на контракте
-// исполняет площадка через pending_admin_actions/PendingActionsPanel
-// (actionType='transfer_beneficiary') — тот же паттерн, что у деактивации
-// SBT-зоны. См. план в Obsidian Log.md той же сессии.
+// Proxy-зоны. Покупатель депозитит сумму в одноразовый эскроу-контракт
+// (escrow.fc, см. payloadBuilder/escrow.ts) — без этого деньги уходили бы
+// продавцу сразу при клике "Забрать", а смена бенефициара на зоне ждала бы
+// отдельного ручного клика площадки в PendingActionsPanel; если бы площадка
+// задержалась, покупатель уже заплатил бы, но ничего не получил (см. Log.md
+// 2026-09-22). Площадка одним кликом одновременно высвобождает эскроу
+// продавцу И меняет partner_addr (buildBeneficiaryTransferAndRelease) —
+// тот же паттерн очереди, что у деактивации SBT-зоны, просто с эскроу
+// вместо прямого P2P-перевода. Если площадка не отреагирует до дедлайна —
+// покупатель сам возвращает депозит (claim_timeout_refund).
 //
 // "Продать своё"/входящие-исходящие офферы живут в ProfileWidget рядом со
 // списком "мои зоны" — тут только browsing + "Забрать"/"Сделать оффер".
 
 import React, { useEffect, useState } from 'react';
-import { Address } from '@ton/core';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { apiService } from '@/services/api';
 import { TransactionService } from '@/services/transactionService';
+import { computeEscrowAddress, buildEscrowDeposit } from '@/services/payloadBuilder';
 import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-context.tsx';
 import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
+import { NETWORK_CONFIGS } from '@/services/blockchainItems/toncenter-api-config';
+
+// Рамки теста — 1 час до self-refund покупателя, если площадка не
+// отреагировала. Перед продакшеном стоит увеличить (см. Log.md 2026-09-22).
+const ESCROW_TIMEOUT_SECONDS = 3600;
 
 interface BeneficiaryListing {
   id: number;
@@ -33,14 +42,6 @@ interface BeneficiariesTabProps {
   isTestnet: boolean;
   t: (key: string) => string;
   walletAddress?: string;
-}
-
-function friendlyAddress(raw: string, isTestnet: boolean): string {
-  try {
-    return Address.parse(raw).toString({ bounceable: true, testOnly: isTestnet });
-  } catch {
-    return raw;
-  }
 }
 
 function shortAddress(address: string): string {
@@ -91,21 +92,31 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
       }
       const reserved = reserveResult.data;
 
+      const platformOwner = isTestnet
+        ? NETWORK_CONFIGS.testnet.DEFAULT_ADDRESSES.PLATFORM_OWNER
+        : NETWORK_CONFIGS.mainnet.DEFAULT_ADDRESSES.PLATFORM_OWNER;
+      const escrowConfig = {
+        owner_address: platformOwner,
+        seller_address: reserved.sellerAddress,
+        buyer_address: walletAddress,
+        deal_id: BigInt(reserved.id),
+        deadline: Math.floor(Date.now() / 1000) + ESCROW_TIMEOUT_SECONDS,
+      };
+      const escrowAddress = computeEscrowAddress(escrowConfig, isTestnet);
       const nanotons = BigInt(Math.round(Number(reserved.priceTon) * 1_000_000_000)).toString();
+      const depositTx = buildEscrowDeposit(escrowConfig, nanotons, isTestnet);
+
       const sendResult = await TransactionService.sendTransaction(
         tonConnectUI,
-        {
-          validUntil: Math.floor(Date.now() / 1000) + 300,
-          messages: [{ address: friendlyAddress(reserved.sellerAddress, isTestnet), amount: nanotons }],
-        },
-        { network: isTestnet ? 'testnet' : 'mainnet', verifyBlockchain: true, action: 'beneficiary_listing_payment' }
+        depositTx,
+        { network: isTestnet ? 'testnet' : 'mainnet', verifyBlockchain: true, action: 'beneficiary_escrow_deposit' }
       );
 
       if (!sendResult.success || !sendResult.confirmedInBlock) {
         throw new Error(sendResult.error || 'Транзакция не подтверждена');
       }
 
-      await apiService.confirmBeneficiaryListingPayment(listing.id, walletAddress, sendResult.hash);
+      await apiService.confirmBeneficiaryListingPayment(listing.id, walletAddress, escrowAddress, sendResult.hash);
       await apiService.createPendingAction({
         actionType: 'transfer_beneficiary',
         targetType: 'zone',
@@ -114,6 +125,7 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
         targetName: listing.zoneName,
         requestedBy: walletAddress,
         newPartnerAddress: walletAddress,
+        escrowAddress,
       });
 
       await loadListings();

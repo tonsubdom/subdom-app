@@ -726,6 +726,19 @@ const migratePlatformCacheColumns = (db: SqliteDatabase) => {
   // (продажа бенефициарства через Market -> Коллекции) — единственный
   // actionType, которому нужны доп. данные сверх фиксированных колонок.
   addColumnIfMissing('pending_admin_actions', 'newPartnerAddress', 'newPartnerAddress TEXT');
+  // Адрес эскроу-контракта (escrow.fc), из которого при исполнении
+  // transfer_beneficiary одновременно высвобождаются деньги продавцу и
+  // меняется partner_addr на зоне (см. PendingActionsPanel.tsx,
+  // buildBeneficiaryTransferAndRelease) — без эскроу деньги и смена
+  // бенефициара были бы разнесены по времени (см. Log.md 2026-09-22,
+  // ровно та проблема, из-за которой эскроу и завели).
+  addColumnIfMissing('pending_admin_actions', 'escrowAddress', 'escrowAddress TEXT');
+
+  // Адрес эскроу-контракта конкретной сделки — вычисляется на фронте
+  // детерминированно (owner+seller+buyer+dealId+deadline) до депозита,
+  // фиксируется тут при подтверждении оплаты.
+  addColumnIfMissing('beneficiary_listings', 'escrowAddress', 'escrowAddress TEXT');
+  addColumnIfMissing('beneficiary_offers', 'escrowAddress', 'escrowAddress TEXT');
 
   addColumnIfMissing('platform_subdomains_cache', 'zoneName', 'zoneName TEXT');
   addColumnIfMissing('platform_subdomains_cache', 'itemType', 'itemType TEXT');
@@ -4371,7 +4384,7 @@ app.post('/api/notifications/zone-deactivated', (req, res) => {
 // это же обычное действие обычного юзера над своей же зоной.
 app.post('/api/admin/pending-actions', (req, res) => {
   try {
-    const { actionType, targetType, targetAddress, targetCollectionAddress, targetName, requestedBy, newPartnerAddress } = req.body;
+    const { actionType, targetType, targetAddress, targetCollectionAddress, targetName, requestedBy, newPartnerAddress, escrowAddress } = req.body;
     const db = req.db;
     const isTestnet = req.isTestnet;
 
@@ -4379,6 +4392,12 @@ app.post('/api/admin/pending-actions', (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'actionType, targetType, targetAddress, targetName и requestedBy обязательны'
+      });
+    }
+    if (actionType === 'transfer_beneficiary' && (!newPartnerAddress || !escrowAddress)) {
+      return res.status(400).json({
+        success: false,
+        message: 'newPartnerAddress и escrowAddress обязательны для transfer_beneficiary'
       });
     }
 
@@ -4403,8 +4422,8 @@ app.post('/api/admin/pending-actions', (req, res) => {
     }
 
     const stmt = db.prepare(`
-      INSERT INTO pending_admin_actions (actionType, targetType, targetAddress, targetCollectionAddress, targetName, requestedBy, newPartnerAddress)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO pending_admin_actions (actionType, targetType, targetAddress, targetCollectionAddress, targetName, requestedBy, newPartnerAddress, escrowAddress)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING *
     `);
     const created = stmt.get(
@@ -4414,7 +4433,8 @@ app.post('/api/admin/pending-actions', (req, res) => {
       targetCollectionAddress ? String(targetCollectionAddress).toLowerCase() : null,
       targetName,
       requestedBy,
-      newPartnerAddress ? String(newPartnerAddress).toLowerCase() : null
+      newPartnerAddress ? String(newPartnerAddress).toLowerCase() : null,
+      escrowAddress ? String(escrowAddress).toLowerCase() : null
     );
 
     if (actionType === 'deactivate_zone') {
@@ -4810,10 +4830,10 @@ app.post('/api/market/beneficiary/listings/:id/reserve', (req, res) => {
 app.post('/api/market/beneficiary/listings/:id/confirm-payment', (req, res) => {
   try {
     const { id } = req.params;
-    const { buyerAddress, paymentTxHash } = req.body;
+    const { buyerAddress, paymentTxHash, escrowAddress } = req.body;
     const db = req.db;
-    if (!buyerAddress) {
-      return res.status(400).json({ success: false, message: 'buyerAddress обязателен' });
+    if (!buyerAddress || !escrowAddress) {
+      return res.status(400).json({ success: false, message: 'buyerAddress и escrowAddress обязательны' });
     }
 
     const listing = db.prepare('SELECT * FROM beneficiary_listings WHERE id = ?').get(id) as any;
@@ -4826,10 +4846,10 @@ app.post('/api/market/beneficiary/listings/:id/confirm-payment', (req, res) => {
 
     const updated = db.prepare(`
       UPDATE beneficiary_listings
-      SET paymentTxHash = ?, updatedAt = CURRENT_TIMESTAMP
+      SET paymentTxHash = ?, escrowAddress = ?, updatedAt = CURRENT_TIMESTAMP
       WHERE id = ?
       RETURNING *
-    `).get(paymentTxHash || null, id);
+    `).get(paymentTxHash || null, escrowAddress, id);
 
     return res.json({ success: true, data: updated });
   } catch (error) {
@@ -4999,8 +5019,11 @@ app.post('/api/market/beneficiary/offers/:id/decline', (req, res) => {
 app.post('/api/market/beneficiary/offers/:id/pay', (req, res) => {
   try {
     const { id } = req.params;
-    const { buyerAddress, paymentTxHash } = req.body;
+    const { buyerAddress, paymentTxHash, escrowAddress } = req.body;
     const db = req.db;
+    if (!escrowAddress) {
+      return res.status(400).json({ success: false, message: 'escrowAddress обязателен' });
+    }
 
     const offer = db.prepare('SELECT * FROM beneficiary_offers WHERE id = ?').get(id) as any;
     if (!offer) {
@@ -5012,9 +5035,9 @@ app.post('/api/market/beneficiary/offers/:id/pay', (req, res) => {
 
     const updated = db.prepare(`
       UPDATE beneficiary_offers
-      SET status = 'paid', paidAt = CURRENT_TIMESTAMP, paymentTxHash = ?, updatedAt = CURRENT_TIMESTAMP
+      SET status = 'paid', paidAt = CURRENT_TIMESTAMP, paymentTxHash = ?, escrowAddress = ?, updatedAt = CURRENT_TIMESTAMP
       WHERE id = ? RETURNING *
-    `).get(paymentTxHash || null, id);
+    `).get(paymentTxHash || null, escrowAddress, id);
 
     return res.json({ success: true, data: updated });
   } catch (error) {

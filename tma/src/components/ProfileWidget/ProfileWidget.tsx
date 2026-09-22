@@ -2320,7 +2320,13 @@ import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
 import { convertUserFriendlyToRaw, getZoneImageUrl } from "@/utils/tonUtils";
 import { TransactionService } from "@/services/transactionService";
-import { Address } from "@ton/core";
+import { computeEscrowAddress, buildEscrowDeposit } from "@/services/payloadBuilder";
+import { NETWORK_CONFIGS } from "@/services/blockchainItems/toncenter-api-config";
+
+// Рамки теста — 1 час до self-refund покупателя, если площадка не
+// отреагировала на заявку (см. Log.md 2026-09-22, перед продакшеном стоит
+// увеличить).
+const BENEFICIARY_ESCROW_TIMEOUT_SECONDS = 3600;
 import { ScanProgressLoader } from "@/components/ScanProgressLoader";
 import {
   resolveDomainNftAddress,
@@ -3434,35 +3440,39 @@ const ProfileWidget: React.FC = () => {
     }
   };
 
-  // Покупатель платит после того, как продавец принял его оффер — тот же
-  // P2P-платёж + createPendingAction, что и при "Забрать" листинг в
-  // BeneficiariesTab.tsx.
+  // Покупатель платит после того, как продавец принял его оффер — депозит в
+  // одноразовый эскроу-контракт (тот же паттерн, что и при "Забрать" листинг
+  // в BeneficiariesTab.tsx) вместо прямого перевода продавцу: площадка потом
+  // одним кликом одновременно высвободит эскроу И сменит бенефициара, так
+  // деньги не зависают отдельно от факта исполнения услуги.
   const handlePayBeneficiaryOffer = async (offer: any) => {
     if (!address || !wallet) return;
     setOfferBusyId(offer.id);
     try {
+      const platformOwner = isTestnet
+        ? NETWORK_CONFIGS.testnet.DEFAULT_ADDRESSES.PLATFORM_OWNER
+        : NETWORK_CONFIGS.mainnet.DEFAULT_ADDRESSES.PLATFORM_OWNER;
+      const escrowConfig = {
+        owner_address: platformOwner,
+        seller_address: offer.sellerAddress,
+        buyer_address: address,
+        deal_id: BigInt(offer.id),
+        deadline: Math.floor(Date.now() / 1000) + BENEFICIARY_ESCROW_TIMEOUT_SECONDS,
+      };
+      const escrowAddress = computeEscrowAddress(escrowConfig, isTestnet);
       const nanotons = BigInt(Math.round(Number(offer.priceTon) * 1_000_000_000)).toString();
-      const sellerFriendly = (() => {
-        try {
-          return Address.parse(offer.sellerAddress).toString({ bounceable: true, testOnly: isTestnet });
-        } catch {
-          return offer.sellerAddress;
-        }
-      })();
+      const depositTx = buildEscrowDeposit(escrowConfig, nanotons, isTestnet);
 
       const sendResult = await TransactionService.sendTransaction(
         tonConnectUI,
-        {
-          validUntil: Math.floor(Date.now() / 1000) + 300,
-          messages: [{ address: sellerFriendly, amount: nanotons }],
-        },
-        { network: isTestnet ? "testnet" : "mainnet", verifyBlockchain: true, action: "beneficiary_offer_payment" }
+        depositTx,
+        { network: isTestnet ? "testnet" : "mainnet", verifyBlockchain: true, action: "beneficiary_escrow_deposit" }
       );
       if (!sendResult.success || !sendResult.confirmedInBlock) {
         throw new Error(sendResult.error || "Транзакция не подтверждена");
       }
 
-      await apiService.payBeneficiaryOffer(offer.id, address, sendResult.hash);
+      await apiService.payBeneficiaryOffer(offer.id, address, escrowAddress, sendResult.hash);
       await apiService.createPendingAction({
         actionType: "transfer_beneficiary",
         targetType: "zone",
@@ -3471,6 +3481,7 @@ const ProfileWidget: React.FC = () => {
         targetName: offer.zoneName,
         requestedBy: address,
         newPartnerAddress: address,
+        escrowAddress,
       });
       showSnackbar(t("marketBeneficiaryOfferPaid") || "Оплачено — площадка исполнит смену бенефициара", "success");
       loadBeneficiaryOffers();
