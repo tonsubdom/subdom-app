@@ -3319,10 +3319,17 @@ const ProfileWidget: React.FC = () => {
   }, []);
 
   // ====== Продажа бенефициарства (Market -> Коллекции) ======
-  // Без эскроу-контракта — P2P-оплата напрямую продавцу, смену partner_addr
-  // на контракте исполняет площадка через ту же очередь pending_admin_actions,
-  // что и деактивацию (см. BeneficiariesTab.tsx в MarketPage — там же browsing
-  // чужих листингов/офферов; тут — управление своими).
+  // Оплата — депозит в одноразовый эскроу-контракт (см. escrow.fc), смену
+  // partner_addr на зоне исполняет площадка через ту же очередь
+  // pending_admin_actions, что и деактивацию (см. BeneficiariesTab.tsx в
+  // MarketPage — там же browsing чужих листингов/офферов; тут — управление
+  // своими).
+  //
+  // address (useTonAddress()) — friendly-формат (регистрозависимый, с
+  // чек-суммой). Нормализация в raw+lowercase для БД/сравнений теперь
+  // делается централизованно внутри apiService (normalizeAddress,
+  // см. utils/tonUtils.ts) для каждого beneficiary-метода — тут просто
+  // передаём address как есть, не дублируя конвертацию на этом уровне.
 
   const [myBeneficiaryListings, setMyBeneficiaryListings] = useState<Map<string, any>>(new Map());
   const [listingModalZone, setListingModalZone] = useState<Zone | null>(null);

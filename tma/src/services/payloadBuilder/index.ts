@@ -208,9 +208,15 @@ export function buildChangePartnerShare(
 // самостоятельно, если площадка не отреагирует до deadline, не зависит от
 // площадки вообще.
 
-export function computeEscrowAddress(config: EscrowConfig, isTestnet: boolean): string {
+// Raw-формат ("0:hex"), а не friendly (base64url) — этот адрес сохраняется
+// в БД и проходит через .toLowerCase() при записи в beneficiary_listings/
+// offers/pending_admin_actions (тот же приём, что и у zoneAddress/
+// collectionAddress везде в проекте). Friendly-адрес регистро-зависим
+// (содержит чек-сумму) — lowercase на нём ломает Address.parse() ниже по
+// цепочке ("Invalid checksum", поймано юзером вживую на реальном тесте).
+export function computeEscrowAddress(config: EscrowConfig, _isTestnet: boolean): string {
   const { address } = prepareEscrow(config);
-  return friendly(address, isTestnet);
+  return address.toRawString();
 }
 
 export function buildEscrowDeposit(config: EscrowConfig, amountNanotons: string, isTestnet: boolean, queryId = 0): TransactionResponse {
