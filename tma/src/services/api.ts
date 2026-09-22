@@ -1,4 +1,6 @@
 // src/services/api.ts
+import { normalizeAddress } from '@/utils/tonUtils';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'';
 
 // ========== ТИПЫ ==========
@@ -1055,10 +1057,19 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     escrowAddress?: string;
   }): Promise<{ success: boolean; data?: any; alreadyPending?: boolean; message?: string }> {
     try {
+      // newPartnerAddress/escrowAddress хранятся и сравниваются на бэкенде
+      // по регистру (LOWER()) и парсятся обратно через Address.parse() на
+      // фронте (PendingActionsPanel) — нормализуем на границе с сетью, а не
+      // полагаемся, что каждый вызывающий код сделает это сам.
+      const payload = {
+        ...data,
+        newPartnerAddress: data.newPartnerAddress ? normalizeAddress(data.newPartnerAddress) : data.newPartnerAddress,
+        escrowAddress: data.escrowAddress ? normalizeAddress(data.escrowAddress) : data.escrowAddress,
+      };
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/admin/pending-actions`), {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
@@ -1111,9 +1122,14 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
   }
 
   // ========== MARKET -> КОЛЛЕКЦИИ (продажа бенефициарства Proxy-зон) ==========
-  // Без эскроу-контракта — покупатель платит продавцу напрямую (двухходовая
-  // верификация, как и везде в проекте), смену бенефициара на контракте
-  // исполняет площадка через createPendingAction(actionType='transfer_beneficiary').
+  // Оплата — депозит в эскроу (см. payloadBuilder/escrow.ts), смену
+  // бенефициара на контракте исполняет площадка через
+  // createPendingAction(actionType='transfer_beneficiary'). Все адреса
+  // кошельков (seller/buyer) нормализуются здесь в raw+lowercase через
+  // normalizeAddress — бэкенд хранит и сравнивает их по регистру (LOWER()),
+  // а friendly-формат (useTonAddress()) регистрозависим (чек-сумма), так
+  // что без нормализации на границе с сетью адрес одной и той же зоны/
+  // юзера может не совпасть сам с собой между разными вызовами.
 
   async createBeneficiaryListing(data: {
     zoneAddress: string;
@@ -1122,10 +1138,11 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     priceTon: number;
   }): Promise<{ success: boolean; data?: any; alreadyListed?: boolean; message?: string }> {
     try {
+      const payload = { ...data, sellerAddress: normalizeAddress(data.sellerAddress) };
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/listings`), {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
@@ -1139,7 +1156,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     try {
       const query = new URLSearchParams();
       if (params.status) query.set('status', params.status);
-      if (params.sellerAddress) query.set('sellerAddress', params.sellerAddress);
+      if (params.sellerAddress) query.set('sellerAddress', normalizeAddress(params.sellerAddress));
       const qs = query.toString();
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/listings${qs ? `?${qs}` : ''}`), { headers: this.getHeaders() });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -1155,7 +1172,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/listings/${id}/reserve`), {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ buyerAddress }),
+        body: JSON.stringify({ buyerAddress: normalizeAddress(buyerAddress) }),
       });
       const json = await response.json();
       if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
@@ -1171,7 +1188,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/listings/${id}/confirm-payment`), {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ buyerAddress, escrowAddress, paymentTxHash }),
+        body: JSON.stringify({ buyerAddress: normalizeAddress(buyerAddress), escrowAddress: normalizeAddress(escrowAddress), paymentTxHash }),
       });
       const json = await response.json();
       if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
@@ -1187,7 +1204,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/listings/${id}/cancel`), {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ sellerAddress }),
+        body: JSON.stringify({ sellerAddress: normalizeAddress(sellerAddress) }),
       });
       const json = await response.json();
       if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
@@ -1206,10 +1223,11 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     priceTon: number;
   }): Promise<{ success: boolean; data?: any; message?: string }> {
     try {
+      const payload = { ...data, buyerAddress: normalizeAddress(data.buyerAddress), sellerAddress: normalizeAddress(data.sellerAddress) };
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers`), {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       return await response.json();
@@ -1222,8 +1240,8 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
   async getBeneficiaryOffers(params: { sellerAddress?: string; buyerAddress?: string; status?: string } = {}): Promise<{ success: boolean; data?: any[]; message?: string }> {
     try {
       const query = new URLSearchParams();
-      if (params.sellerAddress) query.set('sellerAddress', params.sellerAddress);
-      if (params.buyerAddress) query.set('buyerAddress', params.buyerAddress);
+      if (params.sellerAddress) query.set('sellerAddress', normalizeAddress(params.sellerAddress));
+      if (params.buyerAddress) query.set('buyerAddress', normalizeAddress(params.buyerAddress));
       if (params.status) query.set('status', params.status);
       const qs = query.toString();
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers${qs ? `?${qs}` : ''}`), { headers: this.getHeaders() });
@@ -1240,7 +1258,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers/${id}/accept`), {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ sellerAddress }),
+        body: JSON.stringify({ sellerAddress: normalizeAddress(sellerAddress) }),
       });
       const json = await response.json();
       if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
@@ -1256,7 +1274,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers/${id}/decline`), {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ sellerAddress }),
+        body: JSON.stringify({ sellerAddress: normalizeAddress(sellerAddress) }),
       });
       const json = await response.json();
       if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
@@ -1272,7 +1290,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers/${id}/pay`), {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ buyerAddress, escrowAddress, paymentTxHash }),
+        body: JSON.stringify({ buyerAddress: normalizeAddress(buyerAddress), escrowAddress: normalizeAddress(escrowAddress), paymentTxHash }),
       });
       const json = await response.json();
       if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
@@ -1288,7 +1306,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers/${id}/cancel`), {
         method: 'POST',
         headers: this.getHeaders(),
-        body: JSON.stringify({ buyerAddress }),
+        body: JSON.stringify({ buyerAddress: normalizeAddress(buyerAddress) }),
       });
       const json = await response.json();
       if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };

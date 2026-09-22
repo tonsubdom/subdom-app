@@ -29,6 +29,26 @@ export function convertUserFriendlyToRaw(userFriendlyAddress: string): string {
 }
 
 /**
+ * Канонический raw+lowercase адрес — тот же паттерн, что уже используется в
+ * TransactionService.ts (Address.parse(x).toRawString().toLowerCase()) для
+ * сверки destination-адреса при подтверждении транзакции. Стандартный
+ * способ приводить адрес к виду, безопасному для хранения/сравнения в БД —
+ * friendly-адрес регистрозависим (чек-сумма в base64url), lowercase на нём
+ * ломает Address.parse() ниже по цепочке ("Invalid checksum", поймано
+ * юзером вживую при тесте продажи бенефициарства). Использовать на границе
+ * с сетью (apiService) для любого адреса, который потом хранится/
+ * сравнивается на бэкенде или парсится обратно на фронте/контракте.
+ */
+export function normalizeAddress(address: string): string {
+  try {
+    return Address.parse(address).toRawString().toLowerCase();
+  } catch (error) {
+    console.error('Ошибка нормализации адреса:', error);
+    return address;
+  }
+}
+
+/**
  * Конвертирует raw адрес (0:...) в user-friendly формат (kQ...)
  */
 export function convertRawToUserFriendly(rawAddress: string): string {
