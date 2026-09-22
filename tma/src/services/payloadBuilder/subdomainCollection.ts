@@ -127,3 +127,15 @@ export function buildChangeContentBody(newContent: OffchainContent, newRoyaltyPa
 export function buildReturnBalanceBody(queryId = 0): Cell {
   return beginCell().storeUint(OpCode.return_balance, 32).storeUint(queryId, 64).endCell();
 }
+
+// Смена получателя партнёрской доли (90% с аукционов зоны) — используется
+// для продажи "бенефициарства" (Market -> Коллекции). Меняет только адрес,
+// share/denominator должны быть текущими значениями с ончейна (см.
+// getPartnerShare в tonUtils.ts) — продаём долю, а не пересматриваем процент.
+export function buildChangePartnerShareBody(newPartnerShare: PartnerShare, queryId = 0): Cell {
+  return beginCell()
+    .storeUint(OpCode.change_partner_share, 32)
+    .storeUint(queryId, 64)
+    .storeRef(serializePartnerShare(newPartnerShare))
+    .endCell();
+}

@@ -18,7 +18,7 @@ import { Address, beginCell, Cell, storeStateInit } from '@ton/core';
 import * as Dns from './dns';
 import * as ProxyItem from './proxyItem';
 import * as SubdomainItem from './subdomainItem';
-import { prepareSubdomainCollection, buildTopUpBody as buildSubdomainTopUpBody, type SubdomainCollectionData } from './subdomainCollection';
+import { prepareSubdomainCollection, buildTopUpBody as buildSubdomainTopUpBody, buildChangePartnerShareBody, type SubdomainCollectionData, type PartnerShare } from './subdomainCollection';
 import { prepareSbtSubdomainCollection, buildTopUpBody as buildSbtTopUpBody, buildChangeContentBody, type SbtSubdomainCollectionData, type SbtOffchainContent } from './sbtSubdomainCollection';
 
 export interface TonConnectMessage {
@@ -159,6 +159,31 @@ export function buildChangeContent(
         address: friendly(Address.parse(collectionAddress), isTestnet),
         amount: '50000000', // 0.05 TON
         payload: cellToBase64(buildChangeContentBody(newContent, queryId)),
+      },
+    ],
+  };
+}
+
+// ============ change_partner_share (продажа бенефициарства, PendingActionsPanel) ============
+// НЕ путать с change_owner (buildChangeOwnerBody в subdomainCollection.ts) —
+// тот меняет админского owner_addr коллекции (платформенный адрес), а не
+// получателя 90% с аукционов. share/denominator в newPartnerShare должны
+// быть текущими значениями с ончейна (см. getPartnerShare в tonUtils.ts) —
+// меняем только адрес.
+
+export function buildChangePartnerShare(
+  collectionAddress: string,
+  newPartnerShare: PartnerShare,
+  isTestnet: boolean,
+  queryId = 0
+): TransactionResponse {
+  return {
+    validUntil: validUntil(),
+    messages: [
+      {
+        address: friendly(Address.parse(collectionAddress), isTestnet),
+        amount: '50000000', // 0.05 TON
+        payload: cellToBase64(buildChangePartnerShareBody(newPartnerShare, queryId)),
       },
     ],
   };

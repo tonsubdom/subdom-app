@@ -1051,6 +1051,7 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     targetCollectionAddress?: string;
     targetName: string;
     requestedBy: string;
+    newPartnerAddress?: string;
   }): Promise<{ success: boolean; data?: any; alreadyPending?: boolean; message?: string }> {
     try {
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/admin/pending-actions`), {
@@ -1104,6 +1105,195 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
       return await response.json();
     } catch (error: any) {
       console.error('Error completing pending action:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  // ========== MARKET -> КОЛЛЕКЦИИ (продажа бенефициарства Proxy-зон) ==========
+  // Без эскроу-контракта — покупатель платит продавцу напрямую (двухходовая
+  // верификация, как и везде в проекте), смену бенефициара на контракте
+  // исполняет площадка через createPendingAction(actionType='transfer_beneficiary').
+
+  async createBeneficiaryListing(data: {
+    zoneAddress: string;
+    zoneName: string;
+    sellerAddress: string;
+    priceTon: number;
+  }): Promise<{ success: boolean; data?: any; alreadyListed?: boolean; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/listings`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error creating beneficiary listing:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getBeneficiaryListings(params: { status?: string; sellerAddress?: string } = {}): Promise<{ success: boolean; data?: any[]; message?: string }> {
+    try {
+      const query = new URLSearchParams();
+      if (params.status) query.set('status', params.status);
+      if (params.sellerAddress) query.set('sellerAddress', params.sellerAddress);
+      const qs = query.toString();
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/listings${qs ? `?${qs}` : ''}`), { headers: this.getHeaders() });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error fetching beneficiary listings:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async reserveBeneficiaryListing(id: number, buyerAddress: string): Promise<{ success: boolean; data?: any; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/listings/${id}/reserve`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ buyerAddress }),
+      });
+      const json = await response.json();
+      if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
+      return json;
+    } catch (error: any) {
+      console.error('Error reserving beneficiary listing:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async confirmBeneficiaryListingPayment(id: number, buyerAddress: string, paymentTxHash?: string): Promise<{ success: boolean; data?: any; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/listings/${id}/confirm-payment`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ buyerAddress, paymentTxHash }),
+      });
+      const json = await response.json();
+      if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
+      return json;
+    } catch (error: any) {
+      console.error('Error confirming beneficiary listing payment:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async cancelBeneficiaryListing(id: number, sellerAddress: string): Promise<{ success: boolean; data?: any; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/listings/${id}/cancel`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ sellerAddress }),
+      });
+      const json = await response.json();
+      if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
+      return json;
+    } catch (error: any) {
+      console.error('Error cancelling beneficiary listing:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async createBeneficiaryOffer(data: {
+    zoneAddress: string;
+    zoneName: string;
+    buyerAddress: string;
+    sellerAddress: string;
+    priceTon: number;
+  }): Promise<{ success: boolean; data?: any; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error creating beneficiary offer:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getBeneficiaryOffers(params: { sellerAddress?: string; buyerAddress?: string; status?: string } = {}): Promise<{ success: boolean; data?: any[]; message?: string }> {
+    try {
+      const query = new URLSearchParams();
+      if (params.sellerAddress) query.set('sellerAddress', params.sellerAddress);
+      if (params.buyerAddress) query.set('buyerAddress', params.buyerAddress);
+      if (params.status) query.set('status', params.status);
+      const qs = query.toString();
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers${qs ? `?${qs}` : ''}`), { headers: this.getHeaders() });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error fetching beneficiary offers:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async acceptBeneficiaryOffer(id: number, sellerAddress: string): Promise<{ success: boolean; data?: any; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers/${id}/accept`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ sellerAddress }),
+      });
+      const json = await response.json();
+      if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
+      return json;
+    } catch (error: any) {
+      console.error('Error accepting beneficiary offer:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async declineBeneficiaryOffer(id: number, sellerAddress: string): Promise<{ success: boolean; data?: any; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers/${id}/decline`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ sellerAddress }),
+      });
+      const json = await response.json();
+      if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
+      return json;
+    } catch (error: any) {
+      console.error('Error declining beneficiary offer:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async payBeneficiaryOffer(id: number, buyerAddress: string, paymentTxHash?: string): Promise<{ success: boolean; data?: any; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers/${id}/pay`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ buyerAddress, paymentTxHash }),
+      });
+      const json = await response.json();
+      if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
+      return json;
+    } catch (error: any) {
+      console.error('Error paying beneficiary offer:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async cancelBeneficiaryOffer(id: number, buyerAddress: string): Promise<{ success: boolean; data?: any; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/offers/${id}/cancel`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ buyerAddress }),
+      });
+      const json = await response.json();
+      if (!response.ok) return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
+      return json;
+    } catch (error: any) {
+      console.error('Error cancelling beneficiary offer:', error);
       return { success: false, message: error.message };
     }
   }

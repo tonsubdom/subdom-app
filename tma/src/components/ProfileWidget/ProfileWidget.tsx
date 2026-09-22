@@ -2319,6 +2319,8 @@ import { useBlockchainScanUi } from "@/hooks/useBlockchainLoadProgress";
 import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
 import { convertUserFriendlyToRaw, getZoneImageUrl } from "@/utils/tonUtils";
+import { TransactionService } from "@/services/transactionService";
+import { Address } from "@ton/core";
 import { ScanProgressLoader } from "@/components/ScanProgressLoader";
 import {
   resolveDomainNftAddress,
@@ -3310,6 +3312,175 @@ const ProfileWidget: React.FC = () => {
     return () => clearInterval(intervalId);
   }, []);
 
+  // ====== Продажа бенефициарства (Market -> Коллекции) ======
+  // Без эскроу-контракта — P2P-оплата напрямую продавцу, смену partner_addr
+  // на контракте исполняет площадка через ту же очередь pending_admin_actions,
+  // что и деактивацию (см. BeneficiariesTab.tsx в MarketPage — там же browsing
+  // чужих листингов/офферов; тут — управление своими).
+
+  const [myBeneficiaryListings, setMyBeneficiaryListings] = useState<Map<string, any>>(new Map());
+  const [listingModalZone, setListingModalZone] = useState<Zone | null>(null);
+  const [listingPriceInput, setListingPriceInput] = useState("");
+  const [listingBusy, setListingBusy] = useState(false);
+
+  const [incomingBeneficiaryOffers, setIncomingBeneficiaryOffers] = useState<any[]>([]);
+  const [outgoingBeneficiaryOffers, setOutgoingBeneficiaryOffers] = useState<any[]>([]);
+  const [offerBusyId, setOfferBusyId] = useState<number | null>(null);
+
+  const loadMyBeneficiaryListings = () => {
+    if (!address) return;
+    apiService
+      .getBeneficiaryListings({ sellerAddress: address })
+      .then((result) => {
+        const map = new Map<string, any>();
+        (result.data || [])
+          .filter((l: any) => l.status === "active" || l.status === "reserved")
+          .forEach((l: any) => map.set(l.zoneAddress.toLowerCase(), l));
+        setMyBeneficiaryListings(map);
+      })
+      .catch(() => {});
+  };
+
+  const loadBeneficiaryOffers = () => {
+    if (!address) return;
+    apiService
+      .getBeneficiaryOffers({ sellerAddress: address, status: "pending" })
+      .then((result) => setIncomingBeneficiaryOffers(result.data || []))
+      .catch(() => {});
+    apiService
+      .getBeneficiaryOffers({ buyerAddress: address })
+      .then((result) =>
+        setOutgoingBeneficiaryOffers(
+          (result.data || []).filter((o: any) => ["pending", "accepted"].includes(o.status))
+        )
+      )
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadMyBeneficiaryListings();
+    loadBeneficiaryOffers();
+    // Покупатель узнаёт о принятии оффера только поллингом — у бота нет ЛС
+    // с произвольным кошельком (нет telegramId в users), см. план сессии.
+    const intervalId = setInterval(loadBeneficiaryOffers, 30_000);
+    return () => clearInterval(intervalId);
+  }, [address]);
+
+  const confirmCreateListing = async () => {
+    if (!listingModalZone || !address) return;
+    const price = Number(listingPriceInput);
+    if (!Number.isFinite(price) || price <= 0) {
+      showSnackbar(t("marketBeneficiaryInvalidPrice") || "Укажите цену в TON", "error");
+      return;
+    }
+    setListingBusy(true);
+    try {
+      const result = await apiService.createBeneficiaryListing({
+        zoneAddress: listingModalZone.address,
+        zoneName: listingModalZone.name,
+        sellerAddress: address,
+        priceTon: price,
+      });
+      if (!result.success) throw new Error(result.message || "Не удалось создать листинг");
+      showSnackbar(t("marketBeneficiaryListed") || "Зона выставлена на продажу", "success");
+      setListingModalZone(null);
+      setListingPriceInput("");
+      loadMyBeneficiaryListings();
+    } catch (error: any) {
+      showSnackbar(error?.message || t("zoneToggleError") || "Ошибка", "error");
+    } finally {
+      setListingBusy(false);
+    }
+  };
+
+  const cancelBeneficiaryListing = async (listingId: number) => {
+    if (!address) return;
+    try {
+      const result = await apiService.cancelBeneficiaryListing(listingId, address);
+      if (!result.success) throw new Error(result.message || "Не удалось снять с продажи");
+      showSnackbar(t("marketBeneficiaryListingCancelled") || "Листинг снят с продажи", "success");
+      loadMyBeneficiaryListings();
+    } catch (error: any) {
+      showSnackbar(error?.message || t("zoneToggleError") || "Ошибка", "error");
+    }
+  };
+
+  const handleAcceptBeneficiaryOffer = async (offer: any) => {
+    if (!address) return;
+    setOfferBusyId(offer.id);
+    try {
+      const result = await apiService.acceptBeneficiaryOffer(offer.id, address);
+      if (!result.success) throw new Error(result.message || "Не удалось принять оффер");
+      showSnackbar(t("marketBeneficiaryOfferAccepted") || "Оффер принят — ждём оплату покупателя", "success");
+      loadBeneficiaryOffers();
+    } catch (error: any) {
+      showSnackbar(error?.message || t("zoneToggleError") || "Ошибка", "error");
+    } finally {
+      setOfferBusyId(null);
+    }
+  };
+
+  const handleDeclineBeneficiaryOffer = async (offer: any) => {
+    if (!address) return;
+    setOfferBusyId(offer.id);
+    try {
+      const result = await apiService.declineBeneficiaryOffer(offer.id, address);
+      if (!result.success) throw new Error(result.message || "Не удалось отклонить оффер");
+      loadBeneficiaryOffers();
+    } catch (error: any) {
+      showSnackbar(error?.message || t("zoneToggleError") || "Ошибка", "error");
+    } finally {
+      setOfferBusyId(null);
+    }
+  };
+
+  // Покупатель платит после того, как продавец принял его оффер — тот же
+  // P2P-платёж + createPendingAction, что и при "Забрать" листинг в
+  // BeneficiariesTab.tsx.
+  const handlePayBeneficiaryOffer = async (offer: any) => {
+    if (!address || !wallet) return;
+    setOfferBusyId(offer.id);
+    try {
+      const nanotons = BigInt(Math.round(Number(offer.priceTon) * 1_000_000_000)).toString();
+      const sellerFriendly = (() => {
+        try {
+          return Address.parse(offer.sellerAddress).toString({ bounceable: true, testOnly: isTestnet });
+        } catch {
+          return offer.sellerAddress;
+        }
+      })();
+
+      const sendResult = await TransactionService.sendTransaction(
+        tonConnectUI,
+        {
+          validUntil: Math.floor(Date.now() / 1000) + 300,
+          messages: [{ address: sellerFriendly, amount: nanotons }],
+        },
+        { network: isTestnet ? "testnet" : "mainnet", verifyBlockchain: true, action: "beneficiary_offer_payment" }
+      );
+      if (!sendResult.success || !sendResult.confirmedInBlock) {
+        throw new Error(sendResult.error || "Транзакция не подтверждена");
+      }
+
+      await apiService.payBeneficiaryOffer(offer.id, address, sendResult.hash);
+      await apiService.createPendingAction({
+        actionType: "transfer_beneficiary",
+        targetType: "zone",
+        targetAddress: offer.zoneAddress,
+        targetCollectionAddress: offer.zoneAddress,
+        targetName: offer.zoneName,
+        requestedBy: address,
+        newPartnerAddress: address,
+      });
+      showSnackbar(t("marketBeneficiaryOfferPaid") || "Оплачено — площадка исполнит смену бенефициара", "success");
+      loadBeneficiaryOffers();
+    } catch (error: any) {
+      showSnackbar(error?.message || t("zoneToggleError") || "Ошибка", "error");
+    } finally {
+      setOfferBusyId(null);
+    }
+  };
+
   // ====== [NEW] СУБДОМЕНЫ ПОЛЬЗОВАТЕЛЯ — ИЗ БЛОКЧЕЙНА ======
 
   // Деактивация SBT-зоны в смартконтракте каскадно инактивирует и её
@@ -4176,6 +4347,148 @@ const ProfileWidget: React.FC = () => {
               </button>
             )}
 
+            {!isSbtZone && !isInactiveDuplicate && (() => {
+              const myListing = myBeneficiaryListings.get(zone.address.toLowerCase());
+              const zoneIncomingOffers = incomingBeneficiaryOffers.filter(
+                (o) => o.zoneAddress.toLowerCase() === zone.address.toLowerCase()
+              );
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignSelf: "flex-start" }}>
+                  {myListing ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span style={{ fontSize: "10px", color: colors.text, opacity: 0.8 }}>
+                        {t("marketBeneficiaryListedAt") || "На продаже"}: {myListing.priceTon} TON
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          cancelBeneficiaryListing(myListing.id);
+                        }}
+                        style={{
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          padding: "2px 8px",
+                          borderRadius: "10px",
+                          border: `1px solid ${colors.border}`,
+                          background: "transparent",
+                          color: colors.text,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {t("marketBeneficiaryUnlist") || "Снять"}
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setListingModalZone(zone);
+                      }}
+                      style={{
+                        alignSelf: "flex-start",
+                        fontSize: "10px",
+                        fontWeight: "700",
+                        padding: "2px 8px",
+                        borderRadius: "10px",
+                        border: `1px solid ${colors.primary}`,
+                        background: "transparent",
+                        color: colors.primary,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {t("marketBeneficiarySellButton") || "Выставить на продажу"}
+                    </button>
+                  )}
+
+                  {zoneIncomingOffers.length > 0 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                      {zoneIncomingOffers.map((offer) => (
+                        <div
+                          key={offer.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            fontSize: "10px",
+                            color: colors.text,
+                          }}
+                        >
+                          <span>
+                            {t("marketBeneficiaryOfferFrom") || "Оффер"}: {offer.priceTon} TON ({offer.buyerAddress.slice(0, 6)}...{offer.buyerAddress.slice(-4)})
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAcceptBeneficiaryOffer(offer);
+                            }}
+                            disabled={offerBusyId === offer.id}
+                            style={{
+                              fontSize: "10px",
+                              fontWeight: 700,
+                              padding: "2px 8px",
+                              borderRadius: "10px",
+                              border: "1px solid #10B981",
+                              background: "transparent",
+                              color: "#10B981",
+                              cursor: offerBusyId === offer.id ? "default" : "pointer",
+                            }}
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeclineBeneficiaryOffer(offer);
+                            }}
+                            disabled={offerBusyId === offer.id}
+                            style={{
+                              fontSize: "10px",
+                              fontWeight: 700,
+                              padding: "2px 8px",
+                              borderRadius: "10px",
+                              border: "1px solid #e53935",
+                              background: "transparent",
+                              color: "#e53935",
+                              cursor: offerBusyId === offer.id ? "default" : "pointer",
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {outgoingBeneficiaryOffers
+              .filter((o) => o.zoneAddress.toLowerCase() === zone.address.toLowerCase() && o.status === "accepted")
+              .map((offer) => (
+                <div key={offer.id} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "10px", color: colors.text, alignSelf: "flex-start" }}>
+                  <span>{t("marketBeneficiaryOfferAcceptedForYou") || "Ваш оффер принят"}: {offer.priceTon} TON</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePayBeneficiaryOffer(offer);
+                    }}
+                    disabled={offerBusyId === offer.id}
+                    style={{
+                      fontSize: "10px",
+                      fontWeight: 700,
+                      padding: "2px 8px",
+                      borderRadius: "10px",
+                      border: "1px solid #10B981",
+                      background: "transparent",
+                      color: "#10B981",
+                      cursor: offerBusyId === offer.id ? "default" : "pointer",
+                    }}
+                  >
+                    {offerBusyId === offer.id ? "..." : (t("marketBeneficiaryPayOffer") || "Оплатить")}
+                  </button>
+                </div>
+              ))}
+
             <div>
               <p
                 style={{
@@ -4972,6 +5285,140 @@ const ProfileWidget: React.FC = () => {
                 {sbtToggleInProgress
                   ? t("processing") || "Отправка..."
                   : t("deactivate") || "Деактивировать"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {listingModalZone && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)",
+            zIndex: 10000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => {
+            if (!listingBusy) {
+              setListingModalZone(null);
+              setListingPriceInput("");
+            }
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: colors.background,
+              borderRadius: "16px",
+              padding: "24px",
+              maxWidth: "380px",
+              width: "100%",
+              border: `1px solid ${colors.border}`,
+              boxShadow: `0 10px 40px ${colors.shadow}`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: "40px", textAlign: "center", marginBottom: "12px" }}>🏦</div>
+            <h3
+              style={{
+                margin: "0 0 12px 0",
+                fontSize: "17px",
+                fontWeight: 700,
+                color: colors.text,
+                textAlign: "center",
+                fontFamily: "monospace",
+              }}
+            >
+              {t("marketBeneficiarySellTitle") || "Выставить бенефициарство на продажу"}
+            </h3>
+            <p
+              style={{
+                margin: "0 0 8px 0",
+                fontSize: "13px",
+                color: colors.text,
+                textAlign: "center",
+                fontWeight: 700,
+              }}
+            >
+              {listingModalZone.name}
+            </p>
+            <p
+              style={{
+                margin: "0 0 16px 0",
+                fontSize: "13px",
+                color: colors.text,
+                opacity: 0.85,
+                lineHeight: 1.5,
+                textAlign: "center",
+              }}
+            >
+              {t("marketBeneficiarySellText") ||
+                "Покупатель заплатит вам напрямую указанную сумму, после чего площадка сменит получателя 90% с аукционов этой зоны на его адрес."}
+            </p>
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              placeholder="TON"
+              value={listingPriceInput}
+              onChange={(e) => setListingPriceInput(e.target.value)}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "10px 12px",
+                borderRadius: "10px",
+                border: `1px solid ${colors.border}`,
+                background: colors.secondaryBg,
+                color: colors.text,
+                fontSize: "14px",
+                marginBottom: "16px",
+              }}
+            />
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => {
+                  setListingModalZone(null);
+                  setListingPriceInput("");
+                }}
+                disabled={listingBusy}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: `1px solid ${colors.border}`,
+                  background: "transparent",
+                  color: colors.text,
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  cursor: listingBusy ? "default" : "pointer",
+                  opacity: listingBusy ? 0.5 : 1,
+                }}
+              >
+                {t("cancel") || "Отмена"}
+              </button>
+              <button
+                onClick={confirmCreateListing}
+                disabled={listingBusy}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: listingBusy ? colors.border : colors.primary,
+                  color: "#FFFFFF",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: listingBusy ? "default" : "pointer",
+                }}
+              >
+                {listingBusy ? t("processing") || "Отправка..." : t("marketBeneficiarySellButton") || "Выставить на продажу"}
               </button>
             </div>
           </div>

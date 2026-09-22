@@ -1965,6 +1965,7 @@ const LANG = {
     dnsRecordDeleted: '🔓 <b>DNS-ЗАПИСЬ ОТВЯЗАНА!</b>',
     contentUpdated: '🖼️ <b>ОБНОВЛЕНИЕ ОНЧЕЙН-ПРОФИЛЯ</b>',
     deactivationRequested: '⏳ <b>ЗАПРОС НА ДЕАКТИВАЦИЮ ЗОНЫ!</b>',
+    beneficiaryTransferRequested: '💼 <b>ЗАПРОС НА СМЕНУ БЕНЕФИЦИАРА ЗОНЫ!</b>',
     storageDealCreated: '📦 <b>ТОРРЕНТ ОПЛАЧЕН, ХРАНЕНИЕ ЗАПУЩЕНО!</b>',
 
     // Поля уведомлений
@@ -2025,7 +2026,9 @@ const LANG = {
     fieldRegisteredAt: '⏰ Время регистрации',
     fieldTime: '⏰ Время',
     fieldRequestedBy: '👤 Запросил',
+    fieldNewBeneficiary: '🎯 Новый бенефициар',
     btnReviewDeactivation: '🔍 Перейти к исполнению',
+    btnReviewBeneficiaryTransfer: '🔍 Перейти к исполнению',
 
     // Подсказки
     hintProxyZone: '💡 Теперь можно создавать субдомены в этой Proxy-зоне!',
@@ -2209,6 +2212,7 @@ const LANG = {
     dnsRecordDeleted: '🔓 <b>DNS RECORD UNLINKED!</b>',
     contentUpdated: '🖼️ <b>ON-CHAIN PROFILE UPDATED</b>',
     deactivationRequested: '⏳ <b>ZONE DEACTIVATION REQUESTED!</b>',
+    beneficiaryTransferRequested: '💼 <b>BENEFICIARY TRANSFER REQUESTED!</b>',
     storageDealCreated: '📦 <b>TORRENT PAID, STORAGE STARTED!</b>',
 
     // Поля уведомлений
@@ -2269,7 +2273,9 @@ const LANG = {
     fieldRegisteredAt: '⏰ Registered',
     fieldTime: '⏰ Time',
     fieldRequestedBy: '👤 Requested by',
+    fieldNewBeneficiary: '🎯 New beneficiary',
     btnReviewDeactivation: '🔍 Review & execute',
+    btnReviewBeneficiaryTransfer: '🔍 Review & execute',
 
     // Подсказки
     hintProxyZone: '💡 You can now create subdomains in this Proxy zone!',
@@ -3901,6 +3907,40 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       });
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления о заявке на деактивацию:', error);
+    }
+  }
+
+  // Юзер принял оффер/забрал листинг на продажу бенефициарства (Market ->
+  // Коллекции) и оплатил P2P-переводом — но change_partner_share на
+  // Proxy-коллекции может вызвать только адрес площадки, поэтому смена
+  // бенефициара идёт через ту же очередь pending_admin_actions, что и
+  // деактивация зоны (см. server-sqlite.ts, actionType='transfer_beneficiary').
+  async sendPendingBeneficiaryTransferNotification(name: string, address: string, requestedBy: string, newPartnerAddress: string, isTestnet: boolean = true): Promise<void> {
+    if (!this.isBotAvailable()) return;
+
+    try {
+      const $ = LANG.ru;
+      const network = this.formatNetwork(isTestnet);
+      const message = `
+${$.beneficiaryTransferRequested}
+
+${network}
+${$.fieldName}: <code>${name}</code>
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldRequestedBy}: ${await this.formatTonviewerLink(requestedBy, isTestnet)}
+${$.fieldNewBeneficiary}: ${await this.formatTonviewerLink(newPartnerAddress, isTestnet)}
+
+${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
+      `.trim();
+
+      const inlineKeyboard = [[{ text: $.btnReviewBeneficiaryTransfer, url: DeeplinkUtils.generateAdminPendingActionsLink() }]];
+
+      await this.bot!.sendMessage(this.ownerId, message, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: inlineKeyboard }
+      });
+    } catch (error) {
+      console.error('❌ Ошибка при отправке уведомления о заявке на смену бенефициара:', error);
     }
   }
 

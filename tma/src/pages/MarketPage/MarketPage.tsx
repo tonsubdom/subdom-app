@@ -18,9 +18,10 @@ import { useTutorial } from '@/contexts/TutorialContext';
 import { track } from '@/utils/analytics';
 import { decodeDomainForDisplay, isPunycodeEncoded } from '@/utils/domainPunycode';
 import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-items-utils';
+import { BeneficiariesTab } from './BeneficiariesTab';
 
 // Типы для табов
-type TabType = 'subdomains' | 'nft-wrappers';
+type TabType = 'subdomains' | 'nft-wrappers' | 'beneficiaries';
 
 // interface MarketItem {
 //   id: string; // Используем адрес NFT как ID
@@ -785,8 +786,33 @@ const MarketPage: React.FC = () => {
           >
             🔒 {t('marketTabZones')}
           </button>
+          <button
+            onClick={() => setActiveTab('beneficiaries')}
+            style={{
+              flex: 1,
+              padding: '12px',
+              background: activeTab === 'beneficiaries' ? colors.tabActive : colors.tabInactive,
+              color: activeTab === 'beneficiaries' ? '#FFFFFF' : colors.text,
+              border: 'none',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            🏦 {t('marketTabBeneficiaries')}
+          </button>
         </div>
 
+        {activeTab === 'beneficiaries' ? (
+          <>
+            <p style={{ fontSize: '13px', color: colors.textSecondary, textAlign: 'center', margin: '0 0 16px 0' }}>
+              {t('marketBeneficiariesSubtitle')}
+            </p>
+            <BeneficiariesTab colors={colors} isTestnet={isTestnet} t={t} walletAddress={wallet?.account?.address} />
+          </>
+        ) : (
+        <>
         {/* ФИКСИРОВАННЫЙ ВЕРХНИЙ БЛОК с поиском, фильтрами и статистикой */}
         <div 
           ref={headerRef}
@@ -1444,6 +1470,8 @@ const MarketPage: React.FC = () => {
             </span>
           </div> */}
         </div>
+        </>
+        )}
       </div>
 
       {tutorial.active && tutorial.isStepDone('torrent_created') && !tutorial.isStepDone('market_toured') && (
