@@ -19,6 +19,14 @@ import * as Dns from './dns';
 import * as ProxyItem from './proxyItem';
 import * as SubdomainItem from './subdomainItem';
 import { prepareSubdomainCollection, buildTopUpBody as buildSubdomainTopUpBody, buildChangePartnerShareBody, type SubdomainCollectionData, type PartnerShare } from './subdomainCollection';
+import {
+  prepareEscrow,
+  buildDepositBody as buildEscrowDepositBody,
+  buildReleaseBody as buildEscrowReleaseBody,
+  buildRefundBody as buildEscrowRefundBody,
+  buildClaimTimeoutRefundBody as buildEscrowClaimTimeoutRefundBody,
+  type EscrowConfig,
+} from './escrow';
 import { prepareSbtSubdomainCollection, buildTopUpBody as buildSbtTopUpBody, buildChangeContentBody, type SbtSubdomainCollectionData, type SbtOffchainContent } from './sbtSubdomainCollection';
 
 export interface TonConnectMessage {
@@ -184,6 +192,92 @@ export function buildChangePartnerShare(
         address: friendly(Address.parse(collectionAddress), isTestnet),
         amount: '50000000', // 0.05 TON
         payload: cellToBase64(buildChangePartnerShareBody(newPartnerShare, queryId)),
+      },
+    ],
+  };
+}
+
+// ============ Escrow (Market -> Коллекции, продажа бенефициарства) ============
+// Один эскроу-контракт на одну сделку. Покупатель одной транзакцией
+// деплоит его и вносит депозит (buildEscrowDeposit) — тот же паттерн, что
+// deploy_bundle: stateInit + value в одном сообщении. Площадка одним
+// кликом одновременно высвобождает деньги продавцу И меняет получателя
+// на зоне (buildBeneficiaryTransferAndRelease, два сообщения в одной
+// транзакции) — так деньги не зависают отдельно от факта смены владельца
+// дивидендов. claim_timeout_refund — путь покупателя вернуть себе деньги
+// самостоятельно, если площадка не отреагирует до deadline, не зависит от
+// площадки вообще.
+
+export function computeEscrowAddress(config: EscrowConfig, isTestnet: boolean): string {
+  const { address } = prepareEscrow(config);
+  return friendly(address, isTestnet);
+}
+
+export function buildEscrowDeposit(config: EscrowConfig, amountNanotons: string, isTestnet: boolean, queryId = 0): TransactionResponse {
+  const escrow = prepareEscrow(config);
+  return {
+    validUntil: validUntil(),
+    messages: [
+      {
+        address: friendly(escrow.address, isTestnet),
+        amount: amountNanotons,
+        payload: cellToBase64(buildEscrowDepositBody(queryId)),
+        stateInit: stateInitToBase64(escrow.stateInit),
+      },
+    ],
+  };
+}
+
+// Главное "одним кликом" действие площадки: релиз эскроу продавцу +
+// change_partner_share на коллекции зоны — в одной транзакции, чтобы не
+// было окна, где деньги уже переданы, а бенефициар ещё не сменился (или
+// наоборот). share/denominator в newPartnerShare должны быть текущими
+// значениями с ончейна (см. getPartnerShare в tonUtils.ts).
+export function buildBeneficiaryTransferAndRelease(
+  escrowAddress: string,
+  collectionAddress: string,
+  newPartnerShare: PartnerShare,
+  isTestnet: boolean,
+  queryId = 0
+): TransactionResponse {
+  return {
+    validUntil: validUntil(),
+    messages: [
+      {
+        address: friendly(Address.parse(escrowAddress), isTestnet),
+        amount: '20000000', // 0.02 TON на газ — сама выплата идёт из баланса эскроу (raw_reserve + mode 128)
+        payload: cellToBase64(buildEscrowReleaseBody(queryId)),
+      },
+      {
+        address: friendly(Address.parse(collectionAddress), isTestnet),
+        amount: '50000000', // 0.05 TON
+        payload: cellToBase64(buildChangePartnerShareBody(newPartnerShare, queryId)),
+      },
+    ],
+  };
+}
+
+export function buildEscrowRefund(escrowAddress: string, isTestnet: boolean, queryId = 0): TransactionResponse {
+  return {
+    validUntil: validUntil(),
+    messages: [
+      {
+        address: friendly(Address.parse(escrowAddress), isTestnet),
+        amount: '20000000',
+        payload: cellToBase64(buildEscrowRefundBody(queryId)),
+      },
+    ],
+  };
+}
+
+export function buildEscrowClaimTimeoutRefund(escrowAddress: string, isTestnet: boolean, queryId = 0): TransactionResponse {
+  return {
+    validUntil: validUntil(),
+    messages: [
+      {
+        address: friendly(Address.parse(escrowAddress), isTestnet),
+        amount: '20000000',
+        payload: cellToBase64(buildEscrowClaimTimeoutRefundBody(queryId)),
       },
     ],
   };
