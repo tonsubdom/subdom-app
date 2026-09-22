@@ -23,6 +23,16 @@ import { computeEscrowAddress, buildEscrowDeposit } from '@/services/payloadBuil
 import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-context.tsx';
 import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
 import { NETWORK_CONFIGS } from '@/services/blockchainItems/toncenter-api-config';
+import { LupaButton } from '@/components/LupaButton/LupaButton';
+
+const NO_IMAGE_PLACEHOLDER =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 90 90"><rect width="90" height="90" fill="%23f0f0f0"/><text x="45" y="45" font-family="Arial" font-size="10" fill="%23999" text-anchor="middle" dy=".3em">No Image</text></svg>';
+
+// Отображаемое имя зоны без .ton — тот же приём, что и в MiniAppLinkGenerator.stripTonTld
+// на бэкенде (там private, тут просто дублируем regex — сам сервис не экспортирует его).
+function stripTonTld(name: string): string {
+  return name.replace(/\.ton$/i, '');
+}
 
 // Рамки теста — 1 час до self-refund покупателя, если площадка не
 // отреагировала. Перед продакшеном стоит увеличить (см. Log.md 2026-09-22).
@@ -168,6 +178,8 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
   };
 
   const cardStyle: React.CSSProperties = {
+    display: 'flex',
+    gap: '14px',
     padding: '14px',
     borderRadius: '10px',
     background: colors.cardBg,
@@ -215,56 +227,89 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
         const zoneAddressRaw = convertUserFriendlyToRaw(zone.address).toLowerCase();
         const listing = listingByZone.get(zoneAddressRaw);
         const zoneName = zone.domain || zone.name;
+        const displayName = stripTonTld(zoneName);
         const presumedSeller = zone.creator_address || zone.owner_address;
         const takeKey = listing ? `take-${listing.id}` : '';
         const offerKey = `offer-${zoneAddressRaw}`;
 
         return (
           <div key={zone.address} style={cardStyle}>
-            <div style={{ fontWeight: 700, fontSize: '14px', color: colors.text, marginBottom: '6px' }}>{zoneName}</div>
+            <div style={{ flexShrink: 0, position: 'relative' }}>
+              <img
+                src={zone.image || NO_IMAGE_PLACEHOLDER}
+                alt={displayName}
+                loading="lazy"
+                decoding="async"
+                style={{
+                  width: '90px',
+                  height: '90px',
+                  borderRadius: '8px',
+                  objectFit: 'cover',
+                  border: `1px solid ${colors.border}`,
+                }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = NO_IMAGE_PLACEHOLDER;
+                }}
+              />
+              <LupaButton
+                domain={zoneName}
+                address={zone.address}
+                isTestnet={isTestnet}
+                size={26}
+                offset={3}
+                corner="bottom-right"
+                siteResolves={zone.siteResolves}
+              />
+            </div>
 
-            {listing ? (
-              <>
-                <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '8px' }}>
-                  {t('marketBeneficiaryPrice') || 'Цена'}: <strong style={{ color: colors.text }}>{listing.priceTon} TON</strong>
-                  {' · '}
-                  {t('marketBeneficiarySeller') || 'Продавец'}: {shortAddress(listing.sellerAddress)}
-                </div>
-                <button
-                  onClick={() => handleTake(listing)}
-                  disabled={busyKey === takeKey}
-                  style={buttonStyle(busyKey === takeKey)}
-                >
-                  {busyKey === takeKey ? (t('marketBeneficiaryProcessing') || 'Отправка...') : `🤝 ${t('marketBeneficiaryTake') || 'Забрать'}`}
-                </button>
-                {errorByKey[takeKey] && <p style={{ color: colors.error, fontSize: '12px', marginTop: '6px' }}>{errorByKey[takeKey]}</p>}
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '8px' }}>
-                  {t('marketBeneficiaryNotListed') || 'Не выставлена на продажу — можно предложить свою цену'}
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    placeholder="TON"
-                    value={offerInputs[zoneAddressRaw] || ''}
-                    onChange={(e) => setOfferInputs((prev) => ({ ...prev, [zoneAddressRaw]: e.target.value }))}
-                    style={inputStyle}
-                  />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: '14px', color: colors.text, marginBottom: '6px', wordBreak: 'break-word' }}>
+                {displayName}
+              </div>
+
+              {listing ? (
+                <>
+                  <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '8px' }}>
+                    {t('marketBeneficiaryPrice') || 'Цена'}: <strong style={{ color: colors.text }}>{listing.priceTon} TON</strong>
+                    {' · '}
+                    {t('marketBeneficiarySeller') || 'Продавец'}: {shortAddress(listing.sellerAddress)}
+                  </div>
                   <button
-                    onClick={() => handleMakeOffer(zoneAddressRaw, zoneName, presumedSeller)}
-                    disabled={busyKey === offerKey}
-                    style={{ ...buttonStyle(busyKey === offerKey), width: 'auto', padding: '8px 14px' }}
+                    onClick={() => handleTake(listing)}
+                    disabled={busyKey === takeKey}
+                    style={buttonStyle(busyKey === takeKey)}
                   >
-                    {busyKey === offerKey ? '...' : `💬 ${t('marketBeneficiaryMakeOffer') || 'Оффер'}`}
+                    {busyKey === takeKey ? (t('marketBeneficiaryProcessing') || 'Отправка...') : `🤝 ${t('marketBeneficiaryTake') || 'Забрать'}`}
                   </button>
-                </div>
-                {errorByKey[offerKey] && <p style={{ color: colors.error, fontSize: '12px', marginTop: '6px' }}>{errorByKey[offerKey]}</p>}
-              </>
-            )}
+                  {errorByKey[takeKey] && <p style={{ color: colors.error, fontSize: '12px', marginTop: '6px' }}>{errorByKey[takeKey]}</p>}
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '8px' }}>
+                    {t('marketBeneficiaryNotListed') || 'Не выставлена на продажу — можно предложить свою цену'}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder="TON"
+                      value={offerInputs[zoneAddressRaw] || ''}
+                      onChange={(e) => setOfferInputs((prev) => ({ ...prev, [zoneAddressRaw]: e.target.value }))}
+                      style={inputStyle}
+                    />
+                    <button
+                      onClick={() => handleMakeOffer(zoneAddressRaw, zoneName, presumedSeller)}
+                      disabled={busyKey === offerKey}
+                      style={{ ...buttonStyle(busyKey === offerKey), width: 'auto', padding: '8px 14px' }}
+                    >
+                      {busyKey === offerKey ? '...' : `💬 ${t('marketBeneficiaryMakeOffer') || 'Оффер'}`}
+                    </button>
+                  </div>
+                  {errorByKey[offerKey] && <p style={{ color: colors.error, fontSize: '12px', marginTop: '6px' }}>{errorByKey[offerKey]}</p>}
+                </>
+              )}
+            </div>
           </div>
         );
       })}
