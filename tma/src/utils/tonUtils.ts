@@ -156,6 +156,91 @@ export async function checkDomainDNSRecord(
 }
 
 /**
+ * Читает текущий partner_share (получатель 90% с аукционов Proxy-зоны +
+ * доля/знаменатель) прямо с ончейна через get_partner_share() в collection.fc
+ * (метод уже существует в контракте, ничего дописывать не нужно). Нужен
+ * перед исполнением заявки transfer_beneficiary (Market -> Коллекции) —
+ * меняем только адрес, share/denominator берём отсюда, чтобы не
+ * пересматривать процент при продаже доли.
+ *
+ * ⚠️ Не проверено живым вызовом на testnet — get_partner_share возвращает
+ * `slice` напрямую (не завёрнутый в cell, в отличие от dnsresolve), так что
+ * то, что toncenter v3 отдаёт в stack[0] для partner_addr, может отличаться
+ * от ветки tvm.Cell ниже (скопированной с checkDomainDNSRecord по аналогии).
+ * Сверить на реальном ответе перед подключением к PendingActionsPanel.
+ */
+export async function getPartnerShare(
+  collectionAddress: string,
+  isTestnet: boolean
+): Promise<{ address: string; share: number; denominator: number } | null> {
+  try {
+    const apiUrl = toncenterApiUrl(isTestnet, 'v3/runGetMethod');
+    const rawAddress = convertUserFriendlyToRaw(collectionAddress);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        address: rawAddress,
+        method: 'get_partner_share',
+        stack: []
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // (slice partner_addr, int share_base, int share_factor)
+    if (!data || !data.stack || data.stack.length < 3) {
+      return null;
+    }
+
+    const addrItem = data.stack[0];
+    const shareItem = data.stack[1];
+    const denominatorItem = data.stack[2];
+
+    if (!shareItem || shareItem[0] !== 'num' || !denominatorItem || denominatorItem[0] !== 'num') {
+      return null;
+    }
+    const share = parseInt(shareItem[1], 16);
+    const denominator = parseInt(denominatorItem[1], 16);
+
+    let address: string | null = null;
+    if (addrItem && addrItem[0] === 'tvm.Cell' && addrItem[1]) {
+      const parseResponse = await fetch(`${API_PAYLOAD_URL}/api/v1/parse_cell`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ cell_bytes: addrItem[1] })
+      });
+      if (parseResponse.ok) {
+        const parseData = await parseResponse.json();
+        if (parseData && parseData.address) {
+          address = parseData.address;
+        }
+      }
+    } else if (addrItem && (addrItem[0] === 'tvm.Slice' || addrItem[0] === 'slice') && typeof addrItem[1] === 'string') {
+      // Возможный альтернативный формат ответа — адрес пришёл как строка
+      // без обёртки в cell. Проверить на реальном ответе (см. комментарий
+      // над функцией) прежде чем полагаться на эту ветку.
+      address = addrItem[1];
+    }
+
+    if (!address) return null;
+    return { address, share, denominator };
+  } catch (error) {
+    console.error('Ошибка получения partner_share:', error);
+    return null;
+  }
+}
+
+/**
  * Получает информацию о NFT через toncenter API
  */
 export async function getNftInfo(

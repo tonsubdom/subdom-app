@@ -155,6 +155,17 @@ const DeeplinkHandler: React.FC = () => {
           // сама тянет уже готовый /security (HallOfShamePage.tsx).
           navigate('/hall-of-shame');
 
+        } else if (route === '/admin') {
+          // Кнопка "Перейти к исполнению" в уведомлениях о заявках на
+          // деактивацию зоны и на смену бенефициара (см. DeeplinkUtils.
+          // generateAdminPendingActionsLink на бэкенде) — раньше этот роут
+          // не был описан тут вообще и падал в else ниже (уводило на
+          // главную вместо админки, кнопка была фактически сломана).
+          // Доп. параметры (section=pending-actions) не нужны —
+          // PendingActionsPanel и так безусловно рендерится вверху
+          // единственной (без табов) админ-страницы.
+          navigate('/admin');
+
         } else if (startappParam.startsWith('create-torrent')) {
           // Фолбэк: роут распознан как create-torrent (первый токен startapp
           // совпадает), но что-то в params выше пошло не так — не даём

@@ -491,6 +491,56 @@ const initializeDatabase = (db: SqliteDatabase) => {
       executedAt TEXT
     );
 
+    -- Листинги "бенефициарства" (партнёрской доли 90% с аукционов на Proxy-
+    -- зоне, см. get_partner_share/change_partner_share в collection.fc) —
+    -- юзер выставляет свою же Proxy-зону на продажу с фиксированной ценой.
+    -- Ончейн-зоны без local id в zones, поэтому ключ — сам zoneAddress (==
+    -- адрес зоны для Proxy), как и в pending_admin_actions/platform_zones_cache.
+    -- reservedUntil — короткое окно резервации между кликом "Забрать" и
+    -- подтверждённой оплатой, чтобы два покупателя не заплатили за один и
+    -- тот же листинг одновременно (P2P-перевод без эскроу не даёт железной
+    -- гарантии, это снижает, но не устраняет гонку).
+    CREATE TABLE IF NOT EXISTS beneficiary_listings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      zoneAddress TEXT NOT NULL,
+      zoneName TEXT NOT NULL,
+      sellerAddress TEXT NOT NULL,
+      priceTon REAL NOT NULL,
+      status TEXT DEFAULT 'active',
+      buyerAddress TEXT,
+      reservedUntil TEXT,
+      paymentTxHash TEXT,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_beneficiary_listings_zone ON beneficiary_listings(zoneAddress);
+    CREATE INDEX IF NOT EXISTS idx_beneficiary_listings_seller ON beneficiary_listings(sellerAddress);
+
+    -- Несогласованные офферы на зону (в т.ч. не выставленную в продажу) —
+    -- многие на одну зону одновременно возможны, поэтому отдельно от
+    -- листингов. status: pending (ждёт решения текущего бенефициара) ->
+    -- accepted (бенефициар согласился, ждём оплаты от покупателя — у бота
+    -- нет ЛС с произвольным кошельком, покупатель узнаёт об accept только
+    -- поллингом своих офферов в апп, не через бота) -> paid (создаётся
+    -- pending_admin_actions) | declined | cancelled | superseded.
+    CREATE TABLE IF NOT EXISTS beneficiary_offers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      zoneAddress TEXT NOT NULL,
+      zoneName TEXT NOT NULL,
+      buyerAddress TEXT NOT NULL,
+      sellerAddress TEXT NOT NULL,
+      priceTon REAL NOT NULL,
+      status TEXT DEFAULT 'pending',
+      paymentTxHash TEXT,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      acceptedAt TEXT,
+      paidAt TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_beneficiary_offers_zone ON beneficiary_offers(zoneAddress);
+    CREATE INDEX IF NOT EXISTS idx_beneficiary_offers_buyer ON beneficiary_offers(buyerAddress);
+    CREATE INDEX IF NOT EXISTS idx_beneficiary_offers_seller ON beneficiary_offers(sellerAddress);
+
     -- Жалобы/"Скрыть контент" — кнопка под паблик-уведомлениями о смене
     -- профиля/DNS-записей (см. tgBot-sqlite.ts, callback_data "report_*").
     -- Один ряд на домен (жалоба и "скрытие" — одно и то же действие, разные
@@ -662,6 +712,20 @@ const migratePlatformCacheColumns = (db: SqliteDatabase) => {
   // из collection_content.uri той же логикой, что и на медленном ончейн-
   // фоллбэке (extractDomainAndZone на фронте).
   addColumnIfMissing('platform_zones_cache', 'domain', 'domain TEXT');
+  // Авторитетный получатель 90% с аукционов (partner_addr в contract config,
+  // см. change_partner_share в collection.fc) — проставляется ТОЛЬКО в
+  // момент исполнения заявки transfer_beneficiary (см. /complete route), не
+  // синкается кроулером проактивно (это был бы отдельный ончейн-опрос
+  // get_partner_share по каждой Proxy-коллекции на каждый краул-проход —
+  // не делаем, поле меняется только через эту же фичу). NULL — зону тут
+  // никогда не продавали, фронт в этом случае показывает owner/creator
+  // address как предполагаемого бенефициара, без гарантии.
+  addColumnIfMissing('platform_zones_cache', 'beneficiaryAddress', 'beneficiaryAddress TEXT');
+
+  // Новый адрес получателя партнёрской доли для заявки actionType='transfer_beneficiary'
+  // (продажа бенефициарства через Market -> Коллекции) — единственный
+  // actionType, которому нужны доп. данные сверх фиксированных колонок.
+  addColumnIfMissing('pending_admin_actions', 'newPartnerAddress', 'newPartnerAddress TEXT');
 
   addColumnIfMissing('platform_subdomains_cache', 'zoneName', 'zoneName TEXT');
   addColumnIfMissing('platform_subdomains_cache', 'itemType', 'itemType TEXT');
@@ -4307,7 +4371,7 @@ app.post('/api/notifications/zone-deactivated', (req, res) => {
 // это же обычное действие обычного юзера над своей же зоной.
 app.post('/api/admin/pending-actions', (req, res) => {
   try {
-    const { actionType, targetType, targetAddress, targetCollectionAddress, targetName, requestedBy } = req.body;
+    const { actionType, targetType, targetAddress, targetCollectionAddress, targetName, requestedBy, newPartnerAddress } = req.body;
     const db = req.db;
     const isTestnet = req.isTestnet;
 
@@ -4339,14 +4403,25 @@ app.post('/api/admin/pending-actions', (req, res) => {
     }
 
     const stmt = db.prepare(`
-      INSERT INTO pending_admin_actions (actionType, targetType, targetAddress, targetCollectionAddress, targetName, requestedBy)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO pending_admin_actions (actionType, targetType, targetAddress, targetCollectionAddress, targetName, requestedBy, newPartnerAddress)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       RETURNING *
     `);
-    const created = stmt.get(actionType, targetType, normalizedTargetAddress, targetCollectionAddress ? String(targetCollectionAddress).toLowerCase() : null, targetName, requestedBy);
+    const created = stmt.get(
+      actionType,
+      targetType,
+      normalizedTargetAddress,
+      targetCollectionAddress ? String(targetCollectionAddress).toLowerCase() : null,
+      targetName,
+      requestedBy,
+      newPartnerAddress ? String(newPartnerAddress).toLowerCase() : null
+    );
 
     if (actionType === 'deactivate_zone') {
       telegramBot.sendPendingDeactivationNotification(targetName, targetAddress, requestedBy, isTestnet);
+    }
+    if (actionType === 'transfer_beneficiary') {
+      telegramBot.sendPendingBeneficiaryTransferNotification(targetName, targetAddress, requestedBy, newPartnerAddress, isTestnet);
     }
 
     return res.json({ success: true, data: created });
@@ -4574,9 +4649,406 @@ app.post('/api/admin/pending-actions/:id/complete', requireAdminAuth, (req, res)
       `).run(existing.targetName, existing.requestedBy, id);
     }
 
+    // Продажа бенефициарства (Market -> Коллекции) исполнена — тот же
+    // приём, что и у деактивации выше: обновляем кэш сразу, не дожидаясь
+    // кроулера (который вообще не опрашивает get_partner_share — см.
+    // комментарий у addColumnIfMissing('platform_zones_cache', 'beneficiaryAddress', ...)),
+    // закрываем листинг/оффер, из которого родилась заявка (без FK — ищем
+    // по zoneAddress+buyerAddress, тем же способом, каким выше гасятся
+    // осиротевшие дубли), и сами дубли-заявки на ту же зону.
+    if (existing.actionType === 'transfer_beneficiary') {
+      const collectionAddress = existing.targetCollectionAddress || existing.targetAddress;
+      const newPartner = existing.newPartnerAddress;
+
+      db.prepare(`UPDATE platform_zones_cache SET beneficiaryAddress = ? WHERE LOWER(collectionAddress) = LOWER(?)`)
+        .run(newPartner, collectionAddress);
+
+      db.prepare(`
+        UPDATE beneficiary_listings SET status = 'sold', updatedAt = CURRENT_TIMESTAMP
+        WHERE LOWER(zoneAddress) = LOWER(?) AND LOWER(buyerAddress) = LOWER(?) AND status = 'reserved'
+      `).run(collectionAddress, newPartner);
+      db.prepare(`
+        UPDATE beneficiary_offers SET status = 'executed', updatedAt = CURRENT_TIMESTAMP
+        WHERE LOWER(zoneAddress) = LOWER(?) AND LOWER(buyerAddress) = LOWER(?) AND status = 'paid'
+      `).run(collectionAddress, newPartner);
+
+      db.prepare(`
+        UPDATE pending_admin_actions
+        SET status = 'superseded', executedAt = CURRENT_TIMESTAMP
+        WHERE actionType = 'transfer_beneficiary' AND targetAddress = ? AND status = 'pending' AND id != ?
+      `).run(existing.targetAddress, id);
+    }
+
     return res.json({ success: true, data: updated });
   } catch (error) {
     console.error('❌ Ошибка при подтверждении исполнения заявки:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// ========== MARKET -> КОЛЛЕКЦИИ (продажа бенефициарства Proxy-зон) ==========
+//
+// Без нового смарт-контракта и без эскроу (осознанный выбор — сессия
+// 2026-09-22, см. Obsidian Log.md): покупатель платит продавцу напрямую
+// P2P-переводом (двухходовая верификация на фронте, как и везде в проекте),
+// а смену бенефициара на самой Proxy-зоне исполняет площадка через уже
+// существующую очередь pending_admin_actions (actionType='transfer_beneficiary',
+// см. выше) — тот же паттерн, что и у деактивации SBT-зоны. Ни один из
+// роутов ниже не требует requireAdminAuth — это обычные действия обычного
+// юзера над своей же зоной/своим же оффером, как и создание заявки на
+// деактивацию.
+
+// --- Листинги ---
+
+// Выставить свою зону на продажу с фиксированной ценой.
+app.post('/api/market/beneficiary/listings', (req, res) => {
+  try {
+    const { zoneAddress, zoneName, sellerAddress, priceTon } = req.body;
+    const db = req.db;
+
+    if (!zoneAddress || !zoneName || !sellerAddress || priceTon === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'zoneAddress, zoneName, sellerAddress и priceTon обязательны'
+      });
+    }
+    const price = Number(priceTon);
+    if (!Number.isFinite(price) || price <= 0) {
+      return res.status(400).json({ success: false, message: 'priceTon должен быть положительным числом' });
+    }
+
+    const normalizedZoneAddress = String(zoneAddress).toLowerCase();
+
+    const existing = db.prepare(`
+      SELECT * FROM beneficiary_listings
+      WHERE LOWER(zoneAddress) = ? AND status IN ('active', 'reserved')
+    `).get(normalizedZoneAddress);
+    if (existing) {
+      return res.json({ success: true, data: existing, alreadyListed: true });
+    }
+
+    const created = db.prepare(`
+      INSERT INTO beneficiary_listings (zoneAddress, zoneName, sellerAddress, priceTon)
+      VALUES (?, ?, ?, ?)
+      RETURNING *
+    `).get(normalizedZoneAddress, zoneName, String(sellerAddress).toLowerCase(), price);
+
+    return res.json({ success: true, data: created });
+  } catch (error) {
+    console.error('❌ Ошибка при создании листинга бенефициарства:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Браузинг вкладки (?status=active) и "мои листинги" (?sellerAddress=) —
+// лениво гасим истёкшую бронь перед выборкой, без отдельного крона.
+app.get('/api/market/beneficiary/listings', (req, res) => {
+  try {
+    const db = req.db;
+    const status = typeof req.query.status === 'string' ? req.query.status : null;
+    const sellerAddress = typeof req.query.sellerAddress === 'string' ? req.query.sellerAddress.toLowerCase() : null;
+
+    db.prepare(`
+      UPDATE beneficiary_listings
+      SET status = 'active', buyerAddress = NULL, reservedUntil = NULL
+      WHERE status = 'reserved' AND reservedUntil IS NOT NULL AND reservedUntil < CURRENT_TIMESTAMP
+    `).run();
+
+    const conditions: string[] = [];
+    const params: any[] = [];
+    if (status) { conditions.push('status = ?'); params.push(status); }
+    if (sellerAddress) { conditions.push('LOWER(sellerAddress) = ?'); params.push(sellerAddress); }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const rows = db.prepare(`SELECT * FROM beneficiary_listings ${where} ORDER BY createdAt DESC`).all(...params);
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('❌ Ошибка при получении листингов бенефициарства:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Покупатель кликает "Забрать" — короткая бронь (5 мин), чтобы два
+// покупателя не заплатили за один и тот же листинг одновременно. Не
+// железная гарантия (P2P без эскроу), но снижает гонку.
+app.post('/api/market/beneficiary/listings/:id/reserve', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { buyerAddress } = req.body;
+    const db = req.db;
+    if (!buyerAddress) {
+      return res.status(400).json({ success: false, message: 'buyerAddress обязателен' });
+    }
+
+    const listing = db.prepare('SELECT * FROM beneficiary_listings WHERE id = ?').get(id) as any;
+    if (!listing) {
+      return res.status(404).json({ success: false, message: 'Листинг не найден' });
+    }
+    const isExpiredReservation = listing.status === 'reserved' && listing.reservedUntil && listing.reservedUntil < new Date().toISOString();
+    if (listing.status !== 'active' && !isExpiredReservation) {
+      return res.status(409).json({ success: false, message: 'Листинг уже забронирован или недоступен' });
+    }
+
+    const reservedUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    const updated = db.prepare(`
+      UPDATE beneficiary_listings
+      SET status = 'reserved', buyerAddress = ?, reservedUntil = ?, updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+      RETURNING *
+    `).get(String(buyerAddress).toLowerCase(), reservedUntil, id);
+
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('❌ Ошибка при резервации листинга бенефициарства:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Покупатель подтверждает, что P2P-перевод продавцу отправлен и подтверждён
+// (двухходовая верификация уже прошла на фронте) — дальше фронт сам создаёт
+// заявку pending_admin_actions (actionType='transfer_beneficiary').
+app.post('/api/market/beneficiary/listings/:id/confirm-payment', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { buyerAddress, paymentTxHash } = req.body;
+    const db = req.db;
+    if (!buyerAddress) {
+      return res.status(400).json({ success: false, message: 'buyerAddress обязателен' });
+    }
+
+    const listing = db.prepare('SELECT * FROM beneficiary_listings WHERE id = ?').get(id) as any;
+    if (!listing) {
+      return res.status(404).json({ success: false, message: 'Листинг не найден' });
+    }
+    if (listing.status !== 'reserved' || String(listing.buyerAddress).toLowerCase() !== String(buyerAddress).toLowerCase()) {
+      return res.status(409).json({ success: false, message: 'Листинг не забронирован за этим покупателем' });
+    }
+
+    const updated = db.prepare(`
+      UPDATE beneficiary_listings
+      SET paymentTxHash = ?, updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ?
+      RETURNING *
+    `).get(paymentTxHash || null, id);
+
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('❌ Ошибка при подтверждении оплаты листинга бенефициарства:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Продавец снимает листинг с продажи.
+app.post('/api/market/beneficiary/listings/:id/cancel', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sellerAddress } = req.body;
+    const db = req.db;
+
+    const listing = db.prepare('SELECT * FROM beneficiary_listings WHERE id = ?').get(id) as any;
+    if (!listing) {
+      return res.status(404).json({ success: false, message: 'Листинг не найден' });
+    }
+    if (String(listing.sellerAddress).toLowerCase() !== String(sellerAddress || '').toLowerCase()) {
+      return res.status(403).json({ success: false, message: 'Отменить листинг может только продавец' });
+    }
+
+    const updated = db.prepare(`
+      UPDATE beneficiary_listings SET status = 'cancelled', updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ? RETURNING *
+    `).get(id);
+
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('❌ Ошибка при отмене листинга бенефициарства:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// --- Офферы ---
+
+// Непрошеный оффер (в т.ч. на невыставленную зону) — супersedes предыдущий
+// pending-оффер того же покупателя на ту же зону, тем же приёмом, каким уже
+// гасятся дубли заявок на деактивацию.
+app.post('/api/market/beneficiary/offers', (req, res) => {
+  try {
+    const { zoneAddress, zoneName, buyerAddress, sellerAddress, priceTon } = req.body;
+    const db = req.db;
+
+    if (!zoneAddress || !zoneName || !buyerAddress || !sellerAddress || priceTon === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'zoneAddress, zoneName, buyerAddress, sellerAddress и priceTon обязательны'
+      });
+    }
+    const price = Number(priceTon);
+    if (!Number.isFinite(price) || price <= 0) {
+      return res.status(400).json({ success: false, message: 'priceTon должен быть положительным числом' });
+    }
+
+    const normalizedZoneAddress = String(zoneAddress).toLowerCase();
+    const normalizedBuyer = String(buyerAddress).toLowerCase();
+
+    db.prepare(`
+      UPDATE beneficiary_offers
+      SET status = 'superseded', updatedAt = CURRENT_TIMESTAMP
+      WHERE LOWER(zoneAddress) = ? AND LOWER(buyerAddress) = ? AND status = 'pending'
+    `).run(normalizedZoneAddress, normalizedBuyer);
+
+    const created = db.prepare(`
+      INSERT INTO beneficiary_offers (zoneAddress, zoneName, buyerAddress, sellerAddress, priceTon)
+      VALUES (?, ?, ?, ?, ?)
+      RETURNING *
+    `).get(normalizedZoneAddress, zoneName, normalizedBuyer, String(sellerAddress).toLowerCase(), price);
+
+    return res.json({ success: true, data: created });
+  } catch (error) {
+    console.error('❌ Ошибка при создании оффера на бенефициарство:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// ?sellerAddress= — входящие офферы на свои зоны. ?buyerAddress= — свои
+// исходящие офферы (единственный канал, которым покупатель узнаёт о
+// принятии — у бота нет ЛС с произвольным кошельком, фронт поллит это раз
+// в ~30с, тем же паттерном, что и getPendingActionsMap в ProfileWidget).
+app.get('/api/market/beneficiary/offers', (req, res) => {
+  try {
+    const db = req.db;
+    const sellerAddress = typeof req.query.sellerAddress === 'string' ? req.query.sellerAddress.toLowerCase() : null;
+    const buyerAddress = typeof req.query.buyerAddress === 'string' ? req.query.buyerAddress.toLowerCase() : null;
+    const status = typeof req.query.status === 'string' ? req.query.status : null;
+
+    const conditions: string[] = [];
+    const params: any[] = [];
+    if (sellerAddress) { conditions.push('LOWER(sellerAddress) = ?'); params.push(sellerAddress); }
+    if (buyerAddress) { conditions.push('LOWER(buyerAddress) = ?'); params.push(buyerAddress); }
+    if (status) { conditions.push('status = ?'); params.push(status); }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const rows = db.prepare(`SELECT * FROM beneficiary_offers ${where} ORDER BY createdAt DESC`).all(...params);
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('❌ Ошибка при получении офферов на бенефициарство:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Текущий бенефициар принимает оффер — деньги ещё не двигались, это только
+// согласие; оплату инициирует покупатель следующим отдельным шагом.
+app.post('/api/market/beneficiary/offers/:id/accept', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sellerAddress } = req.body;
+    const db = req.db;
+
+    const offer = db.prepare('SELECT * FROM beneficiary_offers WHERE id = ?').get(id) as any;
+    if (!offer) {
+      return res.status(404).json({ success: false, message: 'Оффер не найден' });
+    }
+    if (String(offer.sellerAddress).toLowerCase() !== String(sellerAddress || '').toLowerCase()) {
+      return res.status(403).json({ success: false, message: 'Принять оффер может только текущий бенефициар' });
+    }
+    if (offer.status !== 'pending') {
+      return res.status(409).json({ success: false, message: 'Оффер уже обработан' });
+    }
+
+    const updated = db.prepare(`
+      UPDATE beneficiary_offers SET status = 'accepted', acceptedAt = CURRENT_TIMESTAMP, updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ? RETURNING *
+    `).get(id);
+
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('❌ Ошибка при принятии оффера на бенефициарство:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+app.post('/api/market/beneficiary/offers/:id/decline', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sellerAddress } = req.body;
+    const db = req.db;
+
+    const offer = db.prepare('SELECT * FROM beneficiary_offers WHERE id = ?').get(id) as any;
+    if (!offer) {
+      return res.status(404).json({ success: false, message: 'Оффер не найден' });
+    }
+    if (String(offer.sellerAddress).toLowerCase() !== String(sellerAddress || '').toLowerCase()) {
+      return res.status(403).json({ success: false, message: 'Отклонить оффер может только текущий бенефициар' });
+    }
+    if (offer.status !== 'pending') {
+      return res.status(409).json({ success: false, message: 'Оффер уже обработан' });
+    }
+
+    const updated = db.prepare(`
+      UPDATE beneficiary_offers SET status = 'declined', updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ? RETURNING *
+    `).get(id);
+
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('❌ Ошибка при отклонении оффера на бенефициарство:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Покупатель подтверждает, что P2P-перевод после принятия оффера отправлен
+// и подтверждён — дальше фронт создаёт заявку pending_admin_actions.
+app.post('/api/market/beneficiary/offers/:id/pay', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { buyerAddress, paymentTxHash } = req.body;
+    const db = req.db;
+
+    const offer = db.prepare('SELECT * FROM beneficiary_offers WHERE id = ?').get(id) as any;
+    if (!offer) {
+      return res.status(404).json({ success: false, message: 'Оффер не найден' });
+    }
+    if (offer.status !== 'accepted' || String(offer.buyerAddress).toLowerCase() !== String(buyerAddress || '').toLowerCase()) {
+      return res.status(409).json({ success: false, message: 'Оффер не в статусе "принят" для этого покупателя' });
+    }
+
+    const updated = db.prepare(`
+      UPDATE beneficiary_offers
+      SET status = 'paid', paidAt = CURRENT_TIMESTAMP, paymentTxHash = ?, updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ? RETURNING *
+    `).get(paymentTxHash || null, id);
+
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('❌ Ошибка при оплате оффера на бенефициарство:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Покупатель отзывает свой ещё не рассмотренный оффер.
+app.post('/api/market/beneficiary/offers/:id/cancel', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { buyerAddress } = req.body;
+    const db = req.db;
+
+    const offer = db.prepare('SELECT * FROM beneficiary_offers WHERE id = ?').get(id) as any;
+    if (!offer) {
+      return res.status(404).json({ success: false, message: 'Оффер не найден' });
+    }
+    if (String(offer.buyerAddress).toLowerCase() !== String(buyerAddress || '').toLowerCase()) {
+      return res.status(403).json({ success: false, message: 'Отменить оффер может только покупатель' });
+    }
+    if (offer.status !== 'pending') {
+      return res.status(409).json({ success: false, message: 'Оффер уже обработан' });
+    }
+
+    const updated = db.prepare(`
+      UPDATE beneficiary_offers SET status = 'cancelled', updatedAt = CURRENT_TIMESTAMP
+      WHERE id = ? RETURNING *
+    `).get(id);
+
+    return res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('❌ Ошибка при отмене оффера на бенефициарство:', error);
     return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
   }
 });

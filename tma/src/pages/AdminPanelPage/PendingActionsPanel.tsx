@@ -11,7 +11,8 @@
 import React, { useEffect, useState } from 'react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { apiService } from '@/services/api';
-import { buildChangeContent } from '@/services/payloadBuilder';
+import { buildChangeContent, buildChangePartnerShare } from '@/services/payloadBuilder';
+import { getPartnerShare } from '@/utils/tonUtils';
 
 const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL || '';
 
@@ -25,6 +26,7 @@ interface PendingAction {
   requestedBy: string;
   status: string;
   requestedAt: string;
+  newPartnerAddress: string | null;
 }
 
 interface PendingActionsPanelProps {
@@ -95,6 +97,46 @@ export const PendingActionsPanel: React.FC<PendingActionsPanelProps> = ({ isTest
     }
   };
 
+  // Продажа бенефициарства (Market -> Коллекции) — меняем только partner_addr
+  // (получатель 90% с аукционов), share/denominator читаем свежими с ончейна
+  // и передаём как есть, чтобы не пересмотреть процент при смене адреса.
+  const executeTransferBeneficiary = async (action: PendingAction) => {
+    setExecutingId(action.id);
+    setErrorById((prev) => ({ ...prev, [action.id]: '' }));
+    try {
+      if (!action.newPartnerAddress) {
+        throw new Error('newPartnerAddress отсутствует в заявке');
+      }
+      const collectionAddress = action.targetCollectionAddress || action.targetAddress;
+      const current = await getPartnerShare(collectionAddress, isTestnet);
+      if (!current) {
+        throw new Error('Не удалось прочитать текущий partner_share из блокчейна');
+      }
+
+      const result = buildChangePartnerShare(
+        collectionAddress,
+        { address: action.newPartnerAddress, share: current.share, denominator: current.denominator },
+        isTestnet
+      );
+      if (!result.messages || result.messages.length === 0) {
+        throw new Error('empty messages from change_partner_share');
+      }
+
+      const sendResult = await tonConnectUI.sendTransaction({
+        validUntil: result.validUntil || Math.floor(Date.now() / 1000) + 240,
+        messages: result.messages,
+      });
+
+      await apiService.completePendingAction(action.id, sendResult?.boc);
+      setActions((prev) => prev.filter((a) => a.id !== action.id));
+    } catch (error: any) {
+      console.error('❌ Ошибка исполнения заявки на смену бенефициара:', error);
+      setErrorById((prev) => ({ ...prev, [action.id]: error?.message || 'Ошибка транзакции' }));
+    } finally {
+      setExecutingId(null);
+    }
+  };
+
   const cardStyle: React.CSSProperties = {
     padding: '14px',
     borderRadius: '8px',
@@ -145,6 +187,14 @@ export const PendingActionsPanel: React.FC<PendingActionsPanelProps> = ({ isTest
                 {action.requestedBy.slice(0, 6)}...{action.requestedBy.slice(-4)}
               </a>
             </div>
+            {action.newPartnerAddress && (
+              <div>
+                <strong>Новый бенефициар:</strong>{' '}
+                <a href={tonviewerLink(action.newPartnerAddress)} target="_blank" rel="noopener noreferrer" style={{ color: isDark ? '#FFD700' : '#3B82F6' }}>
+                  {action.newPartnerAddress.slice(0, 6)}...{action.newPartnerAddress.slice(-4)}
+                </a>
+              </div>
+            )}
             <div style={{ gridColumn: '1 / -1' }}>
               <strong>Когда:</strong> {new Date(action.requestedAt).toLocaleString('ru-RU')}
             </div>
@@ -166,6 +216,23 @@ export const PendingActionsPanel: React.FC<PendingActionsPanelProps> = ({ isTest
               }}
             >
               {executingId === action.id ? 'Отправка транзакции...' : '⚡ Исполнить деактивацию'}
+            </button>
+          ) : action.actionType === 'transfer_beneficiary' ? (
+            <button
+              onClick={() => executeTransferBeneficiary(action)}
+              disabled={executingId === action.id}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                background: executingId === action.id ? '#6B7280' : '#e53935',
+                color: 'white',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: executingId === action.id ? 'default' : 'pointer',
+              }}
+            >
+              {executingId === action.id ? 'Отправка транзакции...' : '⚡ Исполнить смену бенефициара'}
             </button>
           ) : (
             <div style={{ color: isDark ? '#9CA3AF' : '#6B7280', fontSize: '12px' }}>
