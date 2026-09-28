@@ -15,6 +15,22 @@ import Database from 'better-sqlite3';
 const LOCAL_DB_PATH = process.env.FAIL2BAN_DB_PATH || '/fail2ban/fail2ban.sqlite3';
 const REMOTE_STATS_PATH = process.env.SECURITY_STATS_REMOTE_PATH || path.join(process.env.DB_PATH || '/app', 'security-stats-remote.json');
 
+// Тот же маппинг-слой jail → категория, что в scripts/generate-hall-of-shame.py
+// (см. Kanban subdom Backlog, п.1) — держим синонимично в двух местах
+// намеренно: бот (этот файл, Node) и Hall of Shame (отдельный Python-скрипт
+// на другом сервере) не имеют общего рантайма, шарить модуль негде. Меняешь
+// один — проверь, не разошёлся ли второй. Расширяемо: неизвестный jail
+// просто показывается как есть, ничего не ломается при появлении нового.
+const JAIL_CATEGORY: Record<string, string> = {
+  sshd: 'Брутфорс (SSH)',
+  'subdom-http-scanners-443': 'Сканирование уязвимостей (веб)',
+  'subdom-api-scanners': 'Сканирование уязвимостей (API)',
+};
+
+export function categorizeJail(jail: string): string {
+  return JAIL_CATEGORY[jail] ?? jail;
+}
+
 export interface JailPeriodCounts {
   jail: string;
   last1d: number;

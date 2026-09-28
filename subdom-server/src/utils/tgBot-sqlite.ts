@@ -1739,7 +1739,7 @@ import dotenv from 'dotenv';
 import Database from 'better-sqlite3';
 import { Address } from '@ton/core';
 import { fetchAllOwnerDnsText, fetchSiteAndStorageRecords } from '../services/dnsTextReader';
-import { getAllSecurityStats } from './fail2banStats';
+import { getAllSecurityStats, categorizeJail } from './fail2banStats';
 
 // Загружаем переменные окружения
 dotenv.config();
@@ -3331,7 +3331,7 @@ ${$.statsTime}: ${new Date().toLocaleString('ru-RU')}
       const jailLines = Array.from(byJail.entries())
         .map(
           ([jail, c]) =>
-            `   <b>${jail}</b> — ${$.securityStatsPeriod1d}: ${c.last1d}, ${$.securityStatsPeriod7d}: ${c.last7d}, ${$.securityStatsPeriod30d}: ${c.last30d}`
+            `   <b>${categorizeJail(jail)}</b> — ${$.securityStatsPeriod1d}: ${c.last1d}, ${$.securityStatsPeriod7d}: ${c.last7d}, ${$.securityStatsPeriod30d}: ${c.last30d}`
         )
         .join('\n');
 
