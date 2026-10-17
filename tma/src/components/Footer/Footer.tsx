@@ -152,7 +152,7 @@ const Footer = () => {
                 {t('footerDevelopers')}
               </div>
               <button
-                onClick={() => handleExternalLink('https://api.subdom.zone/docs')}
+                onClick={() => handleExternalLink('https://api.subdom.org/docs')}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: 'none', background: 'transparent', color: colors.text, cursor: 'pointer', fontSize: '13px' }}
               >
                 <span>Swagger API</span>
@@ -173,7 +173,7 @@ const Footer = () => {
                   /openapi.json) уже описывает все доступные функции и
                   используется как её замена (см. FaqPage, вопрос про AI-агентов). */}
               <button
-                onClick={() => handleExternalLink('https://api.subdom.zone/openapi.json')}
+                onClick={() => handleExternalLink('https://api.subdom.org/openapi.json')}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: 'none', background: 'transparent', color: colors.text, cursor: 'pointer', fontSize: '13px' }}
               >
                 <span>{t('footerAgentManifest')}</span>

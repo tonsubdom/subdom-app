@@ -756,7 +756,7 @@ export const deploySBTCollection = createAsyncThunk<
 // 2026-09-20: переведено на локальную (клиентскую) сборку payload'а —
 // см. tma/src/services/payloadBuilder (порт builder-api-master 1:1). Больше
 // не зависит от аптайма Python-бэкенда для этой операции. Бэкенд
-// (api.subdom.zone) остаётся источником метаданных/картинок (content.uri
+// (api.subdom.org) остаётся источником метаданных/картинок (content.uri
 // в CreateCollectionPage.tsx), только payload-сборка ушла на клиент.
 export const deploySBTCollectionWithDns = createAsyncThunk<
   DeploySBTCollectionResponse,

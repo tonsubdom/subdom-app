@@ -92,7 +92,7 @@ const ChatWidget: React.FC = () => {
 
   // Получаем текущий домен из URL или используем дефолтный
   useEffect(() => {
-    const domain = window.location.hostname || 'subdom.zone';
+    const domain = window.location.hostname || 'subdom.org';
     setCurrentDomain(domain);
   }, []);
 

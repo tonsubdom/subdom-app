@@ -243,7 +243,7 @@ def render_html(rows, geo_cache, totals, last30d_combined, daily):
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>Hall of Shame — subdom.zone security log</title>
+<title>Hall of Shame — subdom.org security log</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <style>
@@ -300,7 +300,7 @@ def render_html(rows, geo_cache, totals, last30d_combined, daily):
 </style>
 </head>
 <body>
-<h1>🛡 Hall of Shame — subdom.zone</h1>
+<h1>🛡 Hall of Shame — subdom.org</h1>
 <div class="chart">
   <h2>Банов в день, последние {len(daily)} дней</h2>
   <p class="chart-sub">Только subdom-app — у subdom-api нет посуточной разбивки в данных, которые он присылает.</p>

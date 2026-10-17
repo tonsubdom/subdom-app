@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://subdom.zone/</loc>
+    <loc>https://subdom.org/</loc>
     <lastmod>2026-09-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://subdom.zone/market</loc>
+    <loc>https://subdom.org/market</loc>
     <lastmod>2026-09-03</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://subdom.zone/avatar-secret</loc>
+    <loc>https://subdom.org/avatar-secret</loc>
     <lastmod>2026-09-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://subdom.zone/faq</loc>
+    <loc>https://subdom.org/faq</loc>
     <lastmod>2026-09-03</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://subdom.zone/add-subdomain</loc>
+    <loc>https://subdom.org/add-subdomain</loc>
     <lastmod>2026-09-04</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://subdom.zone/create-torrent</loc>
+    <loc>https://subdom.org/create-torrent</loc>
     <lastmod>2026-09-04</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>

@@ -83,7 +83,7 @@ function escapeHtml(value) {
 
 for (const [route, meta] of Object.entries(PUBLIC_ROUTES)) {
   const titleTag = `${escapeHtml(meta.title)} / ${escapeHtml(meta.titleEn)}`;
-  const canonical = `https://subdom.zone/${route}`;
+  const canonical = `https://subdom.org/${route}`;
 
   let html = sourceHtml
     .replace(/<title>[^<]*<\/title>/, `<title>${titleTag}</title>`)

@@ -52,7 +52,7 @@ function validateDomainName(name: unknown): { valid: true } | { valid: false; me
   return { valid: true };
 }
 
-const APP_DOMAIN = 'subdom.zone';
+const APP_DOMAIN = 'subdom.org';
 const STORAGE_UPLOADS_PATH = process.env.STORAGE_UPLOADS_PATH || '/app/storage-uploads';
 
 const app = express();

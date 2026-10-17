@@ -2511,7 +2511,7 @@ class DeeplinkUtils {
 
 // ==================== TELEGRAM BOT SERVICE ====================
 
-const API_PAYLOAD_URL = process.env.VITE_API_SC_PAYLOAD_URL || 'https://api.subdom.zone';
+const API_PAYLOAD_URL = process.env.VITE_API_SC_PAYLOAD_URL || 'https://api.subdom.org';
 
 class TelegramBotService {
   private bot: TelegramBot | null = null;
@@ -2643,7 +2643,7 @@ class TelegramBotService {
     // --- Кнопка Web App ---
     await (this.bot as any).setChatMenuButton({
   text: '🔗 Открыть Subdom',
-  web_app: { url: 'https://subdom.zone' },
+  web_app: { url: 'https://subdom.org' },
 });
 
     console.log('✅ Меню команд и кнопка приложения настроены');

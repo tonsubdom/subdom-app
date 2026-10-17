@@ -1883,7 +1883,7 @@ const partnerAddress = isTestnet
                 <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                   <img
                     style={{ width: '150px', height: '150px', borderRadius: '15px', marginBottom: '10px' }}
-                    src={`https://api.subdom.zone/api/v1/subdomain/metadata/ton/${domainName}.png`}
+                    src={`${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${domainName}.png`}
                     alt="subdomainPreview"
                   />
                 </div>
@@ -2332,8 +2332,8 @@ const partnerAddress = isTestnet
                       <img
                         style={{ width: '200px', height: '200px', borderRadius: '25px', marginBottom: '15px' }}
                         src={activeTab === 'proxy'
-                          ? `https://api.subdom.zone/api/v1/subdomain/metadata/ton/${domainName}.png`
-                          : `https://api.subdom.zone/api/v1/sbt-subdomain/metadata/ton/${domainName}.png`
+                          ? `${API_PAYLOAD_URL}/api/v1/subdomain/metadata/ton/${domainName}.png`
+                          : `${API_PAYLOAD_URL}/api/v1/sbt-subdomain/metadata/ton/${domainName}.png`
                         }
                         alt="subdomainImage"
                       />

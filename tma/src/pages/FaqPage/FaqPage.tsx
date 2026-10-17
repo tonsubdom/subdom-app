@@ -24,8 +24,8 @@ interface FaqEntry {
 // Вопросы/ответы переведены на все 10 языков (t('faqQ1'..'faqQ12'/'faqA1'..'faqA12'),
 // см. contexts/translations/*.ts) — сама структура (какие вопросы, какие
 // ссылки) одна на все языки, различается только текст. Часть лейблов ссылок
-// намеренно НЕ через t() — это бренд-имена/URL (subdom.zone, TonSite Builder
-// bot, api.subdom.zone/docs, @subdom_blog), одинаковые независимо от языка.
+// намеренно НЕ через t() — это бренд-имена/URL (subdom.org, TonSite Builder
+// bot, api.subdom.org/docs, @subdom_blog), одинаковые независимо от языка.
 function buildFaqEntries(t: (key: string) => string): FaqEntry[] {
   return [
     {
@@ -74,19 +74,19 @@ function buildFaqEntries(t: (key: string) => string): FaqEntry[] {
     {
       question: t('faqQ9'),
       answer: t('faqA9'),
-      links: [{ label: 'api.subdom.zone/docs', href: 'https://api.subdom.zone/docs' }],
+      links: [{ label: 'api.subdom.org/docs', href: 'https://api.subdom.org/docs' }],
     },
     {
       // Было (устарело): "manifest-файла пока нет". Живой MCP-манифест
       // существует и отдаётся боевым бэкендом — см. subdom-server/src/
       // server-sqlite.ts (app.get('/mcp/manifest', ...)) и
       // nginx/conf.d/subdom.conf (location /mcp/). Проверено вживую
-      // 2026-09-03: curl https://subdom.zone/mcp/manifest отдаёт реальный
+      // 2026-09-03: curl https://subdom.org/mcp/manifest отдаёт реальный
       // непустой JSON со списком функций (claim_subdomain, deploy_proxy_zone
       // и др.), не заглушку.
       question: t('faqQ10'),
       answer: t('faqA10'),
-      links: [{ label: 'subdom.zone/mcp/manifest', href: 'https://subdom.zone/mcp/manifest' }],
+      links: [{ label: 'subdom.org/mcp/manifest', href: 'https://subdom.org/mcp/manifest' }],
     },
     {
       question: t('faqQ11'),
