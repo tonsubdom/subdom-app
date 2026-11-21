@@ -6,7 +6,7 @@
 
 
 //tma/src/services/blockchainItems/blockchain-items-context.tsx
-import React, { createContext, useContext, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useCallback, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTonWallet } from '@tonconnect/ui-react';
 import {
@@ -179,11 +179,35 @@ export const BlockchainItemsProvider: React.FC<BlockchainItemsProviderProps> = (
     })).unwrap();
   }, [dispatch, network, apiKey, walletAddress]);
 
+  // Single-flight: ProfileWidget/AddSubdomainPage/ActiveAuctions и т.п.
+  // независимо вызывают ensureData() на маунте — без этой защиты каждый из
+  // них стартовал бы СВОЙ полный ончейн-обход (стадии 'collections'/'items'
+  // в reportBlockchainLoadProgress — общий singleton-бас), и прогресс-бар
+  // дёргался между несколькими параллельными 0%→100% проходами с разными
+  // total вместо одного плавного (юзер поймал это вживую как "скачет то
+  // вверх то вниз"). Пока forceRefresh=false обход уже идёт — новые такие
+  // же вызовы просто ждут тот же промис, а не стартуют свой. Явный
+  // forceRefresh=true (кнопка "обновить") не блокируется — юзер прямо
+  // попросил live-данные, не подменяем это уже идущим фоновым обходом.
+  const inFlightLoadRef = useRef<{ forceRefresh: boolean; promise: Promise<unknown> } | null>(null);
+
   const loadAllData = useCallback(async (forceRefresh = false) => {
-    await dispatch(loadAllAppData({
+    const inFlight = inFlightLoadRef.current;
+    if (inFlight && !forceRefresh && !inFlight.forceRefresh) {
+      await inFlight.promise;
+      return;
+    }
+
+    const promise = dispatch(loadAllAppData({
       userAddress: walletAddress || undefined,
       forceRefresh
-    })).unwrap();
+    })).unwrap().finally(() => {
+      if (inFlightLoadRef.current?.promise === promise) {
+        inFlightLoadRef.current = null;
+      }
+    });
+    inFlightLoadRef.current = { forceRefresh, promise };
+    await promise;
   }, [dispatch, walletAddress]);
 
   /**
