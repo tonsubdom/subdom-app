@@ -3483,7 +3483,11 @@ const ProfileWidget: React.FC = () => {
     }
 
     setBulkTransferBusy(true);
-    setBulkTransferProgress({ done: 0, total: chunks.length });
+    // done/total считаются в СУБДОМЕНАХ, не в чанках/транзакциях — юзер
+    // поймал, что дробь "1/3" (чанки) рядом с "Выбрано: 12" читается как два
+    // разных смысла одной дроби и путает. Теперь "Отправка: X/12" всегда про
+    // те же 12 выбранных элементов.
+    setBulkTransferProgress({ done: 0, total: itemAddresses.length });
     let transferredCount = 0;
     try {
       for (let i = 0; i < chunks.length; i++) {
@@ -3506,7 +3510,7 @@ const ProfileWidget: React.FC = () => {
           });
         });
         transferredCount += chunk.length;
-        setBulkTransferProgress({ done: i + 1, total: chunks.length });
+        setBulkTransferProgress({ done: transferredCount, total: itemAddresses.length });
       }
       showSnackbar(
         `${t("bulkTransferSuccessLabel") || "Передано субдоменов"}: ${transferredCount}`,
@@ -6007,18 +6011,19 @@ const ProfileWidget: React.FC = () => {
             >
               {t("bulkTransferModalTitle") || "Массовая передача"}
             </h3>
-            <p
-              style={{
-                margin: "0 0 8px 0",
-                fontSize: "13px",
-                color: colors.text,
-                textAlign: "center",
-                fontWeight: 700,
-              }}
-            >
-              {t("bulkTransferSelectedLabel") || "Выбрано"}: {bulkSelectedAddresses.size}/
-              {subdomains.filter((s) => !isSbtSubdomain(s)).length}
-            </p>
+            {!bulkTransferProgress && (
+              <p
+                style={{
+                  margin: "0 0 8px 0",
+                  fontSize: "13px",
+                  color: colors.text,
+                  textAlign: "center",
+                  fontWeight: 700,
+                }}
+              >
+                {t("bulkTransferSelectedLabel") || "Выбрано"}: {bulkSelectedAddresses.size}
+              </p>
+            )}
             <div
               style={{
                 maxHeight: "140px",
