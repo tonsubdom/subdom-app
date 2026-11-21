@@ -4779,7 +4779,7 @@ const ProfileWidget: React.FC = () => {
                 siteResolves={subdomain.siteResolves}
               />
               {!isSbt && (
-                <div style={{ position: "absolute" as const, top: "4px", left: "4px", zIndex: 2 }}>
+                <div style={{ position: "absolute" as const, bottom: "4px", left: "4px", zIndex: 2 }}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -4793,7 +4793,6 @@ const ProfileWidget: React.FC = () => {
                       border: `1px solid ${colors.border}`,
                       background: isDark ? "rgba(17,24,39,0.85)" : "rgba(255,255,255,0.9)",
                       color: colors.text,
-                      fontSize: "15px",
                       cursor: "pointer",
                       display: "flex",
                       alignItems: "center",
@@ -4801,7 +4800,10 @@ const ProfileWidget: React.FC = () => {
                       boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
                     }}
                   >
-                    ➤
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="6" y1="18" x2="18" y2="6" />
+                      <polyline points="9 6 18 6 18 15" />
+                    </svg>
                   </button>
                 </div>
               )}
