@@ -201,6 +201,8 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
 
   const inputStyle: React.CSSProperties = {
     flex: 1,
+    minWidth: 0,
+    boxSizing: 'border-box',
     padding: '8px 10px',
     borderRadius: '8px',
     border: `1px solid ${colors.inputBorder}`,
@@ -301,7 +303,13 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
                     <button
                       onClick={() => handleMakeOffer(zoneAddressRaw, zoneName, presumedSeller)}
                       disabled={busyKey === offerKey}
-                      style={{ ...buttonStyle(busyKey === offerKey), width: 'auto', padding: '8px 14px' }}
+                      style={{
+                        ...buttonStyle(busyKey === offerKey),
+                        width: 'auto',
+                        flexShrink: 0,
+                        whiteSpace: 'nowrap',
+                        padding: '8px 14px',
+                      }}
                     >
                       {busyKey === offerKey ? '...' : `💬 ${t('marketBeneficiaryMakeOffer') || 'Оффер'}`}
                     </button>
