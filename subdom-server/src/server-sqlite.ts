@@ -552,6 +552,44 @@ const initializeDatabase = (db: SqliteDatabase) => {
       linkedAt TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- Заявки "Попросить трафик" — сторонний юзер предлагает владельцу
+    -- SBT-субдомена привязать конкретный адрес/ADNL/bagID DNS-записью.
+    -- Два независимых входа пишут сюда одной функцией
+    -- (telegramBot.createTrafficRequest, см. tgBot-sqlite.ts): бот (меню
+    -- "Оператор" → requesterChatId) и веб-страница Manager → "Запросы"
+    -- (requesterAddress, может быть NULL — кошелёк не обязателен, чтобы
+    -- просто попросить запись). Принятие/отклонение владельцем пока не
+    -- автоматизировано (MVP) — таблица сейчас только архив заявок,
+    -- status всегда 'pending'.
+    CREATE TABLE IF NOT EXISTS traffic_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      domain TEXT NOT NULL,
+      ownerAddress TEXT NOT NULL,
+      requesterChatId TEXT,
+      requesterAddress TEXT,
+      requestedValue TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE INDEX IF NOT EXISTS idx_traffic_requests_owner ON traffic_requests(ownerAddress);
+
+    -- Лайки в "Запросы" (SBT Top-Chart, см. TrafficRequestsTab.tsx) — не
+    -- бесплатная кнопка, а подтверждённая 0.01-TON транзакция владельцу
+    -- домена (построена и отправлена клиентом через TonConnect, тот же
+    -- confirmedInBlock-паттерн, что у остальных платежей в проекте — сервер
+    -- доверяет клиентскому подтверждению, как и везде в проекте, не
+    -- перепроверяет txHash через toncenter). UNIQUE(domain, likerAddress) —
+    -- один кошелёк может лайкнуть один субдомен только раз.
+    CREATE TABLE IF NOT EXISTS traffic_likes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      domain TEXT NOT NULL,
+      likerAddress TEXT NOT NULL,
+      txHash TEXT NOT NULL,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(domain, likerAddress)
+    );
+    CREATE INDEX IF NOT EXISTS idx_traffic_likes_domain ON traffic_likes(domain);
+
     -- Жалобы/"Скрыть контент" — кнопка под паблик-уведомлениями о смене
     -- профиля/DNS-записей (см. tgBot-sqlite.ts, callback_data "report_*").
     -- Один ряд на домен (жалоба и "скрытие" — одно и то же действие, разные
@@ -4950,6 +4988,99 @@ app.get('/api/users/telegram-link-status', (req, res) => {
     return res.json({ success: true, linked: !!row });
   } catch (error) {
     console.error('❌ Ошибка при проверке привязки Telegram-аккаунта:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// --- "Запросы" (SBT Top-Chart) — Manager → вкладка "Запросы", см.
+// TrafficRequestsTab.tsx. Список всех активных SBT-субдоменов платформы с
+// количеством лайков, заявки на привязку записи от сторонних посетителей,
+// и сами лайки (подтверждённые 0.01-TON транзакцией владельцу, не просто
+// клик). Та же БД, что у бота (nft-domains*.db, см. req.db/networkMiddleware).
+
+// Join с traffic_likes вместо отдельного запроса — сортировка по лайкам
+// должна быть на сервере (см. запрос юзера "в топе тот, у кого больше
+// лайков"), считать и сортировать на клиенте по всем SBT-субдоменам
+// платформы было бы лишней работой при каждом рендере.
+app.get('/api/traffic/subdomains', (req, res) => {
+  try {
+    const db = req.db;
+    const likerAddress = typeof req.query.likerAddress === 'string' ? req.query.likerAddress.toLowerCase() : '';
+    const rows = db
+      .prepare(
+        `SELECT s.itemAddress, s.name, s.zoneName, s.image, s.description, s.ownerAddress,
+                COUNT(l.id) as likeCount,
+                MAX(CASE WHEN l.likerAddress = ? THEN 1 ELSE 0 END) as likedByMe
+         FROM platform_subdomains_cache s
+         LEFT JOIN traffic_likes l ON l.domain = s.name
+         WHERE s.itemType = 'sbt_subdomain' AND s.status = 'active'
+         GROUP BY s.itemAddress
+         ORDER BY likeCount DESC, s.lastSyncedAt DESC`
+      )
+      .all(likerAddress);
+    return res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('❌ Ошибка при получении списка SBT-субдоменов для "Запросы":', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Заявка "Предложить привязку" с веб-страницы (аналог handleTrafficValueInput
+// в боте, см. tgBot-sqlite.ts) — ownerAddress ищем сами по domain, не
+// доверяем тому, что мог прислать клиент.
+app.post('/api/traffic/requests', async (req, res) => {
+  try {
+    const { domain, requestedValue, requesterAddress } = req.body;
+    if (!domain || !requestedValue) {
+      return res.status(400).json({ success: false, message: 'domain и requestedValue обязательны' });
+    }
+    const db = req.db;
+    const row = db
+      .prepare(`SELECT ownerAddress FROM platform_subdomains_cache WHERE LOWER(name) = ? AND itemType = 'sbt_subdomain' AND status = 'active'`)
+      .get(String(domain).toLowerCase()) as { ownerAddress: string | null } | undefined;
+    if (!row?.ownerAddress) {
+      return res.status(404).json({ success: false, message: 'SBT-субдомен не найден' });
+    }
+
+    const { ownerNotified } = await telegramBot.createTrafficRequest(db, {
+      domain: String(domain).toLowerCase(),
+      ownerAddress: row.ownerAddress,
+      requestedValue: String(requestedValue),
+      requesterAddress: requesterAddress ? String(requesterAddress) : undefined,
+    });
+    return res.json({ success: true, ownerNotified });
+  } catch (error) {
+    console.error('❌ Ошибка при создании заявки на трафик:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+// Лайк — клиент уже отправил и подтвердил 0.01-TON транзакцию владельцу
+// (см. TrafficRequestsTab.tsx, TransactionService.sendTransaction с
+// verifyBlockchain:true) до вызова этого эндпоинта; здесь только пишем
+// запись. UNIQUE(domain, likerAddress) в схеме — повторный лайк тем же
+// кошельком молча игнорируется (INSERT OR IGNORE), не ошибка.
+app.post('/api/traffic/likes', (req, res) => {
+  try {
+    const { domain, likerAddress, txHash } = req.body;
+    if (!domain || !likerAddress || !txHash) {
+      return res.status(400).json({ success: false, message: 'domain, likerAddress и txHash обязательны' });
+    }
+    const db = req.db;
+    const result = db
+      .prepare('INSERT OR IGNORE INTO traffic_likes (domain, likerAddress, txHash) VALUES (?, ?, ?)')
+      .run(String(domain).toLowerCase(), String(likerAddress).toLowerCase(), String(txHash));
+
+    if (result.changes === 0) {
+      return res.json({ success: false, message: 'Вы уже лайкнули этот субдомен' });
+    }
+
+    const { count } = db
+      .prepare('SELECT COUNT(*) as count FROM traffic_likes WHERE domain = ?')
+      .get(String(domain).toLowerCase()) as { count: number };
+    return res.json({ success: true, likeCount: count });
+  } catch (error) {
+    console.error('❌ Ошибка при сохранении лайка:', error);
     return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
   }
 });

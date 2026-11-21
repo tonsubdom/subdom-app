@@ -4572,6 +4572,7 @@ import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
 import { useTutorial } from "@/contexts/TutorialContext";
 import { track } from "@/utils/analytics";
 import { TransactionService } from "@/services/transactionService";
+import { TrafficRequestsTab } from "@/pages/ManageDomainPage/TrafficRequestsTab";
 
 // ====================================================================
 // ИНТЕРФЕЙСЫ
@@ -4961,6 +4962,9 @@ export const ManageDomainPage: FC = () => {
   const blockchainScanUi = useBlockchainScanUi();
 
   // ====== LOCAL STATE ======
+  // Переключатель "Свои" (личный менеджер записей, как было) / "Запросы"
+  // (публичный SBT Top-Chart всех юзеров платформы, см. TrafficRequestsTab).
+  const [activePane, setActivePane] = useState<"mine" | "requests">("mine");
   const [snackbar, setSnackbar] = useState<JSX.Element | null>(null);
   const [resolverAddress, setResolverAddress] = useState("");
   // Галочка "Отключить публичное уведомление об этом действии" — по
@@ -6099,6 +6103,46 @@ export const ManageDomainPage: FC = () => {
           {isTestnet ? "Testnet" : "Mainnet"}
         </div>
 
+        {/* Свои / Запросы */}
+        <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+          <button
+            onClick={() => setActivePane("mine")}
+            style={{
+              flex: 1,
+              padding: "10px",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              background: activePane === "mine" ? (isDark ? "#FFD700" : "#3B82F6") : isDark ? "#2d2d2d" : "#f0f0f0",
+              color: activePane === "mine" ? (isDark ? "#000" : "#fff") : isDark ? "#fff" : "#333",
+            }}
+          >
+            {t("manageTabMine") || "Свои"}
+          </button>
+          <button
+            onClick={() => setActivePane("requests")}
+            style={{
+              flex: 1,
+              padding: "10px",
+              borderRadius: "10px",
+              border: "none",
+              fontWeight: 700,
+              fontSize: "13px",
+              cursor: "pointer",
+              background: activePane === "requests" ? (isDark ? "#FFD700" : "#3B82F6") : isDark ? "#2d2d2d" : "#f0f0f0",
+              color: activePane === "requests" ? (isDark ? "#000" : "#fff") : isDark ? "#fff" : "#333",
+            }}
+          >
+            {t("manageTabRequests") || "Запросы"}
+          </button>
+        </div>
+
+        {activePane === "requests" ? (
+          <TrafficRequestsTab isDark={isDark} isTestnet={isTestnet} t={t} walletAddress={wallet?.account?.address} />
+        ) : (
+        <>
         {/* ModeTabs */}
         <ModeTabs
           mode={mode}
@@ -7318,6 +7362,8 @@ export const ManageDomainPage: FC = () => {
             </div>
           </div>
           </>
+        )}
+        </>
         )}
 
         {snackbar}

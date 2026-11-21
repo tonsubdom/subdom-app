@@ -1878,6 +1878,18 @@ const LANG = {
     siteMenuText: 'Invis — открывает сайты, привязанные к субдоменам. Откройте ссылку ниже и введите свой субдомен прямо там:',
     invalidDomainInput: 'Не похоже на домен. Пример: iceberg.author.ton',
 
+    // "Попросить трафик" — сторонний юзер предлагает владельцу SBT-субдомена
+    // привязать конкретный адрес/ADNL/bagID DNS-записью. Владелец получает
+    // заявку личным сообщением (требует привязки Telegram, см.
+    // telegram_wallet_links) — согласование/принятие пока не автоматизировано.
+    btnOpTraffic: '📡 Попросить трафик',
+    promptTrafficDomain: 'Введите SBT-субдомен, которому хотите предложить запись, в формате iceberg.author.ton.',
+    trafficDomainNotFound: 'SBT-субдомен с таким именем не найден на платформе. Проверьте написание и попробуйте снова.',
+    promptTrafficValue: 'Введите адрес, ADNL или bagID, который хотите предложить привязать к {domain}.',
+    trafficRequestSent: '✅ Ваша просьба о привязке адреса/adnl/bagID отправлена владельцу субдомена.',
+    trafficRequestOwnerNotLinked: '⚠️ Заявка сохранена, но владелец ещё не подтвердил свой Telegram-аккаунт — личное уведомление не доставлено. Попробуйте позже.',
+    trafficRequestNotifTitle: '📡 <b>Вам предлагают запись на субдомен</b>',
+
     // Личное уведомление о входящем оффере на бенефициарство (см.
     // telegram_wallet_links, sendBeneficiaryOfferNotification).
     beneficiaryOfferNotifTitle: '💬 <b>Вам пришёл оффер на бенефициарство зоны</b>',
@@ -2147,6 +2159,14 @@ const LANG = {
     torrentLinkReady: '📦 Torrent is ready:',
     siteMenuText: 'Invis opens sites bound to subdomains. Open the link below and enter your subdomain there:',
     invalidDomainInput: "Doesn't look like a domain. Example: iceberg.author.ton",
+
+    btnOpTraffic: '📡 Request Traffic',
+    promptTrafficDomain: 'Enter the SBT subdomain you want to propose a record for, in the format iceberg.author.ton.',
+    trafficDomainNotFound: "No SBT subdomain with that name was found on the platform. Check the spelling and try again.",
+    promptTrafficValue: 'Enter the address, ADNL, or bagID you want to propose linking to {domain}.',
+    trafficRequestSent: '✅ Your request to link an address/adnl/bagID has been sent to the subdomain owner.',
+    trafficRequestOwnerNotLinked: "⚠️ Request saved, but the owner hasn't confirmed their Telegram account yet — the personal notification wasn't delivered. Try again later.",
+    trafficRequestNotifTitle: '📡 <b>Someone is proposing a record for your subdomain</b>',
 
     beneficiaryOfferNotifTitle: "💬 <b>You've got an offer for a zone's beneficiary rights</b>",
     btnStats: '📊 Platform Stats',
@@ -2593,7 +2613,10 @@ class TelegramBotService {
   // Какого именно диплинка ждём после того, как юзер введёт домен в ответ
   // на кнопку "Профиль"/"Скачать" в меню "Оператор" — тот же паттерн
   // захвата следующего текстового сообщения, что и у bugReportPending.
-  private operatorPending = new Map<number, 'profile' | 'torrent-download'>();
+  private operatorPending = new Map<number, 'profile' | 'torrent-download' | 'traffic-domain' | 'traffic-value'>();
+  // Домен+владелец, найденные на шаге "traffic-domain" — нужны на следующем
+  // шаге ("traffic-value"), когда юзер уже вводит сам адрес/adnl/bagID.
+  private trafficRequestContext = new Map<number, { domain: string; ownerAddress: string }>();
 
   // Базы данных
   private testnetDb: Database.Database;
@@ -3269,9 +3292,14 @@ ${$.connectWarning}
                 [{ text: $.btnOpProfile, callback_data: 'cmd_op_profile' }],
                 [{ text: $.btnOpTorrent, callback_data: 'cmd_op_torrent' }],
                 [{ text: $.btnOpSite, callback_data: 'cmd_op_site' }],
+                [{ text: $.btnOpTraffic, callback_data: 'cmd_op_traffic' }],
               ],
             },
           });
+        } else if (data === 'cmd_op_traffic') {
+          this.trafficRequestContext.delete(chatId);
+          this.operatorPending.set(chatId, 'traffic-domain');
+          await this.bot!.sendMessage(chatId, $.promptTrafficDomain);
         } else if (data === 'cmd_op_profile') {
           this.operatorPending.set(chatId, 'profile');
           await this.bot!.sendMessage(chatId, $.promptProfileDomain);
@@ -3524,6 +3552,14 @@ ${text.substring(0, 1000)}${text.length > 1000 ? '...' : ''}
     this.operatorPending.delete(chatId);
     const $ = this.t(chatId.toString());
 
+    // "traffic-value" — юзер уже прошёл шаг с доменом (см. ниже), сейчас
+    // вводит произвольный адрес/ADNL/bagID, не домен — доменная валидация
+    // тут неприменима и ломала бы, например, raw-адреса без точек.
+    if (kind === 'traffic-value') {
+      await this.handleTrafficValueInput(chatId, String(msg.text || '').trim(), $);
+      return;
+    }
+
     const domain = String(msg.text || '').trim().toLowerCase();
     if (!domain.includes('.') || domain.split('.').some((part) => !part)) {
       await this.bot!.sendMessage(chatId, $.invalidDomainInput);
@@ -3540,6 +3576,80 @@ ${text.substring(0, 1000)}${text.length > 1000 ? '...' : ''}
       await this.bot!.sendMessage(chatId, $.torrentLinkReady, {
         reply_markup: { inline_keyboard: [[{ text: $.btnTorrentDownload, url: link }]] },
       });
+    } else if (kind === 'traffic-domain') {
+      await this.handleTrafficDomainInput(chatId, domain, $);
+    }
+  }
+
+  // Шаг 1 "Попросить трафик": юзер ввёл имя SBT-субдомена — ищем его в
+  // mainnet-кэше краулера (platform_subdomains_cache, см. server-sqlite.ts/
+  // crawler.ts) и, если найден, запоминаем владельца и переходим к шагу 2
+  // (ввод адреса/ADNL/bagID). Только mainnet — тот же выбор, что и у
+  // публичной /stats, testnet-домены тут никому не интересны.
+  private async handleTrafficDomainInput(chatId: number, domain: string, $: typeof LANG.ru): Promise<void> {
+    const row = this.mainnetDb
+      .prepare(`SELECT ownerAddress FROM platform_subdomains_cache WHERE LOWER(name) = ? AND itemType = 'sbt_subdomain' AND status = 'active'`)
+      .get(domain) as { ownerAddress: string | null } | undefined;
+
+    if (!row?.ownerAddress) {
+      await this.bot!.sendMessage(chatId, $.trafficDomainNotFound);
+      return;
+    }
+
+    this.trafficRequestContext.set(chatId, { domain, ownerAddress: row.ownerAddress });
+    this.operatorPending.set(chatId, 'traffic-value');
+    await this.bot!.sendMessage(chatId, $.promptTrafficValue.replace('{domain}', domain));
+  }
+
+  // Шаг 2 "Попросить трафик": юзер ввёл сам адрес/ADNL/bagID — сохраняем
+  // заявку (переживает рестарт бота, в отличие от in-memory Map выше) и,
+  // если владелец уже подтвердил свой Telegram (telegram_wallet_links, см.
+  // server-sqlite.ts /api/users/link-telegram), шлём ему личное уведомление.
+  // Принятие/отклонение заявки владельцем пока не реализовано — MVP.
+  private async handleTrafficValueInput(chatId: number, requestedValue: string, $: typeof LANG.ru): Promise<void> {
+    const context = this.trafficRequestContext.get(chatId);
+    this.trafficRequestContext.delete(chatId);
+    if (!context || !requestedValue) return;
+
+    const { domain, ownerAddress } = context;
+    const { ownerNotified } = await this.createTrafficRequest(this.mainnetDb, {
+      domain,
+      ownerAddress,
+      requestedValue,
+      requesterChatId: String(chatId),
+    });
+    await this.bot!.sendMessage(chatId, ownerNotified ? $.trafficRequestSent : $.trafficRequestOwnerNotLinked);
+  }
+
+  // Общая точка записи заявки "Попросить трафик" — дёргается и из бота (см.
+  // handleTrafficValueInput выше, requesterChatId), и с веб-страницы Manager
+  // "Запросы" (POST /api/traffic/requests в server-sqlite.ts, requesterAddress) —
+  // один источник истины, чтобы не разойтись в логике между двумя входами.
+  async createTrafficRequest(
+    db: Database.Database,
+    params: { domain: string; ownerAddress: string; requestedValue: string; requesterChatId?: string; requesterAddress?: string }
+  ): Promise<{ ownerNotified: boolean }> {
+    const { domain, ownerAddress, requestedValue, requesterChatId, requesterAddress } = params;
+    db.prepare(
+      `INSERT INTO traffic_requests (domain, ownerAddress, requesterChatId, requesterAddress, requestedValue) VALUES (?, ?, ?, ?, ?)`
+    ).run(domain, ownerAddress, requesterChatId ?? null, requesterAddress ?? null, requestedValue);
+
+    if (!this.isBotAvailable()) return { ownerNotified: false };
+
+    const ownerLink = db
+      .prepare('SELECT chatId FROM telegram_wallet_links WHERE walletAddress = ?')
+      .get(ownerAddress.toLowerCase()) as { chatId: string } | undefined;
+    if (!ownerLink?.chatId) return { ownerNotified: false };
+
+    try {
+      const owner$ = this.t(ownerLink.chatId);
+      await this.bot!.sendMessage(ownerLink.chatId, `${owner$.trafficRequestNotifTitle}\n\n${domain}\n<code>${requestedValue}</code>`, {
+        parse_mode: 'HTML',
+      });
+      return { ownerNotified: true };
+    } catch (error) {
+      console.error('❌ Ошибка при отправке личного уведомления о заявке на трафик:', error);
+      return { ownerNotified: false };
     }
   }
 

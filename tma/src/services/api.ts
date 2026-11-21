@@ -1245,6 +1245,60 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
+  // --- "Запросы" (SBT Top-Chart), см. TrafficRequestsTab.tsx ---
+
+  async getTrafficSubdomains(likerAddress?: string): Promise<{ success: boolean; data?: any[]; message?: string }> {
+    try {
+      const query = likerAddress ? `?likerAddress=${encodeURIComponent(normalizeAddress(likerAddress))}` : '';
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/traffic/subdomains${query}`), { headers: this.getHeaders() });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error fetching traffic subdomains:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async createTrafficRequest(data: { domain: string; requestedValue: string; requesterAddress?: string }): Promise<{ success: boolean; ownerNotified?: boolean; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/traffic/requests`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          domain: data.domain,
+          requestedValue: data.requestedValue,
+          requesterAddress: data.requesterAddress ? normalizeAddress(data.requesterAddress) : undefined,
+        }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok) {
+        return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
+      }
+      return json;
+    } catch (error: any) {
+      console.error('Error creating traffic request:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async likeTrafficSubdomain(data: { domain: string; likerAddress: string; txHash: string }): Promise<{ success: boolean; likeCount?: number; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/traffic/likes`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ domain: data.domain, likerAddress: normalizeAddress(data.likerAddress), txHash: data.txHash }),
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok) {
+        return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
+      }
+      return json;
+    } catch (error: any) {
+      console.error('Error liking traffic subdomain:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
   async createBeneficiaryOffer(data: {
     zoneAddress: string;
     zoneName: string;
