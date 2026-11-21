@@ -17,6 +17,7 @@ dotenv.config();
 // Импортируем telegramBot после загрузки env
 // import telegramBot from './utils/telegramBot-sqlite';
 import telegramBot from './utils/tgBot-sqlite';
+import { verifyTelegramInitData } from './utils/telegramInitData';
 import { generatePayload, verifyAdminProof, CheckProofRequest } from './utils/tonProof';
 import { createAdminToken, requireAdminAuth } from './utils/adminAuth';
 import { createBag, getBagDetails, addBag } from './utils/storageDaemon';
@@ -540,6 +541,16 @@ const initializeDatabase = (db: SqliteDatabase) => {
     CREATE INDEX IF NOT EXISTS idx_beneficiary_offers_zone ON beneficiary_offers(zoneAddress);
     CREATE INDEX IF NOT EXISTS idx_beneficiary_offers_buyer ON beneficiary_offers(buyerAddress);
     CREATE INDEX IF NOT EXISTS idx_beneficiary_offers_seller ON beneficiary_offers(sellerAddress);
+
+    -- Привязка кошелёк->Telegram chat_id для личных уведомлений (пришёл
+    -- оффер и т.п.) — без неё у бота нет ЛС с произвольным кошельком.
+    -- chat_id подтверждается через Telegram WebApp initData (см.
+    -- utils/telegramInitData.ts), не вводится юзером руками.
+    CREATE TABLE IF NOT EXISTS telegram_wallet_links (
+      walletAddress TEXT PRIMARY KEY,
+      chatId TEXT NOT NULL,
+      linkedAt TEXT DEFAULT CURRENT_TIMESTAMP
+    );
 
     -- Жалобы/"Скрыть контент" — кнопка под паблик-уведомлениями о смене
     -- профиля/DNS-записей (см. tgBot-sqlite.ts, callback_data "report_*").
@@ -4892,6 +4903,57 @@ app.post('/api/market/beneficiary/listings/:id/cancel', (req, res) => {
   }
 });
 
+// --- Привязка Telegram-аккаунта (для личных уведомлений) ---
+
+// Mini App уже знает и walletAddress (TonConnect), и initDataRaw
+// (Telegram WebApp) — тут только проверяем подпись initData и сохраняем
+// пару. Сам chat_id из initDataRaw, не из body — юзер не может подставить
+// чужой chat_id, не владея токеном бота.
+app.post('/api/users/link-telegram', (req, res) => {
+  try {
+    const { walletAddress, initDataRaw } = req.body;
+    if (!walletAddress || !initDataRaw) {
+      return res.status(400).json({ success: false, message: 'walletAddress и initDataRaw обязательны' });
+    }
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      return res.status(500).json({ success: false, message: 'Бот не настроен на сервере' });
+    }
+    const verified = verifyTelegramInitData(String(initDataRaw), botToken);
+    if (!verified.ok || !verified.userId) {
+      return res.status(401).json({ success: false, message: 'Не удалось подтвердить Telegram-сессию' });
+    }
+
+    const db = req.db;
+    const normalizedWallet = String(walletAddress).toLowerCase();
+    db.prepare(`
+      INSERT INTO telegram_wallet_links (walletAddress, chatId, linkedAt)
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(walletAddress) DO UPDATE SET chatId = excluded.chatId, linkedAt = CURRENT_TIMESTAMP
+    `).run(normalizedWallet, verified.userId);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при привязке Telegram-аккаунта:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+app.get('/api/users/telegram-link-status', (req, res) => {
+  try {
+    const walletAddress = typeof req.query.walletAddress === 'string' ? req.query.walletAddress.toLowerCase() : '';
+    if (!walletAddress) {
+      return res.status(400).json({ success: false, message: 'walletAddress обязателен' });
+    }
+    const db = req.db;
+    const row = db.prepare('SELECT walletAddress FROM telegram_wallet_links WHERE walletAddress = ?').get(walletAddress);
+    return res.json({ success: true, linked: !!row });
+  } catch (error) {
+    console.error('❌ Ошибка при проверке привязки Telegram-аккаунта:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
 // --- Офферы ---
 
 // Непрошеный оффер (в т.ч. на невыставленную зону) — супersedes предыдущий
@@ -4931,7 +4993,12 @@ app.post('/api/market/beneficiary/offers', (req, res) => {
       INSERT INTO beneficiary_offers (zoneAddress, zoneName, buyerAddress, sellerAddress, priceTon)
       VALUES (?, ?, ?, ?, ?)
       RETURNING *
-    `).get(normalizedZoneAddress, zoneName, normalizedBuyer, String(sellerAddress).toLowerCase(), price);
+    `).get(normalizedZoneAddress, zoneName, normalizedBuyer, normalizedSeller, price);
+
+    const sellerLink = db.prepare('SELECT chatId FROM telegram_wallet_links WHERE walletAddress = ?').get(normalizedSeller) as { chatId: string } | undefined;
+    if (sellerLink?.chatId) {
+      telegramBot.sendBeneficiaryOfferNotification(sellerLink.chatId, zoneName, price).catch(() => {});
+    }
 
     return res.json({ success: true, data: created });
   } catch (error) {

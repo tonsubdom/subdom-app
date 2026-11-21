@@ -1877,6 +1877,10 @@ const LANG = {
     torrentLinkReady: '📦 Торрент готов:',
     siteMenuText: 'Invis — открывает сайты, привязанные к субдоменам. Откройте ссылку ниже и введите свой субдомен прямо там:',
     invalidDomainInput: 'Не похоже на домен. Пример: iceberg.author.ton',
+
+    // Личное уведомление о входящем оффере на бенефициарство (см.
+    // telegram_wallet_links, sendBeneficiaryOfferNotification).
+    beneficiaryOfferNotifTitle: '💬 <b>Вам пришёл оффер на бенефициарство зоны</b>',
     btnStats: '📊 Статистика платформы',
     btnStartTutorial: '🎓 Пройти обучение',
     btnReportBug: '🐞 Сообщить о баге',
@@ -2143,6 +2147,8 @@ const LANG = {
     torrentLinkReady: '📦 Torrent is ready:',
     siteMenuText: 'Invis opens sites bound to subdomains. Open the link below and enter your subdomain there:',
     invalidDomainInput: "Doesn't look like a domain. Example: iceberg.author.ton",
+
+    beneficiaryOfferNotifTitle: "💬 <b>You've got an offer for a zone's beneficiary rights</b>",
     btnStats: '📊 Platform Stats',
     btnStartTutorial: '🎓 Take the Tutorial',
     btnReportBug: '🐞 Report a Bug',
@@ -5010,6 +5016,25 @@ ${$.fieldRegisteredAt}: ${new Date().toLocaleString('ru-RU')}
   }
 
   // ==================== УВЕДОМЛЕНИЯ О ПЛАТЕЖАХ ====================
+
+  // Личное ЛС юзеру, чей кошелёк привязан к chat_id (см.
+  // telegram_wallet_links/verifyTelegramInitData) — продавцу бенефициарства
+  // пришёл оффер. В отличие от остальных Notification-методов выше это не
+  // широковещательная рассылка по подпискам, а разовое сообщение конкретному
+  // chat_id, поэтому не проверяем subscriptions и шлём напрямую.
+  async sendBeneficiaryOfferNotification(chatId: string, zoneName: string, priceTon: number): Promise<void> {
+    if (!this.isBotAvailable()) return;
+    try {
+      const $ = this.t(chatId);
+      const message = `${$.beneficiaryOfferNotifTitle}\n\n${zoneName}: <b>${priceTon} TON</b>`;
+      await this.bot!.sendMessage(chatId, message, {
+        parse_mode: 'HTML',
+        reply_markup: { inline_keyboard: [[{ text: $.btnOpenSubdom, url: DeeplinkUtils.generateMarketLink() }]] },
+      });
+    } catch (error) {
+      console.error('❌ Ошибка при отправке личного уведомления об оффере:', error);
+    }
+  }
 
   async sendPaymentRecordedNotification(address: string, zoneType: string, length: number, isTestnet: boolean = true, price?: number): Promise<void> {
     if (!this.isBotAvailable()) return;

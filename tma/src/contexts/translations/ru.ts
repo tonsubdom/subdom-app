@@ -383,6 +383,12 @@ export const ruTranslations = {
   marketBeneficiaryAcceptOffer: 'Принять',
   marketBeneficiaryDeclineOffer: 'Отклонить',
   marketBeneficiaryYourZone: 'Это ваша зона',
+
+  telegramLinkPromptText: 'Подтвердите аккаунт — бот будет слать личные уведомления',
+  telegramLinkButton: 'Подтвердить',
+  telegramLinkSuccess: 'Аккаунт подтверждён — теперь будут личные уведомления',
+  telegramLinkError: 'Не удалось подтвердить',
+  telegramLinkOnlyInTelegram: 'Доступно только внутри Telegram',
   marketBeneficiarySellTitle: 'Выставить бенефициарство на продажу',
   marketBeneficiarySellText: 'Покупатель заплатит вам напрямую указанную сумму, после чего площадка сменит получателя 90% с аукционов этой зоны на его адрес.',
   marketZonesSearchPlaceholder: 'Поиск прокси-доменов по имени ',

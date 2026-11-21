@@ -1215,6 +1215,36 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
+  async linkTelegramAccount(walletAddress: string, initDataRaw: string): Promise<{ success: boolean; message?: string }> {
+    try {
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/users/link-telegram`), {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ walletAddress: normalizeAddress(walletAddress), initDataRaw }),
+      });
+      if (!response.ok) {
+        const json = await response.json().catch(() => null);
+        return { success: false, message: json?.message || `HTTP error! status: ${response.status}` };
+      }
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error linking Telegram account:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  async getTelegramLinkStatus(walletAddress: string): Promise<{ success: boolean; linked?: boolean; message?: string }> {
+    try {
+      const query = new URLSearchParams({ walletAddress: normalizeAddress(walletAddress) });
+      const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/users/telegram-link-status?${query.toString()}`), { headers: this.getHeaders() });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      return await response.json();
+    } catch (error: any) {
+      console.error('Error fetching Telegram link status:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
   async createBeneficiaryOffer(data: {
     zoneAddress: string;
     zoneName: string;

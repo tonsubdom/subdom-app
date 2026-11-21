@@ -2272,6 +2272,7 @@ import {
   useTonConnectUI,
   TonConnectButton,
 } from "@tonconnect/ui-react";
+import { retrieveLaunchParams } from "@telegram-apps/sdk-react";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/store/store";
 import { setWalletRecord } from "@/store/dns/dnsRecordsSlice";
@@ -3625,6 +3626,44 @@ const ProfileWidget: React.FC = () => {
   const [incomingBeneficiaryOffers, setIncomingBeneficiaryOffers] = useState<any[]>([]);
   const [outgoingBeneficiaryOffers, setOutgoingBeneficiaryOffers] = useState<any[]>([]);
   const [offerBusyId, setOfferBusyId] = useState<number | null>(null);
+
+  // Привязка кошелёк->Telegram chat_id — нужна, чтобы бот мог слать личные
+  // уведомления (пришёл оффер на бенефициарство и т.п.), см.
+  // telegram_wallet_links/verifyTelegramInitData на бэкенде. null — статус
+  // ещё не загружен (плашку не показываем, чтобы не мигала).
+  const [telegramLinked, setTelegramLinked] = useState<boolean | null>(null);
+  const [telegramLinkBusy, setTelegramLinkBusy] = useState(false);
+
+  useEffect(() => {
+    if (!address) {
+      setTelegramLinked(null);
+      return;
+    }
+    apiService
+      .getTelegramLinkStatus(address)
+      .then((result) => setTelegramLinked(!!result.linked))
+      .catch(() => setTelegramLinked(null));
+  }, [address]);
+
+  const handleLinkTelegram = async () => {
+    if (!address) return;
+    setTelegramLinkBusy(true);
+    try {
+      const initDataRaw = retrieveLaunchParams().initDataRaw;
+      if (!initDataRaw) {
+        showSnackbar(t("telegramLinkOnlyInTelegram") || "Доступно только внутри Telegram", "error");
+        return;
+      }
+      const result = await apiService.linkTelegramAccount(address, initDataRaw);
+      if (!result.success) throw new Error(result.message || "Не удалось подтвердить аккаунт");
+      setTelegramLinked(true);
+      showSnackbar(t("telegramLinkSuccess") || "Аккаунт подтверждён — теперь будут личные уведомления", "success");
+    } catch (error: any) {
+      showSnackbar(error?.message || t("telegramLinkError") || "Ошибка подтверждения", "error");
+    } finally {
+      setTelegramLinkBusy(false);
+    }
+  };
 
   const loadMyBeneficiaryListings = () => {
     if (!address) return;
@@ -6932,6 +6971,43 @@ const ProfileWidget: React.FC = () => {
               <TonConnectButton />
             </div>
           </div>
+
+          {address && telegramLinked === false && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "8px",
+                padding: "8px 12px",
+                borderRadius: "8px",
+                background: colors.secondaryBg,
+                border: `1px solid ${colors.border}`,
+                marginBottom: "8px",
+              }}
+            >
+              <span style={{ fontSize: "11px", color: colors.text, opacity: 0.7 }}>
+                {t("telegramLinkPromptText") || "Подтвердите аккаунт — бот будет слать личные уведомления"}
+              </span>
+              <button
+                onClick={handleLinkTelegram}
+                disabled={telegramLinkBusy}
+                style={{
+                  flexShrink: 0,
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  padding: "6px 10px",
+                  borderRadius: "8px",
+                  border: "none",
+                  background: telegramLinkBusy ? colors.border : colors.primary,
+                  color: "#FFFFFF",
+                  cursor: telegramLinkBusy ? "default" : "pointer",
+                }}
+              >
+                {telegramLinkBusy ? "..." : (t("telegramLinkButton") || "Подтвердить")}
+              </button>
+            </div>
+          )}
 
           {address ? (
             <div
