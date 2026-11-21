@@ -329,6 +329,29 @@ export function buildTransferItem(
   };
 }
 
+// ============ массовый transfer (режим выбора карточек, ProfileWidget) ============
+// Несколько transfer-сообщений в ОДНОЙ транзакции — предел (4 для v4-
+// кошельков, 255 для W5) определяется на стороне кошелька, не здесь;
+// вызывающий код (ProfileWidget) сам бьёт полный список на чанки нужного
+// размера и шлёт каждый чанк отдельным sendTransaction.
+
+export function buildTransferItems(
+  itemAddresses: string[],
+  newOwnerAddress: string,
+  responseAddress: string,
+  isTestnet: boolean,
+  queryId = 0
+): TransactionResponse {
+  return {
+    validUntil: validUntil(),
+    messages: itemAddresses.map((itemAddress) => ({
+      address: friendly(Address.parse(itemAddress), isTestnet),
+      amount: '50000000',
+      payload: cellToBase64(SubdomainItem.buildTransferBody(newOwnerAddress, responseAddress, queryId)),
+    })),
+  };
+}
+
 // ============ DNS-записи (dns.py — set_*/delete_* record, вызывается из ManageDomainPage) ============
 
 const DNS_RECORD_AMOUNT = '25000000'; // 0.025 TON, единая для всех 8 операций

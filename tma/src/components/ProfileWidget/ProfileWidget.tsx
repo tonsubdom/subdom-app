@@ -2320,7 +2320,7 @@ import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
 import { convertUserFriendlyToRaw, getZoneImageUrl, resolveDomainToWalletAddress } from "@/utils/tonUtils";
 import { TransactionService } from "@/services/transactionService";
-import { computeEscrowAddress, buildEscrowDeposit, buildTransferItem } from "@/services/payloadBuilder";
+import { computeEscrowAddress, buildEscrowDeposit, buildTransferItem, buildTransferItems } from "@/services/payloadBuilder";
 import { NETWORK_CONFIGS } from "@/services/blockchainItems/toncenter-api-config";
 import { Address } from "@ton/core";
 
@@ -3359,6 +3359,177 @@ const ProfileWidget: React.FC = () => {
   const [transferResolved, setTransferResolved] = useState<string | null>(null);
   const [transferResolving, setTransferResolving] = useState(false);
 
+  // После успешного transfer субдомен больше не принадлежит юзеру, но
+  // getUserSubdomainsFromBlockchain пересчитывается только на следующем
+  // полном рефреше (до ~30 мин по TTL/циклу краулера) — без этого карточка
+  // продолжала бы висеть в "моих субдоменах" как ни в чём не бывало. Плавно
+  // убираем её из локального состояния сразу же (fade+collapse), а не просто
+  // резко дёргаем список.
+  const [vanishingSubdomainAddresses, setVanishingSubdomainAddresses] = useState<Set<string>>(new Set());
+
+  const removeSubdomainWithAnimation = (subdomainAddress: string) => {
+    setVanishingSubdomainAddresses((prev) => new Set(prev).add(subdomainAddress));
+    setTimeout(() => {
+      setSubdomains((prev) => prev.filter((s) => s.address !== subdomainAddress));
+      setVanishingSubdomainAddresses((prev) => {
+        const next = new Set(prev);
+        next.delete(subdomainAddress);
+        return next;
+      });
+    }, 320);
+  };
+
+  // Массовый Transfer — режим выбора карточек (long-press по карточке proxy-
+  // субдомена переводит грид в режим множественного выбора, см. уточнение
+  // юзера в Kanban Backlog 2026-11-21). SBT-карточки не выбираются — у них и
+  // одиночной кнопки "Передать" нет (SBT непередаваемы по дизайну).
+  const [bulkSelectionMode, setBulkSelectionMode] = useState(false);
+  const [bulkSelectedAddresses, setBulkSelectedAddresses] = useState<Set<string>>(new Set());
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearLongPressTimer = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const toggleBulkSelected = (subdomainAddress: string) => {
+    setBulkSelectedAddresses((prev) => {
+      const next = new Set(prev);
+      if (next.has(subdomainAddress)) {
+        next.delete(subdomainAddress);
+      } else {
+        next.add(subdomainAddress);
+      }
+      return next;
+    });
+  };
+
+  const handleCardLongPressStart = (subdomainAddress: string) => {
+    clearLongPressTimer();
+    longPressTimerRef.current = setTimeout(() => {
+      setBulkSelectionMode(true);
+      setBulkSelectedAddresses((prev) => new Set(prev).add(subdomainAddress));
+    }, 450);
+  };
+
+  const exitBulkSelectionMode = () => {
+    setBulkSelectionMode(false);
+    setBulkSelectedAddresses(new Set());
+  };
+
+  // v4-кошельки не публикуют лимит сообщений за транзакцию через фичи
+  // TonConnect (просто строка 'SendTransaction' без деталей) — реальный
+  // лимит их wallet-контракта равен 4, поэтому дефолт выбран консервативно.
+  // W5 и новее отдают maxMessages явно (обычно 255) — см. TonConnect
+  // SendTransactionFeature в @tonconnect/protocol.
+  const BULK_TRANSFER_DEFAULT_MAX_MESSAGES = 4;
+  const getMaxMessagesPerTransaction = (): number => {
+    const features = (wallet as any)?.device?.features as any[] | undefined;
+    const feature = features?.find(
+      (f) => f === "SendTransaction" || f?.name === "SendTransaction"
+    );
+    if (feature && typeof feature === "object" && typeof feature.maxMessages === "number") {
+      return feature.maxMessages;
+    }
+    return BULK_TRANSFER_DEFAULT_MAX_MESSAGES;
+  };
+
+  const [bulkTransferModalOpen, setBulkTransferModalOpen] = useState(false);
+  const [bulkTransferAddressInput, setBulkTransferAddressInput] = useState("");
+  const [bulkTransferResolved, setBulkTransferResolved] = useState<string | null>(null);
+  const [bulkTransferResolving, setBulkTransferResolving] = useState(false);
+  const [bulkTransferBusy, setBulkTransferBusy] = useState(false);
+  const [bulkTransferProgress, setBulkTransferProgress] = useState<{ done: number; total: number } | null>(null);
+
+  const handleBulkTransferInputChange = (value: string) => {
+    setBulkTransferAddressInput(value);
+    setBulkTransferResolved(null);
+  };
+
+  const closeBulkTransferModal = () => {
+    setBulkTransferModalOpen(false);
+    setBulkTransferAddressInput("");
+    setBulkTransferResolved(null);
+  };
+
+  const handleBulkTransferPrimaryAction = async () => {
+    if (!address || bulkSelectedAddresses.size === 0) return;
+
+    if (!bulkTransferResolved) {
+      setBulkTransferResolving(true);
+      try {
+        const resolved = await resolveTransferTarget(bulkTransferAddressInput);
+        if (!resolved) {
+          showSnackbar(
+            t("transferInvalidAddress") || "Некорректный адрес или домен не найден",
+            "error"
+          );
+          return;
+        }
+        setBulkTransferResolved(resolved);
+      } finally {
+        setBulkTransferResolving(false);
+      }
+      return;
+    }
+
+    const itemAddresses = Array.from(bulkSelectedAddresses);
+    const chunkSize = getMaxMessagesPerTransaction();
+    const chunks: string[][] = [];
+    for (let i = 0; i < itemAddresses.length; i += chunkSize) {
+      chunks.push(itemAddresses.slice(i, i + chunkSize));
+    }
+
+    setBulkTransferBusy(true);
+    setBulkTransferProgress({ done: 0, total: chunks.length });
+    let transferredCount = 0;
+    try {
+      for (let i = 0; i < chunks.length; i++) {
+        const chunk = chunks[i];
+        const txResponse = buildTransferItems(chunk, bulkTransferResolved, address, isTestnet);
+        const sendResult = await TransactionService.sendTransaction(
+          tonConnectUI,
+          txResponse,
+          { network: isTestnet ? "testnet" : "mainnet", verifyBlockchain: true, action: "subdomain_bulk_transfer" }
+        );
+        if (!sendResult.success || !sendResult.confirmedInBlock) {
+          throw new Error(sendResult.error || "Транзакция не подтверждена");
+        }
+        chunk.forEach((addr) => {
+          removeSubdomainWithAnimation(addr);
+          setBulkSelectedAddresses((prev) => {
+            const next = new Set(prev);
+            next.delete(addr);
+            return next;
+          });
+        });
+        transferredCount += chunk.length;
+        setBulkTransferProgress({ done: i + 1, total: chunks.length });
+      }
+      showSnackbar(
+        `${t("bulkTransferSuccessLabel") || "Передано субдоменов"}: ${transferredCount}`,
+        "success"
+      );
+      closeBulkTransferModal();
+      exitBulkSelectionMode();
+    } catch (error: any) {
+      // Модалку и bulkTransferResolved намеренно не сбрасываем — оставшиеся
+      // (ещё не переданные) адреса всё ещё в bulkSelectedAddresses, повторный
+      // клик "Подтвердить" продолжит именно с них, без повторного выбора.
+      showSnackbar(
+        transferredCount > 0
+          ? `${t("bulkTransferPartialErrorLabel") || "Передано частично — повторите для оставшихся"} (${transferredCount}/${itemAddresses.length})`
+          : error?.message || t("transferError") || "Ошибка перевода",
+        "error"
+      );
+    } finally {
+      setBulkTransferBusy(false);
+      setBulkTransferProgress(null);
+    }
+  };
+
   // Резолвит ТОЛЬКО корневые .ton домены (toncenter не знает про субдомены
   // платформы, см. resolveDomainToWalletAddress) — платформенные субдомены
   // ищем отдельно по уже загруженному кэшу (без сетевого похода).
@@ -3436,6 +3607,7 @@ const ProfileWidget: React.FC = () => {
         throw new Error(sendResult.error || "Транзакция не подтверждена");
       }
       showSnackbar(t("transferSuccess") || "Субдомен передан", "success");
+      removeSubdomainWithAnimation(transferModalSubdomain.address);
       setTransferModalSubdomain(null);
       setTransferAddressInput("");
       setTransferResolved(null);
@@ -4788,19 +4960,74 @@ const ProfileWidget: React.FC = () => {
     );
     const effectiveStatus = isAuction ? "auction" : subdomain.status;
 
+    // Массовый выбор (long-press) — SBT не передаваемы, не участвуют (как и
+    // одиночная кнопка "Передать" выше, см. комментарий у её объявления).
+    const isBulkSelectable = !isSbt;
+    const isBulkSelected = bulkSelectedAddresses.has(subdomain.address);
+    const isVanishing = vanishingSubdomainAddresses.has(subdomain.address);
+
     return (
       <div
         key={subdomain.id}
+        onMouseDown={() => isBulkSelectable && !bulkSelectionMode && handleCardLongPressStart(subdomain.address)}
+        onMouseUp={clearLongPressTimer}
+        onMouseLeave={clearLongPressTimer}
+        onTouchStart={() => isBulkSelectable && !bulkSelectionMode && handleCardLongPressStart(subdomain.address)}
+        onTouchEnd={clearLongPressTimer}
+        onTouchMove={clearLongPressTimer}
         style={{
           padding: "12px",
-          border: `1px solid ${colors.border}`,
+          border: `1px solid ${isBulkSelected ? colors.primary : colors.border}`,
           borderRadius: "8px",
           fontSize: "13px",
           backgroundColor: colors.secondaryBg,
           fontFamily: "monospace",
           position: "relative" as const,
+          opacity: isVanishing ? 0 : bulkSelectionMode && !isBulkSelectable ? 0.4 : 1,
+          transform: isVanishing ? "scale(0.96)" : "scale(1)",
+          transition: "opacity 0.3s ease, transform 0.3s ease, border-color 0.15s ease",
         }}
       >
+        {bulkSelectionMode && isBulkSelectable && (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleBulkSelected(subdomain.address);
+            }}
+            style={{
+              position: "absolute" as const,
+              inset: 0,
+              zIndex: 5,
+              borderRadius: "8px",
+              cursor: "pointer",
+            }}
+          />
+        )}
+        {bulkSelectionMode && isBulkSelectable && (
+          <div
+            style={{
+              position: "absolute" as const,
+              top: "8px",
+              right: "8px",
+              zIndex: 6,
+              width: "22px",
+              height: "22px",
+              borderRadius: "50%",
+              border: `2px solid ${isBulkSelected ? colors.primary : colors.border}`,
+              background: isBulkSelected ? colors.primary : colors.secondaryBg,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              pointerEvents: "none" as const,
+            }}
+          >
+            {isBulkSelected && (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            )}
+          </div>
+        )}
         {!imgUri && (
           <LupaButton domain={subdomain.name} address={subdomain.address} isTestnet={isTestnet} siteResolves={subdomain.siteResolves} />
         )}
@@ -5729,6 +5956,220 @@ const ProfileWidget: React.FC = () => {
                   ? t("transferResolving") || "Поиск..."
                   : transferResolved
                   ? t("transferConfirmButton") || "Подтвердить"
+                  : t("transferButton") || "Передать"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bulkTransferModalOpen && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)",
+            zIndex: 10000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => {
+            if (!bulkTransferBusy) closeBulkTransferModal();
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: colors.background,
+              borderRadius: "16px",
+              padding: "24px",
+              maxWidth: "380px",
+              width: "100%",
+              border: `1px solid ${colors.border}`,
+              boxShadow: `0 10px 40px ${colors.shadow}`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: "40px", textAlign: "center", marginBottom: "12px" }}>📤</div>
+            <h3
+              style={{
+                margin: "0 0 12px 0",
+                fontSize: "17px",
+                fontWeight: 700,
+                color: colors.text,
+                textAlign: "center",
+                fontFamily: "monospace",
+              }}
+            >
+              {t("bulkTransferModalTitle") || "Массовая передача"}
+            </h3>
+            <p
+              style={{
+                margin: "0 0 8px 0",
+                fontSize: "13px",
+                color: colors.text,
+                textAlign: "center",
+                fontWeight: 700,
+              }}
+            >
+              {t("bulkTransferSelectedLabel") || "Выбрано"}: {bulkSelectedAddresses.size}/
+              {subdomains.filter((s) => !isSbtSubdomain(s)).length}
+            </p>
+            <div
+              style={{
+                maxHeight: "140px",
+                overflowY: "auto",
+                marginBottom: "12px",
+                border: `1px solid ${colors.border}`,
+                borderRadius: "10px",
+                padding: "4px",
+              }}
+            >
+              {subdomains
+                .filter((s) => bulkSelectedAddresses.has(s.address))
+                .map((s) => (
+                  <div
+                    key={s.address}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "8px",
+                      padding: "6px 8px",
+                      fontSize: "12px",
+                      color: colors.text,
+                      fontFamily: "monospace",
+                    }}
+                  >
+                    <span style={{ wordBreak: "break-word" as const }}>
+                      {decodeDomainForDisplay(s.name)}
+                    </span>
+                    <button
+                      onClick={() => toggleBulkSelected(s.address)}
+                      disabled={bulkTransferBusy}
+                      title={t("cancel") || "Убрать"}
+                      style={{
+                        flexShrink: 0,
+                        width: "20px",
+                        height: "20px",
+                        borderRadius: "50%",
+                        border: `1px solid ${colors.border}`,
+                        background: "transparent",
+                        color: colors.text,
+                        cursor: bulkTransferBusy ? "default" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "11px",
+                        lineHeight: 1,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+            </div>
+            <p
+              style={{
+                margin: "0 0 16px 0",
+                fontSize: "13px",
+                color: colors.text,
+                opacity: 0.85,
+                lineHeight: 1.5,
+                textAlign: "center",
+              }}
+            >
+              {t("bulkTransferModalText") ||
+                "Выбранные NFT перейдут на указанный адрес напрямую, без выставления на продажу. Можно вставить адрес кошелька или вписать домен (например, 7707.ton). Действие необратимо."}
+            </p>
+            <input
+              type="text"
+              placeholder={t("transferAddressPlaceholder") || "Адрес кошелька или домен (name.ton)"}
+              value={bulkTransferAddressInput}
+              onChange={(e) => handleBulkTransferInputChange(e.target.value)}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "10px 12px",
+                borderRadius: "10px",
+                border: `1px solid ${colors.border}`,
+                background: colors.secondaryBg,
+                color: colors.text,
+                fontSize: "13px",
+                fontFamily: "monospace",
+                marginBottom: bulkTransferResolved ? "8px" : "16px",
+              }}
+            />
+            {bulkTransferResolved && (
+              <p
+                style={{
+                  margin: "0 0 16px 0",
+                  fontSize: "12px",
+                  color: colors.primary,
+                  fontFamily: "monospace",
+                  wordBreak: "break-all" as const,
+                }}
+              >
+                {t("transferResolvedTo") || "Получатель"}: {bulkTransferResolved}
+              </p>
+            )}
+            {bulkTransferProgress && (
+              <p
+                style={{
+                  margin: "0 0 16px 0",
+                  fontSize: "12px",
+                  color: colors.text,
+                  opacity: 0.8,
+                  textAlign: "center",
+                }}
+              >
+                {t("bulkTransferSendingLabel") || "Отправка"}: {bulkTransferProgress.done}/{bulkTransferProgress.total}
+              </p>
+            )}
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={closeBulkTransferModal}
+                disabled={bulkTransferBusy}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: `1px solid ${colors.border}`,
+                  background: "transparent",
+                  color: colors.text,
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  cursor: bulkTransferBusy ? "default" : "pointer",
+                  opacity: bulkTransferBusy ? 0.5 : 1,
+                }}
+              >
+                {t("cancel") || "Отмена"}
+              </button>
+              <button
+                onClick={handleBulkTransferPrimaryAction}
+                disabled={bulkTransferBusy || bulkTransferResolving || !bulkTransferAddressInput}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: bulkTransferBusy || bulkTransferResolving ? colors.border : colors.primary,
+                  color: "#FFFFFF",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: bulkTransferBusy || bulkTransferResolving ? "default" : "pointer",
+                }}
+              >
+                {bulkTransferBusy
+                  ? t("processing") || "Отправка..."
+                  : bulkTransferResolving
+                  ? t("transferResolving") || "Поиск..."
+                  : bulkTransferResolved
+                  ? t("bulkTransferSendButton") || "Отправить"
                   : t("transferButton") || "Передать"}
               </button>
             </div>
@@ -6864,6 +7305,61 @@ const ProfileWidget: React.FC = () => {
                         paddingRight: "6px",
                       }}
                     >
+                      {bulkSelectionMode && (
+                        <div
+                          style={{
+                            position: "sticky" as const,
+                            top: 0,
+                            zIndex: 4,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: "10px",
+                            padding: "10px 12px",
+                            borderRadius: "10px",
+                            border: `1px solid ${colors.primary}`,
+                            background: colors.secondaryBg,
+                            boxShadow: `0 2px 10px ${colors.shadow}`,
+                          }}
+                        >
+                          <span style={{ fontSize: "13px", color: colors.text, fontWeight: 600 }}>
+                            {t("bulkTransferSelectedLabel") || "Выбрано"}: {bulkSelectedAddresses.size}
+                          </span>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              onClick={exitBulkSelectionMode}
+                              style={{
+                                padding: "8px 12px",
+                                borderRadius: "8px",
+                                border: `1px solid ${colors.border}`,
+                                background: "transparent",
+                                color: colors.text,
+                                fontSize: "12px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                              }}
+                            >
+                              {t("cancel") || "Отмена"}
+                            </button>
+                            <button
+                              onClick={() => setBulkTransferModalOpen(true)}
+                              disabled={bulkSelectedAddresses.size === 0}
+                              style={{
+                                padding: "8px 12px",
+                                borderRadius: "8px",
+                                border: "none",
+                                background: bulkSelectedAddresses.size === 0 ? colors.border : colors.primary,
+                                color: "#FFFFFF",
+                                fontSize: "12px",
+                                fontWeight: 700,
+                                cursor: bulkSelectedAddresses.size === 0 ? "default" : "pointer",
+                              }}
+                            >
+                              {t("transferButton") || "Передать"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                       {blockchainLoading && subdomains.length === 0 ? (
                         <ScanProgressLoader
                           label={t("loadingSubdomains") || "Загрузка данных..."}
