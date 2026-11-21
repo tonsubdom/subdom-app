@@ -378,6 +378,8 @@ export const ruTranslations = {
   marketBeneficiaryOfferFrom: 'Оффер',
   marketBeneficiaryOfferAcceptedForYou: 'Ваш оффер принят',
   marketBeneficiaryPayOffer: 'Оплатить',
+  marketBeneficiaryOfferPending: 'Оффер отправлен, ждём ответа продавца',
+  marketBeneficiaryCancelOffer: 'Отменить оффер',
   marketBeneficiarySellTitle: 'Выставить бенефициарство на продажу',
   marketBeneficiarySellText: 'Покупатель заплатит вам напрямую указанную сумму, после чего площадка сменит получателя 90% с аукционов этой зоны на его адрес.',
   marketZonesSearchPlaceholder: 'Поиск прокси-доменов по имени ',

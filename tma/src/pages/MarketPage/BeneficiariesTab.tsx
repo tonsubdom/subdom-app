@@ -67,6 +67,16 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [errorByKey, setErrorByKey] = useState<Record<string, string>>({});
   const [offerInputs, setOfferInputs] = useState<Record<string, string>>({});
+  // Офферы, которые ТЫ сам отправил на чужую зону (не входит в
+  // listingByZone — тот только про уже выставленные на продажу листинги).
+  // Раньше статус "принят" + кнопка "Оплатить" жили только в ProfileWidget
+  // рядом со списком "мои зоны" — но зона, на которую ты делаешь оффер,
+  // ПО ОПРЕДЕЛЕНИЮ не твоя, так что та карточка там никогда не появлялась и
+  // покупатель не мог найти, куда платить после того, как продавец нажимал
+  // галочку "принять" (см. Log.md, живой баг с "висящим" оффером). Теперь
+  // статус оффера виден прямо здесь, на той же карточке зоны, где его и
+  // отправляли.
+  const [myOffers, setMyOffers] = useState<any[]>([]);
 
   const loadListings = async () => {
     setLoading(true);
@@ -78,11 +88,31 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
     }
   };
 
+  const loadMyOffers = async () => {
+    if (!walletAddress) {
+      setMyOffers([]);
+      return;
+    }
+    const result = await apiService.getBeneficiaryOffers({ buyerAddress: walletAddress });
+    setMyOffers(result.success ? result.data || [] : []);
+  };
+
   useEffect(() => {
     loadListings();
   }, []);
 
+  useEffect(() => {
+    loadMyOffers();
+    const intervalId = setInterval(loadMyOffers, 30_000);
+    return () => clearInterval(intervalId);
+  }, [walletAddress]);
+
   const listingByZone = new Map(listings.map((l) => [l.zoneAddress.toLowerCase(), l]));
+  const myOfferByZone = new Map(
+    myOffers
+      .filter((o) => o.status === 'pending' || o.status === 'accepted')
+      .map((o) => [o.zoneAddress.toLowerCase(), o])
+  );
 
   const setError = (key: string, message: string) => setErrorByKey((prev) => ({ ...prev, [key]: message }));
   const clearError = (key: string) => setErrorByKey((prev) => ({ ...prev, [key]: '' }));
@@ -170,6 +200,75 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
       });
       if (!result.success) throw new Error(result.message || 'Не удалось отправить оффер');
       setOfferInputs((prev) => ({ ...prev, [zoneAddress]: '' }));
+      await loadMyOffers();
+    } catch (error: any) {
+      setError(key, error?.message || 'Ошибка');
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  // Зеркало handlePayBeneficiaryOffer из ProfileWidget.tsx — продавец уже
+  // нажал "принять" на своей стороне (его зона, видно в его "мои зоны"),
+  // теперь покупатель депозитит сумму в тот же одноразовый эскроу (owner =
+  // площадка, deal_id = id оффера), что и при "Забрать" готовый листинг выше.
+  const handlePayOffer = async (offer: any) => {
+    if (!walletAddress) return;
+    const key = `pay-${offer.id}`;
+    setBusyKey(key);
+    clearError(key);
+    try {
+      const platformOwner = isTestnet
+        ? NETWORK_CONFIGS.testnet.DEFAULT_ADDRESSES.PLATFORM_OWNER
+        : NETWORK_CONFIGS.mainnet.DEFAULT_ADDRESSES.PLATFORM_OWNER;
+      const escrowConfig = {
+        owner_address: platformOwner,
+        seller_address: offer.sellerAddress,
+        buyer_address: walletAddress,
+        deal_id: BigInt(offer.id),
+        deadline: Math.floor(Date.now() / 1000) + ESCROW_TIMEOUT_SECONDS,
+      };
+      const escrowAddress = computeEscrowAddress(escrowConfig, isTestnet);
+      const nanotons = BigInt(Math.round(Number(offer.priceTon) * 1_000_000_000)).toString();
+      const depositTx = buildEscrowDeposit(escrowConfig, nanotons, isTestnet);
+
+      const sendResult = await TransactionService.sendTransaction(
+        tonConnectUI,
+        depositTx,
+        { network: isTestnet ? 'testnet' : 'mainnet', verifyBlockchain: true, action: 'beneficiary_offer_escrow_deposit' }
+      );
+      if (!sendResult.success || !sendResult.confirmedInBlock) {
+        throw new Error(sendResult.error || 'Транзакция не подтверждена');
+      }
+
+      await apiService.payBeneficiaryOffer(offer.id, walletAddress, escrowAddress, sendResult.hash);
+      await apiService.createPendingAction({
+        actionType: 'transfer_beneficiary',
+        targetType: 'zone',
+        targetAddress: offer.zoneAddress,
+        targetCollectionAddress: offer.zoneAddress,
+        targetName: offer.zoneName,
+        requestedBy: walletAddress,
+        newPartnerAddress: walletAddress,
+        escrowAddress,
+      });
+      await loadMyOffers();
+    } catch (error: any) {
+      setError(key, error?.message || 'Ошибка');
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const handleCancelOffer = async (offer: any) => {
+    if (!walletAddress) return;
+    const key = `cancel-${offer.id}`;
+    setBusyKey(key);
+    clearError(key);
+    try {
+      const result = await apiService.cancelBeneficiaryOffer(offer.id, walletAddress);
+      if (!result.success) throw new Error(result.message || 'Не удалось отменить оффер');
+      await loadMyOffers();
     } catch (error: any) {
       setError(key, error?.message || 'Ошибка');
     } finally {
@@ -228,11 +327,14 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
       {zones.map((zone: any) => {
         const zoneAddressRaw = convertUserFriendlyToRaw(zone.address).toLowerCase();
         const listing = listingByZone.get(zoneAddressRaw);
+        const myOffer = myOfferByZone.get(zoneAddressRaw);
         const zoneName = zone.domain || zone.name;
         const displayName = stripTonTld(zoneName);
         const presumedSeller = zone.creator_address || zone.owner_address;
         const takeKey = listing ? `take-${listing.id}` : '';
         const offerKey = `offer-${zoneAddressRaw}`;
+        const payKey = myOffer ? `pay-${myOffer.id}` : '';
+        const cancelOfferKey = myOffer ? `cancel-${myOffer.id}` : '';
 
         return (
           <div key={zone.address} style={cardStyle}>
@@ -284,6 +386,39 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
                     {busyKey === takeKey ? (t('marketBeneficiaryProcessing') || 'Отправка...') : `🤝 ${t('marketBeneficiaryTake') || 'Забрать'}`}
                   </button>
                   {errorByKey[takeKey] && <p style={{ color: colors.error, fontSize: '12px', marginTop: '6px' }}>{errorByKey[takeKey]}</p>}
+                </>
+              ) : myOffer?.status === 'accepted' ? (
+                <>
+                  <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '8px' }}>
+                    {t('marketBeneficiaryOfferAcceptedForYou') || 'Ваш оффер принят'}: <strong style={{ color: colors.text }}>{myOffer.priceTon} TON</strong>
+                  </div>
+                  <button
+                    onClick={() => handlePayOffer(myOffer)}
+                    disabled={busyKey === payKey}
+                    style={buttonStyle(busyKey === payKey)}
+                  >
+                    {busyKey === payKey ? (t('marketBeneficiaryProcessing') || 'Отправка...') : `💰 ${t('marketBeneficiaryPayOffer') || 'Оплатить'}`}
+                  </button>
+                  {errorByKey[payKey] && <p style={{ color: colors.error, fontSize: '12px', marginTop: '6px' }}>{errorByKey[payKey]}</p>}
+                </>
+              ) : myOffer?.status === 'pending' ? (
+                <>
+                  <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '8px' }}>
+                    {t('marketBeneficiaryOfferPending') || 'Оффер отправлен, ждём ответа продавца'}: <strong style={{ color: colors.text }}>{myOffer.priceTon} TON</strong>
+                  </div>
+                  <button
+                    onClick={() => handleCancelOffer(myOffer)}
+                    disabled={busyKey === cancelOfferKey}
+                    style={{
+                      ...buttonStyle(busyKey === cancelOfferKey),
+                      background: 'transparent',
+                      border: `1px solid ${colors.border}`,
+                      color: colors.textSecondary,
+                    }}
+                  >
+                    {busyKey === cancelOfferKey ? '...' : (t('marketBeneficiaryCancelOffer') || 'Отменить оффер')}
+                  </button>
+                  {errorByKey[cancelOfferKey] && <p style={{ color: colors.error, fontSize: '12px', marginTop: '6px' }}>{errorByKey[cancelOfferKey]}</p>}
                 </>
               ) : (
                 <>
