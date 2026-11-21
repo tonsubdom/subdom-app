@@ -77,6 +77,13 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
   // статус оффера виден прямо здесь, на той же карточке зоны, где его и
   // отправляли.
   const [myOffers, setMyOffers] = useState<any[]>([]);
+  // Входящие офферы на ТВОИ зоны (ты — текущий бенефициар). Раньше принять/
+  // отклонить можно было только в ProfileWidget рядом со списком "мои
+  // зоны" — здесь, в Market, карточка твоей же зоны выглядела как любая
+  // другая, с тем же "можно сделать оффер" стоковым видом, из-за чего сам
+  // владелец зоны мог отправить (и затем принять) оффер самому себе.
+  const [incomingOffers, setIncomingOffers] = useState<any[]>([]);
+  const [offerActionBusyId, setOfferActionBusyId] = useState<number | null>(null);
 
   const loadListings = async () => {
     setLoading(true);
@@ -97,13 +104,26 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
     setMyOffers(result.success ? result.data || [] : []);
   };
 
+  const loadIncomingOffers = async () => {
+    if (!walletAddress) {
+      setIncomingOffers([]);
+      return;
+    }
+    const result = await apiService.getBeneficiaryOffers({ sellerAddress: walletAddress, status: 'pending' });
+    setIncomingOffers(result.success ? result.data || [] : []);
+  };
+
   useEffect(() => {
     loadListings();
   }, []);
 
   useEffect(() => {
     loadMyOffers();
-    const intervalId = setInterval(loadMyOffers, 30_000);
+    loadIncomingOffers();
+    const intervalId = setInterval(() => {
+      loadMyOffers();
+      loadIncomingOffers();
+    }, 30_000);
     return () => clearInterval(intervalId);
   }, [walletAddress]);
 
@@ -113,6 +133,8 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
       .filter((o) => o.status === 'pending' || o.status === 'accepted')
       .map((o) => [o.zoneAddress.toLowerCase(), o])
   );
+  const incomingOfferByZone = new Map(incomingOffers.map((o) => [o.zoneAddress.toLowerCase(), o]));
+  const ownWalletRaw = walletAddress ? convertUserFriendlyToRaw(walletAddress).toLowerCase() : null;
 
   const setError = (key: string, message: string) => setErrorByKey((prev) => ({ ...prev, [key]: message }));
   const clearError = (key: string) => setErrorByKey((prev) => ({ ...prev, [key]: '' }));
@@ -276,6 +298,37 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
     }
   };
 
+  // Зеркало handleAcceptBeneficiaryOffer/handleDeclineBeneficiaryOffer из
+  // ProfileWidget.tsx — тот же API, только теперь доступно и здесь, прямо
+  // на карточке своей зоны, а не только в списке "мои зоны".
+  const handleAcceptIncomingOffer = async (offer: any) => {
+    if (!walletAddress) return;
+    setOfferActionBusyId(offer.id);
+    try {
+      const result = await apiService.acceptBeneficiaryOffer(offer.id, walletAddress);
+      if (!result.success) throw new Error(result.message || 'Не удалось принять оффер');
+      await loadIncomingOffers();
+    } catch (error: any) {
+      setError(`incoming-${offer.id}`, error?.message || 'Ошибка');
+    } finally {
+      setOfferActionBusyId(null);
+    }
+  };
+
+  const handleDeclineIncomingOffer = async (offer: any) => {
+    if (!walletAddress) return;
+    setOfferActionBusyId(offer.id);
+    try {
+      const result = await apiService.declineBeneficiaryOffer(offer.id, walletAddress);
+      if (!result.success) throw new Error(result.message || 'Не удалось отклонить оффер');
+      await loadIncomingOffers();
+    } catch (error: any) {
+      setError(`incoming-${offer.id}`, error?.message || 'Ошибка');
+    } finally {
+      setOfferActionBusyId(null);
+    }
+  };
+
   const cardStyle: React.CSSProperties = {
     display: 'flex',
     gap: '14px',
@@ -328,13 +381,16 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
         const zoneAddressRaw = convertUserFriendlyToRaw(zone.address).toLowerCase();
         const listing = listingByZone.get(zoneAddressRaw);
         const myOffer = myOfferByZone.get(zoneAddressRaw);
+        const incomingOffer = incomingOfferByZone.get(zoneAddressRaw);
         const zoneName = zone.domain || zone.name;
         const displayName = stripTonTld(zoneName);
         const presumedSeller = zone.creator_address || zone.owner_address;
+        const isOwnZone = !!(ownWalletRaw && presumedSeller && convertUserFriendlyToRaw(presumedSeller).toLowerCase() === ownWalletRaw);
         const takeKey = listing ? `take-${listing.id}` : '';
         const offerKey = `offer-${zoneAddressRaw}`;
         const payKey = myOffer ? `pay-${myOffer.id}` : '';
         const cancelOfferKey = myOffer ? `cancel-${myOffer.id}` : '';
+        const incomingKey = incomingOffer ? `incoming-${incomingOffer.id}` : '';
 
         return (
           <div key={zone.address} style={cardStyle}>
@@ -387,6 +443,40 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
                   </button>
                   {errorByKey[takeKey] && <p style={{ color: colors.error, fontSize: '12px', marginTop: '6px' }}>{errorByKey[takeKey]}</p>}
                 </>
+              ) : isOwnZone ? (
+                incomingOffer ? (
+                  <>
+                    <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '8px' }}>
+                      {t('marketBeneficiaryOfferFrom') || 'Оффер'}: <strong style={{ color: colors.text }}>{incomingOffer.priceTon} TON</strong> ({shortAddress(incomingOffer.buyerAddress)})
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => handleAcceptIncomingOffer(incomingOffer)}
+                        disabled={offerActionBusyId === incomingOffer.id}
+                        style={buttonStyle(offerActionBusyId === incomingOffer.id)}
+                      >
+                        {offerActionBusyId === incomingOffer.id ? '...' : `✓ ${t('marketBeneficiaryAcceptOffer') || 'Принять'}`}
+                      </button>
+                      <button
+                        onClick={() => handleDeclineIncomingOffer(incomingOffer)}
+                        disabled={offerActionBusyId === incomingOffer.id}
+                        style={{
+                          ...buttonStyle(offerActionBusyId === incomingOffer.id),
+                          background: 'transparent',
+                          border: `1px solid ${colors.border}`,
+                          color: colors.textSecondary,
+                        }}
+                      >
+                        {offerActionBusyId === incomingOffer.id ? '...' : `✕ ${t('marketBeneficiaryDeclineOffer') || 'Отклонить'}`}
+                      </button>
+                    </div>
+                    {errorByKey[incomingKey] && <p style={{ color: colors.error, fontSize: '12px', marginTop: '6px' }}>{errorByKey[incomingKey]}</p>}
+                  </>
+                ) : (
+                  <div style={{ fontSize: '12px', color: colors.textSecondary }}>
+                    {t('marketBeneficiaryYourZone') || 'Это ваша зона'}
+                  </div>
+                )
               ) : myOffer?.status === 'accepted' ? (
                 <>
                   <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '8px' }}>

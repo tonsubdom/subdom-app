@@ -4915,6 +4915,11 @@ app.post('/api/market/beneficiary/offers', (req, res) => {
 
     const normalizedZoneAddress = String(zoneAddress).toLowerCase();
     const normalizedBuyer = String(buyerAddress).toLowerCase();
+    const normalizedSeller = String(sellerAddress).toLowerCase();
+
+    if (normalizedBuyer === normalizedSeller) {
+      return res.status(400).json({ success: false, message: 'Нельзя сделать оффер на собственную зону' });
+    }
 
     db.prepare(`
       UPDATE beneficiary_offers
