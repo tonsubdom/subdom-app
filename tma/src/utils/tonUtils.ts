@@ -249,6 +249,49 @@ export async function getPartnerShare(
 }
 
 /**
+ * Резолвит ввод из поля "Передать" (кнопка Transfer, ProfileWidget) — юзер
+ * может вставить готовый адрес кошелька ИЛИ вписать домен ("7707.ton"), чтобы
+ * найти владельца по-человечески. Проверено вживую на реальном домене
+ * (7707.ton, 2026-11-21) — toncenter v3 `/dns/records?domain=` отдаёт
+ * dns_wallet/nft_item_owner как ГОТОВЫЕ строки адресов, decode ячеек не
+ * нужен (в отличие от get_partner_share тем же утром).
+ *
+ * dns_wallet (явная DNS wallet-запись — "присылайте сюда") в приоритете
+ * перед nft_item_owner (текущий владелец домена) — ровно та же логика,
+ * что у любого ENS-подобного резолва: явный wallet record переопределяет
+ * владельца, если задан.
+ *
+ * РЕЗОЛВИТ ТОЛЬКО КОРНЕВЫЕ .ton ДОМЕНЫ — toncenter не знает про субдомены
+ * платформы (тот же давний лимит, что и у resolveDomainNftAddress в
+ * AvatarSecretPage). Для платформенных субдоменов вызывающий код должен
+ * отдельно проверить уже загруженный кэш (allProxySubdomains/allSBTSubdomains
+ * в ProfileWidget) по полю domain — сетевого похода для этого не нужно.
+ */
+export async function resolveDomainToWalletAddress(
+  domainInput: string,
+  isTestnet: boolean
+): Promise<string | null> {
+  const trimmed = domainInput.trim().toLowerCase();
+  if (!trimmed) return null;
+  const withTld = trimmed.endsWith('.ton') ? trimmed : `${trimmed}.ton`;
+
+  try {
+    const apiUrl = toncenterApiUrl(isTestnet, 'v3/dns/records');
+    const response = await fetch(`${apiUrl}?domain=${encodeURIComponent(withTld)}&limit=1&offset=0`);
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const record = data?.records?.[0];
+    if (!record) return null;
+
+    return record.dns_wallet || record.nft_item_owner || null;
+  } catch (error) {
+    console.error('Ошибка резолва домена в адрес:', error);
+    return null;
+  }
+}
+
+/**
  * Получает информацию о NFT через toncenter API
  */
 export async function getNftInfo(

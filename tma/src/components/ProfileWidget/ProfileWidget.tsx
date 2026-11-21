@@ -2318,7 +2318,7 @@ import { useBlockchainScanUi } from "@/hooks/useBlockchainLoadProgress";
 // import { useZones } from "@/hooks/useZones";
 import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
-import { convertUserFriendlyToRaw, getZoneImageUrl } from "@/utils/tonUtils";
+import { convertUserFriendlyToRaw, getZoneImageUrl, resolveDomainToWalletAddress } from "@/utils/tonUtils";
 import { TransactionService } from "@/services/transactionService";
 import { computeEscrowAddress, buildEscrowDeposit, buildTransferItem } from "@/services/payloadBuilder";
 import { NETWORK_CONFIGS } from "@/services/blockchainItems/toncenter-api-config";
@@ -2713,6 +2713,7 @@ const ProfileWidget: React.FC = () => {
     proxyCollections,
     sbtCollections,
     proxySubdomains: allProxySubdomains,
+    sbtSubdomains: allSBTSubdomains,
     userProxySubdomains,
     userSBTSubdomains,
     loadAllData,
@@ -3349,22 +3350,80 @@ const ProfileWidget: React.FC = () => {
   const [transferModalSubdomain, setTransferModalSubdomain] = useState<Subdomain | null>(null);
   const [transferAddressInput, setTransferAddressInput] = useState("");
   const [transferBusy, setTransferBusy] = useState(false);
+  // Двухшаговое подтверждение: сначала резолвим ввод (адрес ИЛИ домен типа
+  // "7707.ton" — юзер прямо попросил принимать и так, чтобы не заставлять
+  // копировать длинный адрес) в конкретный адрес и показываем его юзеру,
+  // отправка реальной транзакции — только вторым кликом по уже показанному
+  // адресу. Смена текста инпута сбрасывает резолв — нельзя подтвердить
+  // устаревший адрес от прошлого ввода.
+  const [transferResolved, setTransferResolved] = useState<string | null>(null);
+  const [transferResolving, setTransferResolving] = useState(false);
 
-  const confirmTransferSubdomain = async () => {
-    if (!transferModalSubdomain || !address) return;
-    const target = transferAddressInput.trim();
-    let targetAddress: Address;
+  // Резолвит ТОЛЬКО корневые .ton домены (toncenter не знает про субдомены
+  // платформы, см. resolveDomainToWalletAddress) — платформенные субдомены
+  // ищем отдельно по уже загруженному кэшу (без сетевого похода).
+  const resolveTransferTarget = async (input: string): Promise<string | null> => {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
     try {
-      targetAddress = Address.parse(target);
+      return Address.parse(trimmed).toString({ bounceable: true });
     } catch {
-      showSnackbar(t("transferInvalidAddress") || "Некорректный адрес кошелька", "error");
+      // не адрес — пробуем как домен
+    }
+
+    const normalized = trimmed.toLowerCase();
+    const withTld = normalized.endsWith(".ton") ? normalized : `${normalized}.ton`;
+    const platformMatch = [...allProxySubdomains, ...allSBTSubdomains].find(
+      (item: any) => item.domain?.toLowerCase() === withTld
+    );
+    if (platformMatch?.owner_address) {
+      try {
+        return Address.parse(platformMatch.owner_address).toString({ bounceable: true });
+      } catch {
+        return null;
+      }
+    }
+
+    const viaDns = await resolveDomainToWalletAddress(trimmed, isTestnet);
+    if (!viaDns) return null;
+    try {
+      return Address.parse(viaDns).toString({ bounceable: true });
+    } catch {
+      return null;
+    }
+  };
+
+  const handleTransferInputChange = (value: string) => {
+    setTransferAddressInput(value);
+    setTransferResolved(null);
+  };
+
+  const handleTransferPrimaryAction = async () => {
+    if (!transferModalSubdomain || !address) return;
+
+    if (!transferResolved) {
+      setTransferResolving(true);
+      try {
+        const resolved = await resolveTransferTarget(transferAddressInput);
+        if (!resolved) {
+          showSnackbar(
+            t("transferInvalidAddress") || "Некорректный адрес или домен не найден",
+            "error"
+          );
+          return;
+        }
+        setTransferResolved(resolved);
+      } finally {
+        setTransferResolving(false);
+      }
       return;
     }
+
     setTransferBusy(true);
     try {
       const txResponse = buildTransferItem(
         transferModalSubdomain.address,
-        targetAddress.toString(),
+        transferResolved,
         address,
         isTestnet
       );
@@ -3379,6 +3438,7 @@ const ProfileWidget: React.FC = () => {
       showSnackbar(t("transferSuccess") || "Субдомен передан", "success");
       setTransferModalSubdomain(null);
       setTransferAddressInput("");
+      setTransferResolved(null);
     } catch (error: any) {
       showSnackbar(error?.message || t("transferError") || "Ошибка перевода", "error");
     } finally {
@@ -5541,6 +5601,7 @@ const ProfileWidget: React.FC = () => {
             if (!transferBusy) {
               setTransferModalSubdomain(null);
               setTransferAddressInput("");
+              setTransferResolved(null);
             }
           }}
         >
@@ -5591,13 +5652,13 @@ const ProfileWidget: React.FC = () => {
               }}
             >
               {t("transferModalText") ||
-                "NFT перейдёт на указанный адрес напрямую, без выставления на продажу. Действие необратимо."}
+                "NFT перейдёт на указанный адрес напрямую, без выставления на продажу. Можно вставить адрес кошелька или вписать домен (например, 7707.ton). Действие необратимо."}
             </p>
             <input
               type="text"
-              placeholder="UQ... / EQ..."
+              placeholder={t("transferAddressPlaceholder") || "Адрес кошелька или домен (name.ton)"}
               value={transferAddressInput}
-              onChange={(e) => setTransferAddressInput(e.target.value.trim())}
+              onChange={(e) => handleTransferInputChange(e.target.value)}
               style={{
                 width: "100%",
                 boxSizing: "border-box",
@@ -5608,14 +5669,28 @@ const ProfileWidget: React.FC = () => {
                 color: colors.text,
                 fontSize: "13px",
                 fontFamily: "monospace",
-                marginBottom: "16px",
+                marginBottom: transferResolved ? "8px" : "16px",
               }}
             />
+            {transferResolved && (
+              <p
+                style={{
+                  margin: "0 0 16px 0",
+                  fontSize: "12px",
+                  color: colors.primary,
+                  fontFamily: "monospace",
+                  wordBreak: "break-all" as const,
+                }}
+              >
+                {t("transferResolvedTo") || "Получатель"}: {transferResolved}
+              </p>
+            )}
             <div style={{ display: "flex", gap: "10px" }}>
               <button
                 onClick={() => {
                   setTransferModalSubdomain(null);
                   setTransferAddressInput("");
+                  setTransferResolved(null);
                 }}
                 disabled={transferBusy}
                 style={{
@@ -5634,21 +5709,27 @@ const ProfileWidget: React.FC = () => {
                 {t("cancel") || "Отмена"}
               </button>
               <button
-                onClick={confirmTransferSubdomain}
-                disabled={transferBusy || !transferAddressInput}
+                onClick={handleTransferPrimaryAction}
+                disabled={transferBusy || transferResolving || !transferAddressInput}
                 style={{
                   flex: 1,
                   padding: "12px",
                   borderRadius: "10px",
                   border: "none",
-                  background: transferBusy ? colors.border : colors.primary,
+                  background: transferBusy || transferResolving ? colors.border : colors.primary,
                   color: "#FFFFFF",
                   fontSize: "14px",
                   fontWeight: 700,
-                  cursor: transferBusy ? "default" : "pointer",
+                  cursor: transferBusy || transferResolving ? "default" : "pointer",
                 }}
               >
-                {transferBusy ? t("processing") || "Отправка..." : t("transferButton") || "Передать"}
+                {transferBusy
+                  ? t("processing") || "Отправка..."
+                  : transferResolving
+                  ? t("transferResolving") || "Поиск..."
+                  : transferResolved
+                  ? t("transferConfirmButton") || "Подтвердить"
+                  : t("transferButton") || "Передать"}
               </button>
             </div>
           </div>
