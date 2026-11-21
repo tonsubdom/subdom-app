@@ -4778,6 +4778,33 @@ const ProfileWidget: React.FC = () => {
                 corner="bottom-right"
                 siteResolves={subdomain.siteResolves}
               />
+              {!isSbt && (
+                <div style={{ position: "absolute" as const, top: "4px", left: "4px", zIndex: 2 }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTransferModalSubdomain(subdomain);
+                    }}
+                    title={t("transferButton") || "Передать"}
+                    style={{
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "50%",
+                      border: `1px solid ${colors.border}`,
+                      background: isDark ? "rgba(17,24,39,0.85)" : "rgba(255,255,255,0.9)",
+                      color: colors.text,
+                      fontSize: "15px",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+                    }}
+                  >
+                    ➤
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -4930,55 +4957,22 @@ const ProfileWidget: React.FC = () => {
               }}
             >
               {!isSbt ? (
-                <div
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleMarket();
+                  }}
                   style={{
+                    ...responsiveButtonStyle(t("sell") || "Продать"),
                     borderBottomRightRadius: "22px",
-                    overflow: "hidden",
                     display: "flex",
-                    flexDirection: "column" as const,
-                    gap: "2px",
-                    background: cardButtonStyle.background,
+                    justifyContent: "flex-start",
+                    alignItems: "flex-start",
+                    textAlign: "left" as const,
                   }}
                 >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleMarket();
-                    }}
-                    style={{
-                      ...responsiveButtonStyle(t("sell") || "Продать"),
-                      background: "transparent",
-                      borderRadius: 0,
-                      padding: "6px 6px 2px",
-                      display: "flex",
-                      justifyContent: "flex-start",
-                      alignItems: "flex-start",
-                      textAlign: "left" as const,
-                    }}
-                  >
-                    {t("sell")}
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setTransferModalSubdomain(subdomain);
-                    }}
-                    style={{
-                      alignSelf: "flex-start",
-                      margin: "0 0 4px 6px",
-                      fontSize: "9px",
-                      fontWeight: 700,
-                      padding: "2px 7px",
-                      borderRadius: "10px",
-                      border: `1px solid ${colors.border}`,
-                      background: "transparent",
-                      color: colors.text,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {t("transferButton") || "Передать"}
-                  </button>
-                </div>
+                  {t("sell")}
+                </button>
               ) : (
                 <div />
               )}
