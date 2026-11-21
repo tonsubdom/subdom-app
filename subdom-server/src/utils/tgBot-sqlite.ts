@@ -1860,6 +1860,23 @@ const LANG = {
     btnRegisterPromo: '🎁 Зарегать аккаунт',
     btnLearnToo: '🎓 Обучиться',
     btnShareTorrent: '📥 Поделиться',
+
+    // Меню "Оператор" — доступ к Профилю/Торренту/Сайту по имени
+    // субдомена прямо из бота, без захода в мини-апп.
+    btnOperator: '🛠 Оператор',
+    operatorMenuText: 'Выберите раздел:',
+    btnOpProfile: '👤 Профиль',
+    btnOpTorrent: '📦 Торрент',
+    btnOpSite: '🌐 Сайт',
+    promptProfileDomain: 'Введите субдомен в формате iceberg.author.ton — откроем его профиль.',
+    profileLinkReady: '👤 Профиль субдомена готов:',
+    torrentMenuText: 'Вы можете Загрузить или Скачать данные прямо из субдомена.',
+    btnTorrentUpload: '⬆️ Загрузить',
+    btnTorrentDownload: '⬇️ Скачать',
+    promptTorrentDomain: 'Введите субдомен в формате iceberg.author.ton — откроем для него торрент.',
+    torrentLinkReady: '📦 Торрент готов:',
+    siteMenuText: 'Invis — открывает сайты, привязанные к субдоменам. Откройте ссылку ниже и введите свой субдомен прямо там:',
+    invalidDomainInput: 'Не похоже на домен. Пример: iceberg.author.ton',
     btnStats: '📊 Статистика платформы',
     btnStartTutorial: '🎓 Пройти обучение',
     btnReportBug: '🐞 Сообщить о баге',
@@ -2111,6 +2128,21 @@ const LANG = {
     btnRegisterPromo: '🎁 Register account',
     btnLearnToo: '🎓 Learn',
     btnShareTorrent: '📥 Share',
+
+    btnOperator: '🛠 Operator',
+    operatorMenuText: 'Choose a section:',
+    btnOpProfile: '👤 Profile',
+    btnOpTorrent: '📦 Torrent',
+    btnOpSite: '🌐 Site',
+    promptProfileDomain: 'Enter the subdomain in the format iceberg.author.ton — we will open its profile.',
+    profileLinkReady: '👤 Subdomain profile is ready:',
+    torrentMenuText: 'You can Upload or Download data straight from a subdomain.',
+    btnTorrentUpload: '⬆️ Upload',
+    btnTorrentDownload: '⬇️ Download',
+    promptTorrentDomain: 'Enter the subdomain in the format iceberg.author.ton — we will open its torrent.',
+    torrentLinkReady: '📦 Torrent is ready:',
+    siteMenuText: 'Invis opens sites bound to subdomains. Open the link below and enter your subdomain there:',
+    invalidDomainInput: "Doesn't look like a domain. Example: iceberg.author.ton",
     btnStats: '📊 Platform Stats',
     btnStartTutorial: '🎓 Take the Tutorial',
     btnReportBug: '🐞 Report a Bug',
@@ -2444,6 +2476,29 @@ class DeeplinkUtils {
     return this.generateTelegramDeeplink('/create-torrent', params);
   }
 
+  // Открывает AvatarSecretPage сразу с подставленным доменом (кнопка
+  // "Профиль" в меню "Оператор") — тот же приём дробления zone/subdomain,
+  // что и у generateTorrentDownloadLinkForDomain выше (startapp не
+  // пропускает точки), MiniAppLinkGenerator.parseStartappParam дописывает
+  // ".ton" обратно, DeeplinkHandler.tsx склеивает их в ?domain=.
+  static generateAvatarSecretLink(domain: string): string {
+    const [subdomainName, zoneName] = this.formatDomainForUrl(domain);
+    if (!zoneName) {
+      return this.generateTelegramDeeplink('/avatar-secret', { zone: this.stripTonTld(domain) });
+    }
+    const params: Record<string, string> = { zone: this.stripTonTld(zoneName) };
+    if (subdomainName) params.subdomain = subdomainName;
+    return this.generateTelegramDeeplink('/avatar-secret', params);
+  }
+
+  // Кнопка "Загрузить" в меню "Оператор" → CreateTorrentPage на вкладке
+  // "Загрузить" (tab='create', см. TABS в CreateTorrentPage.tsx) без
+  // предзаполнения — выбор, к какому именно своему субдомену привязать
+  // новый bagID, происходит внутри самой страницы, не через URL-параметр.
+  static generateCreateTorrentLink(): string {
+    return this.generateTelegramDeeplink('/create-torrent', { tab: 'create' });
+  }
+
   static generateAdminPendingActionsLink(): string {
     return this.generateTelegramDeeplink('admin', { section: 'pending-actions' });
   }
@@ -2529,6 +2584,10 @@ class TelegramBotService {
   // текстовое сообщение от них уходит админу целиком, а не обрабатывается
   // как обычный чат-текст.
   private bugReportPending = new Set<number>();
+  // Какого именно диплинка ждём после того, как юзер введёт домен в ответ
+  // на кнопку "Профиль"/"Скачать" в меню "Оператор" — тот же паттерн
+  // захвата следующего текстового сообщения, что и у bugReportPending.
+  private operatorPending = new Map<number, 'profile' | 'torrent-download'>();
 
   // Базы данных
   private testnetDb: Database.Database;
@@ -3075,6 +3134,9 @@ ${$.startSubStatus} ${isSubscribed ? $.active : $.inactive}
           { text: $.btnConnectChat, callback_data: 'cmd_connect_chat' }
         ],
         [
+          { text: $.btnOperator, callback_data: 'cmd_operator' }
+        ],
+        [
           { text: $.btnSubscribe, callback_data: 'cmd_subscribe' },
           { text: $.btnUnsubscribe, callback_data: 'cmd_unsubscribe' }
         ],
@@ -3193,6 +3255,38 @@ ${$.connectStep4}
 ${$.connectWarning}
           `.trim();
           await this.bot!.sendMessage(chatId, instructions, { parse_mode: 'HTML' });
+        } else if (data === 'cmd_operator') {
+          this.operatorPending.delete(chatId);
+          await this.bot!.sendMessage(chatId, $.operatorMenuText, {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: $.btnOpProfile, callback_data: 'cmd_op_profile' }],
+                [{ text: $.btnOpTorrent, callback_data: 'cmd_op_torrent' }],
+                [{ text: $.btnOpSite, callback_data: 'cmd_op_site' }],
+              ],
+            },
+          });
+        } else if (data === 'cmd_op_profile') {
+          this.operatorPending.set(chatId, 'profile');
+          await this.bot!.sendMessage(chatId, $.promptProfileDomain);
+        } else if (data === 'cmd_op_torrent') {
+          this.operatorPending.delete(chatId);
+          await this.bot!.sendMessage(chatId, $.torrentMenuText, {
+            reply_markup: {
+              inline_keyboard: [
+                [{ text: $.btnTorrentUpload, url: DeeplinkUtils.generateCreateTorrentLink() }],
+                [{ text: $.btnTorrentDownload, callback_data: 'cmd_op_torrent_download' }],
+              ],
+            },
+          });
+        } else if (data === 'cmd_op_torrent_download') {
+          this.operatorPending.set(chatId, 'torrent-download');
+          await this.bot!.sendMessage(chatId, $.promptTorrentDomain);
+        } else if (data === 'cmd_op_site') {
+          this.operatorPending.delete(chatId);
+          await this.bot!.sendMessage(chatId, $.siteMenuText, {
+            reply_markup: { inline_keyboard: [[{ text: '🌐 Invis', url: 'https://invis.5-129-207-156.sslip.io/' }]] },
+          });
         } else if (data.startsWith('reply_')) {
           await this.handleReplyCallback(callbackQuery);
         } else if (data.startsWith('report_')) {
@@ -3214,6 +3308,11 @@ ${$.connectWarning}
 
         if (this.bugReportPending.has(msg.chat.id) && msg.text) {
           await this.handleBugReportSubmission(msg);
+          return;
+        }
+
+        if (this.operatorPending.has(msg.chat.id) && msg.text) {
+          await this.handleOperatorDomainInput(msg);
           return;
         }
 
@@ -3406,6 +3505,35 @@ ${text.substring(0, 1000)}${text.length > 1000 ? '...' : ''}
       }
     } catch (error) {
       console.error('❌ Ошибка при отправке баг-репорта:', error);
+    }
+  }
+
+  // Юзер ввёл домен после кнопки "Профиль" или "Скачать" в меню "Оператор"
+  // (см. operatorPending выше) — дальше просто генерируем готовый диплинк,
+  // саму страницу (AvatarSecretPage/CreateTorrentPage) открывает мини-апп,
+  // здесь никакого резолва адреса/bagID не происходит.
+  private async handleOperatorDomainInput(msg: any): Promise<void> {
+    const chatId = msg.chat.id;
+    const kind = this.operatorPending.get(chatId);
+    this.operatorPending.delete(chatId);
+    const $ = this.t(chatId.toString());
+
+    const domain = String(msg.text || '').trim().toLowerCase();
+    if (!domain.includes('.') || domain.split('.').some((part) => !part)) {
+      await this.bot!.sendMessage(chatId, $.invalidDomainInput);
+      return;
+    }
+
+    if (kind === 'profile') {
+      const link = DeeplinkUtils.generateAvatarSecretLink(domain);
+      await this.bot!.sendMessage(chatId, $.profileLinkReady, {
+        reply_markup: { inline_keyboard: [[{ text: $.btnOpProfile, url: link }]] },
+      });
+    } else if (kind === 'torrent-download') {
+      const link = DeeplinkUtils.generateTorrentDownloadLinkForDomain(domain);
+      await this.bot!.sendMessage(chatId, $.torrentLinkReady, {
+        reply_markup: { inline_keyboard: [[{ text: $.btnTorrentDownload, url: link }]] },
+      });
     }
   }
 

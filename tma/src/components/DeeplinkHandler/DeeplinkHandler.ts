@@ -149,6 +149,21 @@ const DeeplinkHandler: React.FC = () => {
           const queryString = queryParams.toString();
           navigate(`/create-torrent${queryString ? `?${queryString}` : ''}`);
 
+        } else if (route === '/avatar-secret') {
+          // Кнопка "Профиль" в меню "Оператор" бота (см. DeeplinkUtils.
+          // generateAvatarSecretLink на бэкенде) — домен дробился на
+          // zone/subdomain тем же приёмом, что и у create-torrent выше
+          // (startapp не пропускает точки), здесь склеиваем обратно и
+          // передаём AvatarSecretPage.tsx как ?domain= (резолвит сам,
+          // resolveDomain понимает и субдомены, не только корневые .ton).
+          const queryParams = new URLSearchParams();
+          if (params.zone) {
+            const domain = params.subdomain ? `${params.subdomain}.${params.zone}` : params.zone;
+            queryParams.set('domain', domain);
+          }
+          const queryString = queryParams.toString();
+          navigate(`/avatar-secret${queryString ? `?${queryString}` : ''}`);
+
         } else if (route === '/hall-of-shame') {
           // Кнопка "Кибербезопасность" в боте (см. DeeplinkUtils.
           // generateHallOfShameLink на бэкенде) — без параметров, страница
