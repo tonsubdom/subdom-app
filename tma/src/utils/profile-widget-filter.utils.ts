@@ -193,12 +193,18 @@ export const filterSubdomains = (
     });
   }
   
-  // Фильтрация по типу зоны (для субдоменов)
+  // Фильтрация по типу зоны (для субдоменов) — по типу самого субдомена
+  // (proxy_subdomain/sbt_subdomain), не по subdomain.zone: это поле не
+  // заполняется при построении списка из блокчейн-скана
+  // (enrichedItemToSubdomain в ProfileWidget.tsx), из-за чего фильтр раньше
+  // всегда возвращал пустой список для любого конкретного типа.
   if (filters.zoneTypes && filters.zoneTypes.length > 0 && !filters.zoneTypes.includes('all')) {
     filtered = filtered.filter(subdomain => {
-      if (!subdomain.zone) return false;
-      const zoneType = getZoneType(subdomain.zone);
-      return filters.zoneTypes!.includes(zoneType);
+      const itemType = (subdomain as any).type;
+      const subdomainZoneType: ZoneTypeFilter =
+        itemType === 'proxy_subdomain' ? 'proxy' :
+        itemType === 'sbt_subdomain' ? 'sbt' : 'unknown';
+      return filters.zoneTypes!.includes(subdomainZoneType);
     });
   }
 
