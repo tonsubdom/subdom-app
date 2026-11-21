@@ -25,7 +25,7 @@ import { cleanZoneDisplayName } from '@/services/blockchainItems/blockchain-item
 import { convertUserFriendlyToRaw, getNftOwnerAddress } from '@/utils/tonUtils';
 import { TransactionService } from '@/services/transactionService';
 import { track } from '@/utils/analytics';
-import { encodeDomainForChain, decodeDomainForDisplay } from '@/utils/domainPunycode';
+import { encodeDomainForChain, decodeDomainForDisplay, sanitizeDomainSearchInput } from '@/utils/domainPunycode';
 import { isRealTelegramEnv } from '@/mockEnv';
 import { tonsiteToGatewayUrl } from '@/utils/tonUtils';
 import webdomLogo from '@/assets/webdom_logo.svg';
@@ -596,7 +596,7 @@ export const AvatarSecretPage: React.FC = () => {
               placeholder="nft.minter.ton"
               value={domainName}
               disabled={resolveByAddress}
-              onChange={(e) => setDomainName(e.target.value)}
+              onChange={(e) => setDomainName(sanitizeDomainSearchInput(e.target.value))}
               style={{ ...inputStyle, marginBottom: 0, flex: 1, opacity: resolveByAddress ? 0.5 : 1 }}
             />
             <Button
