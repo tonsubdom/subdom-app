@@ -4638,6 +4638,259 @@ const getVisiblePageNumbers = (
   return pages;
 };
 
+interface SearchAndFilterSectionProps {
+  t: (key: string) => string;
+  isDark: boolean;
+  showAdvancedFilter: boolean;
+  setShowAdvancedFilter: (value: boolean) => void;
+  searchQuery: string;
+  setSearchQuery: (value: string) => void;
+  setCurrentPage: (value: number) => void;
+  showPunycode: boolean;
+  setShowPunycode: (value: boolean) => void;
+  sortOrder: "asc" | "desc";
+  setSortOrder: (value: "asc" | "desc") => void;
+  minLength: number;
+  setMinLength: (value: number) => void;
+  maxLength: number;
+  setMaxLength: (value: number) => void;
+}
+
+// Поднят на уровень модуля (был инлайн-функцией внутри ManageDomainPage) —
+// инлайн-объявление пересоздавало компонент на каждый рендер родителя,
+// из-за чего React демонтировал/монтировал Input заново на каждый введённый
+// символ, и поле поиска теряло фокус.
+const SearchAndFilterSection: FC<SearchAndFilterSectionProps> = ({
+  t,
+  isDark,
+  showAdvancedFilter,
+  setShowAdvancedFilter,
+  searchQuery,
+  setSearchQuery,
+  setCurrentPage,
+  showPunycode,
+  setShowPunycode,
+  sortOrder,
+  setSortOrder,
+  minLength,
+  setMinLength,
+  maxLength,
+  setMaxLength,
+}) => {
+  return (
+    <div
+      style={{
+        background: isDark ? "#2d2d2d" : "#f5f5f5",
+        borderRadius: "12px",
+        padding: "15px",
+        margin: "10px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "12px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={isDark ? "white" : "black"}
+            strokeWidth="2"
+          >
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+          </svg>
+          <span
+            style={{
+              fontSize: "14px",
+              fontWeight: "600",
+              color: isDark ? "white" : "black",
+            }}
+          >
+            {t("searchAndFilter")}
+          </span>
+        </div>
+        {/* Раньше "punycode" и "Расширенный поиск" были двумя отдельными
+            кнопками с полным текстом — не помещались рядом с заголовком.
+            Одна кнопка-иконка, оба переключателя — внутри общей панели
+            (тот же приём, что и в MarketPage). */}
+        <button
+          onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
+          title={t("showFilters")}
+          style={{
+            padding: "6px 10px",
+            borderRadius: "6px",
+            border: `1px solid ${isDark ? "#FFD700" : "#3B82F6"}`,
+            background: showAdvancedFilter ? (isDark ? "#FFD700" : "#3B82F6") : "transparent",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showAdvancedFilter ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+          </svg>
+        </button>
+      </div>
+      <Input
+        placeholder={t("searchByName")}
+        value={searchQuery}
+        onChange={(e) => {
+          setSearchQuery(e.target.value);
+          setCurrentPage(0);
+        }}
+        style={{
+          background: isDark ? "#3d3d3d" : "white",
+          color: isDark ? "white" : "black",
+        }}
+      />
+      {showPunycode && (
+        <div style={{
+          background: isDark ? "rgba(239, 68, 68, 0.15)" : "rgba(239, 68, 68, 0.1)",
+          border: "1px solid #ef4444",
+          borderRadius: "8px",
+          padding: "8px 12px",
+          marginBottom: "8px",
+          fontSize: "12px",
+          color: isDark ? "white" : "black",
+        }}>
+          ⚠️ {t("marketPunycodeWarning") || "Punycode (xn--...) официально не поддерживается большинством сервисов и отображается в нечитаемом формате — здесь показаны только домены с реальным punycode-именем."}
+        </div>
+      )}
+      {/* Сортировка + мин/макс длина раньше были отдельным всегда-видимым
+          рядом кнопок над картой NFT — первая карточка списка обрезалась
+          снизу. Свёрнуты внутрь той же панели "Фильтры", что и было. */}
+      {showAdvancedFilter && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            padding: "10px",
+            background: isDark ? "#3d3d3d" : "#e8e8e8",
+            borderRadius: "8px",
+          }}
+        >
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", fontFamily: "monospace", color: isDark ? "white" : "black" }}>
+            <input
+              type="checkbox"
+              checked={showPunycode}
+              onChange={() => setShowPunycode(!showPunycode)}
+              style={{ cursor: "pointer" }}
+            />
+            <span>punycode</span>
+          </label>
+          <div
+            style={{
+              display: "flex",
+              borderRadius: "8px",
+              overflow: "hidden",
+              border: `1px solid ${isDark ? "#FFD700" : "#3B82F6"}`,
+            }}
+          >
+            <button
+              onClick={() => setSortOrder("asc")}
+              title={t("shortToLong")}
+              style={{
+                flex: 1,
+                padding: "9px 10px",
+                border: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                background: sortOrder === "asc" ? (isDark ? "#FFD700" : "#3B82F6") : "transparent",
+                transition: "all 0.2s ease",
+              }}
+            >
+              {/* Столбики по возрастанию — компактная замена длинному
+                  переводному тексту ("Короткие → Длинные" не влезал в
+                  узкую кнопку ни на одном языке). Перевод остался в title. */}
+              <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                <rect x="0" y="9" width="4" height="5" rx="1" fill={sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                <rect x="6" y="6" width="4" height="8" rx="1" fill={sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                <rect x="12" y="3" width="4" height="11" rx="1" fill={sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                <path d="M17 1 L20 4 L14 4 Z" fill={sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+              </svg>
+            </button>
+            <button
+              onClick={() => setSortOrder("desc")}
+              title={t("longToShort")}
+              style={{
+                flex: 1,
+                padding: "9px 10px",
+                border: "none",
+                borderLeft: `1px solid ${isDark ? "#FFD700" : "#3B82F6"}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                background: sortOrder === "desc" ? (isDark ? "#FFD700" : "#3B82F6") : "transparent",
+                transition: "all 0.2s ease",
+              }}
+            >
+              {/* Столбики по убыванию — зеркало иконки выше. */}
+              <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
+                <rect x="0" y="3" width="4" height="11" rx="1" fill={sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                <rect x="6" y="6" width="4" height="8" rx="1" fill={sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                <rect x="12" y="9" width="4" height="5" rx="1" fill={sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+                <path d="M17 13 L20 10 L14 10 Z" fill={sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
+              </svg>
+            </button>
+          </div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <span
+              style={{
+                color: isDark ? "white" : "#666",
+                fontSize: "12px",
+                minWidth: "60px",
+              }}
+            >
+              {t("length")}:
+            </span>
+            <Input
+              type="number"
+              placeholder={t("min")}
+              value={minLength}
+              onChange={(e) => {
+                setMinLength(parseInt(e.target.value) || 0);
+                setCurrentPage(0);
+              }}
+              style={{
+                width: "80px",
+                background: isDark ? "#2d2d2d" : "white",
+                color: isDark ? "white" : "black",
+              }}
+            />
+            <span style={{ color: isDark ? "white" : "#666" }}>-</span>
+            <Input
+              type="number"
+              placeholder={t("max")}
+              value={maxLength}
+              onChange={(e) => {
+                setMaxLength(parseInt(e.target.value) || 100);
+                setCurrentPage(0);
+              }}
+              style={{
+                width: "80px",
+                background: isDark ? "#2d2d2d" : "white",
+                color: isDark ? "white" : "black",
+              }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const ManageDomainPage: FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const wallet = useTonWallet();
@@ -5814,222 +6067,6 @@ export const ManageDomainPage: FC = () => {
     startIdx + ITEMS_PER_PAGE
   );
 
-  // ====== SEARCH & FILTER ======
-  const SearchAndFilterSection = () => {
-    return (
-      <div
-        style={{
-          background: isDark ? "#2d2d2d" : "#f5f5f5",
-          borderRadius: "12px",
-          padding: "15px",
-          margin: "10px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke={isDark ? "white" : "black"}
-              strokeWidth="2"
-            >
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-            </svg>
-            <span
-              style={{
-                fontSize: "14px",
-                fontWeight: "600",
-                color: isDark ? "white" : "black",
-              }}
-            >
-              {t("searchAndFilter")}
-            </span>
-          </div>
-          {/* Раньше "punycode" и "Расширенный поиск" были двумя отдельными
-              кнопками с полным текстом — не помещались рядом с заголовком.
-              Одна кнопка-иконка, оба переключателя — внутри общей панели
-              (тот же приём, что и в MarketPage). */}
-          <button
-            onClick={() => setShowAdvancedFilter(!showAdvancedFilter)}
-            title={t("showFilters")}
-            style={{
-              padding: "6px 10px",
-              borderRadius: "6px",
-              border: `1px solid ${isDark ? "#FFD700" : "#3B82F6"}`,
-              background: showAdvancedFilter ? (isDark ? "#FFD700" : "#3B82F6") : "transparent",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={showAdvancedFilter ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-            </svg>
-          </button>
-        </div>
-        <Input
-          placeholder={t("searchByName")}
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setCurrentPage(0);
-          }}
-          style={{
-            background: isDark ? "#3d3d3d" : "white",
-            color: isDark ? "white" : "black",
-          }}
-        />
-        {showPunycode && (
-          <div style={{
-            background: isDark ? "rgba(239, 68, 68, 0.15)" : "rgba(239, 68, 68, 0.1)",
-            border: "1px solid #ef4444",
-            borderRadius: "8px",
-            padding: "8px 12px",
-            marginBottom: "8px",
-            fontSize: "12px",
-            color: isDark ? "white" : "black",
-          }}>
-            ⚠️ {t("marketPunycodeWarning") || "Punycode (xn--...) официально не поддерживается большинством сервисов и отображается в нечитаемом формате — здесь показаны только домены с реальным punycode-именем."}
-          </div>
-        )}
-        {/* Сортировка + мин/макс длина раньше были отдельным всегда-видимым
-            рядом кнопок над картой NFT — первая карточка списка обрезалась
-            снизу. Свёрнуты внутрь той же панели "Фильтры", что и было. */}
-        {showAdvancedFilter && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "10px",
-              padding: "10px",
-              background: isDark ? "#3d3d3d" : "#e8e8e8",
-              borderRadius: "8px",
-            }}
-          >
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "12px", fontFamily: "monospace", color: isDark ? "white" : "black" }}>
-              <input
-                type="checkbox"
-                checked={showPunycode}
-                onChange={() => setShowPunycode(!showPunycode)}
-                style={{ cursor: "pointer" }}
-              />
-              <span>punycode</span>
-            </label>
-            <div
-              style={{
-                display: "flex",
-                borderRadius: "8px",
-                overflow: "hidden",
-                border: `1px solid ${isDark ? "#FFD700" : "#3B82F6"}`,
-              }}
-            >
-              <button
-                onClick={() => setSortOrder("asc")}
-                title={t("shortToLong")}
-                style={{
-                  flex: 1,
-                  padding: "9px 10px",
-                  border: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  background: sortOrder === "asc" ? (isDark ? "#FFD700" : "#3B82F6") : "transparent",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {/* Столбики по возрастанию — компактная замена длинному
-                    переводному тексту ("Короткие → Длинные" не влезал в
-                    узкую кнопку ни на одном языке). Перевод остался в title. */}
-                <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
-                  <rect x="0" y="9" width="4" height="5" rx="1" fill={sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
-                  <rect x="6" y="6" width="4" height="8" rx="1" fill={sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
-                  <rect x="12" y="3" width="4" height="11" rx="1" fill={sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
-                  <path d="M17 1 L20 4 L14 4 Z" fill={sortOrder === "asc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
-                </svg>
-              </button>
-              <button
-                onClick={() => setSortOrder("desc")}
-                title={t("longToShort")}
-                style={{
-                  flex: 1,
-                  padding: "9px 10px",
-                  border: "none",
-                  borderLeft: `1px solid ${isDark ? "#FFD700" : "#3B82F6"}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  background: sortOrder === "desc" ? (isDark ? "#FFD700" : "#3B82F6") : "transparent",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                {/* Столбики по убыванию — зеркало иконки выше. */}
-                <svg width="20" height="14" viewBox="0 0 20 14" fill="none">
-                  <rect x="0" y="3" width="4" height="11" rx="1" fill={sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
-                  <rect x="6" y="6" width="4" height="8" rx="1" fill={sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
-                  <rect x="12" y="9" width="4" height="5" rx="1" fill={sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
-                  <path d="M17 13 L20 10 L14 10 Z" fill={sortOrder === "desc" ? (isDark ? "#000000" : "#FFFFFF") : (isDark ? "#FFD700" : "#3B82F6")} />
-                </svg>
-              </button>
-            </div>
-            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-              <span
-                style={{
-                  color: isDark ? "white" : "#666",
-                  fontSize: "12px",
-                  minWidth: "60px",
-                }}
-              >
-                {t("length")}:
-              </span>
-              <Input
-                type="number"
-                placeholder={t("min")}
-                value={minLength}
-                onChange={(e) => {
-                  setMinLength(parseInt(e.target.value) || 0);
-                  setCurrentPage(0);
-                }}
-                style={{
-                  width: "80px",
-                  background: isDark ? "#2d2d2d" : "white",
-                  color: isDark ? "white" : "black",
-                }}
-              />
-              <span style={{ color: isDark ? "white" : "#666" }}>-</span>
-              <Input
-                type="number"
-                placeholder={t("max")}
-                value={maxLength}
-                onChange={(e) => {
-                  setMaxLength(parseInt(e.target.value) || 100);
-                  setCurrentPage(0);
-                }}
-                style={{
-                  width: "80px",
-                  background: isDark ? "#2d2d2d" : "white",
-                  color: isDark ? "white" : "black",
-                }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   // ====================================================================
   // RENDER
   // ====================================================================
@@ -6159,7 +6196,23 @@ export const ManageDomainPage: FC = () => {
 
         {/* Search & Filter */}
         {selectedCollection !== "any" && allFilteredItems.length > 0 && (
-          <SearchAndFilterSection />
+          <SearchAndFilterSection
+            t={t}
+            isDark={isDark}
+            showAdvancedFilter={showAdvancedFilter}
+            setShowAdvancedFilter={setShowAdvancedFilter}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            setCurrentPage={setCurrentPage}
+            showPunycode={showPunycode}
+            setShowPunycode={setShowPunycode}
+            sortOrder={sortOrder}
+            setSortOrder={setSortOrder}
+            minLength={minLength}
+            setMinLength={setMinLength}
+            maxLength={maxLength}
+            setMaxLength={setMaxLength}
+          />
         )}
 
         {/* ====== ЛОАДЕР (объединённый) ====== */}
