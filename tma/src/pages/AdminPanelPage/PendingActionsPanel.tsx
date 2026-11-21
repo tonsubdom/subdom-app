@@ -13,6 +13,7 @@ import { useTonConnectUI } from '@tonconnect/ui-react';
 import { apiService } from '@/services/api';
 import { buildChangeContent, buildBeneficiaryTransferAndRelease } from '@/services/payloadBuilder';
 import { getPartnerShare } from '@/utils/tonUtils';
+import { TransactionService } from '@/services/transactionService';
 
 const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL || '';
 
@@ -83,12 +84,16 @@ export const PendingActionsPanel: React.FC<PendingActionsPanelProps> = ({ isTest
         throw new Error('empty messages from change_content');
       }
 
-      const sendResult = await tonConnectUI.sendTransaction({
-        validUntil: result.validUntil || Math.floor(Date.now() / 1000) + 240,
-        messages: result.messages,
-      });
+      const sendResult = await TransactionService.sendTransaction(
+        tonConnectUI,
+        result,
+        { network: isTestnet ? 'testnet' : 'mainnet', verifyBlockchain: true, action: 'admin_deactivate_zone' }
+      );
+      if (!sendResult.success || !sendResult.confirmedInBlock) {
+        throw new Error(sendResult.error || 'Транзакция не подтверждена');
+      }
 
-      await apiService.completePendingAction(action.id, sendResult?.boc);
+      await apiService.completePendingAction(action.id, sendResult.boc);
       setActions((prev) => prev.filter((a) => a.id !== action.id));
     } catch (error: any) {
       console.error('❌ Ошибка исполнения заявки на деактивацию:', error);
@@ -134,12 +139,16 @@ export const PendingActionsPanel: React.FC<PendingActionsPanelProps> = ({ isTest
         throw new Error('empty messages from buildBeneficiaryTransferAndRelease');
       }
 
-      const sendResult = await tonConnectUI.sendTransaction({
-        validUntil: result.validUntil || Math.floor(Date.now() / 1000) + 240,
-        messages: result.messages,
-      });
+      const sendResult = await TransactionService.sendTransaction(
+        tonConnectUI,
+        result,
+        { network: isTestnet ? 'testnet' : 'mainnet', verifyBlockchain: true, action: 'admin_transfer_beneficiary' }
+      );
+      if (!sendResult.success || !sendResult.confirmedInBlock) {
+        throw new Error(sendResult.error || 'Транзакция не подтверждена');
+      }
 
-      await apiService.completePendingAction(action.id, sendResult?.boc);
+      await apiService.completePendingAction(action.id, sendResult.boc);
       setActions((prev) => prev.filter((a) => a.id !== action.id));
     } catch (error: any) {
       console.error('❌ Ошибка исполнения заявки на смену бенефициара:', error);

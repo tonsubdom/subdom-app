@@ -37,6 +37,9 @@ export interface TransactionStatus {
   status: 'pending' | 'confirmed' | 'failed' | 'not_found';
   block?: number;
   timestamp?: number;
+  // compute_ph.exit_code целевого контракта хопа-2 (not_owner/already_settled
+  // и т.п. — см. err-codes.fc), только когда status === 'failed'.
+  exitCode?: number;
   messages?: Array<{
     source: string;
     destination: string;
@@ -99,13 +102,21 @@ export class TransactionService {
       // там же) — иначе кошелёк "переслал успешно" ошибочно читается как
       // "контракт выполнил успешно", даже если тот же вызов бампнулся
       // (bounce) с ошибкой компиляции.
-      const destinationAddress =
-        transaction?.messages?.[0]?.address as string | undefined;
+      // Раньше брался только messages[0].address — для транзакций с
+      // несколькими сообщениями (buildBeneficiaryTransferAndRelease: релиз
+      // эскроу + change_partner_share) второе сообщение вообще не
+      // проверялось: если его хоп-2 бампался (например, другой owner_addr
+      // на коллекции), фронт всё равно показывал "подтверждено" по одному
+      // лишь успеху первого сообщения. Теперь проверяем хоп-2 КАЖДОГО
+      // адреса из messages.
+      const destinationAddresses = (transaction?.messages || [])
+        .map((m: any) => m?.address as string | undefined)
+        .filter((a: string | undefined): a is string => !!a);
 
       // 3. Если требуется проверка в блокчейне — ждём (с внутренним поллингом,
       // без повторной отправки транзакции)
       if (verifyBlockchain) {
-        const confirmed = await this.waitForConfirmation(txHash, network, timeout, destinationAddress);
+        const confirmed = await this.waitForConfirmation(txHash, network, timeout, destinationAddresses);
 
         if (confirmed.success) {
           console.log('✅ Транзакция подтверждена в блокчейне');
@@ -162,7 +173,7 @@ export class TransactionService {
     hash: string,
     network: 'mainnet' | 'testnet',
     timeout: number,
-    destinationAddress?: string
+    destinationAddresses?: string[]
   ): Promise<{ success: boolean; error?: string; status?: TransactionStatus }> {
     const startTime = Date.now();
     const checkInterval = 3000; // Проверяем каждые 3 секунды
@@ -171,18 +182,24 @@ export class TransactionService {
 
     while (Date.now() - startTime < timeout) {
       try {
-        const status = await this.getTransactionStatus(hash, network, destinationAddress);
-        
+        const status = await this.getTransactionStatus(hash, network, destinationAddresses);
+
         switch (status.status) {
           case 'confirmed':
             console.log(`✅ Транзакция включена в блок ${status.block}`);
             return { success: true, status };
-          
+
           case 'failed':
-            return { 
-              success: false, 
-              error: 'Транзакция завершилась ошибкой',
-              status 
+            return {
+              success: false,
+              // exitCode — настоящая причина отказа контракта (см.
+              // err-codes.fc целевого контракта), без него "Транзакция
+              // завершилась ошибкой" невозможно отличить not_owner от
+              // already_settled от нехватки баланса при следующем разборе.
+              error: status.exitCode != null
+                ? `Транзакция завершилась ошибкой (код ${status.exitCode})`
+                : 'Транзакция завершилась ошибкой',
+              status
             };
           
           case 'not_found':
@@ -233,18 +250,24 @@ export class TransactionService {
    * операции (реальный баг — юзер видел "✅ отправлено" на транзакции,
    * которая на самом деле откатилась на чейне с exit_code, см. случай со
    * storage-контрактом, TonScan: compute phase exit 9, action phase
-   * aborted, bounce). Если передан destinationAddress — идём ВТОРЫМ хопом:
-   * ищем в out_msgs транзакции кошелька исходящее сообщение на этот адрес,
-   * и уже ЕГО транзакцию (реальное исполнение на целевом контракте)
-   * проверяем на aborted/compute/action. Пока хоп 2 не нашёлся — статус
+   * aborted, bounce). Если передан хотя бы один адрес в
+   * destinationAddresses — идём ВТОРЫМ хопом ДЛЯ КАЖДОГО из них: ищем в
+   * out_msgs транзакции кошелька исходящее сообщение на этот адрес, и уже
+   * ЕГО транзакцию (реальное исполнение на целевом контракте) проверяем на
+   * aborted/compute/action. Раньше проверялся только 1-й адрес — у
+   * транзакций с несколькими сообщениями (buildBeneficiaryTransferAndRelease:
+   * релиз эскроу + change_partner_share) второе сообщение могло бампнуться
+   * молча, а фронт всё равно показывал "подтверждено" по одному лишь
+   * успеху первого. Пока хоп 2 любого из адресов не нашёлся — статус
    * 'pending' (не 'failed' и не 'confirmed'), внешний поллинг просто ждёт
    * следующего цикла — так безопаснее: неопределённость не должна
-   * маскироваться ни под успех, ни под ошибку.
+   * маскироваться ни под успех, ни под ошибку. Если ЛЮБОЙ хоп 2 провалился —
+   * вся операция 'failed' (exitCode — от первого найденного провала).
    */
   static async getTransactionStatus(
     hash: string,
     network: 'mainnet' | 'testnet',
-    destinationAddress?: string
+    destinationAddresses?: string[]
   ): Promise<TransactionStatus> {
     const config = NETWORK_CONFIGS[network];
 
@@ -260,6 +283,9 @@ export class TransactionService {
       return data?.transactions?.[0] ?? null;
     };
 
+    const exitCodeOf = (tx: any): number | undefined =>
+      tx.description?.compute_ph?.exit_code ?? tx.description?.action?.result_code ?? undefined;
+
     const isFailedTx = (tx: any): boolean =>
       !!tx.description?.aborted ||
       tx.description?.compute_ph?.success === false ||
@@ -270,6 +296,7 @@ export class TransactionService {
       status,
       block: tx.block_ref?.seqno,
       timestamp: tx.now,
+      exitCode: status === 'failed' ? exitCodeOf(tx) : undefined,
       messages: (tx.out_msgs || []).map((msg: any) => ({
         source: msg.source,
         destination: msg.destination,
@@ -287,34 +314,41 @@ export class TransactionService {
         return toStatus(walletTx, 'failed');
       }
 
-      // Нет адреса назначения (не передали при вызове) — второй хоп сделать
-      // нечем, остаёмся на прежнем поведении: успех кошелька = успех.
-      if (!destinationAddress) {
+      // Нет адресов назначения (не передали при вызове) — второй хоп
+      // сделать нечем, остаёмся на прежнем поведении: успех кошелька = успех.
+      const validDestinations = (destinationAddresses || [])
+        .map((addr) => {
+          try {
+            return Address.parse(addr).toRawString().toLowerCase();
+          } catch {
+            return null;
+          }
+        })
+        .filter((addr): addr is string => !!addr);
+
+      if (validDestinations.length === 0) {
         return toStatus(walletTx, 'confirmed');
       }
 
-      let destRaw: string;
-      try {
-        destRaw = Address.parse(destinationAddress).toRawString().toLowerCase();
-      } catch {
-        // Не смогли распарсить адрес назначения — не наша забота ломать
-        // проверку из-за этого, откатываемся на старое поведение.
-        return toStatus(walletTx, 'confirmed');
+      for (const destRaw of validDestinations) {
+        const outMsg = (walletTx.out_msgs || []).find(
+          (m: any) => (m.destination || '').toLowerCase() === destRaw
+        );
+        if (!outMsg) {
+          return { hash, status: 'pending' }; // кошелёк отработал, это исходящее сообщение ещё не видно — ждём
+        }
+
+        const destTx = await fetchTxByMsgHash(outMsg.hash);
+        if (!destTx) {
+          return { hash, status: 'pending' }; // хоп 2 ещё не проиндексировался — ждём следующего цикла
+        }
+
+        if (isFailedTx(destTx)) {
+          return toStatus(destTx, 'failed');
+        }
       }
 
-      const outMsg = (walletTx.out_msgs || []).find(
-        (m: any) => (m.destination || '').toLowerCase() === destRaw
-      );
-      if (!outMsg) {
-        return { hash, status: 'pending' }; // кошелёк отработал, исходящее сообщение ещё не видно — ждём
-      }
-
-      const destTx = await fetchTxByMsgHash(outMsg.hash);
-      if (!destTx) {
-        return { hash, status: 'pending' }; // хоп 2 ещё не проиндексировался — ждём следующего цикла
-      }
-
-      return toStatus(destTx, isFailedTx(destTx) ? 'failed' : 'confirmed');
+      return toStatus(walletTx, 'confirmed');
     } catch (error) {
       console.warn('toncenter v3 недоступен:', error);
       return { hash, status: 'not_found' };

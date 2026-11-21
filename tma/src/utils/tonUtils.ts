@@ -183,16 +183,23 @@ export async function checkDomainDNSRecord(
  * меняем только адрес, share/denominator берём отсюда, чтобы не
  * пересматривать процент при продаже доли.
  *
- * ⚠️ Не проверено живым вызовом на testnet — get_partner_share возвращает
- * `slice` напрямую (не завёрнутый в cell, в отличие от dnsresolve), так что
- * то, что toncenter v3 отдаёт в stack[0] для partner_addr, может отличаться
- * от ветки tvm.Cell ниже (скопированной с checkDomainDNSRecord по аналогии).
- * Сверить на реальном ответе перед подключением к PendingActionsPanel.
+ * Проверено живым вызовом на mainnet (2026-11-21, реальная Proxy-зона) —
+ * toncenter v3 `runGetMethod` отдаёт stack-элементы как объекты
+ * `{type, value}` (НЕ массивы `[type, value]`, как ошибочно предполагалось
+ * раньше по аналогии с другим кодом) — старая проверка `shareItem[0] !==
+ * 'num'` всегда была true (на объекте `[0]` === undefined), функция
+ * всегда возвращала null, заявка на смену бенефициара не могла даже
+ * построить транзакцию. Это и было причиной "красной ошибки при
+ * завершении продажи бенефициарства" (Log.md 2026-11-07). Адрес
+ * partner_addr (stack[0], тип "cell") больше не декодируется — вызывающий
+ * код (PendingActionsPanel.executeTransferBeneficiary) использует только
+ * share/denominator, подставляя НОВЫЙ адрес из заявки; декодирование шло
+ * через несуществующий на бэкенде эндпоинт `/api/v1/parse_cell/`.
  */
 export async function getPartnerShare(
   collectionAddress: string,
   isTestnet: boolean
-): Promise<{ address: string; share: number; denominator: number } | null> {
+): Promise<{ share: number; denominator: number } | null> {
   try {
     const apiUrl = toncenterApiUrl(isTestnet, 'v3/runGetMethod');
     const rawAddress = convertUserFriendlyToRaw(collectionAddress);
@@ -215,45 +222,26 @@ export async function getPartnerShare(
 
     const data = await response.json();
 
-    // (slice partner_addr, int share_base, int share_factor)
-    if (!data || !data.stack || data.stack.length < 3) {
+    // (slice partner_addr, int share_base, int share_factor) — реальный
+    // формат ответа toncenter v3: stack — массив ОБЪЕКТОВ {type, value},
+    // не пар [type, value]. partner_addr (stack[0], type:"cell") не
+    // декодируем — он не нужен единственному вызывающему коду
+    // (PendingActionsPanel подставляет новый адрес из заявки, не читает
+    // старый) — декодирование через бэкенд всё равно 404'ило бы.
+    if (!data || !Array.isArray(data.stack) || data.stack.length < 3) {
       return null;
     }
 
-    const addrItem = data.stack[0];
     const shareItem = data.stack[1];
     const denominatorItem = data.stack[2];
 
-    if (!shareItem || shareItem[0] !== 'num' || !denominatorItem || denominatorItem[0] !== 'num') {
+    if (!shareItem || shareItem.type !== 'num' || !denominatorItem || denominatorItem.type !== 'num') {
       return null;
     }
-    const share = parseInt(shareItem[1], 16);
-    const denominator = parseInt(denominatorItem[1], 16);
+    const share = parseInt(shareItem.value, 16);
+    const denominator = parseInt(denominatorItem.value, 16);
 
-    let address: string | null = null;
-    if (addrItem && addrItem[0] === 'tvm.Cell' && addrItem[1]) {
-      const parseResponse = await fetch(`${API_PAYLOAD_URL}/api/v1/parse_cell`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ cell_bytes: addrItem[1] })
-      });
-      if (parseResponse.ok) {
-        const parseData = await parseResponse.json();
-        if (parseData && parseData.address) {
-          address = parseData.address;
-        }
-      }
-    } else if (addrItem && (addrItem[0] === 'tvm.Slice' || addrItem[0] === 'slice') && typeof addrItem[1] === 'string') {
-      // Возможный альтернативный формат ответа — адрес пришёл как строка
-      // без обёртки в cell. Проверить на реальном ответе (см. комментарий
-      // над функцией) прежде чем полагаться на эту ветку.
-      address = addrItem[1];
-    }
-
-    if (!address) return null;
-    return { address, share, denominator };
+    return { share, denominator };
   } catch (error) {
     console.error('Ошибка получения partner_share:', error);
     return null;
