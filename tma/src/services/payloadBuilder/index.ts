@@ -304,6 +304,31 @@ export function buildClaimSubdomain(subdomainItemAddress: string, queryId = 0, i
   };
 }
 
+// ============ transfer item (кнопка "Передать", ProfileWidget) ============
+// Прямой TEP-62 transfer NFT-итема (proxy-субдомен/wrapper) на другой
+// адрес — не нужен для SBT (см. ProfileWidget.tsx, кнопка скрыта там же,
+// где скрыт Sell) и не нужен для зон/коллекций (там это change_partner_share
+// через pending_admin_actions, другой механизм).
+
+export function buildTransferItem(
+  itemAddress: string,
+  newOwnerAddress: string,
+  responseAddress: string,
+  isTestnet: boolean,
+  queryId = 0
+): TransactionResponse {
+  return {
+    validUntil: validUntil(),
+    messages: [
+      {
+        address: friendly(Address.parse(itemAddress), isTestnet),
+        amount: '50000000', // 0.05 TON
+        payload: cellToBase64(SubdomainItem.buildTransferBody(newOwnerAddress, responseAddress, queryId)),
+      },
+    ],
+  };
+}
+
 // ============ DNS-записи (dns.py — set_*/delete_* record, вызывается из ManageDomainPage) ============
 
 const DNS_RECORD_AMOUNT = '25000000'; // 0.025 TON, единая для всех 8 операций

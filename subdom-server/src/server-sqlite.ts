@@ -619,6 +619,7 @@ const initializeDatabase = (db: SqliteDatabase) => {
       status TEXT DEFAULT 'active',
       firstSeenAt TEXT DEFAULT CURRENT_TIMESTAMP,
       lastSyncedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      chainCreatedAt TEXT,
       source TEXT DEFAULT 'crawler'
     );
     CREATE INDEX IF NOT EXISTS idx_platform_subdomains_owner ON platform_subdomains_cache(ownerAddress);
@@ -748,6 +749,12 @@ const migratePlatformCacheColumns = (db: SqliteDatabase) => {
   addColumnIfMissing('platform_subdomains_cache', 'lastTransactionLt', 'lastTransactionLt TEXT');
   addColumnIfMissing('platform_subdomains_cache', 'siteResolves', 'siteResolves INTEGER');
   addColumnIfMissing('platform_subdomains_cache', 'siteCheckedAt', 'siteCheckedAt TEXT');
+  // Реальное время минта айтема (timestamp первой транзакции самого
+  // NFT-адреса в toncenter) — тот же принцип, что chainCreatedAt у зон
+  // (см. выше), только для субдоменов его раньше не было вообще: карточка
+  // показывала lastSyncedAt (обновляется на каждом 15-минутном краул-проходе),
+  // из-за чего дата создания субдомена всегда выглядела "сегодняшней".
+  addColumnIfMissing('platform_subdomains_cache', 'chainCreatedAt', 'chainCreatedAt TEXT');
 
   addColumnIfMissing('platform_wrappers_cache', 'image', 'image TEXT');
   addColumnIfMissing('platform_wrappers_cache', 'description', 'description TEXT');

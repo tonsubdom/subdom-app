@@ -51,6 +51,7 @@ export interface PlatformSubdomainCacheRow {
   lastTransactionLt: string | null;
   status: string;
   lastSyncedAt: string;
+  chainCreatedAt?: string | null;
   siteResolves?: number | null;
 }
 
@@ -153,6 +154,9 @@ export function platformSubdomainToSimpleEnrichedItem(row: PlatformSubdomainCach
     collection_address: row.collectionAddress,
     on_sale: !!row.onSale,
     lastUpdated: row.lastSyncedAt,
+    // Реальное время минта айтема, не lastSyncedAt — см. Log.md (баг "даты
+    // создания субдоменов показывают сегодняшнее число").
+    created_at: row.chainCreatedAt ?? undefined,
     last_transaction_lt: row.lastTransactionLt ?? '',
     siteResolves: row.siteResolves == null ? null : !!row.siteResolves,
     metadata: {

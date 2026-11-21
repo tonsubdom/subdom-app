@@ -88,6 +88,11 @@ export interface SimpleEnrichedItem {
   collection_address: string;
   on_sale: boolean;
   lastUpdated: string;
+  // Реальное время минта итема (первая транзакция NFT-адреса), не
+  // lastUpdated (тот "ползёт" на каждом проходе кроулера/при каждом
+  // ончейн-фолбэке) — см. platformCacheClient.ts::platformSubdomainToSimpleEnrichedItem.
+  // undefined — источник (старая строка кэша/ончейн-фолбэк) его ещё не знает.
+  created_at?: string;
   last_transaction_lt: string,
   // undefined/null = ещё не проверено кроулером (не скрываем 🌐-иконку),
   // true/false = реальный результат последнего пинга через *.ton.run.

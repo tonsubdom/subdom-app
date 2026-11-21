@@ -184,8 +184,8 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
 
   const upsertSubdomain = db.prepare(`
     INSERT INTO platform_subdomains_cache
-      (itemAddress, name, collectionAddress, zoneName, isProxy, itemType, ownerAddress, image, description, onSale, lastTransactionLt, status, lastSyncedAt, source)
-    VALUES (@itemAddress, @name, @collectionAddress, @zoneName, @isProxy, @itemType, @ownerAddress, @image, @description, @onSale, @lastTransactionLt, 'active', @lastSyncedAt, 'crawler')
+      (itemAddress, name, collectionAddress, zoneName, isProxy, itemType, ownerAddress, image, description, onSale, lastTransactionLt, status, lastSyncedAt, chainCreatedAt, source)
+    VALUES (@itemAddress, @name, @collectionAddress, @zoneName, @isProxy, @itemType, @ownerAddress, @image, @description, @onSale, @lastTransactionLt, 'active', @lastSyncedAt, @chainCreatedAt, 'crawler')
     ON CONFLICT(itemAddress) DO UPDATE SET
       -- См. тот же NULLIF+COALESCE-комментарий у upsertZone выше — тот же
       -- риск индексационного лага для только что заминченных айтемов.
@@ -198,8 +198,17 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
       onSale = excluded.onSale,
       lastTransactionLt = excluded.lastTransactionLt,
       status = 'active',
-      lastSyncedAt = excluded.lastSyncedAt
+      lastSyncedAt = excluded.lastSyncedAt,
+      -- Once-known, не затираем: @chainCreatedAt на повторных проходах для
+      -- уже известных итемов приходит null (см. knownChainCreatedAt ниже,
+      -- лукап на toncenter не повторяем) — COALESCE сохраняет то, что уже
+      -- было записано при первом же обнаружении айтема.
+      chainCreatedAt = COALESCE(platform_subdomains_cache.chainCreatedAt, excluded.chainCreatedAt)
   `);
+
+  const getKnownSubdomainCreatedAt = db.prepare(
+    `SELECT chainCreatedAt FROM platform_subdomains_cache WHERE itemAddress = ?`
+  );
 
   const upsertWrapper = db.prepare(`
     INSERT INTO platform_wrappers_cache
@@ -285,8 +294,19 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
               // из-за чего name/domain оставались пустыми в кэше и карточка
               // в ProfileWidget показывала пустое имя и без картинки.
               const itemUriDomain = extractDomainFromUri(item.content?.uri);
+              const itemAddressRaw = toRawAddress(item.address);
+              // Доп. запрос к toncenter (первая транзакция айтема) только для
+              // ещё неизвестных itemAddress — раз узнали и записали, повторно
+              // не спрашиваем ни на этом, ни на будущих проходах (COALESCE в
+              // upsertSubdomain выше не даст затереть). Субдоменов на
+              // платформе может быть на порядки больше, чем зон — безусловный
+              // лукап на каждый айтем на каждом 15-минутном проходе быстро
+              // выбил бы rps-лимит toncenter.
+              const alreadyKnown = (getKnownSubdomainCreatedAt.get(itemAddressRaw) as { chainCreatedAt: string | null } | undefined)?.chainCreatedAt ?? null;
+              const chainCreatedAt = alreadyKnown
+                ?? (await getCollectionCreatorAndTime(api, item.address)).chainCreatedAt;
               upsertSubdomain.run({
-                itemAddress: toRawAddress(item.address),
+                itemAddress: itemAddressRaw,
                 name: itemUriDomain || itemMeta?.name || '',
                 collectionAddress: toRawAddress(col.address),
                 zoneName,
@@ -298,6 +318,7 @@ async function crawlNetwork(db: SqliteDatabase, isTestnet: boolean): Promise<voi
                 onSale: item.on_sale ? 1 : 0,
                 lastTransactionLt: item.last_transaction_lt || null,
                 lastSyncedAt: nowIso(),
+                chainCreatedAt,
               });
             }
           } catch (err) {

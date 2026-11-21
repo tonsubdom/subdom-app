@@ -2320,8 +2320,9 @@ import { apiService } from "@/services/api";
 import PaymentAttemptsSection from "../PaymentAttemptsSection";
 import { convertUserFriendlyToRaw, getZoneImageUrl } from "@/utils/tonUtils";
 import { TransactionService } from "@/services/transactionService";
-import { computeEscrowAddress, buildEscrowDeposit } from "@/services/payloadBuilder";
+import { computeEscrowAddress, buildEscrowDeposit, buildTransferItem } from "@/services/payloadBuilder";
 import { NETWORK_CONFIGS } from "@/services/blockchainItems/toncenter-api-config";
+import { Address } from "@ton/core";
 
 // Рамки теста — 1 час до self-refund покупателя, если площадка не
 // отреагировала на заявку (см. Log.md 2026-09-22, перед продакшеном стоит
@@ -2472,7 +2473,13 @@ const enrichedItemToSubdomain = (item: SimpleEnrichedItem): Subdomain => {
     address: item.address,
     owner_address: item.owner_address,
     collectionAddress: item.collection_address,
-    createdAt: item.lastUpdated,
+    // item.created_at — реальное время минта (первая транзакция NFT-адреса),
+    // известно не для всех итемов сразу (бэкфилл на кроулере идёт постепенно,
+    // по одному новому айтему за проход — см. crawler.ts). Фолбэк на
+    // lastUpdated только пока это не узнано, не как основной источник —
+    // раньше тут всегда было lastUpdated, из-за чего дата создания "ползла"
+    // на каждый проход кроулера и выглядела сегодняшней.
+    createdAt: item.created_at || item.lastUpdated,
     status: item.on_sale ? "auction" : "active",
     mintPrice: 0,
     lastBid: undefined,
@@ -3335,6 +3342,49 @@ const ProfileWidget: React.FC = () => {
   const [listingModalZone, setListingModalZone] = useState<Zone | null>(null);
   const [listingPriceInput, setListingPriceInput] = useState("");
   const [listingBusy, setListingBusy] = useState(false);
+
+  // "Передать" (Transfer) на карточке proxy-субдомена — прямой TEP-62
+  // transfer итема на указанный адрес, в обход Market/эскроу (не нужен для
+  // SBT — там кнопки нет вообще, см. renderSubdomainCard).
+  const [transferModalSubdomain, setTransferModalSubdomain] = useState<Subdomain | null>(null);
+  const [transferAddressInput, setTransferAddressInput] = useState("");
+  const [transferBusy, setTransferBusy] = useState(false);
+
+  const confirmTransferSubdomain = async () => {
+    if (!transferModalSubdomain || !address) return;
+    const target = transferAddressInput.trim();
+    let targetAddress: Address;
+    try {
+      targetAddress = Address.parse(target);
+    } catch {
+      showSnackbar(t("transferInvalidAddress") || "Некорректный адрес кошелька", "error");
+      return;
+    }
+    setTransferBusy(true);
+    try {
+      const txResponse = buildTransferItem(
+        transferModalSubdomain.address,
+        targetAddress.toString(),
+        address,
+        isTestnet
+      );
+      const sendResult = await TransactionService.sendTransaction(
+        tonConnectUI,
+        txResponse,
+        { network: isTestnet ? "testnet" : "mainnet", verifyBlockchain: true, action: "subdomain_item_transfer" }
+      );
+      if (!sendResult.success || !sendResult.confirmedInBlock) {
+        throw new Error(sendResult.error || "Транзакция не подтверждена");
+      }
+      showSnackbar(t("transferSuccess") || "Субдомен передан", "success");
+      setTransferModalSubdomain(null);
+      setTransferAddressInput("");
+    } catch (error: any) {
+      showSnackbar(error?.message || t("transferError") || "Ошибка перевода", "error");
+    } finally {
+      setTransferBusy(false);
+    }
+  };
 
   const [incomingBeneficiaryOffers, setIncomingBeneficiaryOffers] = useState<any[]>([]);
   const [outgoingBeneficiaryOffers, setOutgoingBeneficiaryOffers] = useState<any[]>([]);
@@ -4880,22 +4930,55 @@ const ProfileWidget: React.FC = () => {
               }}
             >
               {!isSbt ? (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleMarket();
-                  }}
+                <div
                   style={{
-                    ...responsiveButtonStyle(t("sell") || "Продать"),
                     borderBottomRightRadius: "22px",
+                    overflow: "hidden",
                     display: "flex",
-                    justifyContent: "flex-start",
-                    alignItems: "flex-start",
-                    textAlign: "left" as const,
+                    flexDirection: "column" as const,
+                    gap: "2px",
+                    background: cardButtonStyle.background,
                   }}
                 >
-                  {t("sell")}
-                </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleMarket();
+                    }}
+                    style={{
+                      ...responsiveButtonStyle(t("sell") || "Продать"),
+                      background: "transparent",
+                      borderRadius: 0,
+                      padding: "6px 6px 2px",
+                      display: "flex",
+                      justifyContent: "flex-start",
+                      alignItems: "flex-start",
+                      textAlign: "left" as const,
+                    }}
+                  >
+                    {t("sell")}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTransferModalSubdomain(subdomain);
+                    }}
+                    style={{
+                      alignSelf: "flex-start",
+                      margin: "0 0 4px 6px",
+                      fontSize: "9px",
+                      fontWeight: 700,
+                      padding: "2px 7px",
+                      borderRadius: "10px",
+                      border: `1px solid ${colors.border}`,
+                      background: "transparent",
+                      color: colors.text,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t("transferButton") || "Передать"}
+                  </button>
+                </div>
               ) : (
                 <div />
               )}
@@ -5437,6 +5520,139 @@ const ProfileWidget: React.FC = () => {
                 }}
               >
                 {listingBusy ? t("processing") || "Отправка..." : t("marketBeneficiarySellButton") || "Выставить на продажу"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {transferModalSubdomain && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: isDark ? "rgba(0, 0, 0, 0.7)" : "rgba(0, 0, 0, 0.5)",
+            zIndex: 10000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => {
+            if (!transferBusy) {
+              setTransferModalSubdomain(null);
+              setTransferAddressInput("");
+            }
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: colors.background,
+              borderRadius: "16px",
+              padding: "24px",
+              maxWidth: "380px",
+              width: "100%",
+              border: `1px solid ${colors.border}`,
+              boxShadow: `0 10px 40px ${colors.shadow}`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: "40px", textAlign: "center", marginBottom: "12px" }}>📤</div>
+            <h3
+              style={{
+                margin: "0 0 12px 0",
+                fontSize: "17px",
+                fontWeight: 700,
+                color: colors.text,
+                textAlign: "center",
+                fontFamily: "monospace",
+              }}
+            >
+              {t("transferModalTitle") || "Передать субдомен"}
+            </h3>
+            <p
+              style={{
+                margin: "0 0 8px 0",
+                fontSize: "13px",
+                color: colors.text,
+                textAlign: "center",
+                fontWeight: 700,
+              }}
+            >
+              {transferModalSubdomain.name}
+            </p>
+            <p
+              style={{
+                margin: "0 0 16px 0",
+                fontSize: "13px",
+                color: colors.text,
+                opacity: 0.85,
+                lineHeight: 1.5,
+                textAlign: "center",
+              }}
+            >
+              {t("transferModalText") ||
+                "NFT перейдёт на указанный адрес напрямую, без выставления на продажу. Действие необратимо."}
+            </p>
+            <input
+              type="text"
+              placeholder="UQ... / EQ..."
+              value={transferAddressInput}
+              onChange={(e) => setTransferAddressInput(e.target.value.trim())}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "10px 12px",
+                borderRadius: "10px",
+                border: `1px solid ${colors.border}`,
+                background: colors.secondaryBg,
+                color: colors.text,
+                fontSize: "13px",
+                fontFamily: "monospace",
+                marginBottom: "16px",
+              }}
+            />
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                onClick={() => {
+                  setTransferModalSubdomain(null);
+                  setTransferAddressInput("");
+                }}
+                disabled={transferBusy}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: `1px solid ${colors.border}`,
+                  background: "transparent",
+                  color: colors.text,
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  cursor: transferBusy ? "default" : "pointer",
+                  opacity: transferBusy ? 0.5 : 1,
+                }}
+              >
+                {t("cancel") || "Отмена"}
+              </button>
+              <button
+                onClick={confirmTransferSubdomain}
+                disabled={transferBusy || !transferAddressInput}
+                style={{
+                  flex: 1,
+                  padding: "12px",
+                  borderRadius: "10px",
+                  border: "none",
+                  background: transferBusy ? colors.border : colors.primary,
+                  color: "#FFFFFF",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  cursor: transferBusy ? "default" : "pointer",
+                }}
+              >
+                {transferBusy ? t("processing") || "Отправка..." : t("transferButton") || "Передать"}
               </button>
             </div>
           </div>
