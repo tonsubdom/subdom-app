@@ -8,7 +8,7 @@ import tonFooterSvg from "./ton.svg";
 import tsbLogo from "./logos/tsb_logo.png";
 import tonsiteCatalogLogo from "./logos/tonsitecatalog_logo.png";
 import webdomLogo from "@/assets/webdom_logo.svg";
-import resistorLogo from "./logos/resistor_logo.png";
+import invisLogo from "./logos/invis_logo.png";
 import tenKClubLogo from "./logos/10kclub_logo.png";
 
 interface CommunityDapp {
@@ -21,7 +21,7 @@ const COMMUNITY_DAPPS: CommunityDapp[] = [
   { label: 'TonSite Builder', href: 'https://t.me/Ton_site_builder_bot?startapp', logo: tsbLogo },
   { label: 'TonSite Catalog', href: 'tonsite://tonsitecatalog.ton', logo: tonsiteCatalogLogo },
   { label: 'Webdom', href: 'https://webdom.market', logo: webdomLogo },
-  { label: 'Resistance Tools', href: 'https://app.resistance.dog', logo: resistorLogo },
+  { label: 'Invis', href: 'https://invis.5-129-207-156.sslip.io/', logo: invisLogo },
   { label: '10K Club', href: 'https://10kclub.com/', logo: tenKClubLogo },
 ];
 
