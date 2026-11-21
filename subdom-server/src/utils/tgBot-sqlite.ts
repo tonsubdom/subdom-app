@@ -3783,7 +3783,7 @@ ${network}
 ${$.fieldName}: *.<code>${name}</code>
 ${$.fieldDomainAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
-${$.fieldPrice}: ${price} TON
+${$.fieldPrice}: ${price} GRAM
 ${$.fieldType}: ${$.fieldTypeProxy}
 ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
 
@@ -3841,7 +3841,7 @@ ${$.fieldName}: <a href="tonsite://${name}">.${name}</a>
 ${$.fieldCollectionAddress}: ${await this.formatTonviewerLink(bundleAddress, isTestnet)}
 ${$.fieldDomainAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
-${$.fieldPrice}: ${price} TON
+${$.fieldPrice}: ${price} GRAM
 ${$.fieldType}: ${$.fieldTypeSBT}
 
 ${currentID + 1} ${$.hintZoneNumber}
@@ -4340,7 +4340,7 @@ ${$.auctionStarted}
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
 ${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}${bidderLine}
-${$.fieldPrice}: ${price} TON
+${$.fieldPrice}: ${price} GRAM
 ${$.fieldAuctionType}: ${$.fieldAuctionTypeProxy}
 
 ${$.fieldStartTime}: ${new Date().toLocaleString('ru-RU')}
@@ -4375,7 +4375,7 @@ ${$.newBid}
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
 ${$.fieldBidder}: ${await this.formatTonviewerLink(bidder, isTestnet)}
-${$.fieldAmount}: ${amount} TON${previousBidderInfo}
+${$.fieldAmount}: ${amount} GRAM${previousBidderInfo}
 ${$.fieldAuctionType}: ${$.fieldAuctionTypeProxy}
 
 ${$.fieldBidTime}: ${new Date().toLocaleString('ru-RU')}
@@ -4401,7 +4401,7 @@ ${network}
 ${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>
 ${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
-${$.fieldPrice}: ${price} TON
+${$.fieldPrice}: ${price} GRAM
 ${$.fieldType}: ${$.fieldTypeSBT}
 ${$.fieldMintTime}: ${new Date().toLocaleString('ru-RU')}
 
@@ -4430,14 +4430,14 @@ ${$.hintCongrats}
 
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
-        const commissionLine = ownerCommission !== undefined ? `\n${$.fieldOwnerCommission}: ${ownerCommission} TON` : '';
+        const commissionLine = ownerCommission !== undefined ? `\n${$.fieldOwnerCommission}: ${ownerCommission} GRAM` : '';
         return `
 ${$.auctionEnded}
 
 ${network}
 ${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>
 ${itemAddress ? `${$.fieldAddress}: ${await this.formatTonviewerLink(itemAddress, isTestnet)}\n` : ''}${$.fieldWinner}: ${await this.formatTonviewerLink(winner, isTestnet)}
-${$.fieldFinalPrice}: ${finalPrice} TON${commissionLine}
+${$.fieldFinalPrice}: ${finalPrice} GRAM${commissionLine}
 
 ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
 
@@ -4581,7 +4581,7 @@ ${network}
 ${$.fieldName}: <code>${name}</code>
 ${$.fieldDomainAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
-${$.fieldPrice}: ${price} TON
+${$.fieldPrice}: ${price} GRAM
 ${$.fieldType}: ${$.fieldTypeProxy}
 
 ${$.fieldCreatedAt}: ${new Date().toLocaleString('ru-RU')}
@@ -4620,7 +4620,7 @@ ${$.fieldName}: <a href="tonsite://${name}">.${name}</a>
 ${$.fieldCollectionAddress}: ${await this.formatTonviewerLink(bundleAddress, isTestnet)}
 ${$.fieldDomainAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
-${$.fieldPrice}: ${price} TON
+${$.fieldPrice}: ${price} GRAM
 ${$.fieldType}: ${$.fieldTypeSBT}
 
 ${currentID + 1} ${$.hintZoneNumber}
@@ -4658,7 +4658,7 @@ ${$.auctionStarted}
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
 ${$.fieldOwner}: ${await this.formatTonviewerLink(address, isTestnet)}${bidderLine}
-${$.fieldPrice}: ${price} TON
+${$.fieldPrice}: ${price} GRAM
 ${$.fieldAuctionType}: ${$.fieldAuctionTypeProxy}
 
 ${$.fieldStartTime}: ${new Date().toLocaleString('ru-RU')}
@@ -4700,7 +4700,7 @@ ${$.newBid}
 ${network}
 ${$.fieldDomain}: <code>${domain}</code>
 ${$.fieldBidder}: ${await this.formatTonviewerLink(bidder, isTestnet)}
-${$.fieldAmount}: ${amount} TON${previousBidderInfo}
+${$.fieldAmount}: ${amount} GRAM${previousBidderInfo}
 
 ${$.fieldBidTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
@@ -4735,7 +4735,7 @@ ${network}
 ${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>
 ${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
 ${$.fieldOwner}: ${await this.formatTonviewerLink(owner, isTestnet)}
-${$.fieldPrice}: ${price} TON
+${$.fieldPrice}: ${price} GRAM
 
 ${$.fieldMintTime}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
@@ -4758,7 +4758,7 @@ ${$.fieldMintTime}: ${new Date().toLocaleString('ru-RU')}
     try {
       const $ = LANG.ru;
       const network = this.formatNetwork(isTestnet);
-      const commissionLine = ownerCommission !== undefined ? `\n${$.fieldOwnerCommission}: ${ownerCommission} TON` : '';
+      const commissionLine = ownerCommission !== undefined ? `\n${$.fieldOwnerCommission}: ${ownerCommission} GRAM` : '';
 
       const message = `
 ${$.auctionEnded}
@@ -4766,7 +4766,7 @@ ${$.auctionEnded}
 ${network}
 ${this.domainFieldLabel($, domain)}: <a href="tonsite://${domain}">${domain}</a>
 ${itemAddress ? `${$.fieldAddress}: ${await this.formatTonviewerLink(itemAddress, isTestnet)}\n` : ''}${$.fieldWinner}: ${await this.formatTonviewerLink(winner, isTestnet)}
-${$.fieldFinalPrice}: ${finalPrice} TON${commissionLine}
+${$.fieldFinalPrice}: ${finalPrice} GRAM${commissionLine}
 
 ${$.fieldEndedAt}: ${new Date().toLocaleString('ru-RU')}
       `.trim();
@@ -4891,7 +4891,7 @@ ${$.fieldRegisteredAt}: ${new Date().toLocaleString('ru-RU')}
       const network = this.formatNetwork(isTestnet);
       const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
       const formattedLength = length === 9 ? '9+' : String(length);
-      const priceLine = price !== undefined ? `\n${$.fieldPrice}: ${price} TON` : '';
+      const priceLine = price !== undefined ? `\n${$.fieldPrice}: ${price} GRAM` : '';
 
       const message = `
 ${$.paymentRecorded}
@@ -4922,7 +4922,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
         const formattedLength = length === 9 ? '9+' : String(length);
-        const priceLine = price !== undefined ? `\n${$.fieldPrice}: ${price} TON` : '';
+        const priceLine = price !== undefined ? `\n${$.fieldPrice}: ${price} GRAM` : '';
 
         return `
 ${$.paymentRecorded}
@@ -4992,7 +4992,7 @@ ${network}
       const network = this.formatNetwork(isTestnet);
       const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
       const formattedLength = length === 9 ? '9+' : String(length);
-      const priceLine = price !== undefined ? `\n${$.fieldPrice}: ${price} TON` : '';
+      const priceLine = price !== undefined ? `\n${$.fieldPrice}: ${price} GRAM` : '';
 
       const message = `
 ${$.paymentConsumed}
@@ -5022,7 +5022,7 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       return await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
         const zoneTypeText = zoneType === 'proxy' ? 'Proxy' : 'SBT';
-        const priceLine = price !== undefined ? `\n${$.fieldPrice}: ${price} TON` : '';
+        const priceLine = price !== undefined ? `\n${$.fieldPrice}: ${price} GRAM` : '';
 
         return `
 ${$.paymentConsumed}
