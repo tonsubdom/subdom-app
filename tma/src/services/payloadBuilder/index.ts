@@ -25,6 +25,7 @@ import {
   buildReleaseBody as buildEscrowReleaseBody,
   buildRefundBody as buildEscrowRefundBody,
   buildClaimTimeoutRefundBody as buildEscrowClaimTimeoutRefundBody,
+  buildAdminSweepBody as buildEscrowAdminSweepBody,
   type EscrowConfig,
 } from './escrow';
 import { prepareSbtSubdomainCollection, buildTopUpBody as buildSbtTopUpBody, buildChangeContentBody, type SbtSubdomainCollectionData, type SbtOffchainContent } from './sbtSubdomainCollection';
@@ -284,6 +285,22 @@ export function buildEscrowClaimTimeoutRefund(escrowAddress: string, isTestnet: 
         address: friendly(Address.parse(escrowAddress), isTestnet),
         amount: '20000000',
         payload: cellToBase64(buildEscrowClaimTimeoutRefundBody(queryId)),
+      },
+    ],
+  };
+}
+
+// Только владелец площадки, только на уже settled (status != 0) эскроу —
+// см. комментарий у op::admin_sweep в escrow.fc. Забирает застрявший
+// остаток, не может тронуть активную (status==0) сделку.
+export function buildEscrowAdminSweep(escrowAddress: string, isTestnet: boolean, queryId = 0): TransactionResponse {
+  return {
+    validUntil: validUntil(),
+    messages: [
+      {
+        address: friendly(Address.parse(escrowAddress), isTestnet),
+        amount: '20000000',
+        payload: cellToBase64(buildEscrowAdminSweepBody(queryId)),
       },
     ],
   };

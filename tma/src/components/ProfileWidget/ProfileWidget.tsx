@@ -2336,6 +2336,7 @@ import {
 } from "@/services/ownerMetaService";
 import { ShowSnackbar } from "@/components/ShowSnackbar";
 import { LupaButton } from "@/components/LupaButton/LupaButton";
+import { EscrowDeadlineBadge } from "@/components/EscrowDeadlineBadge";
 import { ShareButton } from "@/components/ShareButton/ShareButton";
 import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
 import { useTutorial } from "@/contexts/TutorialContext";
@@ -3682,7 +3683,7 @@ const ProfileWidget: React.FC = () => {
       .then((result) => {
         const map = new Map<string, any>();
         (result.data || [])
-          .filter((l: any) => l.status === "active" || l.status === "reserved")
+          .filter((l: any) => l.status === "active" || l.status === "reserved" || l.status === "paid")
           .forEach((l: any) => map.set(l.zoneAddress.toLowerCase(), l));
         setMyBeneficiaryListings(map);
       })
@@ -4707,7 +4708,14 @@ const ProfileWidget: React.FC = () => {
               );
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignSelf: "flex-start" }}>
-                  {myListing ? (
+                  {myListing && myListing.status === "paid" ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                      <span style={{ fontSize: "10px", color: colors.text, opacity: 0.8 }}>
+                        {t("marketBeneficiaryOfferPaidBy") || "Оплачено покупателем"}: {myListing.priceTon} TON
+                      </span>
+                      <EscrowDeadlineBadge escrowAddress={myListing.escrowAddress} isTestnet={isTestnet} t={t} textColor={colors.text} />
+                    </div>
+                  ) : myListing ? (
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       <span style={{ fontSize: "10px", color: colors.text, opacity: 0.8 }}>
                         {t("marketBeneficiaryListedAt") || "На продаже"}: {myListing.priceTon} TON

@@ -1152,11 +1152,12 @@ async updateSubdomainOwner(id: number, ownerAddress: string): Promise<Subdomain>
     }
   }
 
-  async getBeneficiaryListings(params: { status?: string; sellerAddress?: string } = {}): Promise<{ success: boolean; data?: any[]; message?: string }> {
+  async getBeneficiaryListings(params: { status?: string; sellerAddress?: string; buyerAddress?: string } = {}): Promise<{ success: boolean; data?: any[]; message?: string }> {
     try {
       const query = new URLSearchParams();
       if (params.status) query.set('status', params.status);
       if (params.sellerAddress) query.set('sellerAddress', normalizeAddress(params.sellerAddress));
+      if (params.buyerAddress) query.set('buyerAddress', normalizeAddress(params.buyerAddress));
       const qs = query.toString();
       const response = await fetch(this.addNetworkParam(`${this.baseUrl}/api/market/beneficiary/listings${qs ? `?${qs}` : ''}`), { headers: this.getHeaders() });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

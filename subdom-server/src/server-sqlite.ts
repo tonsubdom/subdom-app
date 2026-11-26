@@ -4741,7 +4741,7 @@ app.post('/api/admin/pending-actions/:id/complete', requireAdminAuth, (req, res)
 
       db.prepare(`
         UPDATE beneficiary_listings SET status = 'sold', updatedAt = CURRENT_TIMESTAMP
-        WHERE LOWER(zoneAddress) = LOWER(?) AND LOWER(buyerAddress) = LOWER(?) AND status = 'reserved'
+        WHERE LOWER(zoneAddress) = LOWER(?) AND LOWER(buyerAddress) = LOWER(?) AND status = 'paid'
       `).run(collectionAddress, newPartner);
       db.prepare(`
         UPDATE beneficiary_offers SET status = 'executed', updatedAt = CURRENT_TIMESTAMP
@@ -4830,6 +4830,7 @@ app.get('/api/market/beneficiary/listings', (req, res) => {
     const db = req.db;
     const status = typeof req.query.status === 'string' ? req.query.status : null;
     const sellerAddress = typeof req.query.sellerAddress === 'string' ? req.query.sellerAddress.toLowerCase() : null;
+    const buyerAddress = typeof req.query.buyerAddress === 'string' ? req.query.buyerAddress.toLowerCase() : null;
 
     db.prepare(`
       UPDATE beneficiary_listings
@@ -4841,6 +4842,7 @@ app.get('/api/market/beneficiary/listings', (req, res) => {
     const params: any[] = [];
     if (status) { conditions.push('status = ?'); params.push(status); }
     if (sellerAddress) { conditions.push('LOWER(sellerAddress) = ?'); params.push(sellerAddress); }
+    if (buyerAddress) { conditions.push('LOWER(buyerAddress) = ?'); params.push(buyerAddress); }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const rows = db.prepare(`SELECT * FROM beneficiary_listings ${where} ORDER BY createdAt DESC`).all(...params);
@@ -4907,9 +4909,16 @@ app.post('/api/market/beneficiary/listings/:id/confirm-payment', (req, res) => {
       return res.status(409).json({ success: false, message: 'Листинг не забронирован за этим покупателем' });
     }
 
+    // status -> 'paid' (не остаётся 'reserved') — иначе короткая 5-минутная
+    // reservedUntil-бронь (см. /reserve выше) истекает и GET /listings
+    // автоматически откатывает листинг в 'active' с buyerAddress=NULL,
+    // хотя деньги покупателя уже реально лежат в эскроу на чейне (баг
+    // живого флоу — листинг снова становился доступен для покупки другим,
+    // пока первый эскроу ждёт исполнения площадкой). 'paid' не матчится
+    // автооткатом (тот фильтрует строго status='reserved').
     const updated = db.prepare(`
       UPDATE beneficiary_listings
-      SET paymentTxHash = ?, escrowAddress = ?, updatedAt = CURRENT_TIMESTAMP
+      SET status = 'paid', paymentTxHash = ?, escrowAddress = ?, updatedAt = CURRENT_TIMESTAMP
       WHERE id = ?
       RETURNING *
     `).get(paymentTxHash || null, escrowAddress, id);
@@ -4934,6 +4943,14 @@ app.post('/api/market/beneficiary/listings/:id/cancel', (req, res) => {
     }
     if (String(listing.sellerAddress).toLowerCase() !== String(sellerAddress || '').toLowerCase()) {
       return res.status(403).json({ success: false, message: 'Отменить листинг может только продавец' });
+    }
+    // Нельзя снять с продажи, если покупатель уже забронировал/оплатил —
+    // раньше здесь не было никакой проверки статуса, продавец мог
+    // "отменить" уже внесённый в эскроу депозит покупателя (деньги на
+    // чейне при этом никуда не денутся, просто зависнут до
+    // claim_timeout_refund через час — путаница и ложное ощущение отмены).
+    if (listing.status !== 'active') {
+      return res.status(409).json({ success: false, message: 'Нельзя снять листинг, который уже забронирован или оплачен покупателем' });
     }
 
     const updated = db.prepare(`

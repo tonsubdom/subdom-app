@@ -24,6 +24,7 @@ import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-
 import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
 import { NETWORK_CONFIGS } from '@/services/blockchainItems/toncenter-api-config';
 import { LupaButton } from '@/components/LupaButton/LupaButton';
+import { EscrowDeadlineBadge } from '@/components/EscrowDeadlineBadge';
 
 const NO_IMAGE_PLACEHOLDER =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 90 90"><rect width="90" height="90" fill="%23f0f0f0"/><text x="45" y="45" font-family="Arial" font-size="10" fill="%23999" text-anchor="middle" dy=".3em">No Image</text></svg>';
@@ -88,6 +89,11 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
   // владелец зоны мог отправить (и затем принять) оффер самому себе.
   const [incomingOffers, setIncomingOffers] = useState<any[]>([]);
   const [offerActionBusyId, setOfferActionBusyId] = useState<number | null>(null);
+  // Листинги (не офферы), которые ТЫ оплатил через "Забрать" — как и
+  // myOffers выше, нужны отдельно от listingByZone (тот — только активные,
+  // доступные для покупки). Без этого после оплаты листинг просто
+  // пропадал из вида у покупателя (loadListings видит только активные).
+  const [myPaidListings, setMyPaidListings] = useState<any[]>([]);
   // Подтверждение перед "Принять" — юзер явно попросил модалку, чтобы
   // случайным кликом не отдать зону (принятие сразу запускает эскроу-
   // расчёт с покупателем, отменить потом нельзя).
@@ -117,28 +123,46 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
       setIncomingOffers([]);
       return;
     }
-    const result = await apiService.getBeneficiaryOffers({ sellerAddress: walletAddress, status: 'pending' });
-    setIncomingOffers(result.success ? result.data || [] : []);
+    // Без status-фильтра на бэкенде — 'paid' (покупатель уже внёс депозит,
+    // площадка ещё не исполнила) тоже должен остаться виден продавцу, не
+    // только 'pending'. Фильтруем на клиенте, тем же паттерном, что
+    // myOfferByZone ниже.
+    const result = await apiService.getBeneficiaryOffers({ sellerAddress: walletAddress });
+    setIncomingOffers(
+      (result.success ? result.data || [] : []).filter((o: any) => o.status === 'pending' || o.status === 'paid')
+    );
   };
 
   useEffect(() => {
     loadListings();
   }, []);
 
+  const loadMyPaidListings = async () => {
+    if (!walletAddress) {
+      setMyPaidListings([]);
+      return;
+    }
+    const result = await apiService.getBeneficiaryListings({ buyerAddress: walletAddress, status: 'paid' });
+    setMyPaidListings(result.success ? result.data || [] : []);
+  };
+
   useEffect(() => {
     loadMyOffers();
     loadIncomingOffers();
+    loadMyPaidListings();
     const intervalId = setInterval(() => {
       loadMyOffers();
       loadIncomingOffers();
+      loadMyPaidListings();
     }, 30_000);
     return () => clearInterval(intervalId);
   }, [walletAddress]);
 
   const listingByZone = new Map(listings.map((l) => [l.zoneAddress.toLowerCase(), l]));
+  const myPaidListingByZone = new Map(myPaidListings.map((l) => [l.zoneAddress.toLowerCase(), l]));
   const myOfferByZone = new Map(
     myOffers
-      .filter((o) => o.status === 'pending' || o.status === 'accepted')
+      .filter((o) => o.status === 'pending' || o.status === 'accepted' || o.status === 'paid')
       .map((o) => [o.zoneAddress.toLowerCase(), o])
   );
   const incomingOfferByZone = new Map(incomingOffers.map((o) => [o.zoneAddress.toLowerCase(), o]));
@@ -199,6 +223,7 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
       });
 
       await loadListings();
+      await loadMyPaidListings();
     } catch (error: any) {
       setError(key, error?.message || 'Ошибка');
     } finally {
@@ -390,6 +415,7 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
         const listing = listingByZone.get(zoneAddressRaw);
         const myOffer = myOfferByZone.get(zoneAddressRaw);
         const incomingOffer = incomingOfferByZone.get(zoneAddressRaw);
+        const myPaidListing = myPaidListingByZone.get(zoneAddressRaw);
         const zoneName = zone.domain || zone.name;
         const displayName = stripTonTld(zoneName);
         const presumedSeller = zone.creator_address || zone.owner_address;
@@ -435,7 +461,14 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
                 {displayName}
               </div>
 
-              {listing ? (
+              {myPaidListing ? (
+                <div style={{ fontSize: '12px', color: colors.textSecondary }}>
+                  <div style={{ marginBottom: '4px' }}>
+                    {t('marketBeneficiaryYouPaid') || 'Вы оплатили'}: <strong style={{ color: colors.text }}>{myPaidListing.priceTon} TON</strong>
+                  </div>
+                  <EscrowDeadlineBadge escrowAddress={myPaidListing.escrowAddress} isTestnet={isTestnet} t={t} textColor={colors.text} />
+                </div>
+              ) : listing ? (
                 <>
                   <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '8px' }}>
                     {t('marketBeneficiaryPrice') || 'Цена'}: <strong style={{ color: colors.text }}>{listing.priceTon} TON</strong>
@@ -452,7 +485,24 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
                   {errorByKey[takeKey] && <p style={{ color: colors.error, fontSize: '12px', marginTop: '6px' }}>{errorByKey[takeKey]}</p>}
                 </>
               ) : isOwnZone ? (
-                incomingOffer ? (
+                incomingOffer?.status === 'paid' ? (
+                  <div style={{ fontSize: '12px', color: colors.textSecondary }}>
+                    <div style={{ marginBottom: '4px' }}>
+                      {t('marketBeneficiaryOfferPaidBy') || 'Оплачено покупателем'}: <strong style={{ color: colors.text }}>{incomingOffer.priceTon} TON</strong> (
+                      <a
+                        href={tonviewerLink(incomingOffer.buyerAddress, isTestnet)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ color: colors.primary }}
+                      >
+                        {shortAddress(incomingOffer.buyerAddress)}
+                      </a>
+                      )
+                    </div>
+                    <EscrowDeadlineBadge escrowAddress={incomingOffer.escrowAddress} isTestnet={isTestnet} t={t} textColor={colors.text} />
+                  </div>
+                ) : incomingOffer ? (
                   <>
                     <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '8px' }}>
                       {t('marketBeneficiaryOfferFrom') || 'Оффер'}: <strong style={{ color: colors.text }}>{incomingOffer.priceTon} TON</strong> (
@@ -495,6 +545,13 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
                     {t('marketBeneficiaryYourZone') || 'Это ваша зона'}
                   </div>
                 )
+              ) : myOffer?.status === 'paid' ? (
+                <div style={{ fontSize: '12px', color: colors.textSecondary }}>
+                  <div style={{ marginBottom: '4px' }}>
+                    {t('marketBeneficiaryYouPaid') || 'Вы оплатили'}: <strong style={{ color: colors.text }}>{myOffer.priceTon} TON</strong>
+                  </div>
+                  <EscrowDeadlineBadge escrowAddress={myOffer.escrowAddress} isTestnet={isTestnet} t={t} textColor={colors.text} />
+                </div>
               ) : myOffer?.status === 'accepted' ? (
                 <>
                   <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '8px' }}>

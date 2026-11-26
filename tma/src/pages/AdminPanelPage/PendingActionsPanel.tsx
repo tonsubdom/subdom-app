@@ -11,7 +11,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { apiService } from '@/services/api';
-import { buildChangeContent, buildBeneficiaryTransferAndRelease } from '@/services/payloadBuilder';
+import { buildChangeContent, buildBeneficiaryTransferAndRelease, buildEscrowAdminSweep } from '@/services/payloadBuilder';
 import { getPartnerShare } from '@/utils/tonUtils';
 import { TransactionService } from '@/services/transactionService';
 
@@ -42,6 +42,16 @@ export const PendingActionsPanel: React.FC<PendingActionsPanelProps> = ({ isTest
   const [loading, setLoading] = useState(false);
   const [executingId, setExecutingId] = useState<number | null>(null);
   const [errorById, setErrorById] = useState<Record<number, string>>({});
+
+  // Забрать застрявший остаток с уже settled (released/refunded/timeout)
+  // эскроу — op::admin_sweep в escrow.fc. Нет списка "старых эскроу" на
+  // бэкенде (контракты одноразовые, адрес каждый раз новый) — юзер вводит
+  // адрес сам (с tonviewer, например, если туда случайно пришёл повторный
+  // перевод). Сам контракт проверяет status != 0 — активную сделку забрать
+  // не даст, независимо от того, что здесь введено.
+  const [sweepAddress, setSweepAddress] = useState('');
+  const [sweepBusy, setSweepBusy] = useState(false);
+  const [sweepResult, setSweepResult] = useState<string | null>(null);
 
   const isDark = currentTheme === 'dark';
 
@@ -158,6 +168,30 @@ export const PendingActionsPanel: React.FC<PendingActionsPanelProps> = ({ isTest
     }
   };
 
+  const executeSweep = async () => {
+    const address = sweepAddress.trim();
+    if (!address) return;
+    setSweepBusy(true);
+    setSweepResult(null);
+    try {
+      const transaction = buildEscrowAdminSweep(address, isTestnet);
+      const sendResult = await TransactionService.sendTransaction(
+        tonConnectUI,
+        transaction,
+        { network: isTestnet ? 'testnet' : 'mainnet', verifyBlockchain: true, action: 'admin_sweep_escrow' }
+      );
+      if (!sendResult.success || !sendResult.confirmedInBlock) {
+        throw new Error(sendResult.error || 'Транзакция не подтверждена');
+      }
+      setSweepResult('✅ Остаток забран');
+      setSweepAddress('');
+    } catch (error: any) {
+      setSweepResult(`❌ ${error?.message || 'Ошибка транзакции'}`);
+    } finally {
+      setSweepBusy(false);
+    }
+  };
+
   const cardStyle: React.CSSProperties = {
     padding: '14px',
     borderRadius: '8px',
@@ -189,6 +223,50 @@ export const PendingActionsPanel: React.FC<PendingActionsPanelProps> = ({ isTest
         <span style={{ fontSize: '12px', color: isDark ? '#9CA3AF' : '#6B7280' }}>
           {actions.length === 0 ? 'Нет ожидающих заявок' : `Ожидают исполнения: ${actions.length}`}
         </span>
+      </div>
+
+      <div style={cardStyle}>
+        <div style={{ fontWeight: 600, marginBottom: '8px' }}>🧹 Забрать застрявший остаток с эскроу</div>
+        <div style={{ fontSize: '12px', color: isDark ? '#9CA3AF' : '#6B7280', marginBottom: '8px' }}>
+          Только для уже исполненных (released/refunded) сделок — на активной (funded) контракт сам откажет.
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <input
+            type="text"
+            placeholder="Адрес эскроу-контракта"
+            value={sweepAddress}
+            onChange={(e) => setSweepAddress(e.target.value)}
+            disabled={sweepBusy}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              padding: '8px 10px',
+              borderRadius: '8px',
+              border: `1px solid ${isDark ? '#374151' : '#E5E7EB'}`,
+              background: isDark ? '#111827' : '#FFFFFF',
+              color: isDark ? '#F9FAFB' : '#1F2937',
+              fontSize: '12px',
+            }}
+          />
+          <button
+            onClick={executeSweep}
+            disabled={sweepBusy || !sweepAddress.trim()}
+            style={{
+              padding: '8px 14px',
+              borderRadius: '8px',
+              border: 'none',
+              background: sweepBusy ? '#6B7280' : '#3B82F6',
+              color: '#FFFFFF',
+              fontWeight: 600,
+              fontSize: '12px',
+              cursor: sweepBusy ? 'default' : 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {sweepBusy ? '...' : 'Забрать'}
+          </button>
+        </div>
+        {sweepResult && <p style={{ fontSize: '12px', marginTop: '8px' }}>{sweepResult}</p>}
       </div>
 
       {actions.map((action) => (

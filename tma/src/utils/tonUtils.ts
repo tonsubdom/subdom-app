@@ -249,6 +249,62 @@ export async function getPartnerShare(
 }
 
 /**
+ * Читает статус/дедлайн эскроу-сделки (Market -> Коллекции, продажа
+ * бенефициарства) напрямую с чейна — юзер явно попросил не доверять одной
+ * только БД для срока действия оффера/депозита, брать с контракта, где
+ * реально видно, когда и до какого момента он действителен
+ * (get_escrow_data, см. escrow.fc). status: 0=funded (ещё активен),
+ * 1=released, 2=refunded/timeout.
+ */
+export async function getEscrowOnchainData(
+  escrowAddress: string,
+  isTestnet: boolean
+): Promise<{ status: number; deadline: number } | null> {
+  try {
+    const apiUrl = toncenterApiUrl(isTestnet, 'v3/runGetMethod');
+    const rawAddress = convertUserFriendlyToRaw(escrowAddress);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        address: rawAddress,
+        method: 'get_escrow_data',
+        stack: []
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // (slice owner, slice seller, slice buyer, int deal_id, int deadline,
+    // int status) — те же объекты {type, value} toncenter v3, что и у
+    // get_partner_share выше; адреса (stack[0..2]) не нужны вызывающему
+    // коду (он их уже знает), берём только deal_id/deadline/status.
+    if (!data || !Array.isArray(data.stack) || data.stack.length < 6) {
+      return null;
+    }
+
+    const deadlineItem = data.stack[4];
+    const statusItem = data.stack[5];
+    if (!deadlineItem || deadlineItem.type !== 'num' || !statusItem || statusItem.type !== 'num') {
+      return null;
+    }
+
+    return {
+      deadline: parseInt(deadlineItem.value, 16),
+      status: parseInt(statusItem.value, 16),
+    };
+  } catch (error) {
+    console.error('Ошибка получения get_escrow_data:', error);
+    return null;
+  }
+}
+
+/**
  * Резолвит ввод из поля "Передать" (кнопка Transfer, ProfileWidget) — юзер
  * может вставить готовый адрес кошелька ИЛИ вписать домен ("7707.ton"), чтобы
  * найти владельца по-человечески. Проверено вживую на реальном домене

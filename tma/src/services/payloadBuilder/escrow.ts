@@ -17,6 +17,7 @@ const OpCode = {
   release: 0x2,
   refund: 0x3,
   claim_timeout_refund: 0x4,
+  admin_sweep: 0x6,
 } as const;
 
 export interface EscrowConfig {
@@ -70,4 +71,12 @@ export function buildRefundBody(queryId = 0): Cell {
 
 export function buildClaimTimeoutRefundBody(queryId = 0): Cell {
   return beginCell().storeUint(OpCode.claim_timeout_refund, 32).storeUint(queryId, 64).endCell();
+}
+
+// Только owner_addr (площадка), только после settle (status != 0 — уже
+// release/refund/timeout) — забирает застрявший остаток (хранилищный
+// резерв, случайный повторный депозит на уже исполненную сделку). Не
+// работает на активной сделке — это не обход release/refund.
+export function buildAdminSweepBody(queryId = 0): Cell {
+  return beginCell().storeUint(OpCode.admin_sweep, 32).storeUint(queryId, 64).endCell();
 }
