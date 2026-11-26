@@ -26,8 +26,11 @@ import {
   buildRefundBody as buildEscrowRefundBody,
   buildClaimTimeoutRefundBody as buildEscrowClaimTimeoutRefundBody,
   buildAdminSweepBody as buildEscrowAdminSweepBody,
+  MIN_ESCROW_DEPOSIT_TON,
   type EscrowConfig,
 } from './escrow';
+
+export { MIN_ESCROW_DEPOSIT_TON };
 import { prepareSbtSubdomainCollection, buildTopUpBody as buildSbtTopUpBody, buildChangeContentBody, type SbtSubdomainCollectionData, type SbtOffchainContent } from './sbtSubdomainCollection';
 
 export interface TonConnectMessage {

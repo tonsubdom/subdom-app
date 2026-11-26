@@ -361,6 +361,7 @@ export const ruTranslations = {
   marketBeneficiariesSubtitle: 'Продажа бенефициарства на 90% профита аукционов',
   marketBeneficiaryConnectWallet: 'Подключите кошелёк',
   marketBeneficiaryInvalidPrice: 'Укажите цену в TON',
+  marketBeneficiaryPriceTooLow: 'Минимальная сумма — {min} TON',
   marketBeneficiaryEmpty: 'Пока нет Proxy-зон на платформе',
   marketBeneficiaryPrice: 'Цена',
   marketBeneficiarySeller: 'Продавец',

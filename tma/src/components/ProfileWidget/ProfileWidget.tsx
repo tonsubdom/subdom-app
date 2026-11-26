@@ -2337,6 +2337,7 @@ import {
 import { ShowSnackbar } from "@/components/ShowSnackbar";
 import { LupaButton } from "@/components/LupaButton/LupaButton";
 import { EscrowDeadlineBadge } from "@/components/EscrowDeadlineBadge";
+import { MIN_ESCROW_DEPOSIT_TON } from "@/services/payloadBuilder";
 import { ShareButton } from "@/components/ShareButton/ShareButton";
 import { TutorialTooltip } from "@/components/Tutorial/TutorialTooltip";
 import { useTutorial } from "@/contexts/TutorialContext";
@@ -3720,6 +3721,10 @@ const ProfileWidget: React.FC = () => {
     const price = Number(listingPriceInput);
     if (!Number.isFinite(price) || price <= 0) {
       showSnackbar(t("marketBeneficiaryInvalidPrice") || "Укажите цену в TON", "error");
+      return;
+    }
+    if (price < MIN_ESCROW_DEPOSIT_TON) {
+      showSnackbar((t("marketBeneficiaryPriceTooLow") || "Минимальная сумма — {min} TON").replace("{min}", String(MIN_ESCROW_DEPOSIT_TON)), "error");
       return;
     }
     setListingBusy(true);

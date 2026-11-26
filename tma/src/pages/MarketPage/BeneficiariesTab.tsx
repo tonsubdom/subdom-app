@@ -19,7 +19,7 @@ import React, { useEffect, useState } from 'react';
 import { useTonConnectUI } from '@tonconnect/ui-react';
 import { apiService } from '@/services/api';
 import { TransactionService } from '@/services/transactionService';
-import { computeEscrowAddress, buildEscrowDeposit } from '@/services/payloadBuilder';
+import { computeEscrowAddress, buildEscrowDeposit, MIN_ESCROW_DEPOSIT_TON } from '@/services/payloadBuilder';
 import { useBlockchainItems } from '@/services/blockchainItems/blockchain-items-context.tsx';
 import { convertUserFriendlyToRaw } from '@/utils/tonUtils';
 import { NETWORK_CONFIGS } from '@/services/blockchainItems/toncenter-api-config';
@@ -241,6 +241,14 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
     const key = `offer-${zoneAddress}`;
     if (!priceInput || !Number.isFinite(price) || price <= 0) {
       setError(key, t('marketBeneficiaryInvalidPrice') || 'Укажите цену в TON');
+      return;
+    }
+    // Ниже этого эскроу-контракт сам отбивает депозит (err::deposit_too_small,
+    // см. escrow.fc) — резерв на хранение + газ деплоя съели бы
+    // непропорционально большую долю сделки. Отсекаем на вводе, чтобы
+    // покупатель не узнавал об этом только после баунса.
+    if (price < MIN_ESCROW_DEPOSIT_TON) {
+      setError(key, (t('marketBeneficiaryPriceTooLow') || 'Минимальная сумма — {min} TON').replace('{min}', String(MIN_ESCROW_DEPOSIT_TON)));
       return;
     }
     setBusyKey(key);

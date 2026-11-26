@@ -12,6 +12,15 @@
 import { Address, beginCell, Cell, contractAddress } from '@ton/core';
 import { EscrowCode } from './codes';
 
+// Зеркало min_deposit в imports/constants.fc — ниже этого контракт сам
+// отбивает депозит (err::deposit_too_small, баунс почти всей суммы
+// обратно), потому что min_tons_for_storage (0.05 TON) + forward-fee
+// деплоя (~0.01-0.02 TON) съели бы непропорционально большую долю малой
+// сделки (живой случай 2026-11-26: при 0.1 TON продавец получил бы
+// ~35-40% от заявленной цены). Экспортируется, чтобы UI мог отсечь
+// заведомо провальную сумму ДО отправки транзакции, не дожидаясь баунса.
+export const MIN_ESCROW_DEPOSIT_TON = 1;
+
 const OpCode = {
   deposit: 0x1,
   release: 0x2,
