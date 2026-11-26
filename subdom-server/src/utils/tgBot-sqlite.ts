@@ -1869,7 +1869,7 @@ const LANG = {
     btnOpTorrent: '📦 Торрент',
     btnOpSite: '🌐 Сайт',
     promptProfileDomain: 'Введите субдомен в формате iceberg.author.ton — откроем его профиль.',
-    profileLinkReady: '👤 Профиль субдомена готов:',
+    profileLinkReady: '👤 Блокчейн-профиль для {domain} готов, перейдите в subdom для просмотра.',
     torrentMenuText: 'Вы можете Загрузить или Скачать данные прямо из субдомена.',
     btnTorrentUpload: '⬆️ Загрузить',
     btnTorrentDownload: '⬇️ Скачать',
@@ -2152,7 +2152,7 @@ const LANG = {
     btnOpTorrent: '📦 Torrent',
     btnOpSite: '🌐 Site',
     promptProfileDomain: 'Enter the subdomain in the format iceberg.author.ton — we will open its profile.',
-    profileLinkReady: '👤 Subdomain profile is ready:',
+    profileLinkReady: '👤 Blockchain profile for {domain} is ready — open subdom to view it.',
     torrentMenuText: 'You can Upload or Download data straight from a subdomain.',
     btnTorrentUpload: '⬆️ Upload',
     btnTorrentDownload: '⬇️ Download',
@@ -2559,10 +2559,21 @@ class DeeplinkUtils {
     if (!domain) return ['', ''];
     const parts = domain.split('.');
 
-    if (parts.length >= 2) {
+    // sub.zone.ton (3+ части) — у домена реально есть субдомен. zone.ton
+    // (ровно 2 части) — это САМА зона, без субдомена. Баг был в пороге
+    // ">= 2": "author.ton" (2 части) ошибочно читался как
+    // subdomain="author"+zone="ton" — дальше stripTonTld("ton") не находил
+    // ".ton" (его там и не было, "ton" — не "x.ton"), zone уходил в
+    // диплинк как голое "ton", а parseStartappParam на фронте дописывал
+    // TLD обратно ("ton" -> "ton.ton"), итоговый домен склеивался как
+    // "author.ton.ton" (живой баг юзера на кнопке "Профиль" в "Операторе").
+    if (parts.length >= 3) {
       const subdomainName = parts[0] || '';
       const zoneName = parts.slice(1).join('.') || '';
       return [subdomainName, zoneName];
+    }
+    if (parts.length === 2) {
+      return ['', domain];
     }
 
     return ['', ''];
@@ -3570,7 +3581,7 @@ ${text.substring(0, 1000)}${text.length > 1000 ? '...' : ''}
 
     if (kind === 'profile') {
       const link = DeeplinkUtils.generateAvatarSecretLink(domain);
-      await this.bot!.sendMessage(chatId, $.profileLinkReady, {
+      await this.bot!.sendMessage(chatId, $.profileLinkReady.replace('{domain}', domain), {
         reply_markup: { inline_keyboard: [[{ text: $.btnOpProfile, url: link }]] },
       });
     } else if (kind === 'torrent-download') {
