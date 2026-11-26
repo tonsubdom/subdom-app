@@ -286,10 +286,33 @@ export class TransactionService {
     const exitCodeOf = (tx: any): number | undefined =>
       tx.description?.compute_ph?.exit_code ?? tx.description?.action?.result_code ?? undefined;
 
-    const isFailedTx = (tx: any): boolean =>
-      !!tx.description?.aborted ||
-      tx.description?.compute_ph?.success === false ||
-      tx.description?.action?.success === false;
+    // Хоп-2 на НЕинициализированный адрес (напр. holding-кошелёк платформы,
+    // который никогда не деплоился, но годами копит баланс) — TON помечает
+    // такую транзакцию aborted:true/compute_ph.skipped(reason:"no_state"),
+    // хотя credit_ph.credit подтверждает, что деньги реально зачислены (нет
+    // bounce — нечему их возвращать). Живой случай 2026-11-24: оплата
+    // попытки создания SBT-зоны (useZonePayment, 2 сообщения — на
+    // ownerAddress и partnerAddress) стабильно репортилась как failed,
+    // потому что partnerAddress — такой нетронутый кошелёк (баланс ~150 TON,
+    // account_status "uninit"). Это не провал контракта (там и контракта
+    // нет), это штатная семантика "перевод на пустой адрес без bounce".
+    // Если бы это был настоящий деплой с init_state, compute_ph НЕ был бы
+    // skipped (код появляется до компьют-фазы) — поэтому это условие не
+    // маскирует реальный сбой деплоя, только ложный "failed" у чистого
+    // перевода.
+    const isPlainCreditToUninit = (tx: any): boolean =>
+      tx.description?.compute_ph?.skipped === true &&
+      tx.description?.compute_ph?.reason === 'no_state' &&
+      !!tx.description?.credit_ph;
+
+    const isFailedTx = (tx: any): boolean => {
+      if (isPlainCreditToUninit(tx)) return false;
+      return (
+        !!tx.description?.aborted ||
+        tx.description?.compute_ph?.success === false ||
+        tx.description?.action?.success === false
+      );
+    };
 
     const toStatus = (tx: any, status: TransactionStatus['status']): TransactionStatus => ({
       hash: tx.hash,
