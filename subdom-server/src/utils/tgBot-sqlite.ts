@@ -2060,6 +2060,7 @@ const LANG = {
     fieldRegisteredAt: '⏰ Время регистрации',
     fieldTime: '⏰ Время',
     fieldRequestedBy: '👤 Запросил',
+    fieldOldBeneficiary: '👤 Старый бенефициар',
     fieldNewBeneficiary: '🎯 Новый бенефициар',
     btnReviewDeactivation: '🔍 Перейти к исполнению',
     btnReviewBeneficiaryTransfer: '🔍 Перейти к исполнению',
@@ -2333,6 +2334,7 @@ const LANG = {
     fieldRegisteredAt: '⏰ Registered',
     fieldTime: '⏰ Time',
     fieldRequestedBy: '👤 Requested by',
+    fieldOldBeneficiary: '👤 Previous beneficiary',
     fieldNewBeneficiary: '🎯 New beneficiary',
     btnReviewDeactivation: '🔍 Review & execute',
     btnReviewBeneficiaryTransfer: '🔍 Review & execute',
@@ -2942,11 +2944,25 @@ class TelegramBotService {
       if (!response.ok) return null;
       const data: any = await response.json();
 
+      // Баг (живой случай 2026-11-26): nft_item_owner приходит RAW+UPPERCASE
+      // ("0:4759B85B..."), address_book[].user_friendly — friendly-формат
+      // ("UQBHWbhb..."), а address сюда может прилететь в любом из форматов
+      // (friendly или raw+lowercase, нормализации адресов в проекте нет
+      // единой, см. соседний комментарий у /api/admin/pending-actions).
+      // Прямое === сравнение почти никогда не совпадало — домен молча не
+      // резолвился, в уведомлениях были голые адреса вместо имён.
+      // Нормализуем все три к raw+lowercase перед сравнением.
+      const toRawLower = (a: string): string | null => {
+        try { return Address.parse(a).toRawString().toLowerCase(); } catch { return null; }
+      };
+      const addressNorm = toRawLower(address);
+      if (!addressNorm) return null;
+
       const domainFromRecords = data.records?.find(
-        (r: any) => r.nft_item_owner === address
+        (r: any) => toRawLower(r.nft_item_owner) === addressNorm
       )?.domain;
       const domainFromAddressBook = (Object.values(data.address_book || {}) as any[]).find(
-        (entry: any) => entry.user_friendly === address
+        (entry: any) => toRawLower(entry.user_friendly) === addressNorm
       )?.domain;
 
       return domainFromRecords || domainFromAddressBook || null;
@@ -4172,19 +4188,22 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
   // Proxy-коллекции может вызвать только адрес площадки, поэтому смена
   // бенефициара идёт через ту же очередь pending_admin_actions, что и
   // деактивация зоны (см. server-sqlite.ts, actionType='transfer_beneficiary').
-  async sendPendingBeneficiaryTransferNotification(name: string, address: string, requestedBy: string, newPartnerAddress: string, isTestnet: boolean = true): Promise<void> {
+  async sendPendingBeneficiaryTransferNotification(name: string, address: string, requestedBy: string, newPartnerAddress: string, isTestnet: boolean = true, oldPartnerAddress?: string | null): Promise<void> {
     if (!this.isBotAvailable()) return;
 
     try {
       const $ = LANG.ru;
       const network = this.formatNetwork(isTestnet);
+      const oldBeneficiaryLine = oldPartnerAddress
+        ? `\n${$.fieldOldBeneficiary}: ${await this.formatTonviewerLink(oldPartnerAddress, isTestnet)}`
+        : '';
       const message = `
 ${$.beneficiaryTransferRequested}
 
 ${network}
-${$.fieldName}: <code>${name}</code>
+${$.fieldName}: <code>.${name}</code>
 ${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
-${$.fieldRequestedBy}: ${await this.formatTonviewerLink(requestedBy, isTestnet)}
+${$.fieldRequestedBy}: ${await this.formatTonviewerLink(requestedBy, isTestnet)}${oldBeneficiaryLine}
 ${$.fieldNewBeneficiary}: ${await this.formatTonviewerLink(newPartnerAddress, isTestnet)}
 
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
@@ -4208,18 +4227,21 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
   // выше), юзер явно попросил публичное объявление о продаже
   // бенефициарства в дополнение к личному, тем же паттерном, что
   // sendPaymentConsumedNotification/sendPublicPaymentConsumedNotification.
-  async sendBeneficiaryTransferCompletedNotification(name: string, address: string, newPartnerAddress: string, isTestnet: boolean = true): Promise<void> {
+  async sendBeneficiaryTransferCompletedNotification(name: string, address: string, newPartnerAddress: string, isTestnet: boolean = true, oldPartnerAddress?: string | null): Promise<void> {
     const network = this.formatNetwork(isTestnet);
 
     if (this.isBotAvailable()) {
       try {
         const $ = LANG.ru;
+        const oldBeneficiaryLine = oldPartnerAddress
+          ? `\n${$.fieldOldBeneficiary}: ${await this.formatTonviewerLink(oldPartnerAddress, isTestnet)}`
+          : '';
         const message = `
 ${$.beneficiaryTransferCompleted}
 
 ${network}
-${$.fieldName}: <code>${name}</code>
-${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldName}: <code>.${name}</code>
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}${oldBeneficiaryLine}
 ${$.fieldNewBeneficiary}: ${await this.formatTonviewerLink(newPartnerAddress, isTestnet)}
 
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
@@ -4234,12 +4256,15 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
     try {
       await this.sendGroupNotification(async (lang) => {
         const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
+        const oldBeneficiaryLine = oldPartnerAddress
+          ? `\n${$.fieldOldBeneficiary}: ${await this.formatTonviewerLink(oldPartnerAddress, isTestnet)}`
+          : '';
         return `
 ${$.beneficiaryTransferCompleted}
 
 ${network}
-${$.fieldName}: <code>${name}</code>
-${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldName}: <code>.${name}</code>
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}${oldBeneficiaryLine}
 ${$.fieldNewBeneficiary}: ${await this.formatTonviewerLink(newPartnerAddress, isTestnet)}
 
 ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}

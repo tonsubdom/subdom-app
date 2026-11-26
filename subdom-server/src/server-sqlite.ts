@@ -4497,7 +4497,22 @@ app.post('/api/admin/pending-actions', (req, res) => {
       telegramBot.sendPendingDeactivationNotification(targetName, targetAddress, requestedBy, isTestnet);
     }
     if (actionType === 'transfer_beneficiary') {
-      telegramBot.sendPendingBeneficiaryTransferNotification(targetName, targetAddress, requestedBy, newPartnerAddress, isTestnet);
+      // "Старый бенефициар" — текущий продавец (sellerAddress) из листинга/
+      // оффера, из которого родилась эта заявка; ищем по zoneAddress+buyerAddress,
+      // тем же способом, каким ниже (complete-хендлер) гасятся дубли.
+      const normalizedCollection = String(targetCollectionAddress || targetAddress).toLowerCase();
+      const normalizedBuyer = String(requestedBy).toLowerCase();
+      const sourceListing = db.prepare(`
+        SELECT sellerAddress FROM beneficiary_listings
+        WHERE LOWER(zoneAddress) = ? AND LOWER(buyerAddress) = ? ORDER BY id DESC LIMIT 1
+      `).get(normalizedCollection, normalizedBuyer) as { sellerAddress: string } | undefined;
+      const sourceOffer = sourceListing ? undefined : db.prepare(`
+        SELECT sellerAddress FROM beneficiary_offers
+        WHERE LOWER(zoneAddress) = ? AND LOWER(buyerAddress) = ? ORDER BY id DESC LIMIT 1
+      `).get(normalizedCollection, normalizedBuyer) as { sellerAddress: string } | undefined;
+      const oldPartnerAddress = sourceListing?.sellerAddress || sourceOffer?.sellerAddress || null;
+
+      telegramBot.sendPendingBeneficiaryTransferNotification(targetName, targetAddress, requestedBy, newPartnerAddress, isTestnet, oldPartnerAddress);
     }
 
     return res.json({ success: true, data: created });
@@ -4736,6 +4751,20 @@ app.post('/api/admin/pending-actions/:id/complete', requireAdminAuth, (req, res)
       const collectionAddress = existing.targetCollectionAddress || existing.targetAddress;
       const newPartner = existing.newPartnerAddress;
 
+      // "Старый бенефициар" для уведомления об исполнении — тот же лукап,
+      // что и при создании заявки (см. /api/admin/pending-actions выше),
+      // сделан заново здесь, а не передан через саму заявку, потому что
+      // pending_admin_actions не хранит sellerAddress отдельной колонкой.
+      const sourceListingForNotify = db.prepare(`
+        SELECT sellerAddress FROM beneficiary_listings
+        WHERE LOWER(zoneAddress) = LOWER(?) AND LOWER(buyerAddress) = LOWER(?) ORDER BY id DESC LIMIT 1
+      `).get(collectionAddress, newPartner) as { sellerAddress: string } | undefined;
+      const sourceOfferForNotify = sourceListingForNotify ? undefined : db.prepare(`
+        SELECT sellerAddress FROM beneficiary_offers
+        WHERE LOWER(zoneAddress) = LOWER(?) AND LOWER(buyerAddress) = LOWER(?) ORDER BY id DESC LIMIT 1
+      `).get(collectionAddress, newPartner) as { sellerAddress: string } | undefined;
+      const oldPartnerAddressForNotify = sourceListingForNotify?.sellerAddress || sourceOfferForNotify?.sellerAddress || null;
+
       db.prepare(`UPDATE platform_zones_cache SET beneficiaryAddress = ? WHERE LOWER(collectionAddress) = LOWER(?)`)
         .run(newPartner, collectionAddress);
 
@@ -4758,7 +4787,8 @@ app.post('/api/admin/pending-actions/:id/complete', requireAdminAuth, (req, res)
         existing.targetName,
         existing.targetAddress,
         newPartner,
-        req.isTestnet
+        req.isTestnet,
+        oldPartnerAddressForNotify
       );
     }
 
