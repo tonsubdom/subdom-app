@@ -3639,11 +3639,20 @@ const ProfileWidget: React.FC = () => {
       setTelegramLinked(null);
       return;
     }
+    // apiService.isTestnet — общий синглтон, сбрасывается в false при каждой
+    // полной перезагрузке и синхронизируется только ОСНОВНЫМ эффектом
+    // загрузки профиля (apiService.setNetwork(isTestnet) ниже по файлу) —
+    // без явного вызова здесь этот эффект мог выстрелить раньше него и
+    // уйти isTestnet=false на testnet-кошельке, читая статус из чужой БД
+    // (пишется потом в правильную — через handleLinkTelegram, который
+    // вызывается позже, когда сеть уже синхронизирована — отсюда "каждый
+    // раз сбрасывается"). Синхронизируем явно, как и везде в проекте.
+    apiService.setNetwork(isTestnet);
     apiService
       .getTelegramLinkStatus(address)
       .then((result) => setTelegramLinked(!!result.linked))
       .catch(() => setTelegramLinked(null));
-  }, [address]);
+  }, [address, isTestnet]);
 
   const handleLinkTelegram = async () => {
     if (!address) return;
@@ -3654,6 +3663,7 @@ const ProfileWidget: React.FC = () => {
         showSnackbar(t("telegramLinkOnlyInTelegram") || "Доступно только внутри Telegram", "error");
         return;
       }
+      apiService.setNetwork(isTestnet);
       const result = await apiService.linkTelegramAccount(address, initDataRaw);
       if (!result.success) throw new Error(result.message || "Не удалось подтвердить аккаунт");
       setTelegramLinked(true);
