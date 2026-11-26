@@ -2048,6 +2048,67 @@ app.get('/api/users', requireAdminAuth, (req, res) => {
   }
 });
 
+// --- Привязка Telegram-аккаунта (для личных уведомлений) ---
+// Должны стоять ДО app.get('/api/users/:address', ...) ниже — Express
+// матчит по порядку регистрации, не по специфичности пути, и
+// '/api/users/:address' трактует 'telegram-link-status' как ЗНАЧЕНИЕ
+// :address, перехватывая GET-запрос раньше настоящего хендлера. Живой
+// баг (2026-11-26): это был не race сети, а чистое перекрытие маршрута —
+// запрос всегда долетал до чужого хендлера и получал "Пользователь не
+// найден", из-за чего ProfileWidget каждый раз считал аккаунт
+// непривязанным и показывал кнопку "Подтвердить" заново, хотя сама
+// привязка (POST, другой путь, не задет этой коллизией) всегда проходила
+// и реально сохранялась.
+//
+// Mini App уже знает и walletAddress (TonConnect), и initDataRaw
+// (Telegram WebApp) — тут только проверяем подпись initData и сохраняем
+// пару. Сам chat_id из initDataRaw, не из body — юзер не может подставить
+// чужой chat_id, не владея токеном бота.
+app.post('/api/users/link-telegram', (req, res) => {
+  try {
+    const { walletAddress, initDataRaw } = req.body;
+    if (!walletAddress || !initDataRaw) {
+      return res.status(400).json({ success: false, message: 'walletAddress и initDataRaw обязательны' });
+    }
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) {
+      return res.status(500).json({ success: false, message: 'Бот не настроен на сервере' });
+    }
+    const verified = verifyTelegramInitData(String(initDataRaw), botToken);
+    if (!verified.ok || !verified.userId) {
+      return res.status(401).json({ success: false, message: 'Не удалось подтвердить Telegram-сессию' });
+    }
+
+    const db = req.db;
+    const normalizedWallet = String(walletAddress).toLowerCase();
+    db.prepare(`
+      INSERT INTO telegram_wallet_links (walletAddress, chatId, linkedAt)
+      VALUES (?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(walletAddress) DO UPDATE SET chatId = excluded.chatId, linkedAt = CURRENT_TIMESTAMP
+    `).run(normalizedWallet, verified.userId);
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка при привязке Telegram-аккаунта:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
+app.get('/api/users/telegram-link-status', (req, res) => {
+  try {
+    const walletAddress = typeof req.query.walletAddress === 'string' ? req.query.walletAddress.toLowerCase() : '';
+    if (!walletAddress) {
+      return res.status(400).json({ success: false, message: 'walletAddress обязателен' });
+    }
+    const db = req.db;
+    const row = db.prepare('SELECT walletAddress FROM telegram_wallet_links WHERE walletAddress = ?').get(walletAddress);
+    return res.json({ success: true, linked: !!row });
+  } catch (error) {
+    console.error('❌ Ошибка при проверке привязки Telegram-аккаунта:', error);
+    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
+  }
+});
+
 app.get('/api/users/:address', (req, res) => {
   try {
     const { address } = req.params;
@@ -4991,57 +5052,6 @@ app.post('/api/market/beneficiary/listings/:id/cancel', (req, res) => {
     return res.json({ success: true, data: updated });
   } catch (error) {
     console.error('❌ Ошибка при отмене листинга бенефициарства:', error);
-    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
-  }
-});
-
-// --- Привязка Telegram-аккаунта (для личных уведомлений) ---
-
-// Mini App уже знает и walletAddress (TonConnect), и initDataRaw
-// (Telegram WebApp) — тут только проверяем подпись initData и сохраняем
-// пару. Сам chat_id из initDataRaw, не из body — юзер не может подставить
-// чужой chat_id, не владея токеном бота.
-app.post('/api/users/link-telegram', (req, res) => {
-  try {
-    const { walletAddress, initDataRaw } = req.body;
-    if (!walletAddress || !initDataRaw) {
-      return res.status(400).json({ success: false, message: 'walletAddress и initDataRaw обязательны' });
-    }
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) {
-      return res.status(500).json({ success: false, message: 'Бот не настроен на сервере' });
-    }
-    const verified = verifyTelegramInitData(String(initDataRaw), botToken);
-    if (!verified.ok || !verified.userId) {
-      return res.status(401).json({ success: false, message: 'Не удалось подтвердить Telegram-сессию' });
-    }
-
-    const db = req.db;
-    const normalizedWallet = String(walletAddress).toLowerCase();
-    db.prepare(`
-      INSERT INTO telegram_wallet_links (walletAddress, chatId, linkedAt)
-      VALUES (?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(walletAddress) DO UPDATE SET chatId = excluded.chatId, linkedAt = CURRENT_TIMESTAMP
-    `).run(normalizedWallet, verified.userId);
-
-    return res.json({ success: true });
-  } catch (error) {
-    console.error('❌ Ошибка при привязке Telegram-аккаунта:', error);
-    return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
-  }
-});
-
-app.get('/api/users/telegram-link-status', (req, res) => {
-  try {
-    const walletAddress = typeof req.query.walletAddress === 'string' ? req.query.walletAddress.toLowerCase() : '';
-    if (!walletAddress) {
-      return res.status(400).json({ success: false, message: 'walletAddress обязателен' });
-    }
-    const db = req.db;
-    const row = db.prepare('SELECT walletAddress FROM telegram_wallet_links WHERE walletAddress = ?').get(walletAddress);
-    return res.json({ success: true, linked: !!row });
-  } catch (error) {
-    console.error('❌ Ошибка при проверке привязки Telegram-аккаунта:', error);
     return res.status(500).json({ success: false, message: 'Внутренняя ошибка сервера' });
   }
 });
