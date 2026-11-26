@@ -1874,7 +1874,7 @@ const LANG = {
     btnTorrentUpload: '⬆️ Загрузить',
     btnTorrentDownload: '⬇️ Скачать',
     promptTorrentDomain: 'Введите субдомен в формате iceberg.author.ton — откроем для него торрент.',
-    torrentLinkReady: '📦 Торрент готов:',
+    torrentLinkReady: '📦 Торрент для {domain} готов, перейдите в subdom, чтобы загрузить файлы из TON Storage.',
     siteMenuText: 'Invis — открывает сайты, привязанные к субдоменам. Откройте ссылку ниже и введите свой субдомен прямо там:',
     invalidDomainInput: 'Не похоже на домен. Пример: iceberg.author.ton',
 
@@ -1999,6 +1999,7 @@ const LANG = {
     contentUpdated: '🖼️ <b>ОБНОВЛЕНИЕ ОНЧЕЙН-ПРОФИЛЯ</b>',
     deactivationRequested: '⏳ <b>ЗАПРОС НА ДЕАКТИВАЦИЮ ЗОНЫ!</b>',
     beneficiaryTransferRequested: '💼 <b>ЗАПРОС НА СМЕНУ БЕНЕФИЦИАРА ЗОНЫ!</b>',
+    beneficiaryTransferCompleted: '✅ <b>БЕНЕФИЦИАР ЗОНЫ СМЕНЁН!</b>',
     storageDealCreated: '📦 <b>ТОРРЕНТ ОПЛАЧЕН, ХРАНЕНИЕ ЗАПУЩЕНО!</b>',
 
     // Поля уведомлений
@@ -2156,7 +2157,7 @@ const LANG = {
     btnTorrentUpload: '⬆️ Upload',
     btnTorrentDownload: '⬇️ Download',
     promptTorrentDomain: 'Enter the subdomain in the format iceberg.author.ton — we will open its torrent.',
-    torrentLinkReady: '📦 Torrent is ready:',
+    torrentLinkReady: '📦 Torrent for {domain} is ready — open subdom to download the files from TON Storage.',
     siteMenuText: 'Invis opens sites bound to subdomains. Open the link below and enter your subdomain there:',
     invalidDomainInput: "Doesn't look like a domain. Example: iceberg.author.ton",
 
@@ -2271,6 +2272,7 @@ const LANG = {
     contentUpdated: '🖼️ <b>ON-CHAIN PROFILE UPDATED</b>',
     deactivationRequested: '⏳ <b>ZONE DEACTIVATION REQUESTED!</b>',
     beneficiaryTransferRequested: '💼 <b>BENEFICIARY TRANSFER REQUESTED!</b>',
+    beneficiaryTransferCompleted: '✅ <b>ZONE BENEFICIARY CHANGED!</b>',
     storageDealCreated: '📦 <b>TORRENT PAID, STORAGE STARTED!</b>',
 
     // Поля уведомлений
@@ -3573,7 +3575,7 @@ ${text.substring(0, 1000)}${text.length > 1000 ? '...' : ''}
       });
     } else if (kind === 'torrent-download') {
       const link = DeeplinkUtils.generateTorrentDownloadLinkForDomain(domain);
-      await this.bot!.sendMessage(chatId, $.torrentLinkReady, {
+      await this.bot!.sendMessage(chatId, $.torrentLinkReady.replace('{domain}', domain), {
         reply_markup: { inline_keyboard: [[{ text: $.btnTorrentDownload, url: link }]] },
       });
     } else if (kind === 'traffic-domain') {
@@ -4185,6 +4187,55 @@ ${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
       });
     } catch (error) {
       console.error('❌ Ошибка при отправке уведомления о заявке на смену бенефициара:', error);
+    }
+  }
+
+  // Заявка на смену бенефициара реально исполнена на чейне (площадка
+  // кликнула "исполнить" в PendingActionsPanel, см. server-sqlite.ts,
+  // /api/admin/pending-actions/:id/complete) — раньше тут не было вообще
+  // никакого уведомления после исполнения (только запрос ДО, см. метод
+  // выше), юзер явно попросил публичное объявление о продаже
+  // бенефициарства в дополнение к личному, тем же паттерном, что
+  // sendPaymentConsumedNotification/sendPublicPaymentConsumedNotification.
+  async sendBeneficiaryTransferCompletedNotification(name: string, address: string, newPartnerAddress: string, isTestnet: boolean = true): Promise<void> {
+    const network = this.formatNetwork(isTestnet);
+
+    if (this.isBotAvailable()) {
+      try {
+        const $ = LANG.ru;
+        const message = `
+${$.beneficiaryTransferCompleted}
+
+${network}
+${$.fieldName}: <code>${name}</code>
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldNewBeneficiary}: ${await this.formatTonviewerLink(newPartnerAddress, isTestnet)}
+
+${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
+        `.trim();
+
+        await this.bot!.sendMessage(this.ownerId, message, { parse_mode: 'HTML' });
+      } catch (error) {
+        console.error('❌ Ошибка при отправке личного уведомления об исполнении смены бенефициара:', error);
+      }
+    }
+
+    try {
+      await this.sendGroupNotification(async (lang) => {
+        const $ = LANG[lang as 'ru' | 'en'] || LANG.ru;
+        return `
+${$.beneficiaryTransferCompleted}
+
+${network}
+${$.fieldName}: <code>${name}</code>
+${$.fieldAddress}: ${await this.formatTonviewerLink(address, isTestnet)}
+${$.fieldNewBeneficiary}: ${await this.formatTonviewerLink(newPartnerAddress, isTestnet)}
+
+${$.fieldTime}: ${new Date().toLocaleString('ru-RU')}
+        `.trim();
+      });
+    } catch (error) {
+      console.error('❌ Ошибка при отправке публичного уведомления об исполнении смены бенефициара:', error);
     }
   }
 

@@ -58,6 +58,10 @@ function shortAddress(address: string): string {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+function tonviewerLink(address: string, isTestnet: boolean): string {
+  return `https://${isTestnet ? 'testnet.' : ''}tonviewer.com/${address}`;
+}
+
 export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTestnet, t, walletAddress }) => {
   const [tonConnectUI] = useTonConnectUI();
   const { proxyCollections } = useBlockchainItems();
@@ -84,6 +88,10 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
   // владелец зоны мог отправить (и затем принять) оффер самому себе.
   const [incomingOffers, setIncomingOffers] = useState<any[]>([]);
   const [offerActionBusyId, setOfferActionBusyId] = useState<number | null>(null);
+  // Подтверждение перед "Принять" — юзер явно попросил модалку, чтобы
+  // случайным кликом не отдать зону (принятие сразу запускает эскроу-
+  // расчёт с покупателем, отменить потом нельзя).
+  const [confirmAcceptOffer, setConfirmAcceptOffer] = useState<any | null>(null);
 
   const loadListings = async () => {
     setLoading(true);
@@ -447,11 +455,21 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
                 incomingOffer ? (
                   <>
                     <div style={{ fontSize: '12px', color: colors.textSecondary, marginBottom: '8px' }}>
-                      {t('marketBeneficiaryOfferFrom') || 'Оффер'}: <strong style={{ color: colors.text }}>{incomingOffer.priceTon} TON</strong> ({shortAddress(incomingOffer.buyerAddress)})
+                      {t('marketBeneficiaryOfferFrom') || 'Оффер'}: <strong style={{ color: colors.text }}>{incomingOffer.priceTon} TON</strong> (
+                      <a
+                        href={tonviewerLink(incomingOffer.buyerAddress, isTestnet)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ color: colors.primary }}
+                      >
+                        {shortAddress(incomingOffer.buyerAddress)}
+                      </a>
+                      )
                     </div>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
-                        onClick={() => handleAcceptIncomingOffer(incomingOffer)}
+                        onClick={() => setConfirmAcceptOffer(incomingOffer)}
                         disabled={offerActionBusyId === incomingOffer.id}
                         style={buttonStyle(offerActionBusyId === incomingOffer.id)}
                       >
@@ -546,6 +564,75 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
           </div>
         );
       })}
+
+      {confirmAcceptOffer && (
+        <div
+          onClick={() => setConfirmAcceptOffer(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '16px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: colors.cardBg,
+              border: `1px solid ${colors.border}`,
+              borderRadius: '12px',
+              padding: '18px',
+              maxWidth: '360px',
+              width: '100%',
+            }}
+          >
+            <div style={{ fontWeight: 700, fontSize: '15px', color: colors.text, marginBottom: '10px' }}>
+              {t('marketBeneficiaryConfirmAcceptTitle') || 'Подтвердите принятие оффера'}
+            </div>
+            <div style={{ fontSize: '13px', color: colors.textSecondary, marginBottom: '14px', lineHeight: 1.5 }}>
+              {t('marketBeneficiaryConfirmAcceptText') || 'Вы передадите бенефициарство (90% с аукционов) этой зоны за'}{' '}
+              <strong style={{ color: colors.text }}>{confirmAcceptOffer.priceTon} TON</strong>
+              {' '}
+              <a
+                href={tonviewerLink(confirmAcceptOffer.buyerAddress, isTestnet)}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: colors.primary }}
+              >
+                {shortAddress(confirmAcceptOffer.buyerAddress)}
+              </a>
+              . {t('marketBeneficiaryConfirmAcceptWarning') || 'Действие необратимо.'}
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setConfirmAcceptOffer(null)}
+                style={{
+                  ...buttonStyle(false),
+                  background: 'transparent',
+                  border: `1px solid ${colors.border}`,
+                  color: colors.textSecondary,
+                }}
+              >
+                {t('cancel') || 'Отмена'}
+              </button>
+              <button
+                onClick={() => {
+                  const offer = confirmAcceptOffer;
+                  setConfirmAcceptOffer(null);
+                  handleAcceptIncomingOffer(offer);
+                }}
+                style={buttonStyle(false)}
+              >
+                {t('marketBeneficiaryConfirmAcceptButton') || 'Подтвердить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

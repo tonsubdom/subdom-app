@@ -4753,6 +4753,13 @@ app.post('/api/admin/pending-actions/:id/complete', requireAdminAuth, (req, res)
         SET status = 'superseded', executedAt = CURRENT_TIMESTAMP
         WHERE actionType = 'transfer_beneficiary' AND targetAddress = ? AND status = 'pending' AND id != ?
       `).run(existing.targetAddress, id);
+
+      telegramBot.sendBeneficiaryTransferCompletedNotification(
+        existing.targetName,
+        existing.targetAddress,
+        newPartner,
+        req.isTestnet
+      );
     }
 
     return res.json({ success: true, data: updated });

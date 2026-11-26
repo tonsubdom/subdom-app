@@ -62,7 +62,14 @@ export const TrafficRequestsTab: React.FC<TrafficRequestsTabProps> = ({ isDark, 
   const [searchQuery, setSearchQuery] = useState('');
 
   const [proposeTarget, setProposeTarget] = useState<TrafficSubdomain | null>(null);
-  const [proposeValue, setProposeValue] = useState('');
+  // ADNL и bagID — оба ровно 64 символа, одним полем с плейсхолдером
+  // "address, либо adnl, либо bagID" юзер не мог понять, что именно от
+  // него хотят — три отдельных поля, по одному на тип DNS-записи, заполнять
+  // нужно ровно одно (запись бывает только одного типа за раз).
+  const [proposeAddress, setProposeAddress] = useState('');
+  const [proposeAdnl, setProposeAdnl] = useState('');
+  const [proposeBagId, setProposeBagId] = useState('');
+  const proposeValue = proposeAddress.trim() || proposeAdnl.trim() || proposeBagId.trim();
   const [proposeBusy, setProposeBusy] = useState(false);
   const [proposeResult, setProposeResult] = useState<string | null>(null);
 
@@ -93,18 +100,20 @@ export const TrafficRequestsTab: React.FC<TrafficRequestsTabProps> = ({ isDark, 
 
   const closeProposeModal = () => {
     setProposeTarget(null);
-    setProposeValue('');
+    setProposeAddress('');
+    setProposeAdnl('');
+    setProposeBagId('');
     setProposeResult(null);
   };
 
   const handleSubmitPropose = async () => {
-    if (!proposeTarget || !proposeValue.trim()) return;
+    if (!proposeTarget || !proposeValue) return;
     setProposeBusy(true);
     setProposeResult(null);
     try {
       const result = await apiService.createTrafficRequest({
         domain: proposeTarget.name,
-        requestedValue: proposeValue.trim(),
+        requestedValue: proposeValue,
         requesterAddress: walletAddress,
       });
       if (!result.success) {
@@ -313,31 +322,42 @@ export const TrafficRequestsTab: React.FC<TrafficRequestsTabProps> = ({ isDark, 
             <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '10px', color: isDark ? '#fff' : '#111' }}>
               {(t('trafficProposeTitle') || 'Предложить запись для {domain}').replace('{domain}', proposeTarget.name)}
             </div>
-            <input
-              type="text"
-              placeholder={t('trafficProposePlaceholder') || 'Адрес, ADNL или bagID'}
-              value={proposeValue}
-              onChange={(e) => setProposeValue(e.target.value)}
-              disabled={proposeBusy}
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                padding: '10px 12px',
-                borderRadius: '8px',
-                border: `1px solid ${isDark ? '#3d3d3d' : '#e5e5e5'}`,
-                background: isDark ? '#2d2d2d' : '#fff',
-                color: isDark ? '#fff' : '#111',
-                fontSize: '13px',
-                marginBottom: '12px',
-              }}
-            />
+            <div style={{ fontSize: '11px', color: isDark ? '#aaa' : '#666', marginBottom: '8px' }}>
+              {t('trafficProposeHint') || 'Заполните ровно одно поле — запись бывает только одного типа'}
+            </div>
+            {([
+              { value: proposeAddress, setValue: setProposeAddress, placeholder: t('trafficProposePlaceholderAddress') || 'Address' },
+              { value: proposeAdnl, setValue: setProposeAdnl, placeholder: t('trafficProposePlaceholderAdnl') || 'ADNL' },
+              { value: proposeBagId, setValue: setProposeBagId, placeholder: t('trafficProposePlaceholderBagId') || 'bagID' },
+            ] as const).map((field, i) => (
+              <input
+                key={i}
+                type="text"
+                placeholder={field.placeholder}
+                value={field.value}
+                onChange={(e) => field.setValue(e.target.value)}
+                disabled={proposeBusy}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  border: `1px solid ${isDark ? '#3d3d3d' : '#e5e5e5'}`,
+                  background: isDark ? '#2d2d2d' : '#fff',
+                  color: isDark ? '#fff' : '#111',
+                  fontSize: '13px',
+                  marginBottom: '8px',
+                }}
+              />
+            ))}
+            <div style={{ height: '4px' }} />
             {proposeResult && (
               <div style={{ fontSize: '12px', color: isDark ? '#ddd' : '#333', marginBottom: '12px' }}>{proposeResult}</div>
             )}
             <div style={{ display: 'flex', gap: '8px' }}>
               <button
                 onClick={handleSubmitPropose}
-                disabled={proposeBusy || !proposeValue.trim()}
+                disabled={proposeBusy || !proposeValue}
                 style={{ ...smallButtonStyle(proposeBusy, true), flex: 1, padding: '10px' }}
               >
                 {proposeBusy ? (t('processing') || 'Обработка...') : (t('trafficProposeSubmit') || 'Отправить')}
