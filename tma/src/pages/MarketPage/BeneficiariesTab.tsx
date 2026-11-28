@@ -98,6 +98,10 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
   // случайным кликом не отдать зону (принятие сразу запускает эскроу-
   // расчёт с покупателем, отменить потом нельзя).
   const [confirmAcceptOffer, setConfirmAcceptOffer] = useState<any | null>(null);
+  // Пагинация — без неё список всех proxy-зон рендерился целиком и
+  // приложение подвисало при росте каталога (см. Kanban 2026-11-28).
+  // Тот же паттерн, что в Market "Субдомены" (MarketPage.tsx).
+  const [beneficiaryCurrentPage, setBeneficiaryCurrentPage] = useState<number>(0);
 
   const loadListings = async () => {
     setLoading(true);
@@ -136,6 +140,16 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
   useEffect(() => {
     loadListings();
   }, []);
+
+  // Если список зон уменьшился (например, после смены фильтра контекста)
+  // и текущая страница вышла за пределы — откатываемся на первую, иначе
+  // пользователь видит пустой экран без объяснения.
+  useEffect(() => {
+    const totalPages = Math.ceil((proxyCollections || []).length / 10);
+    if (beneficiaryCurrentPage > 0 && beneficiaryCurrentPage >= totalPages) {
+      setBeneficiaryCurrentPage(0);
+    }
+  }, [proxyCollections, beneficiaryCurrentPage]);
 
   const loadMyPaidListings = async () => {
     if (!walletAddress) {
@@ -409,6 +423,12 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
   }
 
   const zones = proxyCollections || [];
+  const BENEFICIARY_PAGE_SIZE = 10;
+  const beneficiaryTotalPages = Math.ceil(zones.length / BENEFICIARY_PAGE_SIZE);
+  const pagedZones = zones.slice(
+    beneficiaryCurrentPage * BENEFICIARY_PAGE_SIZE,
+    beneficiaryCurrentPage * BENEFICIARY_PAGE_SIZE + BENEFICIARY_PAGE_SIZE
+  );
 
   return (
     <div>
@@ -418,7 +438,7 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
         </div>
       )}
 
-      {zones.map((zone: any) => {
+      {pagedZones.map((zone: any) => {
         const zoneAddressRaw = convertUserFriendlyToRaw(zone.address).toLowerCase();
         const listing = listingByZone.get(zoneAddressRaw);
         const myOffer = myOfferByZone.get(zoneAddressRaw);
@@ -629,6 +649,52 @@ export const BeneficiariesTab: React.FC<BeneficiariesTabProps> = ({ colors, isTe
           </div>
         );
       })}
+
+      {beneficiaryTotalPages > 1 && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '16px 0',
+          }}
+        >
+          <button
+            onClick={() => setBeneficiaryCurrentPage((p) => Math.max(0, p - 1))}
+            disabled={beneficiaryCurrentPage === 0}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              border: `1px solid ${colors.border}`,
+              background: beneficiaryCurrentPage === 0 ? 'transparent' : colors.cardBg,
+              color: beneficiaryCurrentPage === 0 ? colors.textSecondary : colors.text,
+              cursor: beneficiaryCurrentPage === 0 ? 'default' : 'pointer',
+              fontSize: '13px',
+            }}
+          >
+            ‹ {t('marketPrev') || 'Назад'}
+          </button>
+          <span style={{ fontSize: '13px', color: colors.textSecondary }}>
+            {beneficiaryCurrentPage + 1} / {beneficiaryTotalPages}
+          </span>
+          <button
+            onClick={() => setBeneficiaryCurrentPage((p) => Math.min(beneficiaryTotalPages - 1, p + 1))}
+            disabled={beneficiaryCurrentPage === beneficiaryTotalPages - 1}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              border: `1px solid ${colors.border}`,
+              background: beneficiaryCurrentPage === beneficiaryTotalPages - 1 ? 'transparent' : colors.cardBg,
+              color: beneficiaryCurrentPage === beneficiaryTotalPages - 1 ? colors.textSecondary : colors.text,
+              cursor: beneficiaryCurrentPage === beneficiaryTotalPages - 1 ? 'default' : 'pointer',
+              fontSize: '13px',
+            }}
+          >
+            {t('marketNext') || 'Вперёд'} ›
+          </button>
+        </div>
+      )}
 
       {confirmAcceptOffer && (
         <div

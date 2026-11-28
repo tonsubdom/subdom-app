@@ -4557,7 +4557,7 @@ import {
 
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { convertRawToUserFriendlyTest } from "@/utils/tonUtils";
+import { convertRawToUserFriendlyTest, fetchAllDnsRecords } from "@/utils/tonUtils";
 import { decodeDomainForDisplay, encodeDomainForChain, isPunycodeEncoded } from "@/utils/domainPunycode";
 import { apiService } from "@/services/api";
 import { resolveDomainNftAddress } from "@/services/ownerMetaService";
@@ -5525,18 +5525,26 @@ export const ManageDomainPage: FC = () => {
       })();
     }
 
-    const itemName =
-      mode === "other"
-        ? editingItem.dns || editingItem.metadata?.name || editingItem.title
-        : editingItem.name || editingItem.title;
-
-    if (
-      itemName &&
-      !dnsLoading &&
-      !(currentDomain === itemName && Object.keys(parsedRecords).length > 0)
-    ) {
-      if (isTestnet) dispatch(fetchTestnetDNSRecords(itemName));
-      else dispatch(fetchDNSRecords(itemName));
+    // Точечное чтение DNS-записей напрямую с чейна по адресу итема
+    // (dnsresolve get-метод) — вместо toncenter v3 `/dns/records?domain=`,
+    // который не видит кастомные DNS-итемы subdom (t.me резолвился, свои
+    // субдомены/getgems/tonnel — пустые инпуты, см. Kanban/Log 2026-11-28).
+    // Работает одинаково для любого TEP-81-совместимого итема, независимо
+    // от mode/коллекции — замена старого dispatch(fetchDNSRecords(...)),
+    // который ключевался по имени домена через curated-индекс.
+    if (itemAddress) {
+      fetchAllDnsRecords(itemAddress, isTestnet).then((records) => {
+        if (!records) return;
+        const newFormData: FormData = {
+          tonSite: records.site || "",
+          isChecked: false,
+          tonStorage: records.storage || "",
+          walletAddress: records.wallet || "",
+          subdomains: records.nextResolver || "",
+        };
+        setFormData(newFormData);
+        setOriginalFormData(newFormData);
+      });
     }
 
     setTimeout(

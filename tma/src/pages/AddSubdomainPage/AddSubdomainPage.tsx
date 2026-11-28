@@ -13053,6 +13053,21 @@ export const AuctionPage: React.FC<{}> = () => {
       showSnackbar(t("subdomainInvalidCharsError"), "error");
       return;
     }
+    // Реальный лимит TON DNS — 126 символов на всю цепочку "sub.zone.ton"
+    // суммарно, не по 126 на каждый уровень отдельно (см. Kanban 2026-11-28:
+    // субдомен, прошедший этот regex по отдельности, может всё равно
+    // превысить общий бюджет и создать невидимый "мёртвый" NFT — минт
+    // проходит, но индексаторы его не видят). selectedDomainZone уже
+    // содержит ".ton" (см. cleanZoneDisplayName выше).
+    const fullDomainLength = subDomainName.length + 1 + selectedDomainZone.length;
+    if (fullDomainLength > 126) {
+      const maxSubdomainLength = Math.max(0, 126 - 1 - selectedDomainZone.length);
+      showSnackbar(
+        `${t("subdomainChainTooLongError")} (${maxSubdomainLength})`,
+        "error"
+      );
+      return;
+    }
     setIsLoading(true);
     setHasChecked(false);
     setOccupiedInfo(null);

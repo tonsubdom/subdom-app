@@ -1,5 +1,7 @@
 // src/utils/tonUtils.ts
 import { Address } from "ton-core";
+import { Cell, Dictionary } from "@ton/core";
+import { buildDnsResolveSelfSlice, parseDnsRecordsDict, DnsRecordsSnapshot } from "@/services/payloadBuilder/dns";
 
 const API_PAYLOAD_URL = import.meta.env.VITE_API_SC_PAYLOAD_URL;
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -171,6 +173,66 @@ export async function checkDomainDNSRecord(
     return null;
   } catch (error) {
     console.error('Ошибка проверки DNS записи домена:', error);
+    return null;
+  }
+}
+
+/**
+ * Точечно читает ВСЕ 4 DNS-записи (wallet/site/storage/next_resolver)
+ * конкретного айтема напрямую с чейна — по одному адресу за раз, без
+ * краулера и без toncenter v3 `/dns/records` (тот не видит кастомные
+ * DNS-итемы subdom, см. Kanban 2026-11-28). Нужен один `dnsresolve`-вызов
+ * с category=0 — он возвращает словарь со всеми категориями разом, не по
+ * одной. Проверено живьём 2026-11-28 на реальных SBT- и Proxy-субдоменах —
+ * резолвится одинаково для обоих режимов, без различий по типу зоны.
+ *
+ * Словарь айтема может содержать и другие (не DNS) ключи — subdom хранит
+ * там же name/image/description. Это не мешает: readAddress/readHex в
+ * parseDnsRecordsDict ищут значение по точному 256-битному ключу каждой
+ * из 4 категорий, посторонние ключи им просто не попадаются.
+ */
+export async function fetchAllDnsRecords(
+  itemAddress: string,
+  isTestnet: boolean
+): Promise<DnsRecordsSnapshot | null> {
+  try {
+    const apiUrl = toncenterApiUrl(isTestnet, 'v3/runGetMethod');
+    const rawAddress = convertUserFriendlyToRaw(itemAddress);
+    const selfSliceBoc = buildDnsResolveSelfSlice().toBoc().toString('base64');
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        address: rawAddress,
+        method: 'dnsresolve',
+        stack: [
+          { type: 'slice', value: selfSliceBoc },
+          { type: 'num', value: '0' },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data || data.exit_code !== 0 || !Array.isArray(data.stack) || data.stack.length < 2) {
+      return null;
+    }
+
+    const dictItem = data.stack[1];
+    if (!dictItem || dictItem.type !== 'cell' || !dictItem.value) {
+      return null;
+    }
+
+    const dictCell = Cell.fromBase64(dictItem.value);
+    const dict = Dictionary.loadDirect(Dictionary.Keys.BigUint(256), Dictionary.Values.Cell(), dictCell);
+    return parseDnsRecordsDict(dict, isTestnet);
+  } catch (error) {
+    console.error('Ошибка получения DNS-записей айтема:', error);
     return null;
   }
 }

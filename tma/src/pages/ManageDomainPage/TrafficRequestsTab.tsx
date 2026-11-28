@@ -18,7 +18,8 @@ import { useTonConnectUI } from '@tonconnect/ui-react';
 import { beginCell } from '@ton/core';
 import { apiService } from '@/services/api';
 import { TransactionService } from '@/services/transactionService';
-import { convertRawToUserFriendly, convertRawToUserFriendlyTest } from '@/utils/tonUtils';
+import { convertRawToUserFriendly, convertRawToUserFriendlyTest, fetchAllDnsRecords } from '@/utils/tonUtils';
+import type { DnsRecordsSnapshot } from '@/services/payloadBuilder/dns';
 
 const NO_IMAGE_PLACEHOLDER =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 90 90"><rect width="90" height="90" fill="%23f0f0f0"/><text x="45" y="45" font-family="Arial" font-size="10" fill="%23999" text-anchor="middle" dy=".3em">No Image</text></svg>';
@@ -72,10 +73,29 @@ export const TrafficRequestsTab: React.FC<TrafficRequestsTabProps> = ({ isDark, 
   const proposeValue = proposeAddress.trim() || proposeAdnl.trim() || proposeBagId.trim();
   const [proposeBusy, setProposeBusy] = useState(false);
   const [proposeResult, setProposeResult] = useState<string | null>(null);
+  // Точечный (по клику, без краулера) показ уже существующих записей айтема
+  // перед тем, как предлагать новую — см. Kanban/Log 2026-11-28.
+  const [existingRecords, setExistingRecords] = useState<DnsRecordsSnapshot | null>(null);
+  const [existingRecordsLoading, setExistingRecordsLoading] = useState(false);
+
+  const openProposeModal = (item: TrafficSubdomain) => {
+    setProposeTarget(item);
+    setExistingRecords(null);
+    setExistingRecordsLoading(true);
+    fetchAllDnsRecords(item.itemAddress, isTestnet)
+      .then(setExistingRecords)
+      .finally(() => setExistingRecordsLoading(false));
+  };
 
   const [likeTarget, setLikeTarget] = useState<TrafficSubdomain | null>(null);
   const [likeBusy, setLikeBusy] = useState(false);
   const [likeError, setLikeError] = useState<string | null>(null);
+
+  // Пагинация — без неё список ВСЕХ активных SBT-субдоменов платформы
+  // рендерился целиком и приложение подвисало при росте каталога (см.
+  // Kanban 2026-11-28). Тот же паттерн, что в Market "Субдомены".
+  const TRAFFIC_PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState<number>(0);
 
   const loadItems = async () => {
     setLoading(true);
@@ -98,12 +118,25 @@ export const TrafficRequestsTab: React.FC<TrafficRequestsTabProps> = ({ isDark, 
     return items.filter((item) => item.name.toLowerCase().includes(query));
   }, [items, searchQuery]);
 
+  // Сброс на первую страницу при смене поиска/перезагрузке списка — иначе
+  // после фильтрации пользователь может застрять на пустой странице N.
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [searchQuery, items]);
+
+  const totalPages = Math.ceil(filteredItems.length / TRAFFIC_PAGE_SIZE);
+  const pagedItems = filteredItems.slice(
+    currentPage * TRAFFIC_PAGE_SIZE,
+    currentPage * TRAFFIC_PAGE_SIZE + TRAFFIC_PAGE_SIZE
+  );
+
   const closeProposeModal = () => {
     setProposeTarget(null);
     setProposeAddress('');
     setProposeAdnl('');
     setProposeBagId('');
     setProposeResult(null);
+    setExistingRecords(null);
   };
 
   const handleSubmitPropose = async () => {
@@ -268,7 +301,7 @@ export const TrafficRequestsTab: React.FC<TrafficRequestsTabProps> = ({ isDark, 
           {t('trafficEmpty') || 'Пока нет SBT-субдоменов на платформе'}
         </div>
       ) : (
-        filteredItems.map((item) => (
+        pagedItems.map((item) => (
           <div key={item.itemAddress} style={cardStyle}>
             <img
               src={item.image || NO_IMAGE_PLACEHOLDER}
@@ -306,13 +339,59 @@ export const TrafficRequestsTab: React.FC<TrafficRequestsTabProps> = ({ isDark, 
                 >
                   {item.likedByMe ? '❤️' : '🤍'} {item.likeCount}
                 </button>
-                <button onClick={() => setProposeTarget(item)} style={smallButtonStyle(false, true)}>
+                <button onClick={() => openProposeModal(item)} style={smallButtonStyle(false, true)}>
                   📡 {t('trafficProposeButton') || 'Предложить привязку'}
                 </button>
               </div>
             </div>
           </div>
         ))
+      )}
+
+      {totalPages > 1 && (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '16px 0',
+          }}
+        >
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+            disabled={currentPage === 0}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              border: `1px solid ${isDark ? '#3d3d3d' : '#e5e5e5'}`,
+              background: currentPage === 0 ? 'transparent' : (isDark ? '#2d2d2d' : '#fff'),
+              color: currentPage === 0 ? (isDark ? '#aaa' : '#666') : (isDark ? '#fff' : '#111'),
+              cursor: currentPage === 0 ? 'default' : 'pointer',
+              fontSize: '13px',
+            }}
+          >
+            ‹ {t('marketPrev') || 'Назад'}
+          </button>
+          <span style={{ fontSize: '13px', color: isDark ? '#aaa' : '#666' }}>
+            {currentPage + 1} / {totalPages}
+          </span>
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={currentPage === totalPages - 1}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              border: `1px solid ${isDark ? '#3d3d3d' : '#e5e5e5'}`,
+              background: currentPage === totalPages - 1 ? 'transparent' : (isDark ? '#2d2d2d' : '#fff'),
+              color: currentPage === totalPages - 1 ? (isDark ? '#aaa' : '#666') : (isDark ? '#fff' : '#111'),
+              cursor: currentPage === totalPages - 1 ? 'default' : 'pointer',
+              fontSize: '13px',
+            }}
+          >
+            {t('marketNext') || 'Вперёд'} ›
+          </button>
+        </div>
       )}
 
       {/* Модалка "Предложить привязку" */}
@@ -325,6 +404,33 @@ export const TrafficRequestsTab: React.FC<TrafficRequestsTabProps> = ({ isDark, 
             <div style={{ fontSize: '11px', color: isDark ? '#aaa' : '#666', marginBottom: '8px' }}>
               {t('trafficProposeHint') || 'Заполните ровно одно поле — запись бывает только одного типа'}
             </div>
+
+            {existingRecordsLoading ? (
+              <div style={{ fontSize: '11px', color: isDark ? '#aaa' : '#666', marginBottom: '10px' }}>
+                {t('trafficExistingRecordsLoading') || 'Проверяем текущие записи…'}
+              </div>
+            ) : existingRecords && (existingRecords.wallet || existingRecords.site || existingRecords.storage) ? (
+              <div
+                style={{
+                  fontSize: '11px',
+                  color: isDark ? '#ddd' : '#333',
+                  background: isDark ? '#2d2d2d' : '#f0f0f0',
+                  border: `1px solid ${isDark ? '#3d3d3d' : '#e5e5e5'}`,
+                  borderRadius: '8px',
+                  padding: '8px 10px',
+                  marginBottom: '10px',
+                  wordBreak: 'break-all',
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: '4px' }}>
+                  {t('trafficExistingRecordsTitle') || 'Уже привязано:'}
+                </div>
+                {existingRecords.wallet && <div>Address: {existingRecords.wallet}</div>}
+                {existingRecords.site && <div>ADNL: {existingRecords.site}</div>}
+                {existingRecords.storage && <div>bagID: {existingRecords.storage}</div>}
+              </div>
+            ) : null}
+
             {([
               { value: proposeAddress, setValue: setProposeAddress, placeholder: t('trafficProposePlaceholderAddress') || 'Address' },
               { value: proposeAdnl, setValue: setProposeAdnl, placeholder: t('trafficProposePlaceholderAdnl') || 'ADNL' },

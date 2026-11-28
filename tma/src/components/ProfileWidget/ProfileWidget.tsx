@@ -5153,10 +5153,7 @@ const ProfileWidget: React.FC = () => {
                       boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
                     }}
                   >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="6" y1="18" x2="18" y2="6" />
-                      <polyline points="9 6 18 6 18 15" />
-                    </svg>
+                    <span style={{ fontSize: "16px", lineHeight: 1 }}>📤</span>
                   </button>
                 </div>
               )}

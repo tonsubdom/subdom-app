@@ -79,6 +79,7 @@ export const enTranslations = {
     bundleDeploymentFailed: 'Bundle deployment failed',
     domainInvalidCharsError: "Only Latin letters, numbers and hyphens are allowed",
     subdomainInvalidCharsError: "Only Latin letters, numbers and hyphens are allowed",
+    subdomainChainTooLongError: "The combined length of the subdomain and the domain zone must not exceed 126 characters. Maximum for this zone",
     domainNotOwnerError: "You are not the owner of this domain",
 
     // Tabs
@@ -416,6 +417,8 @@ marketTitle: '🏠 Market',
   trafficProposeTitle: 'Propose a record for {domain}',
   trafficProposePlaceholder: 'Address, ADNL, or bagID',
   trafficProposeHint: 'Fill in exactly one field — a record is only ever one type',
+  trafficExistingRecordsTitle: "Already linked:",
+  trafficExistingRecordsLoading: "Checking current records…",
   trafficProposePlaceholderAddress: 'Address (wallet)',
   trafficProposePlaceholderAdnl: 'ADNL (for a site)',
   trafficProposePlaceholderBagId: 'bagID (for a torrent)',

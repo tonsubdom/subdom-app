@@ -79,6 +79,7 @@ export const jaTranslations = {
   bundleDeploymentFailed: 'バンドルデプロイメント失敗',
   domainInvalidCharsError: "ラテン文字、数字、ハイフンのみ使用できます",
   subdomainInvalidCharsError: "ラテン文字、数字、ハイフンのみ使用できます",
+  subdomainChainTooLongError: "サブドメインとドメインゾーンの合計の長さは126文字を超えてはいけません。このゾーンの最大",
   domainNotOwnerError: "このドメインの所有者ではありません",
 
   // Tabs
@@ -418,6 +419,8 @@ marketTypeNFTWrapper: 'NFTラッパー',
   trafficProposeTitle: '{domain} へのレコードを提案',
   trafficProposePlaceholder: 'アドレス、ADNL、またはbagID',
   trafficProposeHint: '必ず1つのフィールドだけ入力してください — レコードは1種類のみです',
+  trafficExistingRecordsTitle: "すでにリンク済み：",
+  trafficExistingRecordsLoading: "現在のレコードを確認中…",
   trafficProposePlaceholderAddress: 'Address (ウォレット)',
   trafficProposePlaceholderAdnl: 'ADNL (サイト用)',
   trafficProposePlaceholderBagId: 'bagID (トレント用)',

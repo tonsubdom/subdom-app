@@ -79,6 +79,7 @@ export const arTranslations = {
   bundleDeploymentFailed: 'فشل نشر الحزمة',
   domainInvalidCharsError: "يُسمح فقط بالأحرف اللاتينية والأرقام والشرطات",
   subdomainInvalidCharsError: "يُسمح فقط بالأحرف اللاتينية والأرقام والشرطات",
+  subdomainChainTooLongError: "لا يجب أن يتجاوز الطول الإجمالي للنطاق الفرعي ومنطقة النطاق 126 حرفًا. الحد الأقصى لهذه المنطقة",
   domainNotOwnerError: "أنت لست مالك هذا النطاق",
 
   // Tabs
@@ -419,6 +420,8 @@ marketTypeNFTWrapper: 'غلاف NFT',
   trafficProposeTitle: 'اقترح سجلاً لـ {domain}',
   trafficProposePlaceholder: 'العنوان أو ADNL أو bagID',
   trafficProposeHint: 'املأ حقلاً واحداً فقط — السجل يكون من نوع واحد فقط',
+  trafficExistingRecordsTitle: "مرتبط حاليًا:",
+  trafficExistingRecordsLoading: "جاري التحقق من السجلات الحالية…",
   trafficProposePlaceholderAddress: 'Address (عنوان المحفظة)',
   trafficProposePlaceholderAdnl: 'ADNL (للموقع)',
   trafficProposePlaceholderBagId: 'bagID (للتورنت)',

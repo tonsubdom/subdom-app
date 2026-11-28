@@ -79,6 +79,7 @@ export const zhTranslations = {
     bundleDeploymentFailed: '捆绑包部署失败',
     domainInvalidCharsError: "只允许使用拉丁字母、数字和连字符",
     subdomainInvalidCharsError: "只允许使用拉丁字母、数字和连字符",
+    subdomainChainTooLongError: "子域名和域名区的总长度不能超过126个字符。此区域的最大长度",
     domainNotOwnerError: "您不是此域名的所有者",
 
     // Tabs
@@ -420,6 +421,8 @@ marketTypeNFTWrapper: 'NFT包装器',
   trafficProposeTitle: '为 {domain} 提议记录',
   trafficProposePlaceholder: '地址、ADNL 或 bagID',
   trafficProposeHint: '只需填写一个字段——一条记录只能是一种类型',
+  trafficExistingRecordsTitle: "已绑定：",
+  trafficExistingRecordsLoading: "正在检查当前记录…",
   trafficProposePlaceholderAddress: 'Address(钱包地址)',
   trafficProposePlaceholderAdnl: 'ADNL(用于网站)',
   trafficProposePlaceholderBagId: 'bagID(用于种子)',

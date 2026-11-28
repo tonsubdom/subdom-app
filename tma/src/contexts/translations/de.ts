@@ -79,6 +79,7 @@ export const deTranslations = {
   bundleDeploymentFailed: 'Bundle-Bereitstellung fehlgeschlagen',
   domainInvalidCharsError: "Nur lateinische Buchstaben, Zahlen und Bindestriche sind erlaubt",
   subdomainInvalidCharsError: "Nur lateinische Buchstaben, Zahlen und Bindestriche sind erlaubt",
+  subdomainChainTooLongError: "Die kombinierte Länge von Subdomain und Domain-Zone darf 126 Zeichen nicht überschreiten. Maximum für diese Zone",
   domainNotOwnerError: "Sie sind nicht der Eigentümer dieser Domain",
 
   // Tabs
@@ -419,6 +420,8 @@ marketTypeNFTWrapper: 'NFT-Wrapper',
   trafficProposeTitle: 'Eintrag für {domain} vorschlagen',
   trafficProposePlaceholder: 'Adresse, ADNL oder bagID',
   trafficProposeHint: 'Füllen Sie genau ein Feld aus — ein Eintrag hat immer nur einen Typ',
+  trafficExistingRecordsTitle: "Bereits verknüpft:",
+  trafficExistingRecordsLoading: "Aktuelle Einträge werden geprüft…",
   trafficProposePlaceholderAddress: 'Address (Wallet)',
   trafficProposePlaceholderAdnl: 'ADNL (für eine Website)',
   trafficProposePlaceholderBagId: 'bagID (für einen Torrent)',

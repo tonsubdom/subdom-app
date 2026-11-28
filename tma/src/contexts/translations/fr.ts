@@ -79,6 +79,7 @@ export const frTranslations = {
   bundleDeploymentFailed: 'Échec du déploiement du Bundle',
   domainInvalidCharsError: "Seules les lettres latines, les chiffres et les traits d'union sont autorisés",
   subdomainInvalidCharsError: "Seules les lettres latines, les chiffres et les traits d'union sont autorisés",
+  subdomainChainTooLongError: "La longueur combinée du sous-domaine et de la zone de domaine ne doit pas dépasser 126 caractères. Maximum pour cette zone",
   domainNotOwnerError: "Vous n'êtes pas le propriétaire de ce domaine",
 
   // Tabs
@@ -419,6 +420,8 @@ marketTypeNFTWrapper: 'Wrapper NFT',
   trafficProposeTitle: 'Proposer un enregistrement pour {domain}',
   trafficProposePlaceholder: 'Adresse, ADNL ou bagID',
   trafficProposeHint: "Remplissez exactement un champ — un enregistrement n'a qu'un seul type",
+  trafficExistingRecordsTitle: "Déjà lié :",
+  trafficExistingRecordsLoading: "Vérification des enregistrements actuels…",
   trafficProposePlaceholderAddress: 'Address (portefeuille)',
   trafficProposePlaceholderAdnl: 'ADNL (pour un site)',
   trafficProposePlaceholderBagId: 'bagID (pour un torrent)',

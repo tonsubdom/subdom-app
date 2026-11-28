@@ -1346,6 +1346,15 @@ const CreateTorrentPage: React.FC = () => {
                           }`}
                     </div>
 
+                    {downloadDetails.completed && (
+                      <button
+                        onClick={() => handleShareBagId(downloadBagId)}
+                        style={{ ...primaryButtonStyle(false), marginBottom: '10px' }}
+                      >
+                        📤 {t('createTorrentCompleteShareButton') || 'Поделиться'}
+                      </button>
+                    )}
+
                     {!downloadDetails.completed && downloadStalled && (
                       <div
                         style={{

@@ -79,6 +79,7 @@ export const hiTranslations = {
   bundleDeploymentFailed: 'बंडल डिप्लॉयमेंट विफल',
   domainInvalidCharsError: "केवल लैटिन अक्षर, संख्याएँ और हाइफ़न की अनुमति है",
   subdomainInvalidCharsError: "केवल लैटिन अक्षर, संख्याएँ और हाइफ़न की अनुमति है",
+  subdomainChainTooLongError: "सबडोमेन और डोमेन ज़ोन की संयुक्त लंबाई 126 वर्णों से अधिक नहीं होनी चाहिए। इस ज़ोन के लिए अधिकतम",
   domainNotOwnerError: "आप इस डोमेन के मालिक नहीं हैं",
 
   // Tabs
@@ -418,6 +419,8 @@ marketTypeNFTWrapper: 'NFT रैपर',
   trafficProposeTitle: '{domain} के लिए रिकॉर्ड प्रस्तावित करें',
   trafficProposePlaceholder: 'एड्रेस, ADNL या bagID',
   trafficProposeHint: 'केवल एक फ़ील्ड भरें — एक रिकॉर्ड केवल एक प्रकार का होता है',
+  trafficExistingRecordsTitle: "पहले से जुड़ा हुआ:",
+  trafficExistingRecordsLoading: "मौजूदा रिकॉर्ड जाँचे जा रहे हैं…",
   trafficProposePlaceholderAddress: 'Address (वॉलेट)',
   trafficProposePlaceholderAdnl: 'ADNL (साइट के लिए)',
   trafficProposePlaceholderBagId: 'bagID (टोरेंट के लिए)',

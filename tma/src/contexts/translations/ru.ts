@@ -79,6 +79,7 @@ export const ruTranslations = {
     bundleDeploymentFailed: 'Развертывание Bundle не удалось',
     domainInvalidCharsError: "Допустимы только латинские буквы, цифры и дефис",
     subdomainInvalidCharsError: "Допустимы только латинские буквы, цифры и дефис",
+    subdomainChainTooLongError: "Суммарная длина поддомена и зоны домена не должна превышать 126 символов. Максимум для этой зоны",
     domainNotOwnerError: "Вы не являетесь владельцем этого домена",
 
     // Tabs
@@ -413,6 +414,8 @@ export const ruTranslations = {
   trafficProposeTitle: 'Предложить запись для {domain}',
   trafficProposePlaceholder: 'Адрес, ADNL или bagID',
   trafficProposeHint: 'Заполните ровно одно поле — запись бывает только одного типа',
+  trafficExistingRecordsTitle: "Уже привязано:",
+  trafficExistingRecordsLoading: "Проверяем текущие записи…",
   trafficProposePlaceholderAddress: 'Address (адрес кошелька)',
   trafficProposePlaceholderAdnl: 'ADNL (для сайта)',
   trafficProposePlaceholderBagId: 'bagID (для торрента)',
